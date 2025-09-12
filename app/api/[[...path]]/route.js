@@ -42,7 +42,7 @@ export async function OPTIONS() {
   return handleCORS(new NextResponse(null, { status: 200 }))
 }
 
-const json = (data, init = {}) =&gt; handleCORS(NextResponse.json(data, init))
+const json = (data, init = {}) => handleCORS(NextResponse.json(data, init))
 
 function getJwtSecret() {
   return process.env.JWT_SECRET || 'dev-secret-change-me'
@@ -93,7 +93,7 @@ async function handleRoute(request, { params }) {
     const db = await connectToMongo()
 
     // Health checks
-    if ((route === '/health' || route === '/root' || route === '/') &amp;&amp; method === 'GET') {
+    if ((route === '/health' || route === '/root' || route === '/') && method === 'GET') {
       try {
         await db.command({ ping: 1 })
         return json({ ok: true, message: 'Book8 API online' })
@@ -103,21 +103,21 @@ async function handleRoute(request, { params }) {
     }
 
     // Status sample endpoints kept
-    if (route === '/status' &amp;&amp; method === 'POST') {
+    if (route === '/status' && method === 'POST') {
       const body = await getBody(request)
       if (!body.client_name) return json({ error: 'client_name is required' }, { status: 400 })
       const statusObj = { id: uuidv4(), client_name: body.client_name, timestamp: new Date() }
       await db.collection('status_checks').insertOne(statusObj)
       return json(statusObj)
     }
-    if (route === '/status' &amp;&amp; method === 'GET') {
+    if (route === '/status' && method === 'GET') {
       const statusChecks = await db.collection('status_checks').find({}).limit(1000).toArray()
-      const cleaned = statusChecks.map(({ _id, ...rest }) =&gt; rest)
+      const cleaned = statusChecks.map(({ _id, ...rest }) => rest)
       return json(cleaned)
     }
 
     // Auth
-    if (route === '/auth/register' &amp;&amp; method === 'POST') {
+    if (route === '/auth/register' && method === 'POST') {
       const body = await getBody(request)
       const { email, password, name } = body
       if (!email || !password) return json({ error: 'email and password are required' }, { status: 400 })
@@ -133,7 +133,7 @@ async function handleRoute(request, { params }) {
       return json({ token, user: { id: user.id, email: user.email, name: user.name } })
     }
 
-    if (route === '/auth/login' &amp;&amp; method === 'POST') {
+    if (route === '/auth/login' && method === 'POST') {
       const body = await getBody(request)
       const { email, password } = body
       if (!email || !password) return json({ error: 'email and password are required' }, { status: 400 })
@@ -146,22 +146,22 @@ async function handleRoute(request, { params }) {
     }
 
     // Bookings CRUD
-    if (route === '/bookings' &amp;&amp; method === 'GET') {
+    if (route === '/bookings' && method === 'GET') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const items = await db.collection('bookings').find({ userId: auth.user.id }).sort({ startTime: 1 }).toArray()
-      const cleaned = items.map(({ _id, ...rest }) =&gt; rest)
+      const cleaned = items.map(({ _id, ...rest }) => rest)
       return json(cleaned)
     }
 
-    if (route === '/bookings' &amp;&amp; method === 'POST') {
+    if (route === '/bookings' && method === 'POST') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const body = await getBody(request)
       const { title, customerName, startTime, endTime, notes } = body
       if (!title || !startTime || !endTime) return json({ error: 'title, startTime, endTime are required' }, { status: 400 })
       if (!isISODateString(startTime) || !isISODateString(endTime)) return json({ error: 'Invalid date format' }, { status: 400 })
-      if (new Date(endTime) &lt;= new Date(startTime)) return json({ error: 'endTime must be after startTime' }, { status: 400 })
+      if (new Date(endTime) <= new Date(startTime)) return json({ error: 'endTime must be after startTime' }, { status: 400 })
       const booking = {
         id: uuidv4(),
         userId: auth.user.id,
@@ -178,7 +178,7 @@ async function handleRoute(request, { params }) {
       return json(booking)
     }
 
-    if (route.startsWith('/bookings/') &amp;&amp; (method === 'PUT' || method === 'PATCH')) {
+    if (route.startsWith('/bookings/') && (method === 'PUT' || method === 'PATCH')) {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const id = route.split('/')[2]
@@ -194,8 +194,8 @@ async function handleRoute(request, { params }) {
         if (!isISODateString(body.endTime)) return json({ error: 'Invalid endTime' }, { status: 400 })
         patch.endTime = new Date(body.endTime).toISOString()
       }
-      if (patch.startTime &amp;&amp; patch.endTime) {
-        if (new Date(patch.endTime) &lt;= new Date(patch.startTime)) return json({ error: 'endTime must be after startTime' }, { status: 400 })
+      if (patch.startTime && patch.endTime) {
+        if (new Date(patch.endTime) <= new Date(patch.startTime)) return json({ error: 'endTime must be after startTime' }, { status: 400 })
       }
       patch.updatedAt = new Date().toISOString()
       const res = await db.collection('bookings').findOneAndUpdate(
@@ -208,7 +208,7 @@ async function handleRoute(request, { params }) {
       return json(rest)
     }
 
-    if (route.startsWith('/bookings/') &amp;&amp; method === 'DELETE') {
+    if (route.startsWith('/bookings/') && method === 'DELETE') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const id = route.split('/')[2]
@@ -225,21 +225,21 @@ async function handleRoute(request, { params }) {
     // Integrations - Stubs for MVP
 
     // Google Calendar sync stub
-    if (route === '/integrations/google/sync' &amp;&amp; method === 'POST') {
+    if (route === '/integrations/google/sync' && method === 'POST') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       return json({ ok: true, message: 'Google Calendar sync stubbed. Provide OAuth creds to enable.', synced: 0 })
     }
 
     // OpenAI Realtime Audio stub
-    if (route === '/integrations/voice/call' &amp;&amp; method === 'POST') {
+    if (route === '/integrations/voice/call' && method === 'POST') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       return json({ ok: true, message: 'OpenAI Realtime Audio stubbed. Provide key to enable.' })
     }
 
     // Tavily search stub
-    if (route === '/integrations/search' &amp;&amp; method === 'POST') {
+    if (route === '/integrations/search' && method === 'POST') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const body = await getBody(request)
@@ -247,12 +247,12 @@ async function handleRoute(request, { params }) {
     }
 
     // Stripe webhook stub
-    if (route === '/billing/stripe/webhook' &amp;&amp; method === 'POST') {
+    if (route === '/billing/stripe/webhook' && method === 'POST') {
       return handleCORS(new NextResponse(null, { status: 200 }))
     }
 
     // n8n trigger stub
-    if (route === '/workflows/n8n/trigger' &amp;&amp; method === 'POST') {
+    if (route === '/workflows/n8n/trigger' && method === 'POST') {
       const body = await getBody(request)
       return json({ ok: true, received: body || {}, note: 'n8n stubbed. Provide n8n URL to enable.' })
     }
