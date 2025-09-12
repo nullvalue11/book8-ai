@@ -212,20 +212,20 @@ async function handleRoute(request, { params }) {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const id = route.split('/')[2]
-      console.log('DELETE booking - route:', route, 'id:', id, 'userId:', auth.user.id)
       
       // First, let's check if the booking exists
       const existingBooking = await db.collection('bookings').findOne({ id, userId: auth.user.id })
-      console.log('Existing booking check:', existingBooking ? 'found' : 'not found')
+      if (!existingBooking) return json({ error: 'Booking not found' }, { status: 404 })
       
-      const res = await db.collection('bookings').findOneAndUpdate(
+      // Update the booking status
+      await db.collection('bookings').updateOne(
         { id, userId: auth.user.id },
-        { $set: { status: 'canceled', updatedAt: new Date().toISOString() } },
-        { returnDocument: 'after' }
+        { $set: { status: 'canceled', updatedAt: new Date().toISOString() } }
       )
-      console.log('DELETE booking - result:', res.value ? 'found' : 'not found')
-      if (!res.value) return json({ error: 'Booking not found' }, { status: 404 })
-      const { _id, ...rest } = res.value
+      
+      // Return the updated booking
+      const updatedBooking = await db.collection('bookings').findOne({ id, userId: auth.user.id })
+      const { _id, ...rest } = updatedBooking
       return json(rest)
     }
 
