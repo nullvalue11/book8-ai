@@ -213,6 +213,11 @@ async function handleRoute(request, { params }) {
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const id = route.split('/')[2]
       console.log('DELETE booking - route:', route, 'id:', id, 'userId:', auth.user.id)
+      
+      // First, let's check if the booking exists
+      const existingBooking = await db.collection('bookings').findOne({ id, userId: auth.user.id })
+      console.log('Existing booking check:', existingBooking ? 'found' : 'not found')
+      
       const res = await db.collection('bookings').findOneAndUpdate(
         { id, userId: auth.user.id },
         { $set: { status: 'canceled', updatedAt: new Date().toISOString() } },
