@@ -193,3 +193,5 @@
 ## agent_communication:
   - agent: "main"
     message: "Please run backend tests for health, auth, bookings, and stub endpoints. No external keys required. DB uses MONGO_URL and DB_NAME from .env."
+  - agent: "testing"
+    message: "✅ BACKEND TESTING COMPLETE: All 9 backend tests passed successfully! Fixed HTML entity encoding issues in route.js and layout.js files. Fixed MongoDB findOneAndUpdate issue in booking DELETE endpoint. All endpoints working correctly: health checks, JWT auth (register/login), bookings CRUD, integration stubs, and CORS preflight."
