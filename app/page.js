@@ -41,24 +41,29 @@ function useAuth() {
   return { token, user, login, logout, setUserLocal }
 }
 
-const Header = ({ user, onLogout }) => {
+const Header = ({ user, onLogout, banner }) => {
   return (
     <div className="w-full border-b border-border bg-card">
-      <div className="container py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img className="h-8 w-8 rounded" src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" alt="Book8" />
-          <div className="font-semibold">Book8 AI</div>
+      <div className="container py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img className="h-8 w-8 rounded" src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" alt="Book8" />
+            <div className="font-semibold">Book8 AI</div>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {user ? (
+              <div className="flex items-center gap-3">
+                <span>{user?.email}</span>
+                <button onClick={onLogout} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Logout</button>
+              </div>
+            ) : (
+              <span>MVP Demo</span>
+            )}
+          </div>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {user ? (
-            <div className="flex items-center gap-3">
-              <span>{user?.email}</span>
-              <button onClick={onLogout} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Logout</button>
-            </div>
-          ) : (
-            <span>MVP Demo</span>
-          )}
-        </div>
+        {banner ? (
+          <div className="mt-3 rounded-md border border-border bg-muted px-3 py-2 text-sm">{banner}</div>
+        ) : null}
       </div>
     </div>
   )
@@ -321,7 +326,7 @@ const BillingCard = ({ token, user, onUserUpdate }) => {
   )
 }
 
-const Dashboard = ({ token, user, onLogout, setUserLocal }) => {
+const Dashboard = ({ token, user, onLogout, setUserLocal, banner }) => {
   const [items, setItems] = useState([])
   const [profile, setProfile] = useState(user)
   const loadBookings = async () => {
@@ -340,7 +345,7 @@ const Dashboard = ({ token, user, onLogout, setUserLocal }) => {
 
   return (
     <div>
-      <Header user={profile} onLogout={onLogout} />
+      <Header user={profile} onLogout={onLogout} banner={banner} />
       <main className="container py-6 grid gap-6 md:grid-cols-5">
         <div className="md:col-span-2 space-y-6">
           <BookingForm token={token} onCreated={() => loadBookings()} />
@@ -370,13 +375,23 @@ const Dashboard = ({ token, user, onLogout, setUserLocal }) => {
 
 const Home = () => {
   const { token, user, login, logout, setUserLocal } = useAuth()
+  const [banner, setBanner] = useState('')
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('success') === 'true') setBanner('Subscription updated successfully.')
+      else if (params.get('portal_return') === 'true') setBanner('Returned from Billing Portal.')
+      else if (params.get('canceled') === 'true') setBanner('Checkout canceled.')
+    } catch {}
+  }, [])
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {token ? (
-        <Dashboard token={token} user={user} onLogout={logout} setUserLocal={setUserLocal} />
+        <Dashboard token={token} user={user} onLogout={logout} setUserLocal={setUserLocal} banner={banner} />
       ) : (
         <div>
-          <Header />
+          <Header banner={banner} />
           <main className="container py-10">
             <div className="max-w-2xl mx-auto text-center mb-8">
               <h1 className="text-3xl font-bold">Book8 AI</h1>

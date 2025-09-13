@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import Stripe from 'stripe'
+import { headers } from 'next/headers'
+import { getBaseUrl } from '../../../lib/baseUrl'
 
 // Stripe init (safe even if key missing; we check before calls)
 let stripe = null
@@ -256,7 +258,7 @@ async function handleRoute(request, { params }) {
       return json(rest)
     }
 
-    // Integrations - Stubs remaining for MVP
+    // Integrations - Stubs
 
     // Google Calendar sync stub
     if (route === '/integrations/google/sync' && method === 'POST') {
@@ -282,7 +284,7 @@ async function handleRoute(request, { params }) {
 
     // -------------------- Stripe Billing --------------------
 
-    // Create Checkout Session
+    // Create Checkout Session (returns URL)
     if (route === '/billing/checkout' && method === 'POST') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
@@ -292,8 +294,9 @@ async function handleRoute(request, { params }) {
       const planRaw = (body?.plan || '').toString().toLowerCase()
       const priceId = getPriceId(planRaw)
       if (!priceId) return json({ error: 'Invalid plan. Use starter|growth|enterprise' }, { status: 400 })
-      const successUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/account?success=true&session_id={CHECKOUT_SESSION_ID}`
-      const cancelUrl = `${process.env.NEXT_PUBLIC_BASE_URL}`
+      const base = getBaseUrl(headers().get('host') || undefined)
+      const successUrl = `${base}/?success=true&session_id={CHECKOUT_SESSION_ID}`
+      const cancelUrl = `${base}/?canceled=true`
       try {
         const session = await s.checkout.sessions.create({
           mode: 'subscription',
@@ -301,6 +304,7 @@ async function handleRoute(request, { params }) {
           line_items: [{ price: priceId, quantity: 1 }],
           success_url: successUrl,
           cancel_url: cancelUrl,
+          allow_promotion_codes: true,
           metadata: { userId: auth.user.id },
         })
         return json({ url: session.url })
@@ -310,7 +314,7 @@ async function handleRoute(request, { params }) {
       }
     }
 
-    // Create Customer Portal Session
+    // Create Customer Portal Session (returns URL)
     if (route === '/billing/portal' && method === 'GET') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
@@ -319,10 +323,11 @@ async function handleRoute(request, { params }) {
       const user = await db.collection('users').findOne({ id: auth.user.id })
       const customerId = user?.subscription?.customerId
       if (!customerId) return json({ error: 'No subscription found' }, { status: 400 })
+      const base = getBaseUrl(headers().get('host') || undefined)
       try {
         const session = await s.billingPortal.sessions.create({
           customer: customerId,
-          return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
+          return_url: `${base}/?portal_return=true`,
         })
         return json({ url: session.url })
       } catch (e) {
@@ -331,7 +336,7 @@ async function handleRoute(request, { params }) {
       }
     }
 
-    // Stripe webhook (replace stub)
+    // Stripe webhook
     if (route === '/billing/stripe/webhook' && method === 'POST') {
       const s = getStripe()
       if (!s) return handleCORS(new NextResponse('Stripe not configured', { status: 400 }))
@@ -352,7 +357,6 @@ async function handleRoute(request, { params }) {
             const session = event.data.object
             const subscriptionId = session.subscription
             const customerId = session.customer
-            // fetch subscription details
             const sub = await s.subscriptions.retrieve(subscriptionId)
             await db.collection('users').updateOne(
               { id: session.metadata?.userId },
@@ -403,7 +407,6 @@ async function handleRoute(request, { params }) {
             break
           }
           default:
-            // no-op
             break
         }
       } catch (err) {
