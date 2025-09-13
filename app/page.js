@@ -22,6 +22,13 @@ function useAuth() {
     }
   }
 
+  const setUserLocal = (u) => {
+    setUser(u)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('book8_user', JSON.stringify(u))
+    }
+  }
+
   const logout = () => {
     setToken(null)
     setUser(null)
@@ -31,7 +38,7 @@ function useAuth() {
     }
   }
 
-  return { token, user, login, logout }
+  return { token, user, login, logout, setUserLocal }
 }
 
 const Header = ({ user, onLogout }) => {
@@ -248,23 +255,96 @@ const BookingsTable = ({ token, items, refresh }) => {
   )
 }
 
-const Dashboard = ({ token, user, onLogout }) => {
+const BillingCard = ({ token, user, onUserUpdate }) => {
+  const [loading, setLoading] = useState(false)
+
+  const subscribe = async (plan) => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plan })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed')
+      if (data?.url) window.location.href = data.url
+    } catch (e) {
+      alert(e.message || 'Error creating checkout session')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const manage = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/billing/portal', { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed')
+      if (data?.url) window.location.href = data.url
+    } catch (e) {
+      alert(e.message || 'Error opening portal')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="bg-card text-card-foreground rounded-lg border border-border shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold">Billing</h3>
+        <button onClick={async () => {
+          const r = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
+          const u = await r.json()
+          if (r.ok) onUserUpdate(u)
+        }} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Refresh</button>
+      </div>
+      {user?.subscription ? (
+        <div className="space-y-2">
+          <div className="text-sm">Status: <span className="font-medium capitalize">{user.subscription.status}</span></div>
+          <div className="text-sm">Plan price: <span className="font-mono">{user.subscription.priceId || 'N/A'}</span></div>
+          <div className="text-sm">Renewal: {user.subscription.currentPeriodEnd ? new Date(user.subscription.currentPeriodEnd).toLocaleDateString() : 'N/A'}</div>
+          <button disabled={loading} onClick={manage} className="mt-2 w-full rounded-md bg-primary text-primary-foreground px-4 py-2 hover:opacity-90 disabled:opacity-60">Manage Subscription</button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="text-sm text-muted-foreground">No active subscription</div>
+          <div className="grid grid-cols-3 gap-2">
+            <button disabled={loading} onClick={() => subscribe('starter')} className="rounded-md border border-border px-3 py-2 hover:bg-muted">Starter</button>
+            <button disabled={loading} onClick={() => subscribe('growth')} className="rounded-md border border-border px-3 py-2 hover:bg-muted">Growth</button>
+            <button disabled={loading} onClick={() => subscribe('enterprise')} className="rounded-md border border-border px-3 py-2 hover:bg-muted">Enterprise</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const Dashboard = ({ token, user, onLogout, setUserLocal }) => {
   const [items, setItems] = useState([])
-  const load = async () => {
+  const [profile, setProfile] = useState(user)
+  const loadBookings = async () => {
     if (!token) return
     const res = await fetch('/api/bookings', { headers: { Authorization: `Bearer ${token}` } })
     const data = await res.json()
     if (res.ok) setItems(Array.isArray(data) ? data : [])
   }
-  useEffect(() => { load() }, [token])
+  const loadUser = async () => {
+    if (!token) return
+    const res = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    if (res.ok) { setProfile(data); setUserLocal(data) }
+  }
+  useEffect(() => { loadBookings(); loadUser() }, [token])
 
   return (
     <div>
-      <Header user={user} onLogout={onLogout} />
+      <Header user={profile} onLogout={onLogout} />
       <main className="container py-6 grid gap-6 md:grid-cols-5">
-        <div className="md:col-span-2">
-          <BookingForm token={token} onCreated={() => load()} />
-          <div className="mt-6 grid gap-3">
+        <div className="md:col-span-2 space-y-6">
+          <BookingForm token={token} onCreated={() => loadBookings()} />
+          <div className="grid gap-3">
             <button className="w-full rounded-md border border-border px-4 py-2 text-left hover:bg-muted" onClick={async () => {
               const r = await fetch('/api/integrations/google/sync', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
               const d = await r.json(); alert(d?.message || 'Synced (stub)')
@@ -278,9 +358,10 @@ const Dashboard = ({ token, user, onLogout }) => {
               const d = await r.json(); alert(d?.note || 'Search (stub)')
             }}>Web Search (stub)</button>
           </div>
+          <BillingCard token={token} user={profile} onUserUpdate={(u) => { setProfile(u); setUserLocal(u) }} />
         </div>
         <div className="md:col-span-3">
-          <BookingsTable token={token} items={items} refresh={load} />
+          <BookingsTable token={token} items={items} refresh={loadBookings} />
         </div>
       </main>
     </div>
@@ -288,11 +369,11 @@ const Dashboard = ({ token, user, onLogout }) => {
 }
 
 const Home = () => {
-  const { token, user, login, logout } = useAuth()
+  const { token, user, login, logout, setUserLocal } = useAuth()
   return (
     <div className="min-h-screen bg-background text-foreground">
       {token ? (
-        <Dashboard token={token} user={user} onLogout={logout} />
+        <Dashboard token={token} user={user} onLogout={logout} setUserLocal={setUserLocal} />
       ) : (
         <div>
           <Header />

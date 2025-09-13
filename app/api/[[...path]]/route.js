@@ -3,6 +3,18 @@ import { v4 as uuidv4 } from 'uuid'
 import { NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import Stripe from 'stripe'
+
+// Stripe init (safe even if key missing; we check before calls)
+let stripe = null
+function getStripe() {
+  if (!stripe) {
+    const key = process.env.STRIPE_SECRET_KEY
+    if (!key) return null
+    stripe = new Stripe(key)
+  }
+  return stripe
+}
 
 // Single Mongo connection reused across invocations
 let client
@@ -21,6 +33,7 @@ async function connectToMongo() {
     try {
       await db.collection('users').createIndex({ email: 1 }, { unique: true })
       await db.collection('bookings').createIndex({ userId: 1, startTime: 1 })
+      await db.collection('status_checks').createIndex({ timestamp: -1 })
     } catch (e) {
       // ignore index errors
     }
@@ -33,7 +46,7 @@ async function connectToMongo() {
 function handleCORS(response) {
   response.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, stripe-signature')
   response.headers.set('Access-Control-Allow-Credentials', 'true')
   return response
 }
@@ -75,6 +88,16 @@ function isISODateString(s) {
   if (typeof s !== 'string') return false
   const d = new Date(s)
   return !isNaN(d.getTime())
+}
+
+// Price mapping
+function getPriceId(plan) {
+  const map = {
+    starter: process.env.STRIPE_PRICE_STARTER,
+    growth: process.env.STRIPE_PRICE_GROWTH,
+    enterprise: process.env.STRIPE_PRICE_ENTERPRISE,
+  }
+  return map[plan]
 }
 
 // Router
@@ -122,7 +145,7 @@ async function handleRoute(request, { params }) {
       const { email, password, name } = body
       if (!email || !password) return json({ error: 'email and password are required' }, { status: 400 })
       const hashed = await bcrypt.hash(password, 10)
-      const user = { id: uuidv4(), email: String(email).toLowerCase(), name: name || '', passwordHash: hashed, createdAt: new Date() }
+      const user = { id: uuidv4(), email: String(email).toLowerCase(), name: name || '', passwordHash: hashed, createdAt: new Date(), subscription: null }
       try {
         await db.collection('users').insertOne(user)
       } catch (e) {
@@ -130,7 +153,7 @@ async function handleRoute(request, { params }) {
         throw e
       }
       const token = jwt.sign({ sub: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' })
-      return json({ token, user: { id: user.id, email: user.email, name: user.name } })
+      return json({ token, user: { id: user.id, email: user.email, name: user.name, subscription: user.subscription } })
     }
 
     if (route === '/auth/login' && method === 'POST') {
@@ -142,7 +165,17 @@ async function handleRoute(request, { params }) {
       const ok = await bcrypt.compare(password, user.passwordHash)
       if (!ok) return json({ error: 'Invalid credentials' }, { status: 401 })
       const token = jwt.sign({ sub: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' })
-      return json({ token, user: { id: user.id, email: user.email, name: user.name || '' } })
+      return json({ token, user: { id: user.id, email: user.email, name: user.name || '', subscription: user.subscription || null } })
+    }
+
+    // Current user profile
+    if (route === '/user' && method === 'GET') {
+      const auth = await requireAuth(request, db)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const u = await db.collection('users').findOne({ id: auth.user.id })
+      if (!u) return json({ error: 'User not found' }, { status: 404 })
+      const { _id, passwordHash, ...safe } = u
+      return json(safe)
     }
 
     // Bookings CRUD
@@ -212,24 +245,18 @@ async function handleRoute(request, { params }) {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const id = route.split('/')[2]
-      
-      // First, let's check if the booking exists
       const existingBooking = await db.collection('bookings').findOne({ id, userId: auth.user.id })
       if (!existingBooking) return json({ error: 'Booking not found' }, { status: 404 })
-      
-      // Update the booking status
       await db.collection('bookings').updateOne(
         { id, userId: auth.user.id },
         { $set: { status: 'canceled', updatedAt: new Date().toISOString() } }
       )
-      
-      // Return the updated booking
-      const updatedBooking = await db.collection('bookings').findOne({ id, userId: auth.user.id })
-      const { _id, ...rest } = updatedBooking
+      const updated = await db.collection('bookings').findOne({ id, userId: auth.user.id })
+      const { _id, ...rest } = updated
       return json(rest)
     }
 
-    // Integrations - Stubs for MVP
+    // Integrations - Stubs remaining for MVP
 
     // Google Calendar sync stub
     if (route === '/integrations/google/sync' && method === 'POST') {
@@ -253,15 +280,138 @@ async function handleRoute(request, { params }) {
       return json({ ok: true, query: body?.q || '', results: [], note: 'Tavily stubbed. Provide API key to enable.' })
     }
 
-    // Stripe webhook stub
-    if (route === '/billing/stripe/webhook' && method === 'POST') {
-      return handleCORS(new NextResponse(null, { status: 200 }))
+    // -------------------- Stripe Billing --------------------
+
+    // Create Checkout Session
+    if (route === '/billing/checkout' && method === 'POST') {
+      const auth = await requireAuth(request, db)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const s = getStripe()
+      if (!s) return json({ error: 'Stripe not configured. Set STRIPE_SECRET_KEY.' }, { status: 400 })
+      const body = await getBody(request)
+      const planRaw = (body?.plan || '').toString().toLowerCase()
+      const priceId = getPriceId(planRaw)
+      if (!priceId) return json({ error: 'Invalid plan. Use starter|growth|enterprise' }, { status: 400 })
+      const successUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/account?success=true&session_id={CHECKOUT_SESSION_ID}`
+      const cancelUrl = `${process.env.NEXT_PUBLIC_BASE_URL}`
+      try {
+        const session = await s.checkout.sessions.create({
+          mode: 'subscription',
+          payment_method_types: ['card'],
+          line_items: [{ price: priceId, quantity: 1 }],
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          metadata: { userId: auth.user.id },
+        })
+        return json({ url: session.url })
+      } catch (e) {
+        console.error('Stripe checkout error', e)
+        return json({ error: 'Failed to create checkout session' }, { status: 500 })
+      }
     }
 
-    // n8n trigger stub
-    if (route === '/workflows/n8n/trigger' && method === 'POST') {
-      const body = await getBody(request)
-      return json({ ok: true, received: body || {}, note: 'n8n stubbed. Provide n8n URL to enable.' })
+    // Create Customer Portal Session
+    if (route === '/billing/portal' && method === 'GET') {
+      const auth = await requireAuth(request, db)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const s = getStripe()
+      if (!s) return json({ error: 'Stripe not configured. Set STRIPE_SECRET_KEY.' }, { status: 400 })
+      const user = await db.collection('users').findOne({ id: auth.user.id })
+      const customerId = user?.subscription?.customerId
+      if (!customerId) return json({ error: 'No subscription found' }, { status: 400 })
+      try {
+        const session = await s.billingPortal.sessions.create({
+          customer: customerId,
+          return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
+        })
+        return json({ url: session.url })
+      } catch (e) {
+        console.error('Stripe portal error', e)
+        return json({ error: 'Failed to create portal session' }, { status: 500 })
+      }
+    }
+
+    // Stripe webhook (replace stub)
+    if (route === '/billing/stripe/webhook' && method === 'POST') {
+      const s = getStripe()
+      if (!s) return handleCORS(new NextResponse('Stripe not configured', { status: 400 }))
+      const sig = request.headers.get('stripe-signature')
+      if (!sig) return handleCORS(new NextResponse('Missing signature', { status: 400 }))
+      const rawBody = await request.text() // raw string for signature verification
+      let event
+      try {
+        event = s.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET)
+      } catch (err) {
+        console.error('Webhook signature verification failed', err?.message)
+        return handleCORS(new NextResponse(`Webhook Error: ${err.message}`, { status: 400 }))
+      }
+
+      try {
+        switch (event.type) {
+          case 'checkout.session.completed': {
+            const session = event.data.object
+            const subscriptionId = session.subscription
+            const customerId = session.customer
+            // fetch subscription details
+            const sub = await s.subscriptions.retrieve(subscriptionId)
+            await db.collection('users').updateOne(
+              { id: session.metadata?.userId },
+              {
+                $set: {
+                  subscription: {
+                    subscriptionId: sub.id,
+                    customerId,
+                    priceId: sub?.items?.data?.[0]?.price?.id || null,
+                    status: sub.status,
+                    currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+                  },
+                  updatedAt: new Date(),
+                },
+              }
+            )
+            break
+          }
+          case 'customer.subscription.updated':
+          case 'invoice.payment_succeeded': {
+            const obj = event.data.object
+            const subscriptionId = obj.subscription || obj.id
+            const customerId = obj.customer
+            const sub = await s.subscriptions.retrieve(subscriptionId)
+            await db.collection('users').updateOne(
+              { 'subscription.customerId': customerId },
+              {
+                $set: {
+                  subscription: {
+                    subscriptionId: sub.id,
+                    customerId,
+                    priceId: sub?.items?.data?.[0]?.price?.id || null,
+                    status: sub.status,
+                    currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+                  },
+                  updatedAt: new Date(),
+                },
+              }
+            )
+            break
+          }
+          case 'customer.subscription.deleted': {
+            const sub = event.data.object
+            await db.collection('users').updateOne(
+              { 'subscription.customerId': sub.customer },
+              { $set: { 'subscription.status': 'canceled', updatedAt: new Date() } }
+            )
+            break
+          }
+          default:
+            // no-op
+            break
+        }
+      } catch (err) {
+        console.error('Webhook handler error', err)
+        return handleCORS(new NextResponse('Webhook handler error', { status: 500 }))
+      }
+
+      return handleCORS(new NextResponse('OK', { status: 200 }))
     }
 
     // Unknown route
