@@ -231,3 +231,5 @@ For support and questions:
 ---
 
 **Book8 AI** - Where scheduling meets AI intelligence.
+
+*Last updated: January 2025*
