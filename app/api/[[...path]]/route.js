@@ -119,6 +119,37 @@ function getGoogleScopes() {
   ]
 }
 
+async function getGoogleClientForUser(userId) {
+  const db = await connectToMongo()
+  const user = await db.collection('users').findOne({ id: userId })
+  const refreshToken = user?.google?.refreshToken
+  if (!refreshToken) return null
+  const oauth2Client = getOAuth2Client()
+  if (!oauth2Client) return null
+  oauth2Client.setCredentials({ refresh_token: refreshToken })
+  return google.calendar({ version: 'v3', auth: oauth2Client })
+}
+
+function buildGoogleEventFromBooking(b) {
+  const descriptionParts = []
+  if (b.customerName) descriptionParts.push(`Customer: ${b.customerName}`)
+  if (b.notes) descriptionParts.push(b.notes)
+  const description = descriptionParts.join('\n')
+  return {
+    summary: b.title || 'Booking',
+    description,
+    start: { dateTime: new Date(b.startTime).toISOString(), timeZone: 'UTC' },
+    end: { dateTime: new Date(b.endTime).toISOString(), timeZone: 'UTC' },
+    extendedProperties: { private: { book8BookingId: b.id } },
+  }
+}
+
+function overlaps(aStart, aEnd, bStart, bEnd) {
+  const as = new Date(aStart).getTime(); const ae = new Date(aEnd).getTime();
+  const bs = new Date(bStart).getTime(); const be = new Date(bEnd).getTime();
+  return as < be && bs < ae
+}
+
 // Router
 export async function GET(request, ctx) { return handleRoute(request, ctx) }
 export async function POST(request, ctx) { return handleRoute(request, ctx) }
@@ -204,8 +235,55 @@ async function handleRoute(request, { params }) {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const items = await db.collection('bookings').find({ userId: auth.user.id }).sort({ startTime: 1 }).toArray()
-      const cleaned = items.map(({ _id, ...rest }) => rest)
-      return json(cleaned)
+      const book8 = items.map(({ _id, ...rest }) => ({ ...rest, source: 'book8', conflict: false }))
+
+      // Pull Google events (next 30 days) and merge
+      const calendar = await getGoogleClientForUser(auth.user.id)
+      let merged = [...book8]
+      if (calendar) {
+        const now = new Date()
+        const max = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+        try {
+          const ev = await calendar.events.list({
+            calendarId: 'primary',
+            timeMin: now.toISOString(),
+            timeMax: max.toISOString(),
+            singleEvents: true,
+            orderBy: 'startTime',
+            maxResults: 2500,
+          })
+          const mappings = await db.collection('google_events').find({ userId: auth.user.id }).toArray()
+          const mappedIds = new Set(mappings.map(m => m.googleEventId))
+          const external = []
+          for (const e of ev.data.items || []) {
+            const isMapped = mappedIds.has(e.id) || e?.extendedProperties?.private?.book8BookingId
+            if (isMapped) continue // skip duplicates
+            const start = e.start?.dateTime || e.start?.date
+            const end = e.end?.dateTime || e.end?.date
+            if (!start || !end) continue
+            const conflict = book8.some(b => overlaps(b.startTime, b.endTime, start, end))
+            external.push({
+              id: `google:${e.id}`,
+              userId: auth.user.id,
+              title: e.summary || '(busy)',
+              customerName: '',
+              startTime: new Date(start).toISOString(),
+              endTime: new Date(end).toISOString(),
+              status: 'external',
+              notes: e.description || '',
+              source: 'google',
+              conflict,
+              htmlLink: e.htmlLink || null,
+            })
+          }
+          merged = [...book8, ...external]
+        } catch (e) {
+          // If token invalid or permission error, just return book8
+        }
+      }
+      // sort by start
+      merged.sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+      return json(merged)
     }
 
     if (route === '/bookings' && method === 'POST') {
@@ -226,9 +304,27 @@ async function handleRoute(request, { params }) {
         status: 'scheduled',
         notes: notes || '',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        source: 'book8',
+        conflict: false,
       }
       await db.collection('bookings').insertOne(booking)
+
+      // Push to Google if connected
+      try {
+        const calendar = await getGoogleClientForUser(auth.user.id)
+        if (calendar) {
+          const res = await calendar.events.insert({ calendarId: 'primary', requestBody: buildGoogleEventFromBooking(booking) })
+          await db.collection('google_events').updateOne(
+            { userId: auth.user.id, bookingId: booking.id },
+            { $set: { userId: auth.user.id, bookingId: booking.id, googleEventId: res.data.id, calendarId: 'primary', createdAt: new Date(), updatedAt: new Date() } },
+            { upsert: true }
+          )
+        }
+      } catch (e) {
+        // ignore errors; user can Sync manually
+      }
+
       return json(booking)
     }
 
@@ -259,6 +355,28 @@ async function handleRoute(request, { params }) {
       )
       if (!res.value) return json({ error: 'Booking not found' }, { status: 404 })
       const { _id, ...rest } = res.value
+
+      // Update Google event if mapped
+      try {
+        const calendar = await getGoogleClientForUser(auth.user.id)
+        if (calendar) {
+          const mapping = await db.collection('google_events').findOne({ userId: auth.user.id, bookingId: id })
+          if (mapping?.googleEventId) {
+            await calendar.events.patch({ calendarId: mapping.calendarId || 'primary', eventId: mapping.googleEventId, requestBody: buildGoogleEventFromBooking(rest) })
+            await db.collection('google_events').updateOne({ userId: auth.user.id, bookingId: id }, { $set: { updatedAt: new Date() } })
+          } else {
+            const ins = await calendar.events.insert({ calendarId: 'primary', requestBody: buildGoogleEventFromBooking(rest) })
+            await db.collection('google_events').updateOne(
+              { userId: auth.user.id, bookingId: id },
+              { $set: { userId: auth.user.id, bookingId: id, googleEventId: ins.data.id, calendarId: 'primary', createdAt: new Date(), updatedAt: new Date() } },
+              { upsert: true }
+            )
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
       return json(rest)
     }
 
@@ -272,6 +390,18 @@ async function handleRoute(request, { params }) {
         { id, userId: auth.user.id },
         { $set: { status: 'canceled', updatedAt: new Date().toISOString() } }
       )
+
+      // Delete/Cancel in Google Calendar
+      try {
+        const calendar = await getGoogleClientForUser(auth.user.id)
+        if (calendar) {
+          const mapping = await db.collection('google_events').findOne({ userId: auth.user.id, bookingId: id })
+          if (mapping?.googleEventId) {
+            try { await calendar.events.delete({ calendarId: mapping.calendarId || 'primary', eventId: mapping.googleEventId }) } catch {}
+          }
+        }
+      } catch {}
+
       const updated = await db.collection('bookings').findOne({ id, userId: auth.user.id })
       const { _id, ...rest } = updated
       return json(rest)
@@ -282,35 +412,21 @@ async function handleRoute(request, { params }) {
     // Google Calendar - start OAuth
     if (route === '/integrations/google/auth' && method === 'GET') {
       const base = getBaseUrl(headers().get('host') || undefined)
-      // Try to get JWT from query param first (so simple window.location works)
       const urlObj = new URL(request.url)
       const jwtParam = urlObj.searchParams.get('jwt') || urlObj.searchParams.get('token')
       let userId = null
       if (jwtParam) {
-        try {
-          const payload = jwt.verify(jwtParam, getJwtSecret())
-          userId = payload.sub
-        } catch (e) {
-          // fall through to header auth
-        }
+        try { const payload = jwt.verify(jwtParam, getJwtSecret()); userId = payload.sub } catch {}
       }
       if (!userId) {
         const auth = await requireAuth(request, db)
-        if (auth.error) {
-          // Redirect back to dashboard with an error instead of raw JSON
-          return NextResponse.redirect(`${base}/?google_error=auth_required`)
-        }
+        if (auth.error) return NextResponse.redirect(`${base}/?google_error=auth_required`)
         userId = auth.user.id
       }
       const oauth2Client = getOAuth2Client()
       if (!oauth2Client) return NextResponse.redirect(`${base}/?google_error=not_configured`)
       const state = jwt.sign({ sub: userId }, getJwtSecret(), { expiresIn: '10m' })
-      const url = oauth2Client.generateAuthUrl({
-        access_type: 'offline',
-        prompt: 'consent',
-        scope: getGoogleScopes(),
-        state,
-      })
+      const url = oauth2Client.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: getGoogleScopes(), state })
       return NextResponse.redirect(url)
     }
 
@@ -320,21 +436,13 @@ async function handleRoute(request, { params }) {
       const code = urlObj.searchParams.get('code')
       const state = urlObj.searchParams.get('state')
       const base = getBaseUrl(headers().get('host') || undefined)
-      if (!code || !state) {
-        return NextResponse.redirect(`${base}/?google_error=missing_code_or_state`)
-      }
+      if (!code || !state) return NextResponse.redirect(`${base}/?google_error=missing_code_or_state`)
       let uid = null
-      try {
-        const payload = jwt.verify(state, getJwtSecret())
-        uid = payload.sub
-      } catch (e) {
-        return NextResponse.redirect(`${base}/?google_error=invalid_state`)
-      }
+      try { const payload = jwt.verify(state, getJwtSecret()); uid = payload.sub } catch { return NextResponse.redirect(`${base}/?google_error=invalid_state`) }
       const oauth2Client = getOAuth2Client()
       if (!oauth2Client) return NextResponse.redirect(`${base}/?google_error=not_configured`)
       try {
         const { tokens } = await oauth2Client.getToken(code)
-        // Persist refresh token (may be undefined if user already granted; keep previous)
         const user = await db.collection('users').findOne({ id: uid })
         const prev = user?.google || {}
         const googleObj = {
@@ -346,7 +454,6 @@ async function handleRoute(request, { params }) {
         await db.collection('users').updateOne({ id: uid }, { $set: { google: googleObj, updatedAt: new Date() } })
         return NextResponse.redirect(`${base}/?google_connected=1`)
       } catch (e) {
-        console.error('Google OAuth callback error', e)
         return NextResponse.redirect(`${base}/?google_error=token_exchange_failed`)
       }
     }
@@ -355,47 +462,29 @@ async function handleRoute(request, { params }) {
     if (route === '/integrations/google/sync' && method === 'POST') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const user = await db.collection('users').findOne({ id: auth.user.id })
-      const refreshToken = user?.google?.refreshToken
-      if (!refreshToken) return json({ error: 'Google not connected', reconnect: true }, { status: 400 })
-      const oauth2Client = getOAuth2Client()
-      if (!oauth2Client) return json({ error: 'Google OAuth not configured' }, { status: 400 })
-      oauth2Client.setCredentials({ refresh_token: refreshToken })
-      const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
-
+      const calendar = await getGoogleClientForUser(auth.user.id)
+      if (!calendar) return json({ error: 'Google not connected', reconnect: true }, { status: 400 })
       const bookings = await db.collection('bookings').find({ userId: auth.user.id, status: { $ne: 'canceled' } }).toArray()
-
       let created = 0, updatedCount = 0
       for (const b of bookings) {
         const mapping = await db.collection('google_events').findOne({ userId: auth.user.id, bookingId: b.id })
-        const eventBody = {
-          summary: b.title || 'Booking',
-          description: [b.customerName ? `Customer: ${b.customerName}` : null, b.notes ? `Notes: ${b.notes}` : null].filter(Boolean).join('\n'),
-          start: { dateTime: new Date(b.startTime).toISOString(), timeZone: 'UTC' },
-          end: { dateTime: new Date(b.endTime).toISOString(), timeZone: 'UTC' },
-        }
+        const evt = buildGoogleEventFromBooking(b)
         try {
-          if (!mapping || !mapping.googleEventId) {
-            const res = await calendar.events.insert({ calendarId: 'primary', requestBody: eventBody })
+          if (!mapping?.googleEventId) {
+            const res = await calendar.events.insert({ calendarId: 'primary', requestBody: evt })
             await db.collection('google_events').updateOne(
               { userId: auth.user.id, bookingId: b.id },
-              { $set: { userId: auth.user.id, bookingId: b.id, googleEventId: res.data.id, calendarId: 'primary', updatedAt: new Date(), createdAt: mapping?.createdAt || new Date() } },
+              { $set: { userId: auth.user.id, bookingId: b.id, googleEventId: res.data.id, calendarId: 'primary', createdAt: new Date(), updatedAt: new Date() } },
               { upsert: true }
             )
-            created += 1
+            created++
           } else {
-            await calendar.events.patch({ calendarId: 'primary', eventId: mapping.googleEventId, requestBody: eventBody })
-            await db.collection('google_events').updateOne(
-              { userId: auth.user.id, bookingId: b.id },
-              { $set: { updatedAt: new Date() } }
-            )
-            updatedCount += 1
+            await calendar.events.patch({ calendarId: 'primary', eventId: mapping.googleEventId, requestBody: evt })
+            await db.collection('google_events').updateOne({ userId: auth.user.id, bookingId: b.id }, { $set: { updatedAt: new Date() } })
+            updatedCount++
           }
-        } catch (e) {
-          console.error('Calendar event sync error', e?.message || e)
-        }
+        } catch (e) { /* ignore item errors */ }
       }
-
       await db.collection('users').updateOne({ id: auth.user.id }, { $set: { 'google.lastSyncedAt': new Date().toISOString() } })
       return json({ ok: true, created, updated: updatedCount })
     }
@@ -552,4 +641,3 @@ async function handleRoute(request, { params }) {
     return json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-// deploy: google-auth jwt support confirmed 2025-09-15T01:20:30Z

@@ -222,6 +222,7 @@ const BookingsTable = ({ token, items, refresh }) => {
               <th className="text-left p-3">Customer</th>
               <th className="text-left p-3">Start</th>
               <th className="text-left p-3">End</th>
+              <th className="text-left p-3">Source</th>
               <th className="text-left p-3">Status</th>
               <th className="text-left p-3">Actions</th>
             </tr>
@@ -229,25 +230,39 @@ const BookingsTable = ({ token, items, refresh }) => {
           <tbody>
             {(items || []).length === 0 ? (
               <tr>
-                <td className="p-3 text-muted-foreground" colSpan={6}>No bookings yet</td>
+                <td className="p-3 text-muted-foreground" colSpan={7}>No bookings yet</td>
               </tr>
             ) : (
               (items || []).map((b) => (
                 <tr key={b?.id}>
-                  <td className="p-3">{b?.title}</td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <span>{b?.title}</span>
+                      {b?.conflict ? <span className="text-xs px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground">conflict</span> : null}
+                    </div>
+                  </td>
                   <td className="p-3">{b?.customerName || '—'}</td>
                   <td className="p-3">{new Date(b?.startTime).toLocaleString()}</td>
                   <td className="p-3">{new Date(b?.endTime).toLocaleString()}</td>
+                  <td className="p-3">
+                    <span className={`px-2 py-0.5 rounded text-xs ${b?.source === 'google' ? 'bg-secondary text-secondary-foreground' : 'bg-muted'}`}>
+                      {b?.source === 'google' ? 'Google' : 'Book8'}
+                    </span>
+                  </td>
                   <td className="p-3">
                     <span className={`px-2 py-0.5 rounded text-xs ${b?.status === 'canceled' ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-secondary-foreground'}`}>
                       {b?.status}
                     </span>
                   </td>
                   <td className="p-3">
-                    {b?.status !== 'canceled' ? (
-                      <button className="px-3 py-1 rounded-md bg-primary text-primary-foreground hover:opacity-90" onClick={() => cancelBooking(b?.id)}>Cancel</button>
+                    {b?.source === 'google' ? (
+                      b?.htmlLink ? <a className="underline" href={b.htmlLink} target="_blank" rel="noreferrer">Open</a> : <span className="text-muted-foreground">—</span>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      b?.status !== 'canceled' ? (
+                        <button className="px-3 py-1 rounded-md bg-primary text-primary-foreground hover:opacity-90" onClick={() => cancelBooking(b?.id)}>Cancel</button>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )
                     )}
                   </td>
                 </tr>
@@ -268,7 +283,6 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
   const connect = async () => {
     try {
       const token = typeof window !== 'undefined' ? window.localStorage.getItem('book8_token') : ''
-      // Pass JWT via query param so API can verify without Authorization header
       if (token) {
         window.location.href = `/api/integrations/google/auth?jwt=${encodeURIComponent(token)}`
       } else {
@@ -477,4 +491,3 @@ function App() {
 }
 
 export default App;
-// deploy: connect button passes jwt 2025-09-15T01:20:30Z
