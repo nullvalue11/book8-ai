@@ -281,18 +281,36 @@ async function handleRoute(request, { params }) {
 
     // Google Calendar - start OAuth
     if (route === '/integrations/google/auth' && method === 'GET') {
-      const auth = await requireAuth(request, db)
-      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const base = getBaseUrl(headers().get('host') || undefined)
+      // Try to get JWT from query param first (so simple window.location works)
+      const urlObj = new URL(request.url)
+      const jwtParam = urlObj.searchParams.get('jwt') || urlObj.searchParams.get('token')
+      let userId = null
+      if (jwtParam) {
+        try {
+          const payload = jwt.verify(jwtParam, getJwtSecret())
+          userId = payload.sub
+        } catch (e) {
+          // fall through to header auth
+        }
+      }
+      if (!userId) {
+        const auth = await requireAuth(request, db)
+        if (auth.error) {
+          // Redirect back to dashboard with an error instead of raw JSON
+          return NextResponse.redirect(`${base}/?google_error=auth_required`)
+        }
+        userId = auth.user.id
+      }
       const oauth2Client = getOAuth2Client()
-      if (!oauth2Client) return json({ error: 'Google OAuth not configured' }, { status: 400 })
-      const state = jwt.sign({ sub: auth.user.id }, getJwtSecret(), { expiresIn: '10m' })
+      if (!oauth2Client) return NextResponse.redirect(`${base}/?google_error=not_configured`)
+      const state = jwt.sign({ sub: userId }, getJwtSecret(), { expiresIn: '10m' })
       const url = oauth2Client.generateAuthUrl({
         access_type: 'offline',
         prompt: 'consent',
         scope: getGoogleScopes(),
         state,
       })
-      // Redirect directly (no CORS)
       return NextResponse.redirect(url)
     }
 
