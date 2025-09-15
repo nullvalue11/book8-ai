@@ -350,6 +350,58 @@ async function handleRoute(request, { params }) {
       return json({ ok: true, processed })
     }
 
+    // Google Calendar - Sync bookings to Google (create/update/delete events)
+    if (route === '/integrations/google/sync' && method === 'POST') {
+      const auth = await requireAuth(request, db)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const calendar = await getGoogleClientForUser(auth.user.id)
+      if (!calendar) return json({ error: 'Google not connected', reconnect: true }, { status: 400 })
+
+      const allBookings = await db.collection('bookings').find({ userId: auth.user.id }).toArray()
+      const active = allBookings.filter(b => b.status !== 'canceled')
+      const canceled = allBookings.filter(b => b.status === 'canceled')
+
+      let created = 0, updatedCount = 0, deleted = 0
+
+      // Upsert active bookings
+      for (const b of active) {
+        const mapping = await db.collection('google_events').findOne({ userId: auth.user.id, bookingId: b.id })
+        const evt = buildGoogleEventFromBooking(b)
+        try {
+          if (!mapping?.googleEventId) {
+            const res = await calendar.events.insert({ calendarId: (mapping?.calendarId || 'primary'), requestBody: evt })
+            await db.collection('google_events').updateOne(
+              { userId: auth.user.id, bookingId: b.id },
+              { $set: { userId: auth.user.id, bookingId: b.id, googleEventId: res.data.id, calendarId: 'primary', createdAt: new Date(), updatedAt: new Date() } },
+              { upsert: true }
+            )
+            created++
+          } else {
+            await calendar.events.patch({ calendarId: mapping.calendarId || 'primary', eventId: mapping.googleEventId, requestBody: evt })
+            await db.collection('google_events').updateOne({ userId: auth.user.id, bookingId: b.id }, { $set: { updatedAt: new Date() } })
+            updatedCount++
+          }
+        } catch (e) { /* ignore item errors */ }
+      }
+
+      // Delete canceled bookings
+      for (const b of canceled) {
+        const mapping = await db.collection('google_events').findOne({ userId: auth.user.id, bookingId: b.id })
+        if (!mapping?.googleEventId) continue
+        try {
+          await calendar.events.delete({ calendarId: mapping.calendarId || 'primary', eventId: mapping.googleEventId })
+          await db.collection('google_events').deleteOne({ userId: auth.user.id, bookingId: b.id })
+          deleted++
+        } catch (e) {
+          // If already gone (404/410), clean mapping
+          try { await db.collection('google_events').deleteOne({ userId: auth.user.id, bookingId: b.id }) } catch {}
+        }
+      }
+
+      await db.collection('users').updateOne({ id: auth.user.id }, { $set: { 'google.lastSyncedAt': new Date().toISOString() } })
+      return json({ ok: true, created, updated: updatedCount, deleted })
+    }
+
     // ... existing Stripe and other routes remain unchanged ...
 
     return json({ error: `Route ${route} not found` }, { status: 404 })
