@@ -143,12 +143,12 @@ async function handleRoute(request, { params }) {
       return json({ token, user: { id: user.id, email: user.email, name: user.name || '', subscription: user.subscription || null, google: googleSafe } })
     }
 
-    // Bookings list (with Google merge)
+    // Bookings list (with Google merge + conflict badges both sides)
     if (route === '/bookings' && method === 'GET') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const items = await db.collection('bookings').find({ userId: auth.user.id }).sort({ startTime: 1 }).toArray()
-      const book8 = items.map(({ _id, ...rest }) => ({ ...rest, source: 'book8', conflict: false }))
+      let book8 = items.map(({ _id, ...rest }) => ({ ...rest, source: 'book8', conflict: false }))
 
       const calendar = await getGoogleClientForUser(auth.user.id)
       if (!calendar) return json(book8)
@@ -157,15 +157,122 @@ async function handleRoute(request, { params }) {
         const now = new Date(); const max = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
         const ev = await calendar.events.list({ calendarId: 'primary', timeMin: now.toISOString(), timeMax: max.toISOString(), singleEvents: true, orderBy: 'startTime', maxResults: 2500 })
         const mappings = await db.collection('google_events').find({ userId: auth.user.id }).toArray()
-        const mapByGoogleId = {}
-        for (const m of mappings) mapByGoogleId[m.googleEventId] = m
-        const merged = mergeBook8WithGoogle(book8, ev.data.items || [], mapByGoogleId)
+        const mappedIds = new Set(mappings.map(m => m.googleEventId))
+        const external = []
+        for (const e of ev.data.items || []) {
+          if (!e) continue
+          if (mappedIds.has(e.id) || e?.extendedProperties?.private?.book8BookingId) continue
+          const start = e.start?.dateTime || e.start?.date
+          const end = e.end?.dateTime || e.end?.date
+          if (!start || !end) continue
+          const conflict = book8.some(b => new Date(b.startTime) < new Date(end) && new Date(start) < new Date(b.endTime))
+          external.push({
+            id: `google:${e.id}`,
+            userId: auth.user.id,
+            title: e.summary || '(busy)',
+            customerName: '',
+            startTime: new Date(start).toISOString(),
+            endTime: new Date(end).toISOString(),
+            status: 'external',
+            notes: e.description || '',
+            source: 'google',
+            conflict,
+            htmlLink: e.htmlLink || null,
+          })
+        }
+        // Also mark book8 conflicts if they overlap with any external
+        const externalIntervals = external.map(x => ({ s: new Date(x.startTime).getTime(), e: new Date(x.endTime).getTime() }))
+        book8 = book8.map(b => {
+          const bs = new Date(b.startTime).getTime(); const be = new Date(b.endTime).getTime()
+          const conflict = externalIntervals.some(x => bs < x.e && x.s < be)
+          return { ...b, conflict }
+        })
+        const merged = [...book8, ...external]
+        merged.sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
         return json(merged)
       } catch { return json(book8) }
     }
 
-    // Bookings create/update/delete also push to Google (omitted for brevity in this diff)
-    // ... existing POST /bookings, PATCH /bookings/:id, DELETE /bookings/:id handlers remain unchanged from previous commit ...
+    // Bookings create
+    if (route === '/bookings' && method === 'POST') {
+      const auth = await requireAuth(request, db)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const body = await getBody(request)
+      const { title, customerName, startTime, endTime, notes } = body
+      if (!title || !startTime || !endTime) return json({ error: 'title, startTime, endTime are required' }, { status: 400 })
+      const s = new Date(startTime); const e = new Date(endTime)
+      if (isNaN(s.getTime()) || isNaN(e.getTime())) return json({ error: 'Invalid date format' }, { status: 400 })
+      if (e <= s) return json({ error: 'endTime must be after startTime' }, { status: 400 })
+      const booking = { id: uuidv4(), userId: auth.user.id, title, customerName: customerName || '', startTime: s.toISOString(), endTime: e.toISOString(), status: 'scheduled', notes: notes || '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), source: 'book8', conflict: false }
+      await db.collection('bookings').insertOne(booking)
+      // Push to Google
+      try {
+        const calendar = await getGoogleClientForUser(auth.user.id)
+        if (calendar) {
+          const res = await calendar.events.insert({ calendarId: 'primary', requestBody: buildGoogleEventFromBooking(booking) })
+          await db.collection('google_events').updateOne({ userId: auth.user.id, bookingId: booking.id }, { $set: { userId: auth.user.id, bookingId: booking.id, googleEventId: res.data.id, calendarId: 'primary', createdAt: new Date(), updatedAt: new Date() } }, { upsert: true })
+        }
+      } catch {}
+      return json(booking)
+    }
+
+    // Bookings update
+    if (route.startsWith('/bookings/') && (method === 'PUT' || method === 'PATCH')) {
+      const auth = await requireAuth(request, db)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const id = route.split('/')[2]
+      const body = await getBody(request)
+      const patch = {}
+      if (body.title !== undefined) patch.title = body.title
+      if (body.customerName !== undefined) patch.customerName = body.customerName
+      if (body.startTime) { const d = new Date(body.startTime); if (isNaN(d.getTime())) return json({ error: 'Invalid startTime' }, { status: 400 }); patch.startTime = d.toISOString() }
+      if (body.endTime) { const d = new Date(body.endTime); if (isNaN(d.getTime())) return json({ error: 'Invalid endTime' }, { status: 400 }); patch.endTime = d.toISOString() }
+      if (patch.startTime && patch.endTime) { if (new Date(patch.endTime) <= new Date(patch.startTime)) return json({ error: 'endTime must be after startTime' }, { status: 400 }) }
+      patch.updatedAt = new Date().toISOString()
+      const res = await db.collection('bookings').findOneAndUpdate({ id, userId: auth.user.id }, { $set: patch }, { returnDocument: 'after' })
+      if (!res.value) return json({ error: 'Booking not found' }, { status: 404 })
+      const { _id, ...rest } = res.value
+      // Update Google
+      try {
+        const calendar = await getGoogleClientForUser(auth.user.id)
+        if (calendar) {
+          const mapping = await db.collection('google_events').findOne({ userId: auth.user.id, bookingId: id })
+          if (mapping?.googleEventId) {
+            await calendar.events.patch({ calendarId: mapping.calendarId || 'primary', eventId: mapping.googleEventId, requestBody: buildGoogleEventFromBooking(rest) })
+            await db.collection('google_events').updateOne({ userId: auth.user.id, bookingId: id }, { $set: { updatedAt: new Date() } })
+          } else {
+            const ins = await calendar.events.insert({ calendarId: 'primary', requestBody: buildGoogleEventFromBooking(rest) })
+            await db.collection('google_events').updateOne({ userId: auth.user.id, bookingId: id }, { $set: { userId: auth.user.id, bookingId: id, googleEventId: ins.data.id, calendarId: 'primary', createdAt: new Date(), updatedAt: new Date() } }, { upsert: true })
+          }
+        }
+      } catch {}
+      return json(rest)
+    }
+
+    // Bookings delete (cancel)
+    if (route.startsWith('/bookings/') && method === 'DELETE') {
+      const auth = await requireAuth(request, db)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const id = route.split('/')[2]
+      const existing = await db.collection('bookings').findOne({ id, userId: auth.user.id })
+      if (!existing) return json({ error: 'Booking not found' }, { status: 404 })
+      await db.collection('bookings').updateOne({ id, userId: auth.user.id }, { $set: { status: 'canceled', updatedAt: new Date().toISOString() } })
+      // Delete Google event if mapped
+      try {
+        const calendar = await getGoogleClientForUser(auth.user.id)
+        if (calendar) {
+          const mapping = await db.collection('google_events').findOne({ userId: auth.user.id, bookingId: id })
+          if (mapping?.googleEventId) {
+            try { await calendar.events.delete({ calendarId: mapping.calendarId || 'primary', eventId: mapping.googleEventId }) } catch {}
+            // Optionally remove mapping
+            await db.collection('google_events').deleteOne({ userId: auth.user.id, bookingId: id })
+          }
+        }
+      } catch {}
+      const updated = await db.collection('bookings').findOne({ id, userId: auth.user.id })
+      const { _id, ...rest } = updated
+      return json(rest)
+    }
 
     // Google OAuth start
     if (route === '/integrations/google/auth' && method === 'GET') {
