@@ -302,7 +302,7 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
       const ru = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
       const ud = await ru.json()
       if (ru.ok) onProfile(ud)
-      alert(`Synced: created ${d?.created || 0}, updated ${d?.updated || 0}`)
+      alert(`Synced: created ${d?.created || 0}, updated ${d?.updated || 0}${d?.deleted !== undefined ? ", deleted " + d.deleted : ""}`)
     } catch (e) {
       alert(e.message)
     } finally {
