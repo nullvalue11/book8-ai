@@ -552,3 +552,4 @@ async function handleRoute(request, { params }) {
     return json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+// deploy: google-auth jwt support confirmed 2025-09-15T01:20:30Z
