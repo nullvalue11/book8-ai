@@ -266,7 +266,17 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
   const last = profile?.google?.lastSyncedAt
 
   const connect = async () => {
-    window.location.href = '/api/integrations/google/auth'
+    try {
+      const token = typeof window !== 'undefined' ? window.localStorage.getItem('book8_token') : ''
+      // Pass JWT via query param so API can verify without Authorization header
+      if (token) {
+        window.location.href = `/api/integrations/google/auth?jwt=${encodeURIComponent(token)}`
+      } else {
+        window.location.href = '/api/integrations/google/auth'
+      }
+    } catch {
+      window.location.href = '/api/integrations/google/auth'
+    }
   }
 
   const syncNow = async () => {
