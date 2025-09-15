@@ -260,6 +260,60 @@ const BookingsTable = ({ token, items, refresh }) => {
   )
 }
 
+const IntegrationsCard = ({ token, profile, onProfile }) => {
+  const [loading, setLoading] = useState(false)
+  const connected = !!profile?.google?.connected
+  const last = profile?.google?.lastSyncedAt
+
+  const connect = async () => {
+    window.location.href = '/api/integrations/google/auth'
+  }
+
+  const syncNow = async () => {
+    try {
+      setLoading(true)
+      const r = await fetch('/api/integrations/google/sync', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d?.error || 'Sync failed')
+      const ru = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
+      const ud = await ru.json()
+      if (ru.ok) onProfile(ud)
+      alert(`Synced: created ${d?.created || 0}, updated ${d?.updated || 0}`)
+    } catch (e) {
+      alert(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="bg-card text-card-foreground rounded-lg border border-border shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold">Integrations</h3>
+        <button onClick={async () => {
+          const r = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
+          const u = await r.json(); if (r.ok) onProfile(u)
+        }} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Refresh</button>
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-medium">Google Calendar</div>
+            <div className="text-sm text-muted-foreground">{connected ? 'Connected' : 'Not connected'}{last ? ` • Last synced ${new Date(last).toLocaleString()}` : ''}</div>
+          </div>
+          <div className="flex gap-2">
+            {!connected ? (
+              <button className="rounded-md border border-border px-3 py-2 hover:bg-muted" onClick={connect}>Connect</button>
+            ) : (
+              <button disabled={loading} className="rounded-md bg-primary text-primary-foreground px-3 py-2 disabled:opacity-60" onClick={syncNow}>{loading ? 'Syncing…' : 'Sync now'}</button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const BillingCard = ({ token, user, onUserUpdate }) => {
   const [loading, setLoading] = useState(false)
 
@@ -349,11 +403,8 @@ const Dashboard = ({ token, user, onLogout, setUserLocal, banner }) => {
       <main className="container py-6 grid gap-6 md:grid-cols-5">
         <div className="md:col-span-2 space-y-6">
           <BookingForm token={token} onCreated={() => loadBookings()} />
+          <IntegrationsCard token={token} profile={profile} onProfile={(u) => { setProfile(u); setUserLocal(u) }} />
           <div className="grid gap-3">
-            <button className="w-full rounded-md border border-border px-4 py-2 text-left hover:bg-muted" onClick={async () => {
-              const r = await fetch('/api/integrations/google/sync', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-              const d = await r.json(); alert(d?.message || 'Synced (stub)')
-            }}>Sync Google Calendar (stub)</button>
             <button className="w-full rounded-md border border-border px-4 py-2 text-left hover:bg-muted" onClick={async () => {
               const r = await fetch('/api/integrations/voice/call', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
               const d = await r.json(); alert(d?.message || 'Voice (stub)')
@@ -382,6 +433,8 @@ const Home = () => {
       if (params.get('success') === 'true') setBanner('Subscription updated successfully.')
       else if (params.get('portal_return') === 'true') setBanner('Returned from Billing Portal.')
       else if (params.get('canceled') === 'true') setBanner('Checkout canceled.')
+      else if (params.get('google_connected') === '1') setBanner('Google Calendar connected.')
+      else if (params.get('google_error')) setBanner('Google integration error: ' + params.get('google_error'))
     } catch {}
   }, [])
 

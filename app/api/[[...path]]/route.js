@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs'
 import Stripe from 'stripe'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../lib/baseUrl'
+import { google } from 'googleapis'
 
 // Stripe init (safe even if key missing; we check before calls)
 let stripe = null
@@ -36,6 +37,7 @@ async function connectToMongo() {
       await db.collection('users').createIndex({ email: 1 }, { unique: true })
       await db.collection('bookings').createIndex({ userId: 1, startTime: 1 })
       await db.collection('status_checks').createIndex({ timestamp: -1 })
+      await db.collection('google_events').createIndex({ userId: 1, bookingId: 1 }, { unique: true })
     } catch (e) {
       // ignore index errors
     }
@@ -102,6 +104,21 @@ function getPriceId(plan) {
   return map[plan]
 }
 
+// Google OAuth helpers
+function getOAuth2Client() {
+  const clientId = process.env.GOOGLE_CLIENT_ID
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${getBaseUrl(headers().get('host') || undefined)}/api/integrations/google/callback`
+  if (!clientId || !clientSecret) return null
+  return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
+}
+
+function getGoogleScopes() {
+  return [
+    'https://www.googleapis.com/auth/calendar',
+  ]
+}
+
 // Router
 export async function GET(request, ctx) { return handleRoute(request, ctx) }
 export async function POST(request, ctx) { return handleRoute(request, ctx) }
@@ -147,7 +164,7 @@ async function handleRoute(request, { params }) {
       const { email, password, name } = body
       if (!email || !password) return json({ error: 'email and password are required' }, { status: 400 })
       const hashed = await bcrypt.hash(password, 10)
-      const user = { id: uuidv4(), email: String(email).toLowerCase(), name: name || '', passwordHash: hashed, createdAt: new Date(), subscription: null }
+      const user = { id: uuidv4(), email: String(email).toLowerCase(), name: name || '', passwordHash: hashed, createdAt: new Date(), subscription: null, google: null }
       try {
         await db.collection('users').insertOne(user)
       } catch (e) {
@@ -155,7 +172,7 @@ async function handleRoute(request, { params }) {
         throw e
       }
       const token = jwt.sign({ sub: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' })
-      return json({ token, user: { id: user.id, email: user.email, name: user.name, subscription: user.subscription } })
+      return json({ token, user: { id: user.id, email: user.email, name: user.name, subscription: user.subscription, google: { connected: false, lastSyncedAt: null } } })
     }
 
     if (route === '/auth/login' && method === 'POST') {
@@ -167,16 +184,18 @@ async function handleRoute(request, { params }) {
       const ok = await bcrypt.compare(password, user.passwordHash)
       if (!ok) return json({ error: 'Invalid credentials' }, { status: 401 })
       const token = jwt.sign({ sub: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' })
-      return json({ token, user: { id: user.id, email: user.email, name: user.name || '', subscription: user.subscription || null } })
+      const googleSafe = user.google ? { connected: !!user.google?.refreshToken, lastSyncedAt: user.google?.lastSyncedAt || null } : { connected: false, lastSyncedAt: null }
+      return json({ token, user: { id: user.id, email: user.email, name: user.name || '', subscription: user.subscription || null, google: googleSafe } })
     }
 
-    // Current user profile
+    // Current user profile (sanitized)
     if (route === '/user' && method === 'GET') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const u = await db.collection('users').findOne({ id: auth.user.id })
       if (!u) return json({ error: 'User not found' }, { status: 404 })
-      const { _id, passwordHash, ...safe } = u
+      const googleSafe = u.google ? { connected: !!u.google?.refreshToken, lastSyncedAt: u.google?.lastSyncedAt || null } : { connected: false, lastSyncedAt: null }
+      const safe = { id: u.id, email: u.email, name: u.name || '', subscription: u.subscription || null, google: googleSafe }
       return json(safe)
     }
 
@@ -258,28 +277,118 @@ async function handleRoute(request, { params }) {
       return json(rest)
     }
 
-    // Integrations - Stubs
+    // -------------------- Integrations --------------------
 
-    // Google Calendar sync stub
+    // Google Calendar - start OAuth
+    if (route === '/integrations/google/auth' && method === 'GET') {
+      const auth = await requireAuth(request, db)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const oauth2Client = getOAuth2Client()
+      if (!oauth2Client) return json({ error: 'Google OAuth not configured' }, { status: 400 })
+      const state = jwt.sign({ sub: auth.user.id }, getJwtSecret(), { expiresIn: '10m' })
+      const url = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        prompt: 'consent',
+        scope: getGoogleScopes(),
+        state,
+      })
+      // Redirect directly (no CORS)
+      return NextResponse.redirect(url)
+    }
+
+    // Google Calendar - OAuth callback
+    if (route === '/integrations/google/callback' && method === 'GET') {
+      const urlObj = new URL(request.url)
+      const code = urlObj.searchParams.get('code')
+      const state = urlObj.searchParams.get('state')
+      const base = getBaseUrl(headers().get('host') || undefined)
+      if (!code || !state) {
+        return NextResponse.redirect(`${base}/?google_error=missing_code_or_state`)
+      }
+      let uid = null
+      try {
+        const payload = jwt.verify(state, getJwtSecret())
+        uid = payload.sub
+      } catch (e) {
+        return NextResponse.redirect(`${base}/?google_error=invalid_state`)
+      }
+      const oauth2Client = getOAuth2Client()
+      if (!oauth2Client) return NextResponse.redirect(`${base}/?google_error=not_configured`)
+      try {
+        const { tokens } = await oauth2Client.getToken(code)
+        // Persist refresh token (may be undefined if user already granted; keep previous)
+        const user = await db.collection('users').findOne({ id: uid })
+        const prev = user?.google || {}
+        const googleObj = {
+          refreshToken: tokens.refresh_token || prev.refreshToken || null,
+          scope: tokens.scope || prev.scope || getGoogleScopes().join(' '),
+          connectedAt: prev.connectedAt || new Date().toISOString(),
+          lastSyncedAt: prev.lastSyncedAt || null,
+        }
+        await db.collection('users').updateOne({ id: uid }, { $set: { google: googleObj, updatedAt: new Date() } })
+        return NextResponse.redirect(`${base}/?google_connected=1`)
+      } catch (e) {
+        console.error('Google OAuth callback error', e)
+        return NextResponse.redirect(`${base}/?google_error=token_exchange_failed`)
+      }
+    }
+
+    // Google Calendar - Sync bookings to Google (create/update events)
     if (route === '/integrations/google/sync' && method === 'POST') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      return json({ ok: true, message: 'Google Calendar sync stubbed. Provide OAuth creds to enable.', synced: 0 })
+      const user = await db.collection('users').findOne({ id: auth.user.id })
+      const refreshToken = user?.google?.refreshToken
+      if (!refreshToken) return json({ error: 'Google not connected', reconnect: true }, { status: 400 })
+      const oauth2Client = getOAuth2Client()
+      if (!oauth2Client) return json({ error: 'Google OAuth not configured' }, { status: 400 })
+      oauth2Client.setCredentials({ refresh_token: refreshToken })
+      const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
+
+      const bookings = await db.collection('bookings').find({ userId: auth.user.id, status: { $ne: 'canceled' } }).toArray()
+
+      let created = 0, updatedCount = 0
+      for (const b of bookings) {
+        const mapping = await db.collection('google_events').findOne({ userId: auth.user.id, bookingId: b.id })
+        const eventBody = {
+          summary: b.title || 'Booking',
+          description: [b.customerName ? `Customer: ${b.customerName}` : null, b.notes ? `Notes: ${b.notes}` : null].filter(Boolean).join('\n'),
+          start: { dateTime: new Date(b.startTime).toISOString(), timeZone: 'UTC' },
+          end: { dateTime: new Date(b.endTime).toISOString(), timeZone: 'UTC' },
+        }
+        try {
+          if (!mapping || !mapping.googleEventId) {
+            const res = await calendar.events.insert({ calendarId: 'primary', requestBody: eventBody })
+            await db.collection('google_events').updateOne(
+              { userId: auth.user.id, bookingId: b.id },
+              { $set: { userId: auth.user.id, bookingId: b.id, googleEventId: res.data.id, calendarId: 'primary', updatedAt: new Date(), createdAt: mapping?.createdAt || new Date() } },
+              { upsert: true }
+            )
+            created += 1
+          } else {
+            await calendar.events.patch({ calendarId: 'primary', eventId: mapping.googleEventId, requestBody: eventBody })
+            await db.collection('google_events').updateOne(
+              { userId: auth.user.id, bookingId: b.id },
+              { $set: { updatedAt: new Date() } }
+            )
+            updatedCount += 1
+          }
+        } catch (e) {
+          console.error('Calendar event sync error', e?.message || e)
+        }
+      }
+
+      await db.collection('users').updateOne({ id: auth.user.id }, { $set: { 'google.lastSyncedAt': new Date().toISOString() } })
+      return json({ ok: true, created, updated: updatedCount })
     }
 
-    // OpenAI Realtime Audio stub
-    if (route === '/integrations/voice/call' && method === 'POST') {
+    // Google Calendar - Connection status / simple list
+    if (route === '/integrations/google/sync' && method === 'GET') {
       const auth = await requireAuth(request, db)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      return json({ ok: true, message: 'OpenAI Realtime Audio stubbed. Provide key to enable.' })
-    }
-
-    // Tavily search stub
-    if (route === '/integrations/search' && method === 'POST') {
-      const auth = await requireAuth(request, db)
-      if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const body = await getBody(request)
-      return json({ ok: true, query: body?.q || '', results: [], note: 'Tavily stubbed. Provide API key to enable.' })
+      const user = await db.collection('users').findOne({ id: auth.user.id })
+      const connected = !!user?.google?.refreshToken
+      return json({ connected, lastSyncedAt: user?.google?.lastSyncedAt || null })
     }
 
     // -------------------- Stripe Billing --------------------
