@@ -72,3 +72,5 @@ If using a Deploy Hook instead, create a hook for the production branch and `POS
 Note: Test deploy trigger at 2025-09-13T20:41:25Z
 
 Verified commit test at 2025-09-13T20:55:37Z
+
+Deploy test: hook + cancel-sync fixes at 2025-09-16T00:12:17Z
