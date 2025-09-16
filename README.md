@@ -76,3 +76,22 @@ Verified commit test at 2025-09-13T20:55:37Z
 Deploy test: hook + cancel-sync fixes at 2025-09-16T00:12:17Z
 
 Deploy test (re-add remote) at 2025-09-16T00:13:18Z
+
+## External Cron (cron-job.org)
+
+We recommend using an external scheduler due to Vercel Hobby limitations.
+
+- Endpoint: `GET /api/cron/sync?secret=CRON_SECRET`
+- Set `CRON_SECRET` in Vercel Project → Settings → Environment Variables
+- Example URL: `https://book8-ai.vercel.app/api/cron/sync?secret=YOUR_SECRET`
+- Interval: Every 10 minutes
+- Expected response: `{ ok: true, processed: N }`
+- Unauthorized (bad secret): HTTP 401
+
+Optional logging (enable observability):
+- Set `CRON_LOGS=true` in Vercel env
+- Each run is logged to `cron_logs` collection with `{ runId, startedAt, finishedAt, processed, triggeredBy }`
+
+Testing:
+- Manually run: `curl -i "https://book8-ai.vercel.app/api/cron/sync?secret=YOUR_SECRET"`
+- Should return 200 with `{ ok: true, processed: N }`
