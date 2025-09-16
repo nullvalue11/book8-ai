@@ -237,7 +237,7 @@ const AuthCard = ({ onAuth }) => {
   )
 }
 
-const Home = () => {
+export default function Home() {
   const { token, user, login, logout } = useAuth()
   const [items, setItems] = useState([])
 
@@ -276,13 +276,3 @@ const Home = () => {
     </div>
   )
 }
-
-function App() {
-  return (
-    <div className="App">
-      <Home />
-    </div>
-  )
-}
-
-export default App;
