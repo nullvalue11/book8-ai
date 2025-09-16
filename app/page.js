@@ -190,7 +190,92 @@ const BookingsTable = ({ token, items, refresh }) => {
   )
 }
 
-// Note: Header, IntegrationsCard, BillingCard remain unchanged
+// Minimal Auth card (login/register)
+const AuthCard = ({ onAuth }) => {
+  const [mode, setMode] = useState('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/auth/${mode}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name }) })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed')
+      onAuth(data.token, data.user)
+    } catch (err) { setError(err.message) } finally { setLoading(false) }
+  }
+
+  return (
+    <div className="max-w-md mx-auto bg-card text-card-foreground rounded-lg border border-border shadow-sm p-6">
+      <div className="text-center mb-4">
+        <h2 className="text-xl font-semibold">{mode === 'login' ? 'Sign in' : 'Create your account'}</h2>
+        <p className="text-sm text-muted-foreground">JWT auth with MongoDB</p>
+      </div>
+      <form onSubmit={submit} className="space-y-3">
+        {mode === 'register' && (
+          <div className="space-y-1"><label className="text-sm">Name</label><input className="w-full rounded-md border border-border bg-background px-3 py-2" value={name} onChange={(e)=>setName(e.target.value)} placeholder="Jane Doe" /></div>
+        )}
+        <div className="space-y-1"><label className="text-sm">Email</label><input type="email" className="w-full rounded-md border border-border bg-background px-3 py-2" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="you@company.com" required /></div>
+        <div className="space-y-1"><label className="text-sm">Password</label><input type="password" className="w-full rounded-md border border-border bg-background px-3 py-2" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="••••••••" required /></div>
+        {error ? <div className="text-sm text-destructive">{error}</div> : null}
+        <button disabled={loading} className="w-full rounded-md bg-primary text-primary-foreground px-4 py-2 hover:opacity-90 disabled:opacity-60">{loading ? 'Please wait…' : (mode === 'login' ? 'Sign in' : 'Create account')}</button>
+      </form>
+      <div className="text-center mt-3 text-sm">
+        {mode === 'login' ? (
+          <button onClick={()=>setMode('register')} className="text-foreground/80 hover:underline">New here? Create an account</button>
+        ) : (
+          <button onClick={()=>setMode('login')} className="text-foreground/80 hover:underline">Already have an account? Sign in</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const Home = () => {
+  const { token, user, login, logout } = useAuth()
+  const [items, setItems] = useState([])
+
+  const load = async () => {
+    if (!token) return
+    const res = await fetch('/api/bookings', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    if (res.ok) setItems(Array.isArray(data) ? data : [])
+  }
+
+  useEffect(() => { load() }, [token])
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <main className="container py-10">
+        <div className="max-w-2xl mx-auto text-center mb-8">
+          <h1 className="text-3xl font-bold">Book8 AI</h1>
+          <p className="text-muted-foreground mt-2">Scheduling with Google sync and billing. Sign in to manage your bookings.</p>
+        </div>
+        {token ? (
+          <div className="grid gap-6 md:grid-cols-5">
+            <div className="md:col-span-2">
+              <BookingForm token={token} onCreated={load} />
+            </div>
+            <div className="md:col-span-3">
+              <BookingsTable token={token} items={items} refresh={load} />
+              <div className="mt-4 text-right">
+                <button onClick={logout} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Logout</button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <AuthCard onAuth={login} />
+        )}
+      </main>
+    </div>
+  )
+}
 
 function App() {
   return (
