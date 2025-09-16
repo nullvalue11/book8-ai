@@ -101,6 +101,25 @@ async function getGoogleClientForUser(userId) {
   return google.calendar({ version: 'v3', auth: oauth2Client })
 }
 
+// Helper: find Google event by our private extended property if mapping missing
+async function findGoogleEventIdByPrivate(calendar, calendarId, bookingId, startTime, endTime) {
+  try {
+    const params = {
+      calendarId: calendarId || 'primary',
+      privateExtendedProperty: [`book8BookingId=${bookingId}`],
+      maxResults: 5,
+      singleEvents: true,
+    }
+    if (startTime) params.timeMin = new Date(startTime).toISOString()
+    if (endTime) params.timeMax = new Date(new Date(endTime).getTime() + 1).toISOString()
+    const res = await calendar.events.list(params)
+    const first = res?.data?.items?.[0]
+    return first?.id || null
+  } catch (e) {
+    return null
+  }
+}
+
 // Router handlers
 export async function GET(request, ctx) { return handleRoute(request, ctx) }
 export async function POST(request, ctx) { return handleRoute(request, ctx) }
