@@ -276,14 +276,18 @@ async function handleRoute(request, { params }) {
       const existing = await db.collection('bookings').findOne({ id, userId: auth.user.id })
       if (!existing) return json({ error: 'Booking not found' }, { status: 404 })
       await db.collection('bookings').updateOne({ id, userId: auth.user.id }, { $set: { status: 'canceled', updatedAt: new Date().toISOString() } })
-      // Delete Google event if mapped
+      // Delete Google event if mapped (or locate by private extended property)
       try {
         const calendar = await getGoogleClientForUser(auth.user.id)
         if (calendar) {
-          const mapping = await db.collection('google_events').findOne({ userId: auth.user.id, bookingId: id })
-          if (mapping?.googleEventId) {
-            try { await calendar.events.delete({ calendarId: mapping.calendarId || 'primary', eventId: mapping.googleEventId }) } catch {}
-            // Optionally remove mapping
+          let mapping = await db.collection('google_events').findOne({ userId: auth.user.id, bookingId: id })
+          let googleEventId = mapping?.googleEventId
+          const calId = mapping?.calendarId || 'primary'
+          if (!googleEventId) {
+            googleEventId = await findGoogleEventIdByPrivate(calendar, calId, id, existing.startTime, existing.endTime)
+          }
+          if (googleEventId) {
+            try { await calendar.events.delete({ calendarId: calId, eventId: googleEventId }) } catch {}
             await db.collection('google_events').deleteOne({ userId: auth.user.id, bookingId: id })
           }
         }
