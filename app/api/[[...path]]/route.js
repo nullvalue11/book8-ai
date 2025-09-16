@@ -120,6 +120,27 @@ async function findGoogleEventIdByPrivate(calendar, calendarId, bookingId, start
   }
 }
 
+// Heuristic finder when mapping and private extended property are missing
+async function findGoogleEventIdHeuristic(calendar, calendarId, booking) {
+  try {
+    const windowMs = 10 * 60 * 1000 // ±10 minutes
+    const timeMin = new Date(new Date(booking.startTime).getTime() - windowMs).toISOString()
+    const timeMax = new Date(new Date(booking.endTime).getTime() + windowMs).toISOString()
+    const res = await calendar.events.list({ calendarId: calendarId || 'primary', timeMin, timeMax, singleEvents: true, maxResults: 50, orderBy: 'startTime', q: booking.title || '' })
+    const items = res?.data?.items || []
+    for (const e of items) {
+      const start = e.start?.dateTime || e.start?.date
+      const end = e.end?.dateTime || e.end?.date
+      if (!start || !end) continue
+      const titleMatch = (e.summary || '').trim() === (booking.title || '').trim()
+      const startDiff = Math.abs(new Date(start).getTime() - new Date(booking.startTime).getTime())
+      const endDiff = Math.abs(new Date(end).getTime() - new Date(booking.endTime).getTime())
+      if (titleMatch && startDiff <= windowMs && endDiff <= windowMs) return e.id
+    }
+    return null
+  } catch (e) { return null }
+}
+
 // Router handlers
 export async function GET(request, ctx) { return handleRoute(request, ctx) }
 export async function POST(request, ctx) { return handleRoute(request, ctx) }
