@@ -161,6 +161,20 @@
       - working: true
         agent: "testing"
         comment: "✅ TESTED: All integration stubs working correctly. All endpoints require authentication (except Stripe webhook) and return ok:true with appropriate stub messages."
+  - task: "Fix POST /api/bookings 500 error"
+    implemented: false
+    working: false
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 1
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "User reports POST /api/bookings returns 500 error when creating bookings"
+      - working: false
+        agent: "main"
+        comment: "Starting investigation: checking imports, env vars, and backend logs. Booking creation was previously working per testing agent."
 
 ## frontend:
   - task: "Dashboard UI with auth and bookings"
