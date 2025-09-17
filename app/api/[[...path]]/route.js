@@ -36,6 +36,33 @@ async function handleRoute(request, { params }) {
   // We patch only the relevant handlers below for timeZone support
 
   try {
+    const base = getBaseUrl(headers().get('host') || undefined)
+
+    // Short-circuit: routes that do NOT need DB connection
+    if ((route === '/health' || route === '/root' || route === '/') && method === 'GET') {
+      return json({ ok: true, message: 'Book8 API online' })
+    }
+    if (route === '/integrations/google/auth' && method === 'GET') {
+      const urlObj = new URL(request.url)
+      const jwtParam = urlObj.searchParams.get('jwt') || urlObj.searchParams.get('token')
+      let userId = null
+      if (jwtParam) { try { const payload = jwt.verify(jwtParam, getJwtSecret()); userId = payload.sub } catch {} }
+      if (!userId) {
+        // If Authorization header exists and valid, accept; else redirect with error without touching DB
+        const authHeader = request.headers.get('authorization') || ''
+        if (authHeader.startsWith('Bearer ')) {
+          const token = authHeader.slice(7)
+          try { const payload = jwt.verify(token, getJwtSecret()); userId = payload.sub } catch {}
+        }
+      }
+      const oauth2Client = getOAuth2Client()
+      if (!oauth2Client) return NextResponse.redirect(`${base}/?google_error=not_configured`)
+      if (!userId) return NextResponse.redirect(`${base}/?google_error=auth_required`)
+      const state = jwt.sign({ sub: userId }, getJwtSecret(), { expiresIn: '10m' })
+      const url = oauth2Client.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: getGoogleScopes(), state })
+      return NextResponse.redirect(url)
+    }
+
     const db = await connectToMongo()
 
     // Bookings create (with timeZone)
