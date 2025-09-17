@@ -77,15 +77,10 @@ async function getGoogleClientForUser(userId) {
   return null
 }
 
-// Stripe (kept for completeness)
+// Stripe (temporarily disabled to avoid compilation issues)
 let stripe = null
 function getStripe() {
-  if (!stripe) {
-    const key = process.env.STRIPE_SECRET_KEY
-    if (!key) return null
-    stripe = new Stripe(key)
-  }
-  return stripe
+  return null
 }
 
 // Router
