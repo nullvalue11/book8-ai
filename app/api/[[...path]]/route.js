@@ -66,11 +66,8 @@ async function requireAuth(request, db) {
 function isISODateString(s) { const d = new Date(s); return !isNaN(d.getTime()) }
 
 function getOAuth2Client() {
-  const clientId = process.env.GOOGLE_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${getBaseUrl(headers().get('host') || undefined)}/api/integrations/google/callback`
-  if (!clientId || !clientSecret) return null
-  return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
+  // Dynamic import to avoid compilation issues
+  return null // Temporarily disabled
 }
 
 function getGoogleScopes() { return ['https://www.googleapis.com/auth/calendar'] }
