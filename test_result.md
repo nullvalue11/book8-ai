@@ -200,12 +200,10 @@
 
 ## test_plan:
   current_focus:
-    - "Auth: register/login"
-    - "Bookings: create/list/cancel"
-    - "Health endpoints"
+    - "Fix POST /api/bookings 500 error"
   stuck_tasks: []
   test_all: false
-  test_priority: "high_first"
+  test_priority: "critical_first"
 
 ## agent_communication:
   - agent: "main"
