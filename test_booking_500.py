@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'http://localhost:3000')
+# Use localhost for internal testing
+BASE_URL = "http://localhost:3000"
 API_BASE = f"{BASE_URL}/api"
 
 def log(message):
