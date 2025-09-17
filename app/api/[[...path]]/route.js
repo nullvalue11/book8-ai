@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import Stripe from 'stripe'
 import { headers } from 'next/headers'
-import { getBaseUrl } from '../../lib/baseUrl'
+import { getBaseUrl } from '../../../lib/baseUrl'
 import { google } from 'googleapis'
 import { buildGoogleEventFromBooking, overlaps, mergeBook8WithGoogle } from '../../../lib/googleSync'
 
