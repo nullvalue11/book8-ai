@@ -90,9 +90,10 @@ const AuthCard = ({ onAuth }) => {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/auth/${mode}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name }) })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Failed')
+      const res = await fetch(`/api/auth/${mode}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ email, password, name }) })
+      const raw = await res.text()
+      const data = raw ? JSON.parse(raw) : null
+      if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`)
       onAuth(data.token, data.user)
     } catch (err) { setError(err.message) } finally { setLoading(false) }
   }
@@ -140,9 +141,10 @@ const BookingForm = ({ token, onCreated }) => {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-Client-Timezone': tz }, body: JSON.stringify({ title, customerName, startTime, endTime, notes, timeZone: tz }) })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Failed')
+      const res = await fetch('/api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}`, 'X-Client-Timezone': tz }, body: JSON.stringify({ title, customerName, startTime, endTime, notes, timeZone: tz }) })
+      const raw = await res.text()
+      const data = raw ? JSON.parse(raw) : null
+      if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`)
       onCreated(data)
       setCustomerName(''); setNotes('')
     } catch (err) { setError(err.message) } finally { setLoading(false) }
@@ -166,8 +168,8 @@ const BookingForm = ({ token, onCreated }) => {
 
 const BookingsTable = ({ token, items, refresh }) => {
   const cancelBooking = async (id) => {
-    const res = await fetch(`/api/bookings/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-    await res.json()
+    const res = await fetch(`/api/bookings/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+    await res.text()
     refresh()
   }
 
@@ -231,11 +233,13 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
   const syncNow = async () => {
     try {
       setLoading(true)
-      const r = await fetch('/api/integrations/google/sync', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-      const d = await r.json()
+      const r = await fetch('/api/integrations/google/sync', { method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+      const raw = await r.text()
+      const d = raw ? JSON.parse(raw) : null
       if (!r.ok) throw new Error(d?.error || 'Sync failed')
-      const ru = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
-      const ud = await ru.json(); if (ru.ok) onProfile(ud)
+      const ru = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+      const rud = await ru.text(); const ud = rud ? JSON.parse(rud) : null
+      if (ru.ok && ud) onProfile(ud)
       alert(`Synced: created ${d?.created || 0}, updated ${d?.updated || 0}${d?.deleted !== undefined ? ", deleted " + d.deleted : ''}`)
     } catch (e) { alert(e.message) } finally { setLoading(false) }
   }
@@ -244,7 +248,7 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
     <div className="bg-card text-card-foreground rounded-lg border border-border shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold">Integrations</h3>
-        <button onClick={async () => { const r = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } }); const u = await r.json(); if (r.ok) onProfile(u) }} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Refresh</button>
+        <button onClick={async () => { const r = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }); const raw = await r.text(); const u = raw ? JSON.parse(raw) : null; if (r.ok && u) onProfile(u) }} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Refresh</button>
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -271,8 +275,8 @@ const BillingCard = ({ token, user, onUserUpdate }) => {
   const subscribe = async (plan) => {
     try {
       setLoading(true)
-      const res = await fetch('/api/billing/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ plan }) })
-      const data = await res.json()
+      const res = await fetch('/api/billing/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ plan }) })
+      const raw = await res.text(); const data = raw ? JSON.parse(raw) : null
       if (!res.ok) throw new Error(data?.error || 'Failed')
       if (data?.url) window.location.href = data.url
     } catch (e) { alert(e.message || 'Error creating checkout session') } finally { setLoading(false) }
@@ -281,8 +285,8 @@ const BillingCard = ({ token, user, onUserUpdate }) => {
   const manage = async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/billing/portal', { headers: { Authorization: `Bearer ${token}` } })
-      const data = await res.json()
+      const res = await fetch('/api/billing/portal', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+      const raw = await res.text(); const data = raw ? JSON.parse(raw) : null
       if (!res.ok) throw new Error(data?.error || 'Failed')
       if (data?.url) window.location.href = data.url
     } catch (e) { alert(e.message || 'Error opening portal') } finally { setLoading(false) }
@@ -292,7 +296,7 @@ const BillingCard = ({ token, user, onUserUpdate }) => {
     <div className="bg-card text-card-foreground rounded-lg border border-border shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold">Billing</h3>
-        <button onClick={async () => { const r = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } }); const u = await r.json(); if (r.ok) onUserUpdate(u) }} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Refresh</button>
+        <button onClick={async () => { const r = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }); const raw = await r.text(); const u = raw ? JSON.parse(raw) : null; if (r.ok && u) onUserUpdate(u) }} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Refresh</button>
       </div>
       {user?.subscription ? (
         <div className="space-y-2">
@@ -323,15 +327,15 @@ export default function Home() {
 
   const loadBookings = async () => {
     if (!token) return
-    const res = await fetch('/api/bookings', { headers: { Authorization: `Bearer ${token}` } })
-    const data = await res.json()
+    const res = await fetch('/api/bookings', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+    const raw = await res.text(); const data = raw ? JSON.parse(raw) : []
     if (res.ok) setItems(Array.isArray(data) ? data : [])
   }
   const loadUser = async () => {
     if (!token) return
-    const res = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
-    const data = await res.json()
-    if (res.ok) { setProfile(data); setUserLocal(data) }
+    const res = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+    const raw = await res.text(); const data = raw ? JSON.parse(raw) : null
+    if (res.ok && data) { setProfile(data); setUserLocal(data) }
   }
 
   useEffect(() => {
