@@ -65,16 +65,37 @@ async function requireAuth(request, db) {
 
 function isISODateString(s) { const d = new Date(s); return !isNaN(d.getTime()) }
 
-function getOAuth2Client() {
-  // Dynamic import to avoid compilation issues
-  return null // Temporarily disabled
+async function getOAuth2Client() {
+  try {
+    const { google } = await import('googleapis')
+    const clientId = process.env.GOOGLE_CLIENT_ID
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${getBaseUrl(headers().get('host') || undefined)}/api/integrations/google/callback`
+    if (!clientId || !clientSecret) return null
+    return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
+  } catch (error) {
+    console.error('Error loading Google OAuth client:', error)
+    return null
+  }
 }
 
 function getGoogleScopes() { return ['https://www.googleapis.com/auth/calendar'] }
 
 async function getGoogleClientForUser(userId) {
-  // Temporarily disabled to avoid compilation issues
-  return null
+  try {
+    const { google } = await import('googleapis')
+    const database = await connectToMongo()
+    const user = await database.collection('users').findOne({ id: userId })
+    const refreshToken = user?.google?.refreshToken
+    if (!refreshToken) return null
+    const oauth2Client = await getOAuth2Client()
+    if (!oauth2Client) return null
+    oauth2Client.setCredentials({ refresh_token: refreshToken })
+    return google.calendar({ version: 'v3', auth: oauth2Client })
+  } catch (error) {
+    console.error('Error loading Google Calendar client:', error)
+    return null
+  }
 }
 
 // Stripe (temporarily disabled to avoid compilation issues)
