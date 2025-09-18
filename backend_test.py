@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import uuid
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'http://localhost:3000')
+BASE_URL = 'https://syncmeeting.preview.emergentagent.com'  # Use the production URL directly
 API_BASE = f"{BASE_URL}/api"
 
 class BackendTester:
