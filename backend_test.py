@@ -1019,6 +1019,19 @@ class BackendTester:
             self.test_google_calendars_post()
             self.test_google_sync_enhanced()
             
+            # Test Stripe Webhook Idempotency features
+            self.log("\n🔧 Testing Stripe Webhook Idempotency Features...")
+            self.test_stripe_webhook_no_signature()
+            self.test_stripe_webhook_invalid_signature()
+            self.test_stripe_webhook_no_secret()
+            self.test_billing_logs_no_auth()
+            self.test_billing_logs_with_auth()
+            self.test_billing_logs_pagination()
+            self.test_events_status_no_auth()
+            self.test_events_status_with_auth()
+            self.test_events_status_with_limit()
+            self.test_database_collections_exist()
+            
         # Test error handling
         self.test_google_calendars_error_handling()
         
