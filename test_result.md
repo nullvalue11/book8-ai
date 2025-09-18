@@ -250,7 +250,8 @@
   run_ui: true
 
 ## test_plan:
-  current_focus: []
+  current_focus:
+    - "Stripe Webhook Idempotency - Prevent duplicate processing"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
