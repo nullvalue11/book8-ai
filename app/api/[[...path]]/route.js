@@ -373,32 +373,87 @@ async function handleRoute(request, { params }) {
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
       const calendar = await getGoogleClientForUser(auth.user.id)
       if (!calendar) return json({ error: 'Google not connected', reconnect: true }, { status: 400 })
+      
+      // Get user's selected calendars (default to primary if none selected)
+      const user = await database.collection('users').findOne({ id: auth.user.id })
+      const selectedCalendars = user?.google?.selectedCalendars || ['primary']
+      
       const allBookings = await database.collection('bookings').find({ userId: auth.user.id }).toArray()
       const active = allBookings.filter(b => b.status !== 'canceled')
       const canceled = allBookings.filter(b => b.status === 'canceled')
       let created = 0, updatedCount = 0, deleted = 0
+      
+      // Sync active bookings to all selected calendars
       for (const b of active) {
-        const map = await database.collection('google_events').findOne({ userId: auth.user.id, bookingId: b.id })
-        const evt = buildGoogleEventFromBooking(b)
-        try {
-          if (!map?.googleEventId) {
-            const ins = await calendar.events.insert({ calendarId: map?.calendarId || 'primary', requestBody: evt })
-            await database.collection('google_events').updateOne({ userId: auth.user.id, bookingId: b.id }, { $set: { userId: auth.user.id, bookingId: b.id, googleEventId: ins.data.id, calendarId: 'primary', createdAt: new Date(), updatedAt: new Date() } }, { upsert: true })
-            created++
-          } else {
-            await calendar.events.patch({ calendarId: map.calendarId || 'primary', eventId: map.googleEventId, requestBody: evt })
-            await database.collection('google_events').updateOne({ userId: auth.user.id, bookingId: b.id }, { $set: { updatedAt: new Date() } })
-            updatedCount++
+        for (const calendarId of selectedCalendars) {
+          const map = await database.collection('google_events').findOne({ 
+            userId: auth.user.id, 
+            bookingId: b.id, 
+            calendarId: calendarId 
+          })
+          const evt = buildGoogleEventFromBooking(b)
+          
+          try {
+            if (!map?.googleEventId) {
+              const ins = await calendar.events.insert({ calendarId, requestBody: evt })
+              await database.collection('google_events').updateOne(
+                { userId: auth.user.id, bookingId: b.id, calendarId },
+                { 
+                  $set: { 
+                    userId: auth.user.id, 
+                    bookingId: b.id, 
+                    googleEventId: ins.data.id, 
+                    calendarId, 
+                    createdAt: new Date(), 
+                    updatedAt: new Date() 
+                  } 
+                },
+                { upsert: true }
+              )
+              created++
+            } else {
+              await calendar.events.patch({ calendarId, eventId: map.googleEventId, requestBody: evt })
+              await database.collection('google_events').updateOne(
+                { userId: auth.user.id, bookingId: b.id, calendarId },
+                { $set: { updatedAt: new Date() } }
+              )
+              updatedCount++
+            }
+          } catch (err) {
+            console.error(`Failed to sync booking ${b.id} to calendar ${calendarId}:`, err)
           }
-        } catch {}
+        }
       }
+      
+      // Delete canceled bookings from all calendars
       for (const b of canceled) {
-        const map = await database.collection('google_events').findOne({ userId: auth.user.id, bookingId: b.id })
-        if (!map?.googleEventId) continue
-        try { await calendar.events.delete({ calendarId: map.calendarId || 'primary', eventId: map.googleEventId }); await database.collection('google_events').deleteOne({ userId: auth.user.id, bookingId: b.id }); deleted++ } catch {}
+        const maps = await database.collection('google_events').find({ 
+          userId: auth.user.id, 
+          bookingId: b.id 
+        }).toArray()
+        
+        for (const map of maps) {
+          if (!map?.googleEventId) continue
+          try { 
+            await calendar.events.delete({ calendarId: map.calendarId || 'primary', eventId: map.googleEventId })
+            await database.collection('google_events').deleteOne({ 
+              userId: auth.user.id, 
+              bookingId: b.id, 
+              calendarId: map.calendarId 
+            })
+            deleted++ 
+          } catch (err) {
+            console.error(`Failed to delete event ${map.googleEventId} from calendar ${map.calendarId}:`, err)
+          }
+        }
       }
-      await database.collection('users').updateOne({ id: auth.user.id }, { $set: { 'google.lastSyncedAt': new Date().toISOString() } })
-      return json({ ok: true, created, updated: updatedCount, deleted })
+      
+      await database.collection('users').updateOne(
+        { id: auth.user.id }, 
+        { $set: { 'google.lastSyncedAt': new Date().toISOString() } }
+      )
+      
+      return json({ ok: true, created, updated: updatedCount, deleted, calendarsSelected: selectedCalendars.length })
     }
     if (route === '/integrations/google/sync' && method === 'GET') {
       const auth = await requireAuth(request, database)
