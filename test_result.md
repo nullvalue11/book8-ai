@@ -195,6 +195,9 @@
       - working: true
         agent: "testing"
         comment: "✅ GOOGLE CALENDAR INTEGRATION FIXED: Dynamic imports working perfectly! 1) GET /api/integrations/google/sync returns proper connection status: {connected: false, lastSyncedAt: null} - no longer returns 'Google not connected' error. 2) POST /api/integrations/google/sync properly handles OAuth not configured case with 400 status and 'Google not connected' error message. 3) No compilation hanging issues - googleapis library loads dynamically when called. 4) Core functionality preserved - authentication and booking creation still working. The regression is fully resolved."
+      - working: true
+        agent: "user"
+        comment: "✅ CONFIRMED WORKING: User confirms Google Calendar integration fully functional. Dashboard shows 'Connected • Last synced 9/17/2025, 3:44:11 PM' with working 'Sync now' button. OAuth credentials configured in Google Cloud Console. Both critical issues resolved."
 
 ## frontend:
   - task: "Dashboard UI with auth and bookings"
