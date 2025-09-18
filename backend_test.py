@@ -32,7 +32,9 @@ class BackendTester:
             'bookings_list_with_data': False,
             'bookings_cancel': False,
             'integration_stubs': False,
-            'cors_preflight': False
+            'cors_preflight': False,
+            'google_calendar_sync_get': False,
+            'google_calendar_dynamic_imports': False
         }
         
     def log(self, message):
