@@ -25,7 +25,7 @@ async function connectToMongo() {
       await db.collection('users').createIndex({ email: 1 }, { unique: true })
       await db.collection('bookings').createIndex({ userId: 1, startTime: 1 })
       await db.collection('status_checks').createIndex({ timestamp: -1 })
-      await db.collection('google_events').createIndex({ userId: 1, bookingId: 1 }, { unique: true })
+      await db.collection('google_events').createIndex({ userId: 1, bookingId: 1, calendarId: 1 }, { unique: true })
     } catch {}
     indexesEnsured = true
   }
