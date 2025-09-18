@@ -10,6 +10,9 @@ import os
 import sys
 from datetime import datetime, timedelta
 import uuid
+import hashlib
+import hmac
+import time
 
 # Get base URL from environment
 BASE_URL = 'https://syncmeeting.preview.emergentagent.com'  # Use the production URL directly
