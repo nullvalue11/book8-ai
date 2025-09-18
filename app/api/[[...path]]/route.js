@@ -26,6 +26,10 @@ async function connectToMongo() {
       await db.collection('bookings').createIndex({ userId: 1, startTime: 1 })
       await db.collection('status_checks').createIndex({ timestamp: -1 })
       await db.collection('google_events').createIndex({ userId: 1, bookingId: 1, calendarId: 1 }, { unique: true })
+      await db.collection('stripe_events').createIndex({ eventId: 1 }, { unique: true })
+      await db.collection('stripe_events').createIndex({ processedAt: -1 })
+      await db.collection('billing_logs').createIndex({ userId: 1, timestamp: -1 })
+      await db.collection('billing_logs').createIndex({ eventType: 1, timestamp: -1 })
     } catch {}
     indexesEnsured = true
   }
