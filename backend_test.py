@@ -659,6 +659,14 @@ class BackendTester:
             # Test Google Calendar integration specifically
             self.test_google_calendar_sync_get()
             self.test_google_calendar_dynamic_imports()
+            
+            # Test new Google Calendar Selection features
+            self.test_google_calendars_get()
+            self.test_google_calendars_post()
+            self.test_google_sync_enhanced()
+            
+        # Test error handling
+        self.test_google_calendars_error_handling()
         
         # Test CORS
         self.test_cors_preflight()
