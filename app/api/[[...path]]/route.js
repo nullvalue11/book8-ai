@@ -522,6 +522,134 @@ async function handleRoute(request, { params }) {
       try { const session = await s.billingPortal.sessions.create({ customer: customerId, return_url: `${base}/?portal_return=true` }); return json({ url: session.url }) } catch { return json({ error: 'Failed to create portal session' }, { status: 500 }) }
     }
 
+    // Stripe Webhook with Idempotency
+    if (route === '/billing/stripe/webhook' && method === 'POST') {
+      const s = await getStripe()
+      if (!s) return json({ error: 'Stripe not configured' }, { status: 400 })
+      
+      let event
+      try {
+        const body = await request.text()
+        const sig = request.headers.get('stripe-signature')
+        
+        if (!sig) {
+          console.error('Missing stripe-signature header')
+          return json({ error: 'Missing signature' }, { status: 400 })
+        }
+        
+        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+        if (!webhookSecret) {
+          console.error('STRIPE_WEBHOOK_SECRET not configured')
+          return json({ error: 'Webhook secret not configured' }, { status: 400 })
+        }
+        
+        event = s.webhooks.constructEvent(body, sig, webhookSecret)
+      } catch (err) {
+        console.error('Webhook signature verification failed:', err.message)
+        return json({ error: 'Invalid signature' }, { status: 400 })
+      }
+      
+      // Idempotency check - prevent duplicate processing
+      const isAlreadyProcessed = await isStripeEventProcessed(database, event.id)
+      if (isAlreadyProcessed) {
+        console.log(`Event ${event.id} already processed, skipping`)
+        return json({ received: true, alreadyProcessed: true })
+      }
+      
+      try {
+        // Handle different event types
+        switch (event.type) {
+          case 'customer.subscription.created':
+          case 'customer.subscription.updated':
+            const subscription = event.data.object
+            const userId = await findUserByCustomerId(database, subscription.customer)
+            if (userId) {
+              await database.collection('users').updateOne(
+                { id: userId },
+                {
+                  $set: {
+                    'subscription.status': subscription.status,
+                    'subscription.priceId': subscription.items.data[0]?.price?.id || null,
+                    'subscription.customerId': subscription.customer,
+                    'subscription.subscriptionId': subscription.id,
+                    'subscription.currentPeriodStart': new Date(subscription.current_period_start * 1000).toISOString(),
+                    'subscription.currentPeriodEnd': new Date(subscription.current_period_end * 1000).toISOString(),
+                    'subscription.updatedAt': new Date().toISOString()
+                  }
+                }
+              )
+              await logBillingActivity(database, userId, event.type, event.id, {
+                subscriptionId: subscription.id,
+                status: subscription.status,
+                priceId: subscription.items.data[0]?.price?.id
+              })
+            }
+            break
+            
+          case 'customer.subscription.deleted':
+            const deletedSub = event.data.object
+            const userIdDeleted = await findUserByCustomerId(database, deletedSub.customer)
+            if (userIdDeleted) {
+              await database.collection('users').updateOne(
+                { id: userIdDeleted },
+                {
+                  $set: {
+                    'subscription.status': 'canceled',
+                    'subscription.updatedAt': new Date().toISOString()
+                  }
+                }
+              )
+              await logBillingActivity(database, userIdDeleted, event.type, event.id, {
+                subscriptionId: deletedSub.id,
+                status: 'canceled'
+              })
+            }
+            break
+            
+          case 'invoice.payment_succeeded':
+            const invoice = event.data.object
+            const userIdInvoice = await findUserByCustomerId(database, invoice.customer)
+            if (userIdInvoice) {
+              await logBillingActivity(database, userIdInvoice, event.type, event.id, {
+                invoiceId: invoice.id,
+                amountPaid: invoice.amount_paid,
+                currency: invoice.currency
+              })
+            }
+            break
+            
+          case 'invoice.payment_failed':
+            const failedInvoice = event.data.object
+            const userIdFailed = await findUserByCustomerId(database, failedInvoice.customer)
+            if (userIdFailed) {
+              await logBillingActivity(database, userIdFailed, event.type, event.id, {
+                invoiceId: failedInvoice.id,
+                amountDue: failedInvoice.amount_due,
+                currency: failedInvoice.currency
+              }, 'failed')
+            }
+            break
+            
+          default:
+            console.log(`Unhandled event type: ${event.type}`)
+            await logBillingActivity(database, null, event.type, event.id, { unhandled: true })
+        }
+        
+        // Mark event as processed to prevent duplicate handling
+        await markStripeEventProcessed(database, event.id, event.type, {
+          customerId: event.data.object.customer || null,
+          amount: event.data.object.amount || event.data.object.amount_paid || null
+        })
+        
+        return json({ received: true, processed: true })
+        
+      } catch (error) {
+        console.error('Error processing webhook:', error)
+        await logBillingActivity(database, null, event.type, event.id, { error: error.message }, 'error')
+        return json({ error: 'Processing failed' }, { status: 500 })
+      }
+    }
+
     return json({ error: `Route ${route} not found` }, { status: 404 })
   } catch (error) {
     console.error('API Error (outer):', error)
