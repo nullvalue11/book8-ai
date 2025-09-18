@@ -212,6 +212,20 @@
       - working: true
         agent: "testing"
         comment: "✅ GOOGLE CALENDAR SELECTION FEATURE FULLY TESTED: All new endpoints working correctly! 1) GET /api/integrations/google/calendars - properly fetches available calendars and returns 'Google not connected' when OAuth not configured. 2) POST /api/integrations/google/calendars - properly saves calendar selections and validates payload format. 3) Enhanced POST /api/integrations/google/sync - now syncs to multiple selected calendars and returns calendarsSelected count. 4) Database operations working - calendarId index created correctly in google_events collection. 5) Authentication properly required for all endpoints. 6) Error handling working correctly - returns appropriate 400 errors when Google not connected. The feature is production-ready and handles both authenticated users with/without Google OAuth configured."
+      - working: true
+        agent: "user"
+        comment: "✅ USER CONFIRMED: User pleased with multi-calendar sync implementation. Feature working as expected and ready for production use."
+  - task: "Stripe Webhook Idempotency - Prevent duplicate processing"
+    implemented: false
+    working: false
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Starting implementation: Add storage for Stripe event.id to prevent duplicate webhook processing. Add stripe_events collection to track processed events. Implement idempotency checks in webhook handling to ensure billing events are processed safely without duplicates."
 
 ## frontend:
   - task: "Dashboard UI with auth and bookings"
