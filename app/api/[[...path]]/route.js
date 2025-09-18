@@ -308,6 +308,65 @@ async function handleRoute(request, { params }) {
       return json(rest)
     }
 
+    // Google Calendar endpoints
+    if (route === '/integrations/google/calendars' && method === 'GET') {
+      const auth = await requireAuth(request, database)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const calendar = await getGoogleClientForUser(auth.user.id)
+      if (!calendar) return json({ error: 'Google not connected', reconnect: true }, { status: 400 })
+      
+      try {
+        const response = await calendar.calendarList.list()
+        const calendars = response.data.items?.map(cal => ({
+          id: cal.id,
+          summary: cal.summary,
+          description: cal.description || '',
+          primary: cal.primary || false,
+          accessRole: cal.accessRole,
+          selected: false // Will be updated based on user preferences
+        })) || []
+        
+        // Get user's selected calendars from database
+        const user = await database.collection('users').findOne({ id: auth.user.id })
+        const selectedCalendarIds = user?.google?.selectedCalendars || ['primary']
+        
+        // Mark selected calendars
+        calendars.forEach(cal => {
+          cal.selected = selectedCalendarIds.includes(cal.id) || (cal.primary && selectedCalendarIds.includes('primary'))
+        })
+        
+        return json({ calendars })
+      } catch (error) {
+        console.error('Failed to fetch Google Calendars:', error)
+        return json({ error: 'Failed to fetch calendars' }, { status: 500 })
+      }
+    }
+
+    if (route === '/integrations/google/calendars' && method === 'POST') {
+      const auth = await requireAuth(request, database)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const calendar = await getGoogleClientForUser(auth.user.id)
+      if (!calendar) return json({ error: 'Google not connected', reconnect: true }, { status: 400 })
+      
+      const { selectedCalendars } = await getBody(request)
+      if (!Array.isArray(selectedCalendars)) {
+        return json({ error: 'selectedCalendars must be an array' }, { status: 400 })
+      }
+      
+      try {
+        // Update user's selected calendars in database
+        await database.collection('users').updateOne(
+          { id: auth.user.id },
+          { $set: { 'google.selectedCalendars': selectedCalendars, 'google.updatedAt': new Date() } }
+        )
+        
+        return json({ ok: true, selectedCalendars })
+      } catch (error) {
+        console.error('Failed to update calendar selections:', error)
+        return json({ error: 'Failed to update calendar selections' }, { status: 500 })
+      }
+    }
+
     // Google sync endpoints
     if (route === '/integrations/google/sync' && method === 'POST') {
       const auth = await requireAuth(request, database)
