@@ -447,6 +447,194 @@ class BackendTester:
         self.results['google_calendar_dynamic_imports'] = False
         return False
         
+    def test_google_calendars_get(self):
+        """Test GET /api/integrations/google/calendars - should fetch available calendars"""
+        self.log("Testing Google Calendar list endpoint...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for Google Calendar list test")
+            return False
+            
+        try:
+            url = f"{API_BASE}/integrations/google/calendars"
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            response = self.session.get(url, headers=headers, timeout=15)
+            
+            # We expect either:
+            # 1. 400 with "Google not connected" (if no OAuth configured) - this is expected behavior
+            # 2. 200 with calendars list (if OAuth is configured)
+            
+            if response.status_code == 400:
+                data = response.json()
+                if 'Google not connected' in data.get('error', ''):
+                    self.log(f"✅ Google Calendar list endpoint working - properly returns 'Google not connected' when OAuth not configured")
+                    self.results['google_calendars_get'] = True
+                    return True
+                else:
+                    self.log(f"❌ Google Calendar list returned unexpected 400 error: {data}")
+            elif response.status_code == 200:
+                data = response.json()
+                if 'calendars' in data and isinstance(data['calendars'], list):
+                    self.log(f"✅ Google Calendar list endpoint working - returned {len(data['calendars'])} calendars")
+                    self.results['google_calendars_get'] = True
+                    return True
+                else:
+                    self.log(f"❌ Google Calendar list returned unexpected 200 response: {data}")
+            else:
+                self.log(f"❌ Google Calendar list failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ Google Calendar list test failed with error: {str(e)}")
+            
+        self.results['google_calendars_get'] = False
+        return False
+        
+    def test_google_calendars_post(self):
+        """Test POST /api/integrations/google/calendars - should save calendar selections"""
+        self.log("Testing Google Calendar selection save endpoint...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for Google Calendar selection test")
+            return False
+            
+        try:
+            url = f"{API_BASE}/integrations/google/calendars"
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            # Test with valid calendar selection payload
+            payload = {
+                "selectedCalendars": ["primary", "test-calendar-id"]
+            }
+            
+            response = self.session.post(url, json=payload, headers=headers, timeout=15)
+            
+            # We expect either:
+            # 1. 400 with "Google not connected" (if no OAuth configured) - this is expected behavior
+            # 2. 200 with success response (if OAuth is configured)
+            
+            if response.status_code == 400:
+                data = response.json()
+                if 'Google not connected' in data.get('error', ''):
+                    self.log(f"✅ Google Calendar selection save endpoint working - properly returns 'Google not connected' when OAuth not configured")
+                    self.results['google_calendars_post'] = True
+                    return True
+                else:
+                    self.log(f"❌ Google Calendar selection save returned unexpected 400 error: {data}")
+            elif response.status_code == 200:
+                data = response.json()
+                if data.get('ok') is True and 'selectedCalendars' in data:
+                    self.log(f"✅ Google Calendar selection save endpoint working - saved {len(data['selectedCalendars'])} calendar selections")
+                    self.results['google_calendars_post'] = True
+                    return True
+                else:
+                    self.log(f"❌ Google Calendar selection save returned unexpected 200 response: {data}")
+            else:
+                self.log(f"❌ Google Calendar selection save failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ Google Calendar selection save test failed with error: {str(e)}")
+            
+        self.results['google_calendars_post'] = False
+        return False
+        
+    def test_google_sync_enhanced(self):
+        """Test enhanced POST /api/integrations/google/sync - should return calendarsSelected count"""
+        self.log("Testing enhanced Google Calendar sync endpoint...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for enhanced Google Calendar sync test")
+            return False
+            
+        try:
+            url = f"{API_BASE}/integrations/google/sync"
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            response = self.session.post(url, json={}, headers=headers, timeout=15)
+            
+            # We expect either:
+            # 1. 400 with "Google not connected" (if no OAuth configured) - this is expected behavior
+            # 2. 200 with sync results including calendarsSelected count (if OAuth is configured)
+            
+            if response.status_code == 400:
+                data = response.json()
+                if 'Google not connected' in data.get('error', ''):
+                    self.log(f"✅ Enhanced Google Calendar sync endpoint working - properly returns 'Google not connected' when OAuth not configured")
+                    self.results['google_sync_enhanced'] = True
+                    return True
+                else:
+                    self.log(f"❌ Enhanced Google Calendar sync returned unexpected 400 error: {data}")
+            elif response.status_code == 200:
+                data = response.json()
+                if 'calendarsSelected' in data and isinstance(data.get('calendarsSelected'), int):
+                    self.log(f"✅ Enhanced Google Calendar sync endpoint working - synced to {data['calendarsSelected']} calendars")
+                    self.results['google_sync_enhanced'] = True
+                    return True
+                else:
+                    self.log(f"❌ Enhanced Google Calendar sync missing calendarsSelected count: {data}")
+            else:
+                self.log(f"❌ Enhanced Google Calendar sync failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ Enhanced Google Calendar sync test failed with error: {str(e)}")
+            
+        self.results['google_sync_enhanced'] = False
+        return False
+        
+    def test_google_calendars_error_handling(self):
+        """Test Google Calendar endpoints error handling without authentication"""
+        self.log("Testing Google Calendar endpoints error handling...")
+        
+        try:
+            # Test GET /api/integrations/google/calendars without auth
+            url = f"{API_BASE}/integrations/google/calendars"
+            response = self.session.get(url, timeout=10)
+            
+            if response.status_code == 401:
+                self.log(f"✅ GET /api/integrations/google/calendars properly requires authentication")
+            else:
+                self.log(f"❌ GET /api/integrations/google/calendars should return 401 without auth, got {response.status_code}")
+                self.results['google_calendars_error_handling'] = False
+                return False
+                
+            # Test POST /api/integrations/google/calendars without auth
+            response = self.session.post(url, json={"selectedCalendars": ["primary"]}, timeout=10)
+            
+            if response.status_code == 401:
+                self.log(f"✅ POST /api/integrations/google/calendars properly requires authentication")
+            else:
+                self.log(f"❌ POST /api/integrations/google/calendars should return 401 without auth, got {response.status_code}")
+                self.results['google_calendars_error_handling'] = False
+                return False
+                
+            # Test POST with invalid payload (with auth)
+            if self.auth_token:
+                headers = {"Authorization": f"Bearer {self.auth_token}"}
+                invalid_payload = {"selectedCalendars": "not-an-array"}
+                
+                response = self.session.post(url, json=invalid_payload, headers=headers, timeout=10)
+                
+                if response.status_code == 400:
+                    data = response.json()
+                    if 'selectedCalendars must be an array' in data.get('error', ''):
+                        self.log(f"✅ POST /api/integrations/google/calendars properly validates payload format")
+                        self.results['google_calendars_error_handling'] = True
+                        return True
+                    else:
+                        self.log(f"❌ POST /api/integrations/google/calendars should validate array format, got: {data}")
+                else:
+                    self.log(f"❌ POST /api/integrations/google/calendars should return 400 for invalid payload, got {response.status_code}")
+            else:
+                self.log(f"⚠️ Skipping payload validation test - no auth token available")
+                self.results['google_calendars_error_handling'] = True
+                return True
+                
+        except Exception as e:
+            self.log(f"❌ Google Calendar error handling test failed with error: {str(e)}")
+            
+        self.results['google_calendars_error_handling'] = False
+        return False
+        
     def run_all_tests(self):
         """Run all backend tests in sequence"""
         self.log(f"Starting backend tests against {API_BASE}")
