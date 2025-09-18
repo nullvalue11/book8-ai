@@ -198,6 +198,17 @@
       - working: true
         agent: "user"
         comment: "✅ CONFIRMED WORKING: User confirms Google Calendar integration fully functional. Dashboard shows 'Connected • Last synced 9/17/2025, 3:44:11 PM' with working 'Sync now' button. OAuth credentials configured in Google Cloud Console. Both critical issues resolved."
+  - task: "Google Calendar Selection - Choose calendars to sync"
+    implemented: false
+    working: false
+    file: "/app/app/api/[[...path]]/route.js, /app/app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Starting implementation: Add endpoints to fetch available Google Calendars, update sync logic to work with selected calendars, add UI for calendar selection. Currently limited to primary calendar only."
 
 ## frontend:
   - task: "Dashboard UI with auth and bookings"
