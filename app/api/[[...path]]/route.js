@@ -69,6 +69,50 @@ async function requireAuth(request, db) {
 
 function isISODateString(s) { const d = new Date(s); return !isNaN(d.getTime()) }
 
+// Stripe Event Idempotency Helper
+async function isStripeEventProcessed(database, eventId) {
+  try {
+    const existingEvent = await database.collection('stripe_events').findOne({ eventId })
+    return !!existingEvent
+  } catch (error) {
+    console.error('Error checking event idempotency:', error)
+    return false
+  }
+}
+
+async function markStripeEventProcessed(database, eventId, eventType, eventData = {}) {
+  try {
+    await database.collection('stripe_events').insertOne({
+      eventId,
+      eventType,
+      eventData,
+      processedAt: new Date(),
+      createdAt: new Date()
+    })
+    return true
+  } catch (error) {
+    console.error('Error marking event as processed:', error)
+    return false
+  }
+}
+
+async function logBillingActivity(database, userId, eventType, eventId, details = {}, status = 'success') {
+  try {
+    await database.collection('billing_logs').insertOne({
+      id: uuidv4(),
+      userId,
+      eventType,
+      eventId,
+      details,
+      status,
+      timestamp: new Date(),
+      createdAt: new Date()
+    })
+  } catch (error) {
+    console.error('Error logging billing activity:', error)
+  }
+}
+
 async function getOAuth2Client() {
   try {
     const { google } = await import('googleapis')
