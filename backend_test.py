@@ -41,7 +41,17 @@ class BackendTester:
             'google_calendars_get': False,
             'google_calendars_post': False,
             'google_sync_enhanced': False,
-            'google_calendars_error_handling': False
+            'google_calendars_error_handling': False,
+            'stripe_webhook_no_signature': False,
+            'stripe_webhook_invalid_signature': False,
+            'stripe_webhook_no_secret': False,
+            'billing_logs_no_auth': False,
+            'billing_logs_with_auth': False,
+            'billing_logs_pagination': False,
+            'events_status_no_auth': False,
+            'events_status_with_auth': False,
+            'events_status_with_limit': False,
+            'database_collections_exist': False
         }
         
     def log(self, message):
