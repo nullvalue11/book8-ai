@@ -113,6 +113,16 @@ async function logBillingActivity(database, userId, eventType, eventId, details 
   }
 }
 
+async function findUserByCustomerId(database, customerId) {
+  try {
+    const user = await database.collection('users').findOne({ 'subscription.customerId': customerId })
+    return user?.id || null
+  } catch (error) {
+    console.error('Error finding user by customer ID:', error)
+    return null
+  }
+}
+
 async function getOAuth2Client() {
   try {
     const { google } = await import('googleapis')
