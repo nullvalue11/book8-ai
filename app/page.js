@@ -219,6 +219,9 @@ const BookingsTable = ({ token, items, refresh }) => {
 
 const IntegrationsCard = ({ token, profile, onProfile }) => {
   const [loading, setLoading] = useState(false)
+  const [calendarsLoading, setCalendarsLoading] = useState(false)
+  const [showCalendars, setShowCalendars] = useState(false)
+  const [availableCalendars, setAvailableCalendars] = useState([])
   const connected = !!profile?.google?.connected
   const last = profile?.google?.lastSyncedAt
 
@@ -240,8 +243,71 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
       const ru = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
       const rud = await ru.text(); const ud = rud ? JSON.parse(rud) : null
       if (ru.ok && ud) onProfile(ud)
-      alert(`Synced: created ${d?.created || 0}, updated ${d?.updated || 0}${d?.deleted !== undefined ? ", deleted " + d.deleted : ''}`)
+      alert(`Synced: created ${d?.created || 0}, updated ${d?.updated || 0}${d?.deleted !== undefined ? ", deleted " + d.deleted : ''}${d?.calendarsSelected ? " across " + d.calendarsSelected + " calendars" : ''}`)
     } catch (e) { alert(e.message) } finally { setLoading(false) }
+  }
+
+  const loadCalendars = async () => {
+    try {
+      setCalendarsLoading(true)
+      const r = await fetch('/api/integrations/google/calendars', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+      const raw = await r.text()
+      const d = raw ? JSON.parse(raw) : null
+      if (!r.ok) throw new Error(d?.error || 'Failed to load calendars')
+      setAvailableCalendars(d?.calendars || [])
+      setShowCalendars(true)
+    } catch (e) { 
+      alert(e.message) 
+      setShowCalendars(false)
+    } finally { 
+      setCalendarsLoading(false) 
+    }
+  }
+
+  const saveCalendarSelection = async () => {
+    try {
+      setCalendarsLoading(true)
+      const selectedIds = availableCalendars.filter(cal => cal.selected).map(cal => cal.id)
+      if (selectedIds.length === 0) {
+        alert('Please select at least one calendar')
+        return
+      }
+      
+      const r = await fetch('/api/integrations/google/calendars', { 
+        method: 'POST', 
+        headers: { 
+          Authorization: `Bearer ${token}`, 
+          'Content-Type': 'application/json',
+          Accept: 'application/json' 
+        },
+        body: JSON.stringify({ selectedCalendars: selectedIds })
+      })
+      const raw = await r.text()
+      const d = raw ? JSON.parse(raw) : null
+      if (!r.ok) throw new Error(d?.error || 'Failed to save calendar selection')
+      
+      alert(`Calendar selection saved! Selected ${selectedIds.length} calendar(s).`)
+      setShowCalendars(false)
+      
+      // Refresh user profile
+      const ru = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+      const rud = await ru.text(); const ud = rud ? JSON.parse(rud) : null
+      if (ru.ok && ud) onProfile(ud)
+    } catch (e) { 
+      alert(e.message) 
+    } finally { 
+      setCalendarsLoading(false) 
+    }
+  }
+
+  const toggleCalendar = (calendarId) => {
+    setAvailableCalendars(prev => 
+      prev.map(cal => 
+        cal.id === calendarId 
+          ? { ...cal, selected: !cal.selected }
+          : cal
+      )
+    )
   }
 
   return (
@@ -250,20 +316,73 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
         <h3 className="font-semibold">Integrations</h3>
         <button onClick={async () => { const r = await fetch('/api/user', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }); const raw = await r.text(); const u = raw ? JSON.parse(raw) : null; if (r.ok && u) onProfile(u) }} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Refresh</button>
       </div>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="font-medium">Google Calendar</div>
-            <div className="text-sm text-muted-foreground">{connected ? 'Connected' : 'Not connected'}{last ? ` • Last synced ${new Date(last).toLocaleString()}` : ''}</div>
+      
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">Google Calendar</div>
+              <div className="text-sm text-muted-foreground">{connected ? 'Connected' : 'Not connected'}{last ? ` • Last synced ${new Date(last).toLocaleString()}` : ''}</div>
+            </div>
+            <div className="flex gap-2">
+              {!connected ? (
+                <button className="rounded-md border border-border px-3 py-2 hover:bg-muted" onClick={connect}>Connect</button>
+              ) : (
+                <button disabled={loading} className="rounded-md bg-primary text-primary-foreground px-3 py-2 disabled:opacity-60" onClick={syncNow}>{loading ? 'Syncing…' : 'Sync now'}</button>
+              )}
+            </div>
           </div>
-          <div className="flex gap-2">
-            {!connected ? (
-              <button className="rounded-md border border-border px-3 py-2 hover:bg-muted" onClick={connect}>Connect</button>
-            ) : (
-              <button disabled={loading} className="rounded-md bg-primary text-primary-foreground px-3 py-2 disabled:opacity-60" onClick={syncNow}>{loading ? 'Syncing…' : 'Sync now'}</button>
+          
+          {connected && (
+            <div className="flex gap-2">
+              <button 
+                disabled={calendarsLoading} 
+                className="text-sm rounded-md border border-border px-3 py-1 hover:bg-muted disabled:opacity-60" 
+                onClick={showCalendars ? () => setShowCalendars(false) : loadCalendars}
+              >
+                {calendarsLoading ? 'Loading...' : (showCalendars ? 'Hide Calendars' : 'Choose Calendars')}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {showCalendars && (
+          <div className="border border-border rounded-md p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm">Select Calendars to Sync</h4>
+              <button 
+                disabled={calendarsLoading}
+                className="text-sm rounded-md bg-primary text-primary-foreground px-3 py-1 disabled:opacity-60 hover:opacity-90"
+                onClick={saveCalendarSelection}
+              >
+                {calendarsLoading ? 'Saving...' : 'Save Selection'}
+              </button>
+            </div>
+            
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {availableCalendars.map(calendar => (
+                <div key={calendar.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id={`cal-${calendar.id}`}
+                    checked={calendar.selected}
+                    onChange={() => toggleCalendar(calendar.id)}
+                    className="rounded"
+                  />
+                  <label htmlFor={`cal-${calendar.id}`} className="flex-1 text-sm cursor-pointer">
+                    <span className="font-medium">{calendar.summary}</span>
+                    {calendar.primary && <span className="ml-2 text-xs bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">Primary</span>}
+                    {calendar.description && <div className="text-muted-foreground text-xs">{calendar.description}</div>}
+                  </label>
+                </div>
+              ))}
+            </div>
+            
+            {availableCalendars.length === 0 && !calendarsLoading && (
+              <div className="text-sm text-muted-foreground text-center py-2">No calendars found</div>
             )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
