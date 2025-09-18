@@ -178,6 +178,20 @@
       - working: true
         agent: "testing"
         comment: "✅ RESOLVED: Root cause was Next.js 14 compilation hang due to Stripe/googleapis imports in dynamic catch-all routes. Fixed by temporarily disabling problematic imports. Core booking functionality working perfectly: POST creates bookings, GET lists them, DELETE cancels them. 8/9 backend tests passing."
+  - task: "Restore Google Calendar integration with dynamic imports"
+    implemented: false
+    working: false
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "REGRESSION: User reports Google Calendar connection broken after 500 error fix. Dialog shows 'Google not connected' when trying to sync."
+      - working: false
+        agent: "main"
+        comment: "Starting fix: Will implement dynamic imports for googleapis to restore Google Calendar functionality while avoiding Next.js 14 compilation issues."
 
 ## frontend:
   - task: "Dashboard UI with auth and bookings"
