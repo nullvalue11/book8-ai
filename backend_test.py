@@ -648,6 +648,347 @@ class BackendTester:
         self.results['google_calendars_error_handling'] = False
         return False
         
+    def create_mock_stripe_signature(self, payload, secret="test_webhook_secret"):
+        """Create a mock Stripe signature for testing"""
+        timestamp = str(int(time.time()))
+        signed_payload = f"{timestamp}.{payload}"
+        signature = hmac.new(
+            secret.encode('utf-8'),
+            signed_payload.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        return f"t={timestamp},v1={signature}"
+    
+    def test_stripe_webhook_no_signature(self):
+        """Test webhook endpoint without Stripe signature (should fail)"""
+        self.log("Testing Stripe webhook without signature...")
+        
+        try:
+            webhook_payload = {
+                "id": "evt_test_webhook_no_sig",
+                "object": "event",
+                "type": "customer.subscription.created",
+                "data": {
+                    "object": {
+                        "id": "sub_test123",
+                        "customer": "cus_test123",
+                        "status": "active"
+                    }
+                }
+            }
+            
+            url = f"{API_BASE}/billing/stripe/webhook"
+            response = self.session.post(url, json=webhook_payload, timeout=10)
+            
+            if response.status_code == 400:
+                data = response.json()
+                if "signature" in data.get('error', '').lower():
+                    self.log("✅ Stripe webhook correctly rejected without signature")
+                    self.results['stripe_webhook_no_signature'] = True
+                    return True
+                else:
+                    self.log(f"❌ Unexpected error message: {data.get('error')}")
+            else:
+                self.log(f"❌ Expected 400 status, got {response.status_code}")
+                
+        except Exception as e:
+            self.log(f"❌ Error testing webhook without signature: {str(e)}")
+            
+        self.results['stripe_webhook_no_signature'] = False
+        return False
+    
+    def test_stripe_webhook_invalid_signature(self):
+        """Test webhook endpoint with invalid Stripe signature (should fail)"""
+        self.log("Testing Stripe webhook with invalid signature...")
+        
+        try:
+            webhook_payload = {
+                "id": "evt_test_webhook_invalid_sig",
+                "object": "event",
+                "type": "customer.subscription.created",
+                "data": {
+                    "object": {
+                        "id": "sub_test123",
+                        "customer": "cus_test123",
+                        "status": "active"
+                    }
+                }
+            }
+            
+            # Create invalid signature
+            headers = {
+                'stripe-signature': 'invalid_signature_format'
+            }
+            
+            url = f"{API_BASE}/billing/stripe/webhook"
+            response = self.session.post(url, json=webhook_payload, headers=headers, timeout=10)
+            
+            if response.status_code == 400:
+                data = response.json()
+                if "signature" in data.get('error', '').lower() or "invalid" in data.get('error', '').lower():
+                    self.log("✅ Stripe webhook correctly rejected with invalid signature")
+                    self.results['stripe_webhook_invalid_signature'] = True
+                    return True
+                else:
+                    self.log(f"❌ Unexpected error message: {data.get('error')}")
+            else:
+                self.log(f"❌ Expected 400 status, got {response.status_code}")
+                
+        except Exception as e:
+            self.log(f"❌ Error testing webhook with invalid signature: {str(e)}")
+            
+        self.results['stripe_webhook_invalid_signature'] = False
+        return False
+    
+    def test_stripe_webhook_no_secret(self):
+        """Test webhook when signature validation fails due to wrong secret"""
+        self.log("Testing Stripe webhook with wrong secret...")
+        
+        try:
+            webhook_payload = {
+                "id": "evt_test_webhook_no_secret",
+                "object": "event", 
+                "type": "customer.subscription.created",
+                "data": {
+                    "object": {
+                        "id": "sub_test123",
+                        "customer": "cus_test123",
+                        "status": "active"
+                    }
+                }
+            }
+            
+            # Create a signature with wrong secret
+            payload_str = json.dumps(webhook_payload)
+            headers = {
+                'stripe-signature': self.create_mock_stripe_signature(payload_str, "wrong_secret")
+            }
+            
+            url = f"{API_BASE}/billing/stripe/webhook"
+            response = self.session.post(url, data=payload_str, headers=headers, timeout=10)
+            
+            # Should fail due to signature mismatch
+            if response.status_code == 400:
+                self.log("✅ Stripe webhook correctly handled wrong secret configuration")
+                self.results['stripe_webhook_no_secret'] = True
+                return True
+            else:
+                self.log(f"❌ Expected 400 status, got {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ Error testing webhook without secret: {str(e)}")
+            
+        self.results['stripe_webhook_no_secret'] = False
+        return False
+    
+    def test_billing_logs_no_auth(self):
+        """Test billing logs endpoint without authentication (should fail)"""
+        self.log("Testing billing logs without authentication...")
+        
+        try:
+            # Remove auth header temporarily
+            temp_headers = self.session.headers.copy()
+            if 'Authorization' in self.session.headers:
+                del self.session.headers['Authorization']
+            
+            url = f"{API_BASE}/billing/logs"
+            response = self.session.get(url, timeout=10)
+            
+            # Restore headers
+            self.session.headers = temp_headers
+            
+            if response.status_code == 401:
+                self.log("✅ Billing logs correctly requires authentication")
+                self.results['billing_logs_no_auth'] = True
+                return True
+            else:
+                self.log(f"❌ Expected 401 status, got {response.status_code}")
+                
+        except Exception as e:
+            self.log(f"❌ Error testing billing logs without auth: {str(e)}")
+            
+        self.results['billing_logs_no_auth'] = False
+        return False
+    
+    def test_billing_logs_with_auth(self):
+        """Test billing logs endpoint with authentication"""
+        self.log("Testing billing logs with authentication...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for billing logs test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            url = f"{API_BASE}/billing/logs"
+            response = self.session.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'logs' in data and isinstance(data['logs'], list):
+                    self.log(f"✅ Billing logs endpoint working - returned {len(data['logs'])} logs")
+                    self.results['billing_logs_with_auth'] = True
+                    return True
+                else:
+                    self.log(f"❌ Unexpected response format: {data}")
+            else:
+                self.log(f"❌ Expected 200 status, got {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ Error testing billing logs with auth: {str(e)}")
+            
+        self.results['billing_logs_with_auth'] = False
+        return False
+    
+    def test_billing_logs_pagination(self):
+        """Test billing logs endpoint with pagination parameters"""
+        self.log("Testing billing logs pagination...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for billing logs pagination test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            url = f"{API_BASE}/billing/logs?limit=5&skip=0"
+            response = self.session.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'logs' in data and 'count' in data:
+                    self.log(f"✅ Billing logs pagination working - limit/skip parameters accepted")
+                    self.results['billing_logs_pagination'] = True
+                    return True
+                else:
+                    self.log(f"❌ Unexpected response format: {data}")
+            else:
+                self.log(f"❌ Expected 200 status, got {response.status_code}")
+                
+        except Exception as e:
+            self.log(f"❌ Error testing billing logs pagination: {str(e)}")
+            
+        self.results['billing_logs_pagination'] = False
+        return False
+    
+    def test_events_status_no_auth(self):
+        """Test events status endpoint without authentication (should fail)"""
+        self.log("Testing events status without authentication...")
+        
+        try:
+            # Remove auth header temporarily
+            temp_headers = self.session.headers.copy()
+            if 'Authorization' in self.session.headers:
+                del self.session.headers['Authorization']
+            
+            url = f"{API_BASE}/billing/events/status"
+            response = self.session.get(url, timeout=10)
+            
+            # Restore headers
+            self.session.headers = temp_headers
+            
+            if response.status_code == 401:
+                self.log("✅ Events status correctly requires authentication")
+                self.results['events_status_no_auth'] = True
+                return True
+            else:
+                self.log(f"❌ Expected 401 status, got {response.status_code}")
+                
+        except Exception as e:
+            self.log(f"❌ Error testing events status without auth: {str(e)}")
+            
+        self.results['events_status_no_auth'] = False
+        return False
+    
+    def test_events_status_with_auth(self):
+        """Test events status endpoint with authentication"""
+        self.log("Testing events status with authentication...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for events status test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            url = f"{API_BASE}/billing/events/status"
+            response = self.session.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'events' in data and isinstance(data['events'], list):
+                    self.log(f"✅ Events status endpoint working - returned {len(data['events'])} events")
+                    self.results['events_status_with_auth'] = True
+                    return True
+                else:
+                    self.log(f"❌ Unexpected response format: {data}")
+            else:
+                self.log(f"❌ Expected 200 status, got {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ Error testing events status with auth: {str(e)}")
+            
+        self.results['events_status_with_auth'] = False
+        return False
+    
+    def test_events_status_with_limit(self):
+        """Test events status endpoint with limit parameter"""
+        self.log("Testing events status with limit parameter...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for events status limit test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            url = f"{API_BASE}/billing/events/status?limit=10"
+            response = self.session.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'events' in data and 'count' in data:
+                    self.log(f"✅ Events status limit parameter working")
+                    self.results['events_status_with_limit'] = True
+                    return True
+                else:
+                    self.log(f"❌ Unexpected response format: {data}")
+            else:
+                self.log(f"❌ Expected 200 status, got {response.status_code}")
+                
+        except Exception as e:
+            self.log(f"❌ Error testing events status with limit: {str(e)}")
+            
+        self.results['events_status_with_limit'] = False
+        return False
+    
+    def test_database_collections_exist(self):
+        """Test that the required database collections and indexes exist by checking API responses"""
+        self.log("Testing database collections through API responses...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for database collections test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            # Test that billing_logs collection works
+            logs_response = self.session.get(f"{API_BASE}/billing/logs", headers=headers, timeout=10)
+            
+            # Test that stripe_events collection works  
+            events_response = self.session.get(f"{API_BASE}/billing/events/status", headers=headers, timeout=10)
+            
+            if logs_response.status_code == 200 and events_response.status_code == 200:
+                self.log("✅ Database collections (billing_logs, stripe_events) are accessible")
+                self.results['database_collections_exist'] = True
+                return True
+            else:
+                self.log(f"❌ Database collection access failed - logs: {logs_response.status_code}, events: {events_response.status_code}")
+                
+        except Exception as e:
+            self.log(f"❌ Error testing database collections: {str(e)}")
+            
+        self.results['database_collections_exist'] = False
+        return False
+        
     def run_all_tests(self):
         """Run all backend tests in sequence"""
         self.log(f"Starting backend tests against {API_BASE}")
