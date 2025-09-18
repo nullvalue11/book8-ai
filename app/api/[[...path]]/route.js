@@ -660,6 +660,54 @@ async function handleRoute(request, { params }) {
       }
     }
 
+    // Billing Activity Log endpoint (for debugging and monitoring)
+    if (route === '/billing/logs' && method === 'GET') {
+      const auth = await requireAuth(request, database)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      
+      try {
+        const url = new URL(request.url)
+        const limit = parseInt(url.searchParams.get('limit') || '50')
+        const skip = parseInt(url.searchParams.get('skip') || '0')
+        
+        const logs = await database.collection('billing_logs')
+          .find({ userId: auth.user.id })
+          .sort({ timestamp: -1 })
+          .limit(Math.min(limit, 100)) // Cap at 100 for performance
+          .skip(skip)
+          .toArray()
+        
+        const cleaned = logs.map(({ _id, ...rest }) => rest)
+        return json({ logs: cleaned, count: cleaned.length })
+      } catch (error) {
+        console.error('Error fetching billing logs:', error)
+        return json({ error: 'Failed to fetch billing logs' }, { status: 500 })
+      }
+    }
+
+    // Stripe Events Status endpoint (for debugging duplicate prevention)
+    if (route === '/billing/events/status' && method === 'GET') {
+      const auth = await requireAuth(request, database)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      
+      try {
+        const url = new URL(request.url)
+        const limit = parseInt(url.searchParams.get('limit') || '20')
+        
+        const events = await database.collection('stripe_events')
+          .find({})
+          .sort({ processedAt: -1 })
+          .limit(Math.min(limit, 50))
+          .toArray()
+        
+        const cleaned = events.map(({ _id, ...rest }) => rest)
+        return json({ events: cleaned, count: cleaned.length })
+      } catch (error) {
+        console.error('Error fetching stripe events:', error)
+        return json({ error: 'Failed to fetch stripe events' }, { status: 500 })
+      }
+    }
+
     return json({ error: `Route ${route} not found` }, { status: 404 })
   } catch (error) {
     console.error('API Error (outer):', error)
