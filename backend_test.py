@@ -34,7 +34,11 @@ class BackendTester:
             'integration_stubs': False,
             'cors_preflight': False,
             'google_calendar_sync_get': False,
-            'google_calendar_dynamic_imports': False
+            'google_calendar_dynamic_imports': False,
+            'google_calendars_get': False,
+            'google_calendars_post': False,
+            'google_sync_enhanced': False,
+            'google_calendars_error_handling': False
         }
         
     def log(self, message):
