@@ -463,6 +463,10 @@ class BackendTester:
                     
             # Test integration stubs
             self.test_integration_stubs()
+            
+            # Test Google Calendar integration specifically
+            self.test_google_calendar_sync_get()
+            self.test_google_calendar_dynamic_imports()
         
         # Test CORS
         self.test_cors_preflight()
