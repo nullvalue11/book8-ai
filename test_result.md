@@ -234,9 +234,7 @@
 
 ## test_plan:
   current_focus:
-    - "UI Timezone Selector"
-    - "Google Calendar Selection"
-    - "Stripe Webhook Idempotency"
+    - "Google Calendar Selection - Choose calendars to sync"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
