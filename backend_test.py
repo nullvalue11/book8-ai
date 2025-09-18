@@ -366,6 +366,83 @@ class BackendTester:
         self.results['cors_preflight'] = False
         return False
         
+    def test_google_calendar_sync_get(self):
+        """Test GET /api/integrations/google/sync returns connection status (not 'Google not connected' error)"""
+        self.log("Testing Google Calendar sync GET endpoint...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for Google Calendar test")
+            return False
+            
+        try:
+            url = f"{API_BASE}/integrations/google/sync"
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            response = self.session.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Should return connection status, not an error
+                if 'connected' in data and 'lastSyncedAt' in data:
+                    self.log(f"✅ Google Calendar sync GET working - returns connection status: connected={data.get('connected')}")
+                    self.results['google_calendar_sync_get'] = True
+                    return True
+                else:
+                    self.log(f"❌ Google Calendar sync GET response missing expected fields: {data}")
+            else:
+                self.log(f"❌ Google Calendar sync GET failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ Google Calendar sync GET failed with error: {str(e)}")
+            
+        self.results['google_calendar_sync_get'] = False
+        return False
+        
+    def test_google_calendar_dynamic_imports(self):
+        """Test that Google Calendar endpoints work with dynamic imports (no compilation hanging)"""
+        self.log("Testing Google Calendar dynamic imports functionality...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for Google Calendar dynamic imports test")
+            return False
+            
+        try:
+            # Test POST /api/integrations/google/sync - should handle dynamic imports properly
+            url = f"{API_BASE}/integrations/google/sync"
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            response = self.session.post(url, json={}, headers=headers, timeout=15)
+            
+            # We expect either:
+            # 1. 400 with "Google not connected" (if no OAuth configured) - this is OK, means dynamic imports work
+            # 2. 200 with sync results (if OAuth is configured) - this is also OK
+            # 3. NOT a 500 error or timeout (which would indicate compilation issues)
+            
+            if response.status_code == 400:
+                data = response.json()
+                if 'Google not connected' in data.get('error', ''):
+                    self.log(f"✅ Google Calendar dynamic imports working - properly returns 'Google not connected' when OAuth not configured")
+                    self.results['google_calendar_dynamic_imports'] = True
+                    return True
+                else:
+                    self.log(f"❌ Google Calendar POST returned unexpected 400 error: {data}")
+            elif response.status_code == 200:
+                data = response.json()
+                if 'ok' in data or 'created' in data:
+                    self.log(f"✅ Google Calendar dynamic imports working - sync completed successfully: {data}")
+                    self.results['google_calendar_dynamic_imports'] = True
+                    return True
+                else:
+                    self.log(f"❌ Google Calendar POST returned unexpected 200 response: {data}")
+            else:
+                self.log(f"❌ Google Calendar POST failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ Google Calendar dynamic imports test failed with error: {str(e)}")
+            
+        self.results['google_calendar_dynamic_imports'] = False
+        return False
+        
     def run_all_tests(self):
         """Run all backend tests in sequence"""
         self.log(f"Starting backend tests against {API_BASE}")
