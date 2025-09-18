@@ -352,7 +352,7 @@ async function handleRoute(request, { params }) {
     if (route === '/billing/portal' && method === 'GET') {
       const auth = await requireAuth(request, database)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const s = getStripe(); if (!s) return json({ error: 'Stripe not configured. Set STRIPE_SECRET_KEY.' }, { status: 400 })
+      const s = await getStripe(); if (!s) return json({ error: 'Stripe not configured. Set STRIPE_SECRET_KEY.' }, { status: 400 })
       const user = await database.collection('users').findOne({ id: auth.user.id })
       const customerId = user?.subscription?.customerId
       if (!customerId) return json({ error: 'No subscription found' }, { status: 400 })
