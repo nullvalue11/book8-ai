@@ -98,10 +98,21 @@ async function getGoogleClientForUser(userId) {
   }
 }
 
-// Stripe (temporarily disabled to avoid compilation issues)
+// Stripe (with dynamic import to avoid compilation issues)
 let stripe = null
-function getStripe() {
-  return null
+async function getStripe() {
+  if (!stripe) {
+    try {
+      const Stripe = (await import('stripe')).default
+      const key = process.env.STRIPE_SECRET_KEY
+      if (!key) return null
+      stripe = new Stripe(key)
+    } catch (error) {
+      console.error('Error loading Stripe:', error)
+      return null
+    }
+  }
+  return stripe
 }
 
 // Router
