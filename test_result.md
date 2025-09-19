@@ -230,12 +230,12 @@
         agent: "testing"
         comment: "✅ STRIPE WEBHOOK IDEMPOTENCY FULLY TESTED AND WORKING: Comprehensive testing completed successfully! 1) POST /api/billing/stripe/webhook - Properly validates Stripe signatures and rejects requests without signature (400 'Missing signature') or with invalid signatures (400 'Invalid signature'). Handles webhook secret configuration correctly. 2) GET /api/billing/logs - Requires authentication (401 without Bearer token), returns user's billing activity logs with proper pagination support (limit/skip parameters, capped at 100 for performance). 3) GET /api/billing/events/status - Requires authentication, returns processed Stripe events with limit parameter support (capped at 50). 4) Database Operations - stripe_events and billing_logs collections accessible and working correctly with proper indexes for performance (10 requests completed in 0.48s). 5) Error Handling - All endpoints properly handle missing authentication, malformed payloads, empty payloads, and configuration issues. 6) Edge Cases - Large limit parameters properly capped, database indexes working efficiently. The Stripe Webhook Idempotency system is production-ready with comprehensive error handling and security validation!"
   - task: "Fix Google Calendar timezone synchronization bug"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "/app/lib/googleSync.js"
     stuck_count: 0
     priority: "critical"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "user"
@@ -243,6 +243,9 @@
       - working: false
         agent: "main"
         comment: "Starting fix: Update buildGoogleEventFromBooking to include timeZone field in start/end objects. Ensure booking.timeZone is properly passed to Google Calendar API payload."
+      - working: true
+        agent: "testing"
+        comment: "✅ TIMEZONE FIX VERIFIED AND WORKING: Comprehensive testing confirms the Google Calendar timezone synchronization fix is working correctly! 1) buildGoogleEventFromBooking function now properly includes timeZone field in start/end objects: start: { dateTime: b.startTime, timeZone: tz }, end: { dateTime: b.endTime, timeZone: tz }. 2) Timezone preservation tested: Bookings with America/New_York timezone are correctly stored and preserved in database. 3) Unit testing confirms: Function handles timezones correctly (America/New_York, America/Los_Angeles, UTC default), no double-conversion of times, proper Google Calendar API payload structure. 4) End-to-end testing: POST /api/bookings with timeZone='America/New_York' creates booking with preserved timezone, all required fields present for Google sync. 5) Root cause addressed: Function was missing timeZone field causing Google to interpret times as UTC instead of local timezone - now fixed. 6) Expected result: Booking 4:16 PM – 5:16 PM (America/New_York) in Book8 will now show as 4:16 PM – 5:16 PM Eastern Time in Google Calendar (no more 4-hour shift). The timezone synchronization bug is fully resolved!"
 
 ## frontend:
   - task: "Dashboard UI with auth and bookings"
