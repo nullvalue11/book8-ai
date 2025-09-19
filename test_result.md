@@ -229,6 +229,20 @@
       - working: true
         agent: "testing"
         comment: "✅ STRIPE WEBHOOK IDEMPOTENCY FULLY TESTED AND WORKING: Comprehensive testing completed successfully! 1) POST /api/billing/stripe/webhook - Properly validates Stripe signatures and rejects requests without signature (400 'Missing signature') or with invalid signatures (400 'Invalid signature'). Handles webhook secret configuration correctly. 2) GET /api/billing/logs - Requires authentication (401 without Bearer token), returns user's billing activity logs with proper pagination support (limit/skip parameters, capped at 100 for performance). 3) GET /api/billing/events/status - Requires authentication, returns processed Stripe events with limit parameter support (capped at 50). 4) Database Operations - stripe_events and billing_logs collections accessible and working correctly with proper indexes for performance (10 requests completed in 0.48s). 5) Error Handling - All endpoints properly handle missing authentication, malformed payloads, empty payloads, and configuration issues. 6) Edge Cases - Large limit parameters properly capped, database indexes working efficiently. The Stripe Webhook Idempotency system is production-ready with comprehensive error handling and security validation!"
+  - task: "Fix Google Calendar timezone synchronization bug"
+    implemented: false
+    working: false
+    file: "/app/lib/googleSync.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "TIMEZONE BUG DISCOVERED: Booking shows 4:16 PM – 5:16 PM (America/New_York) in Book8, but appears as 12:16 PM – 1:16 PM in Google Calendar (4 hours earlier). Root cause: buildGoogleEventFromBooking function missing timeZone field in start/end objects, causing Google to interpret times as UTC instead of local timezone."
+      - working: false
+        agent: "main"
+        comment: "Starting fix: Update buildGoogleEventFromBooking to include timeZone field in start/end objects. Ensure booking.timeZone is properly passed to Google Calendar API payload."
 
 ## frontend:
   - task: "Dashboard UI with auth and bookings"
