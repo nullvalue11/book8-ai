@@ -270,10 +270,14 @@
   run_ui: true
 
 ## test_plan:
-  current_focus: []
+  current_focus:
+    - "Phase 1 User Testing - Booking sync, cancellations, Stripe webhooks"
+  upcoming_phase_2:
+    - "Tavily Live Web Search - Real-time intelligence and reasoning"
+    - "OpenAI Realtime Audio - Phone call capability"
   stuck_tasks: []
   test_all: false
-  test_priority: "critical_first"
+  test_priority: "user_verification_first"
 
 ## agent_communication:
   - agent: "main"
