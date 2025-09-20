@@ -51,7 +51,12 @@ class BackendTester:
             'events_status_no_auth': False,
             'events_status_with_auth': False,
             'events_status_with_limit': False,
-            'database_collections_exist': False
+            'database_collections_exist': False,
+            'tavily_search_health_check': False,
+            'tavily_search_general': False,
+            'tavily_search_booking_assistant': False,
+            'tavily_search_error_handling': False,
+            'tavily_search_configuration': False
         }
         
     def log(self, message):
