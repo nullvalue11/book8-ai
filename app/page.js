@@ -626,6 +626,7 @@ export default function Home() {
           <div className="grid gap-6 md:grid-cols-5">
             <div className="md:col-span-2 space-y-6">
               <BookingForm token={token} onCreated={() => loadBookings()} />
+              <TavilySearch token={token} />
               <IntegrationsCard token={token} profile={profile} onProfile={(u) => { setProfile(u); setUserLocal(u) }} />
               <BillingCard token={token} user={profile} onUserUpdate={(u) => { setProfile(u); setUserLocal(u) }} />
             </div>
