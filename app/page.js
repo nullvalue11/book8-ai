@@ -388,6 +388,146 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
   )
 }
 
+const TavilySearch = ({ token }) => {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [searchType, setSearchType] = useState('general') // 'general' or 'booking'
+
+  const performSearch = async () => {
+    if (!query.trim()) return
+    
+    setLoading(true)
+    setError('')
+    setResults(null)
+    
+    try {
+      const endpoint = searchType === 'booking' ? '/api/integrations/search/booking-assistant' : '/api/integrations/search'
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        body: JSON.stringify({ query, maxResults: 5, includeAnswer: true })
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Search failed')
+      }
+
+      setResults(data)
+      
+    } catch (err) {
+      setError(err.message || 'Search failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !loading) {
+      performSearch()
+    }
+  }
+
+  return (
+    <div className="bg-card text-card-foreground rounded-lg border border-border shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold">AI Web Search</h3>
+        <div className="flex gap-2 text-xs">
+          <button 
+            onClick={() => setSearchType('general')}
+            className={`px-2 py-1 rounded ${searchType === 'general' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}
+          >
+            General
+          </button>
+          <button 
+            onClick={() => setSearchType('booking')}
+            className={`px-2 py-1 rounded ${searchType === 'booking' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}
+          >
+            Booking Assistant
+          </button>
+        </div>
+      </div>
+      
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder={searchType === 'booking' ? "Search for venues, restaurants, services..." : "Search for real-time information..."}
+            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+            disabled={loading}
+          />
+          <button 
+            onClick={performSearch}
+            disabled={!query.trim() || loading}
+            className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm hover:opacity-90 disabled:opacity-60"
+          >
+            {loading ? 'Searching...' : 'Search'}
+          </button>
+        </div>
+        
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+            <p className="text-destructive text-sm">{error}</p>
+          </div>
+        )}
+        
+        {results && (
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {results.answer && (
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-3">
+                <h4 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100">AI Answer</h4>
+                <p className="text-blue-800 dark:text-blue-200 text-sm">{results.answer}</p>
+              </div>
+            )}
+            
+            {results.bookingInfo?.hasBookingInfo && (
+              <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md p-3">
+                <h4 className="font-semibold text-sm mb-2 text-green-900 dark:text-green-100">Booking Information Found</h4>
+                {results.bookingInfo.venues?.length > 0 && (
+                  <div className="mb-2">
+                    <span className="text-xs font-medium text-green-800 dark:text-green-200">Venues: </span>
+                    <span className="text-xs text-green-700 dark:text-green-300">{results.bookingInfo.venues.join(', ')}</span>
+                  </div>
+                )}
+                {results.bookingInfo.phones?.length > 0 && (
+                  <div className="mb-2">
+                    <span className="text-xs font-medium text-green-800 dark:text-green-200">Phone: </span>
+                    <span className="text-xs text-green-700 dark:text-green-300">{results.bookingInfo.phones.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <h4 className="font-semibold text-sm">Results ({results.total_results})</h4>
+              {results.results?.slice(0, 3).map((result, index) => (
+                <div key={index} className="border border-border rounded-md p-2">
+                  <h5 className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                    <a href={result.url} target="_blank" rel="noopener noreferrer">
+                      {result.title}
+                    </a>
+                  </h5>
+                  <p className="text-xs text-muted-foreground mb-1">{result.url}</p>
+                  <p className="text-xs text-foreground">{result.content.substring(0, 150)}...</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const BillingCard = ({ token, user, onUserUpdate }) => {
   const [loading, setLoading] = useState(false)
 
