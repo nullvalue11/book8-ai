@@ -1264,6 +1264,14 @@ class BackendTester:
             self.test_events_status_with_limit()
             self.test_database_collections_exist()
             
+            # Test Tavily Live Web Search features
+            self.log("\n🔍 Testing Tavily Live Web Search Features...")
+            self.test_tavily_search_health_check()
+            self.test_tavily_search_general()
+            self.test_tavily_search_booking_assistant()
+            self.test_tavily_search_error_handling()
+            self.test_tavily_search_configuration()
+            
         # Test error handling
         self.test_google_calendars_error_handling()
         
