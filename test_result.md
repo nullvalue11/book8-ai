@@ -285,7 +285,9 @@
 
 ## test_plan:
   current_focus:
-    - "Tavily Live Web Search - Real-time intelligence and reasoning"
+    - "OpenAI Realtime Audio - Phone call capability"
+  phase_2_completed:
+    - "✅ Tavily Live Web Search - Real-time intelligence and reasoning working"
   phase_1_completed:
     - "✅ Google Calendar Selection - Multi-calendar sync working"
     - "✅ Stripe Webhook Idempotency - Billing security confirmed"  
