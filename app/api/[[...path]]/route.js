@@ -811,8 +811,16 @@ async function handleRoute(request, { params }) {
           return json({ error: 'Valid search query is required' }, { status: 400 })
         }
         
-        if (!process.env.TAVILY_API_KEY) {
-          return json({ error: 'Tavily API key not configured' }, { status: 500 })
+        console.log('[Tavily Search] API Key present:', !!process.env.TAVILY_API_KEY)
+        console.log('[Tavily Search] API Key length:', process.env.TAVILY_API_KEY?.length || 0)
+        
+        if (!process.env.TAVILY_API_KEY || process.env.TAVILY_API_KEY === 'your_tavily_api_key_here') {
+          console.error('[Tavily Search] API key not configured or using placeholder')
+          return json({ 
+            error: 'Tavily API key not configured. Please set TAVILY_API_KEY environment variable.',
+            configured: false,
+            keyLength: process.env.TAVILY_API_KEY?.length || 0
+          }, { status: 500 })
         }
         
         console.log(`Tavily search request: "${query}"`)
@@ -864,14 +872,17 @@ async function handleRoute(request, { params }) {
         
         if (error.message?.includes('unauthorized') || error.message?.includes('invalid key')) {
           return json({ 
-            error: 'Invalid API configuration',
-            type: 'auth_error'
+            error: 'Invalid Tavily API key. Please check your TAVILY_API_KEY environment variable.',
+            type: 'auth_error',
+            configured: !!process.env.TAVILY_API_KEY,
+            keyLength: process.env.TAVILY_API_KEY?.length || 0
           }, { status: 401 })
         }
         
         return json({ 
           error: 'Failed to perform search. Please try again.',
-          type: 'search_error'
+          type: 'search_error',
+          details: error.message
         }, { status: 500 })
       }
     }
