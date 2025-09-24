@@ -403,7 +403,7 @@ const TavilySearch = ({ token }) => {
     setResults(null)
     
     try {
-      const endpoint = searchType === 'booking' ? '/api/integrations/search/booking-assistant' : '/api/integrations/search'
+      const endpoint = searchType === 'booking' ? '/api/search/booking-assistant' : '/api/search'
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
