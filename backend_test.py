@@ -1183,9 +1183,9 @@ class BackendTester:
         try:
             # Test that endpoints exist and respond (even if not configured)
             endpoints = [
-                ('/integrations/search', 'GET'),
-                ('/integrations/search', 'POST'),
-                ('/integrations/search/booking-assistant', 'POST')
+                ('/search', 'GET'),
+                ('/search', 'POST'),
+                ('/search/booking-assistant', 'POST')
             ]
             
             all_endpoints_exist = True
