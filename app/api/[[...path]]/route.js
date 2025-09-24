@@ -763,6 +763,11 @@ async function handleRoute(request, { params }) {
       }
     }
 
+    // Test route to verify catch-all is working
+    if (route === '/test-search' && method === 'GET') {
+      return json({ message: 'Test search route working', route, method })
+    }
+
     // Tavily Live Web Search Endpoints (moved to /api/search/ to avoid conflicts with /api/integrations/)
     if (route === '/search' && method === 'GET') {
       try {
