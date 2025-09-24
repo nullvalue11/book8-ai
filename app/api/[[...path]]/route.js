@@ -763,13 +763,8 @@ async function handleRoute(request, { params }) {
       }
     }
 
-    // Test endpoint for debugging
-    if (route === '/test-search' && method === 'GET') {
-      return json({ message: 'Test search endpoint working', route, method })
-    }
-
-    // Tavily Live Web Search Endpoints
-    if (route === '/integrations/search' && method === 'GET') {
+    // Tavily Live Web Search Endpoints (moved to /api/search/ to avoid conflicts with /api/integrations/)
+    if (route === '/search' && method === 'GET') {
       try {
         if (!process.env.TAVILY_API_KEY) {
           return json({ 
@@ -783,7 +778,7 @@ async function handleRoute(request, { params }) {
           status: 'ready',
           message: 'Tavily search API is configured and ready',
           configured: true,
-          endpoint: '/api/integrations/search'
+          endpoint: '/api/search'
         })
         
       } catch (error) {
@@ -796,7 +791,7 @@ async function handleRoute(request, { params }) {
       }
     }
 
-    if (route === '/integrations/search' && method === 'POST') {
+    if (route === '/search' && method === 'POST') {
       try {
         const { query, maxResults = 5, includeAnswer = true, searchDepth = "basic" } = await getBody(request)
         
@@ -870,7 +865,7 @@ async function handleRoute(request, { params }) {
     }
 
     // Tavily Booking Assistant Search
-    if (route === '/integrations/search/booking-assistant' && method === 'POST') {
+    if (route === '/search/booking-assistant' && method === 'POST') {
       try {
         const { query, location, date, type } = await getBody(request)
         
