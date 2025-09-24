@@ -240,6 +240,11 @@ async function handleRoute(request, { params }) {
   const route = `/${path.join('/')}`
   const method = request.method
 
+  // Debug logging for search routes
+  if (route.includes('search')) {
+    console.log(`DEBUG: Route=${route}, Method=${method}, Path=${JSON.stringify(path)}`)
+  }
+
   try {
     const database = await connectToMongo()
 
