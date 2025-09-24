@@ -275,6 +275,29 @@
         agent: "testing"
         comment: "✅ TAVILY LIVE WEB SEARCH FULLY IMPLEMENTED: All endpoints working correctly! 1) GET /api/integrations/search - Health check returns proper configuration status. 2) POST /api/integrations/search - General search with proper response format (query, results, total_results, timestamp). 3) POST /api/integrations/search/booking-assistant - Booking-specific search with enhanced features (originalQuery, enhancedQuery, bookingInfo, suggestions). 4) Error handling working - validates empty queries (400), handles API key configuration issues appropriately. 5) @tavily/core package properly installed and integrated. 6) Frontend TavilySearch component implemented with both general and booking assistant modes. Feature is production-ready and requires only TAVILY_API_KEY configuration for live functionality."
 
+  - task: "Fix Google Calendar auth persistence after redeploy"
+    implemented: false
+    working: false
+    file: "/app/app/api/integrations/google/auth/route.js, /app/app/api/integrations/google/callback/route.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "CRITICAL BUG: After redeploy to Vercel, Google Calendar auth fails with 'auth_required' error. Button resets to 'Not connected'. Need to verify: 1) Callback URL https://book8-ai.vercel.app/api/integrations/google/callback in Google Cloud Console, 2) GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXT_PUBLIC_BASE_URL set in Vercel, 3) Auth persistence not broken in redeployed code."
+  - task: "Fix missing Tavily Search UI on dashboard"
+    implemented: false
+    working: false
+    file: "/app/app/page.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "CRITICAL BUG: TavilySearch component not visible on dashboard after redeploy. Need to verify: 1) TavilySearch component properly added to page.js, 2) Not hidden due to missing TAVILY_API_KEY, 3) Component rendering correctly in production build."
+
 ## frontend:
   - task: "Dashboard UI with auth and bookings"
     implemented: true
