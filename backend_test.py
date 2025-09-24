@@ -1292,6 +1292,7 @@ class BackendTester:
             
             # Test Tavily Live Web Search features
             self.log("\n🔍 Testing Tavily Live Web Search Features...")
+            self.test_test_search_route_working()  # Test catch-all routing first
             self.test_tavily_search_health_check()
             self.test_tavily_search_general()
             self.test_tavily_search_booking_assistant()
