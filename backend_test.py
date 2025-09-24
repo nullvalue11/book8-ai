@@ -15,7 +15,7 @@ import hmac
 import time
 
 # Get base URL from environment
-BASE_URL = 'https://syncmeeting.preview.emergentagent.com'  # Use the production URL directly
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://book8-ai.vercel.app')
 API_BASE = f"{BASE_URL}/api"
 
 class BackendTester:
