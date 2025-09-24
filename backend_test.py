@@ -1124,7 +1124,7 @@ class BackendTester:
         
         try:
             # Test general search with invalid query
-            url = f"{API_BASE}/integrations/search"
+            url = f"{API_BASE}/search"
             
             # Test empty query
             response = self.session.post(url, json={"query": ""}, timeout=10)
@@ -1157,7 +1157,7 @@ class BackendTester:
                 return False
                 
             # Test booking assistant with invalid query
-            booking_url = f"{API_BASE}/integrations/search/booking-assistant"
+            booking_url = f"{API_BASE}/search/booking-assistant"
             response = self.session.post(booking_url, json={"query": ""}, timeout=10)
             if response.status_code == 400:
                 data = response.json()
