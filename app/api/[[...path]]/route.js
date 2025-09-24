@@ -242,6 +242,11 @@ async function handleRoute(request, { params }) {
 
   console.log(`API Request: ${method} ${route}`)
 
+  // Debug test - return immediately for test-search
+  if (route === '/test-search' && method === 'GET') {
+    return json({ message: 'Test search route working - DEBUG', route, method, path })
+  }
+
   try {
     const database = await connectToMongo()
 
