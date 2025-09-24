@@ -56,7 +56,8 @@ class BackendTester:
             'tavily_search_general': False,
             'tavily_search_booking_assistant': False,
             'tavily_search_error_handling': False,
-            'tavily_search_configuration': False
+            'tavily_search_configuration': False,
+            'test_search_route_working': False
         }
         
     def log(self, message):
