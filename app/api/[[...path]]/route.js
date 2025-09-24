@@ -123,6 +123,61 @@ async function findUserByCustomerId(database, customerId) {
   }
 }
 
+// Helper function to extract booking-relevant information
+function extractBookingInfo(answer, results) {
+  if (!answer) return null
+  
+  // Extract venues/locations
+  const venuePatterns = [
+    /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:Hotel|Restaurant|Venue|Center|Hall|Room|Space|Studio|Office)\b/g,
+    /\b(?:Hotel|Restaurant|Venue|Center|Hall|Room|Space|Studio|Office)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g
+  ]
+  
+  let venues = []
+  venuePatterns.forEach(pattern => {
+    const matches = [...answer.matchAll(pattern)]
+    venues.push(...matches.map(match => match[1] || match[0]))
+  })
+  
+  // Extract dates
+  const datePatterns = [
+    /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b/g,
+    /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
+    /\b\d{4}-\d{2}-\d{2}\b/g
+  ]
+  
+  let dates = []
+  datePatterns.forEach(pattern => {
+    const matches = [...answer.matchAll(pattern)]
+    dates.push(...matches.map(match => match[0]))
+  })
+  
+  // Extract times
+  const timePattern = /\b\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm)\b/g
+  const times = [...answer.matchAll(timePattern)].map(match => match[0])
+  
+  // Extract phone numbers
+  const phonePattern = /(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/g
+  const phones = [...answer.matchAll(phonePattern)].map(match => match[0])
+  
+  // Extract contact info from results
+  const contactInfo = results.slice(0, 3).map(result => ({
+    name: result.title,
+    url: result.url,
+    description: result.content.substring(0, 200) + '...',
+    relevance: result.score
+  }))
+  
+  return {
+    venues: [...new Set(venues)].slice(0, 5),
+    dates: [...new Set(dates)].slice(0, 3),
+    times: [...new Set(times)].slice(0, 5),
+    phones: [...new Set(phones)].slice(0, 3),
+    contacts: contactInfo,
+    hasBookingInfo: venues.length > 0 || phones.length > 0 || contactInfo.length > 0
+  }
+}
+
 async function getOAuth2Client() {
   try {
     const { google } = await import('googleapis')
