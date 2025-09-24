@@ -1072,11 +1072,11 @@ class BackendTester:
         return False
         
     def test_tavily_search_booking_assistant(self):
-        """Test POST /api/integrations/search/booking-assistant - Booking-specific search"""
+        """Test POST /api/search/booking-assistant - Booking-specific search"""
         self.log("Testing Tavily booking assistant search...")
         
         try:
-            url = f"{API_BASE}/integrations/search/booking-assistant"
+            url = f"{API_BASE}/search/booking-assistant"
             payload = {
                 "query": "best restaurants downtown",
                 "location": "New York City",
