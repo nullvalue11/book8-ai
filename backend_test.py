@@ -995,11 +995,11 @@ class BackendTester:
         return False
         
     def test_tavily_search_health_check(self):
-        """Test GET /api/integrations/search - Health check and configuration status"""
+        """Test GET /api/search - Health check and configuration status"""
         self.log("Testing Tavily search health check...")
         
         try:
-            url = f"{API_BASE}/integrations/search"
+            url = f"{API_BASE}/search"
             response = self.session.get(url, timeout=15)
             
             if response.status_code == 200:
