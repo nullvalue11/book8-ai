@@ -778,11 +778,16 @@ async function handleRoute(request, { params }) {
     // Tavily Live Web Search Endpoints (moved to /api/search/ to avoid conflicts with /api/integrations/)
     if (route === '/search' && method === 'GET') {
       try {
-        if (!process.env.TAVILY_API_KEY) {
+        console.log('[Tavily Health] API Key present:', !!process.env.TAVILY_API_KEY)
+        console.log('[Tavily Health] API Key value:', process.env.TAVILY_API_KEY)
+        
+        if (!process.env.TAVILY_API_KEY || process.env.TAVILY_API_KEY === 'your_tavily_api_key_here') {
           return json({ 
             status: 'error',
-            message: 'Tavily API key not configured',
-            configured: false
+            message: 'Tavily API key not configured or using placeholder',
+            configured: false,
+            keyPresent: !!process.env.TAVILY_API_KEY,
+            keyValue: process.env.TAVILY_API_KEY
           }, { status: 500 })
         }
         
@@ -790,7 +795,8 @@ async function handleRoute(request, { params }) {
           status: 'ready',
           message: 'Tavily search API is configured and ready',
           configured: true,
-          endpoint: '/api/search'
+          endpoint: '/api/search',
+          keyLength: process.env.TAVILY_API_KEY?.length || 0
         })
         
       } catch (error) {
@@ -798,7 +804,8 @@ async function handleRoute(request, { params }) {
         return json({ 
           status: 'error',
           message: 'Tavily API health check failed',
-          configured: false
+          configured: false,
+          error: error.message
         }, { status: 500 })
       }
     }
