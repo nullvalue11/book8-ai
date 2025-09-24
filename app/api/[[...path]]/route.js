@@ -708,6 +708,203 @@ async function handleRoute(request, { params }) {
       }
     }
 
+    // Tavily Live Web Search Endpoints
+    if (route === '/integrations/search' && method === 'GET') {
+      try {
+        if (!process.env.TAVILY_API_KEY) {
+          return json({ 
+            status: 'error',
+            message: 'Tavily API key not configured',
+            configured: false
+          }, { status: 500 })
+        }
+        
+        return json({ 
+          status: 'ready',
+          message: 'Tavily search API is configured and ready',
+          configured: true,
+          endpoint: '/api/integrations/search'
+        })
+        
+      } catch (error) {
+        console.error('Tavily health check error:', error)
+        return json({ 
+          status: 'error',
+          message: 'Tavily API health check failed',
+          configured: false
+        }, { status: 500 })
+      }
+    }
+
+    if (route === '/integrations/search' && method === 'POST') {
+      try {
+        const { query, maxResults = 5, includeAnswer = true, searchDepth = "basic" } = await getBody(request)
+        
+        if (!query || typeof query !== 'string') {
+          return json({ error: 'Valid search query is required' }, { status: 400 })
+        }
+        
+        if (!process.env.TAVILY_API_KEY) {
+          return json({ error: 'Tavily API key not configured' }, { status: 500 })
+        }
+        
+        console.log(`Tavily search request: "${query}"`)
+        
+        // Dynamic import to avoid compilation issues
+        const { tavily } = await import('@tavily/core')
+        const tvly = tavily({ apiKey: process.env.TAVILY_API_KEY })
+        
+        // Perform search
+        const searchResult = await tvly.search({
+          query,
+          max_results: Math.min(maxResults, 10), // Cap at 10 for performance
+          include_answer: includeAnswer,
+          search_depth: searchDepth,
+          include_domains: [], // Can be customized for specific domains
+          exclude_domains: [], // Can exclude certain domains
+        })
+        
+        console.log(`Tavily search completed: ${searchResult.results?.length || 0} results`)
+        
+        // Format response for Book8 AI context
+        const response = {
+          query: searchResult.query || query,
+          answer: searchResult.answer || null,
+          results: (searchResult.results || []).map(result => ({
+            title: result.title || '',
+            url: result.url || '',
+            content: result.content || '',
+            score: result.score || 0,
+            published_date: result.published_date || null,
+          })),
+          total_results: searchResult.results?.length || 0,
+          search_depth: searchDepth,
+          timestamp: new Date().toISOString(),
+        }
+        
+        return json(response)
+        
+      } catch (error) {
+        console.error('Tavily search error:', error)
+        
+        // Handle specific Tavily API errors
+        if (error.message?.includes('quota') || error.message?.includes('limit')) {
+          return json({ 
+            error: 'Search quota exceeded. Please try again later.',
+            type: 'quota_exceeded'
+          }, { status: 429 })
+        }
+        
+        if (error.message?.includes('unauthorized') || error.message?.includes('invalid key')) {
+          return json({ 
+            error: 'Invalid API configuration',
+            type: 'auth_error'
+          }, { status: 401 })
+        }
+        
+        return json({ 
+          error: 'Failed to perform search. Please try again.',
+          type: 'search_error'
+        }, { status: 500 })
+      }
+    }
+
+    // Tavily Booking Assistant Search
+    if (route === '/integrations/search/booking-assistant' && method === 'POST') {
+      try {
+        const { query, location, date, type } = await getBody(request)
+        
+        if (!query || typeof query !== 'string') {
+          return json({ error: 'Valid search query is required' }, { status: 400 })
+        }
+        
+        if (!process.env.TAVILY_API_KEY) {
+          return json({ error: 'Tavily API key not configured' }, { status: 500 })
+        }
+        
+        // Enhance query with booking-specific context
+        let enhancedQuery = query
+        if (location) enhancedQuery += ` in ${location}`
+        if (date) enhancedQuery += ` on ${date}`
+        if (type) enhancedQuery += ` ${type}`
+        
+        // Add booking context keywords
+        enhancedQuery += ' booking availability contact information phone address hours'
+        
+        console.log(`Booking assistant search: "${enhancedQuery}"`)
+        
+        // Dynamic import to avoid compilation issues
+        const { tavily } = await import('@tavily/core')
+        const tvly = tavily({ apiKey: process.env.TAVILY_API_KEY })
+        
+        // Perform enhanced search
+        const searchResult = await tvly.search({
+          query: enhancedQuery,
+          max_results: 8,
+          include_answer: true,
+          search_depth: "advanced", // Use advanced search for better booking info
+        })
+        
+        console.log(`Booking search completed: ${searchResult.results?.length || 0} results`)
+        
+        // Extract booking-specific information
+        const bookingInfo = extractBookingInfo(searchResult.answer, searchResult.results || [])
+        
+        // Format response for Book8 AI booking context
+        const response = {
+          originalQuery: query,
+          enhancedQuery: enhancedQuery,
+          answer: searchResult.answer || null,
+          bookingInfo: bookingInfo,
+          results: (searchResult.results || []).map(result => ({
+            title: result.title || '',
+            url: result.url || '',
+            content: result.content || '',
+            score: result.score || 0,
+            published_date: result.published_date || null,
+          })),
+          suggestions: {
+            nextSteps: bookingInfo?.hasBookingInfo ? [
+              'Call the venue directly using the phone numbers found',
+              'Visit the venue websites for online booking',
+              'Check availability for your preferred dates',
+              'Compare different venue options'
+            ] : [
+              'Try searching with more specific location details',
+              'Include preferred dates in your search',
+              'Specify the type of venue you need'
+            ]
+          },
+          total_results: searchResult.results?.length || 0,
+          timestamp: new Date().toISOString(),
+        }
+        
+        return json(response)
+        
+      } catch (error) {
+        console.error('Booking assistant search error:', error)
+        
+        if (error.message?.includes('quota') || error.message?.includes('limit')) {
+          return json({ 
+            error: 'Search quota exceeded. Please try again later.',
+            type: 'quota_exceeded'
+          }, { status: 429 })
+        }
+        
+        if (error.message?.includes('unauthorized') || error.message?.includes('invalid key')) {
+          return json({ 
+            error: 'Invalid API configuration',
+            type: 'auth_error'
+          }, { status: 401 })
+        }
+        
+        return json({ 
+          error: 'Failed to perform booking search. Please try again.',
+          type: 'search_error'
+        }, { status: 500 })
+      }
+    }
+
     return json({ error: `Route ${route} not found` }, { status: 404 })
   } catch (error) {
     console.error('API Error (outer):', error)
