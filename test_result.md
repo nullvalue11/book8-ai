@@ -275,7 +275,28 @@
         agent: "testing"
         comment: "✅ TAVILY LIVE WEB SEARCH FULLY IMPLEMENTED: All endpoints working correctly! 1) GET /api/integrations/search - Health check returns proper configuration status. 2) POST /api/integrations/search - General search with proper response format (query, results, total_results, timestamp). 3) POST /api/integrations/search/booking-assistant - Booking-specific search with enhanced features (originalQuery, enhancedQuery, bookingInfo, suggestions). 4) Error handling working - validates empty queries (400), handles API key configuration issues appropriately. 5) @tavily/core package properly installed and integrated. 6) Frontend TavilySearch component implemented with both general and booking assistant modes. Feature is production-ready and requires only TAVILY_API_KEY configuration for live functionality."
 
-  - task: "Fix Google Calendar auth persistence after redeploy"
+  - task: "Fix Google Calendar auth_required error in production"
+    implemented: false
+    working: false
+    file: "/app/app/api/integrations/google/auth/route.js, /app/app/api/integrations/google/callback/route.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "CRITICAL BUG: After latest redeploy with Tavily integration, Google Calendar auth fails with 'Google integration error: auth_required' when clicking Connect. Environment variables set in Vercel (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, base URL). Authorized redirect URIs correct in Google Cloud Console: https://book8-ai.vercel.app/api/integrations/google/callback. Auth not completing, UI shows 'Not connected'. Need to confirm: 1) OAuth callback being hit, 2) tokens stored in users.google, 3) if Gmail account needs to be test user in OAuth consent screen."
+  - task: "Fix Tavily API key configuration for search functionality"
+    implemented: false
+    working: false
+    file: "/app/app/api/[[...path]]/route.js, /app/.env"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "CRITICAL BUG: TavilySearch component visible but all searches fail with 'Failed to perform booking search. Please try again.' Logs show POST /api/search returns 500 errors due to missing API key. User has generated Tavily API key from dashboard. Need to confirm: 1) Correct env variable name (TAVILY_API_KEY), 2) Backend pulling from process.env.TAVILY_API_KEY correctly, 3) Key deployment to Vercel working."
     implemented: true
     working: true
     file: "/app/app/api/integrations/google/auth/route.js, /app/app/api/integrations/google/callback/route.js"
