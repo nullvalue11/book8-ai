@@ -763,6 +763,11 @@ async function handleRoute(request, { params }) {
       }
     }
 
+    // Test endpoint for debugging
+    if (route === '/test-search' && method === 'GET') {
+      return json({ message: 'Test search endpoint working', route, method })
+    }
+
     // Tavily Live Web Search Endpoints
     if (route === '/integrations/search' && method === 'GET') {
       try {
