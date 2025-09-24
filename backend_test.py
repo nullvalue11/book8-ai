@@ -1222,6 +1222,31 @@ class BackendTester:
         self.results['tavily_search_configuration'] = False
         return False
         
+    def test_test_search_route_working(self):
+        """Test /api/test-search endpoint to verify catch-all routing is working"""
+        self.log("Testing /api/test-search route to verify catch-all routing...")
+        
+        try:
+            url = f"{API_BASE}/test-search"
+            response = self.session.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'message' in data and 'Test search route working' in data['message']:
+                    self.log("✅ /api/test-search route working - catch-all routing confirmed")
+                    self.results['test_search_route_working'] = True
+                    return True
+                else:
+                    self.log(f"❌ /api/test-search unexpected response: {data}")
+            else:
+                self.log(f"❌ /api/test-search failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ /api/test-search test failed with error: {str(e)}")
+            
+        self.results['test_search_route_working'] = False
+        return False
+        
     def run_all_tests(self):
         """Run all backend tests in sequence"""
         self.log(f"Starting backend tests against {API_BASE}")
