@@ -1028,11 +1028,11 @@ class BackendTester:
         return False
         
     def test_tavily_search_general(self):
-        """Test POST /api/integrations/search - General web search functionality"""
+        """Test POST /api/search - General web search functionality"""
         self.log("Testing Tavily general search...")
         
         try:
-            url = f"{API_BASE}/integrations/search"
+            url = f"{API_BASE}/search"
             payload = {
                 "query": "latest AI developments 2024",
                 "maxResults": 3,
