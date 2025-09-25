@@ -230,10 +230,22 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
 
   const connect = async () => {
     try {
+      console.log('[Google Connect] Starting connection process')
       const t = typeof window !== 'undefined' ? window.localStorage.getItem('book8_token') : ''
-      if (t) window.location.href = `/api/integrations/google/auth?jwt=${encodeURIComponent(t)}`
-      else window.location.href = '/api/integrations/google/auth'
-    } catch { window.location.href = '/api/integrations/google/auth' }
+      console.log('[Google Connect] JWT token present:', !!t)
+      
+      if (t) {
+        const url = `/api/integrations/google/auth?jwt=${encodeURIComponent(t)}`
+        console.log('[Google Connect] Redirecting to:', url)
+        window.location.href = url
+      } else {
+        console.log('[Google Connect] No JWT token, redirecting without token')
+        window.location.href = '/api/integrations/google/auth'
+      }
+    } catch (err) { 
+      console.error('[Google Connect] Error:', err)
+      window.location.href = '/api/integrations/google/auth' 
+    }
   }
 
   const syncNow = async () => {
