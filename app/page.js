@@ -50,28 +50,31 @@ function useAuth() {
 }
 
 const Header = ({ user, onLogout, banner }) => {
+  console.log('[Header] User data:', user) // Debug logging
   return (
     <div className="w-full border-b border-border bg-card">
       <div className="container py-4">
+        {banner && <div className="bg-blue-100 border border-blue-300 text-blue-800 px-4 py-2 rounded mb-4">{banner}</div>}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded bg-primary/10" />
-            <div className="font-semibold">Book8 AI</div>
-          </div>
-          <div className="text-sm text-muted-foreground">
+          <h1 className="text-xl font-bold">Book8 AI</h1>
+          <div className="flex items-center gap-4">
             {user ? (
-              <div className="flex items-center gap-3">
-                <span>{user?.email}</span>
-                <button onClick={onLogout} className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground hover:opacity-90">Logout</button>
-              </div>
+              <>
+                <div className="text-sm text-muted-foreground">
+                  Logged in as <span className="font-medium">{user?.email}</span>
+                </div>
+                <button 
+                  onClick={onLogout} 
+                  className="px-4 py-2 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 font-medium"
+                >
+                  Logout
+                </button>
+              </>
             ) : (
-              <span>MVP Demo</span>
+              <span className="text-sm text-muted-foreground">MVP Demo</span>
             )}
           </div>
         </div>
-        {banner ? (
-          <div className="mt-3 rounded-md border border-border bg-muted px-3 py-2 text-sm">{banner}</div>
-        ) : null}
       </div>
     </div>
   )
