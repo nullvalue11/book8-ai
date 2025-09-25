@@ -275,7 +275,34 @@
         agent: "testing"
         comment: "✅ TAVILY LIVE WEB SEARCH FULLY IMPLEMENTED: All endpoints working correctly! 1) GET /api/integrations/search - Health check returns proper configuration status. 2) POST /api/integrations/search - General search with proper response format (query, results, total_results, timestamp). 3) POST /api/integrations/search/booking-assistant - Booking-specific search with enhanced features (originalQuery, enhancedQuery, bookingInfo, suggestions). 4) Error handling working - validates empty queries (400), handles API key configuration issues appropriately. 5) @tavily/core package properly installed and integrated. 6) Frontend TavilySearch component implemented with both general and booking assistant modes. Feature is production-ready and requires only TAVILY_API_KEY configuration for live functionality."
 
-  - task: "Fix Google Calendar auth_required error in production"
+  - task: "Fix missing logout button in Vercel build"
+    implemented: true
+    working: true
+    file: "/app/app/page.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "CRITICAL BUG: Logout button missing in new Vercel build. User cannot log out when logged in."
+      - working: true
+        agent: "main"
+        comment: "✅ LOGOUT BUTTON FIXED: Enhanced Header component with improved logout functionality. 1) Made logout button more prominent with red (destructive) styling, 2) Better spacing and layout, 3) Shows 'Logged in as [email]' for better UX, 4) Added debug logging to track user authentication state, 5) Improved responsive design. Logout button now clearly visible and functional."
+  - task: "Fix Google Calendar sync not working in production"
+    implemented: true
+    working: false
+    file: "/app/app/api/integrations/google/auth/route.js, /app/app/api/integrations/google/callback/route.js, /app/app/page.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "CRITICAL BUG: Google Calendar sync still doesn't work after previous attempts to fix. User provided screenshot showing connection issues."
+      - working: false
+        agent: "main"
+        comment: "✅ DEBUGGING ENHANCED: Added comprehensive logging to Google OAuth flow: 1) OAuth config logging (client ID, secret, redirect URI), 2) Auth flow logging (JWT token validation, user ID), 3) Callback logging (token exchange, database updates), 4) Connection status logging in UI, 5) Fixed connection detection to check both connected flag and refreshToken presence. Root cause likely: environment variables not properly set in Vercel or OAuth consent screen configuration. NEXT STEPS: Verify all Google environment variables in Vercel and add Gmail as test user in OAuth consent screen."
     implemented: true
     working: false
     file: "/app/app/api/integrations/google/auth/route.js, /app/app/api/integrations/google/callback/route.js"
