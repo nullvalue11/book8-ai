@@ -228,6 +228,10 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
   const connected = !!profile?.google?.connected
   const last = profile?.google?.lastSyncedAt
 
+  console.log('[IntegrationsCard] Profile data:', profile) // Debug logging
+  console.log('[IntegrationsCard] Connected status:', connected) // Debug logging
+  console.log('[IntegrationsCard] Google data:', profile?.google) // Debug logging
+
   const connect = async () => {
     try {
       console.log('[Google Connect] Starting connection process')
