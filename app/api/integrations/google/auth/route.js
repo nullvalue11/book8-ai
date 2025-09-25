@@ -16,7 +16,18 @@ function getOAuth2Client(base) {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
   const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${base}/api/integrations/google/callback`
-  if (!clientId || !clientSecret) return null
+  
+  console.log('[Google OAuth Config] Base URL:', base)
+  console.log('[Google OAuth Config] Client ID present:', !!clientId)
+  console.log('[Google OAuth Config] Client ID length:', clientId?.length || 0)
+  console.log('[Google OAuth Config] Client Secret present:', !!clientSecret)
+  console.log('[Google OAuth Config] Client Secret length:', clientSecret?.length || 0)
+  console.log('[Google OAuth Config] Redirect URI:', redirectUri)
+  
+  if (!clientId || !clientSecret) {
+    console.error('[Google OAuth Config] Missing required environment variables')
+    return null
+  }
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
 }
 
