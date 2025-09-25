@@ -225,7 +225,7 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
   const [calendarsLoading, setCalendarsLoading] = useState(false)
   const [showCalendars, setShowCalendars] = useState(false)
   const [availableCalendars, setAvailableCalendars] = useState([])
-  const connected = !!profile?.google?.connected
+  const connected = !!profile?.google?.connected || !!profile?.google?.refreshToken
   const last = profile?.google?.lastSyncedAt
 
   console.log('[IntegrationsCard] Profile data:', profile) // Debug logging
