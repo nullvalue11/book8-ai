@@ -1,16 +1,26 @@
+// Force Node runtime so Tavily client works
 export const runtime = 'nodejs';
 
-import { NextResponse } from 'next/server';
-
 export async function GET() {
-  const key = process.env.TAVILY_API_KEY || '';
-  return NextResponse.json({
-    ok: true,
-    tavilyKeyPresent: Boolean(key && key !== 'your_tavily_api_key_here'),
-    tavilyKeyLen: key ? key.length : 0,
-    keyValue: process.env.NODE_ENV === 'development' ? key : (key ? `${key.slice(0, 8)}...${key.slice(-4)}` : 'none'),
-    runtime: 'nodejs',
-    nodeVersion: process.version,
-    timestamp: new Date().toISOString(),
-  });
+  try {
+    const key = process.env.TAVILY_API_KEY || null;
+    const response = {
+      ok: true,
+      route: '/api/search/_selftest',
+      tavilyKeyPresent: !!key,
+      tavilyKeyLen: key ? key.length : 0,
+      runtime: runtime,
+      timestamp: new Date().toISOString(),
+    };
+
+    return new Response(JSON.stringify(response, null, 2), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ ok: false, error: err.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 }
