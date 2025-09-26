@@ -116,6 +116,9 @@
       - working: false
         agent: "main"
         comment: "Restored Next.js app directory at repo root with layout.js, page.js, globals.css; moved/added API routes under app/api including /search and catch-all. Ready to verify /api/search/_selftest returns JSON."
+      - working: false
+        agent: "main"
+        comment: "Integrated Tavily routes into catch-all as fallback to ensure /api/search/_selftest,/api/search,/api/search/booking-assistant resolve even if dedicated handlers are skipped. Triggering backend tests."
       - working: "partial"
         agent: "testing"
         comment: "✅ PARTIAL SUCCESS: App Router structure restored successfully! 1) GET / returns 200 with 'Book8 AI Dashboard' text ✅ 2) GET /api/test-search returns JSON with 'Test search route working - DEBUG' message ✅ 3) Core backend functionality working: health endpoints, auth, booking CRUD all operational ✅ ❌ ISSUE: Tavily routes (/api/search/_selftest, /api/search, /api/search/booking-assistant) return 404 - separate route files exist but not recognized by Next.js. Routes need integration into catch-all handler /app/app/api/[[...path]]/route.js as mentioned in previous agent communications. ❌ CORS/OPTIONS experiencing connection issues under high CPU load. SUMMARY: App Router restoration successful, core functionality working, but Tavily routes need integration work."
