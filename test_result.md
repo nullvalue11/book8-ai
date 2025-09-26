@@ -316,7 +316,20 @@
       - working: false
         agent: "main"
         comment: "✅ DEBUGGING ADDED: Added comprehensive logging to Google auth and callback endpoints. Backend code is correct - auth_required error occurs when JWT token is missing/invalid. ROOT CAUSE LIKELY: 1) Gmail account needs to be added as test user in OAuth consent screen (if app status is 'Testing'), 2) JWT token not persisting correctly in production localStorage. SOLUTION: Add Gmail account as test user in Google Cloud Console OAuth consent screen, verify environment variables in Vercel."
-  - task: "Fix Tavily API key configuration for search functionality"
+  - task: "Fix Tavily search endpoints with Node.js runtime"
+    implemented: true
+    working: false
+    file: "/app/app/api/search/route.js, /app/app/api/search/booking-assistant/route.js, /app/app/api/search/_selftest/route.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "CRITICAL BUG: Tavily search failing with 'Failed to perform booking search. Please try again.' User provided comprehensive fix plan using dedicated App Router handlers with Node runtime."
+      - working: false
+        agent: "main"
+        comment: "✅ TAVILY ENDPOINTS IMPLEMENTED: Created dedicated App Router handlers as per user's fix plan: 1) /app/app/api/search/route.js - General search with Node runtime, proper error handling, always returns JSON, 2) /app/app/api/search/booking-assistant/route.js - Booking assistant with enhanced query processing, venue extraction, 3) /app/app/api/search/_selftest/route.js - Self-test endpoint for debugging API key configuration, 4) Updated frontend with improved error handling and JSON parsing, 5) Removed old endpoints from catch-all route to prevent conflicts. FILES READY FOR DEPLOYMENT: All endpoints use runtime='nodejs' and dynamic='force-dynamic' to prevent Edge runtime issues. Next step: Deploy to Vercel and update TAVILY_API_KEY environment variable."
     implemented: true
     working: false
     file: "/app/app/api/[[...path]]/route.js, /app/.env"
