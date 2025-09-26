@@ -9,7 +9,7 @@ from datetime import datetime
 import uuid
 
 # Configuration
-BASE_URL = "https://syncmeeting.preview.emergentagent.com"
+BASE_URL = "https://tavily-search-debug.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test user credentials
