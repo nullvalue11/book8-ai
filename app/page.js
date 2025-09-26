@@ -423,13 +423,17 @@ const TavilySearch = ({ token }) => {
     
     try {
       const endpoint = searchType === 'booking' ? '/api/search/booking-assistant' : '/api/search'
+      const body = searchType === 'booking' 
+        ? JSON.stringify({ prompt: query, context: {} })
+        : JSON.stringify({ query, maxResults: 5 })
+        
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({ query, maxResults: 5, includeAnswer: true })
+        body
       })
 
       // Improved error handling as per fix plan
@@ -445,7 +449,24 @@ const TavilySearch = ({ token }) => {
         throw new Error(data?.error || `HTTP ${response.status}: ${response.statusText}`)
       }
 
-      setResults(data)
+      // Adapt to new API response format
+      if (searchType === 'booking') {
+        // Booking assistant returns { ok: true, data: { summary, sources } }
+        setResults({
+          answer: data.data?.summary || null,
+          results: data.data?.sources || [],
+          total_results: data.data?.sources?.length || 0,
+          timestamp: new Date().toISOString()
+        })
+      } else {
+        // General search returns { ok: true, data: { answer, results, ... } }
+        setResults({
+          answer: data.data?.answer || null,
+          results: data.data?.results || [],
+          total_results: data.data?.results?.length || 0,
+          timestamp: new Date().toISOString()
+        })
+      }
       
     } catch (err) {
       console.error('[TavilySearch] Error:', err)
