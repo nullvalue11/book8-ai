@@ -86,10 +86,45 @@ async function handleRoute(request, { params }) {
 
   console.log(`[Catch-all] ${method} ${route}`)
 
-  // Ensure we don't accidentally shadow dedicated Tavily routes
-  if (route.startsWith('/search')) {
-    console.log('[Catch-all] Search path detected, allowing dedicated /app/api/search/* routes to handle')
-    return json({ error: `Route ${route} not found` }, { status: 404 })
+  // Tavily routes (fallback so they work even if route files aren't picked up)
+  if (route === '/search/_selftest' && method === 'GET') {
+    console.log('[Catch-all:Tavily] _selftest hit')
+    const key = process.env.TAVILY_API_KEY || null
+    return json({ ok: true, route: '/api/search/_selftest', tavilyKeyPresent: !!key, tavilyKeyLen: key ? key.length : 0, runtime: 'nodejs', timestamp: new Date().toISOString() })
+  }
+  if (route === '/search' && method === 'POST') {
+    console.log('[Catch-all:Tavily] general search hit')
+    const apiKey = process.env.TAVILY_API_KEY
+    if (!apiKey) return json({ ok: false, error: 'TAVILY_API_KEY missing' }, { status: 500 })
+    const { query, maxResults = 5 } = await getBody(request)
+    if (!query || typeof query !== 'string') return json({ ok: false, error: 'query is required' }, { status: 400 })
+    try {
+      const { TavilyClient } = await import('@tavily/core')
+      const tavily = new TavilyClient({ apiKey })
+      const res = await tavily.search({ query, max_results: Math.min(Number(maxResults) || 5, 10) })
+      return json({ ok: true, data: res })
+    } catch (err) {
+      console.error('[Catch-all:Tavily] general error', err)
+      return json({ ok: false, error: err?.message || 'search failed' }, { status: 500 })
+    }
+  }
+  if (route === '/search/booking-assistant' && method === 'POST') {
+    console.log('[Catch-all:Tavily] booking-assistant hit')
+    const apiKey = process.env.TAVILY_API_KEY
+    if (!apiKey) return json({ ok: false, error: 'TAVILY_API_KEY missing' }, { status: 500 })
+    const { prompt, context = {} } = await getBody(request)
+    if (!prompt || typeof prompt !== 'string') return json({ ok: false, error: 'prompt is required' }, { status: 400 })
+    try {
+      const { TavilyClient } = await import('@tavily/core')
+      const tavily = new TavilyClient({ apiKey })
+      const q = `Booking assistant task.\n${JSON.stringify(context)}\nUser prompt: ${prompt}`
+      const res = await tavily.search({ query: q, max_results: 5 })
+      const answer = { summary: res?.answer ?? null, sources: res?.results?.map(r => ({ title: r.title, url: r.url })) ?? [] }
+      return json({ ok: true, data: answer })
+    } catch (err) {
+      console.error('[Catch-all:Tavily] booking-assistant error', err)
+      return json({ ok: false, error: err?.message || 'booking search failed' }, { status: 500 })
+    }
   }
 
   try {
