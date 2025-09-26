@@ -242,6 +242,14 @@ async function handleRoute(request, { params }) {
 
   console.log(`API Request: ${method} ${route}`)
 
+  // Exclude search routes - these should be handled by dedicated handlers
+  if (path.length > 0 && path[0] === 'search') {
+    return json({ 
+      error: `Search route should be handled by dedicated handler: /${path.join('/')}`,
+      note: 'This indicates a Next.js routing configuration issue'
+    }, { status: 404 })
+  }
+
   // Debug test - return immediately for test-search
   if (route === '/test-search' && method === 'GET') {
     return json({ message: 'Test search route working - DEBUG', route, method, path })
