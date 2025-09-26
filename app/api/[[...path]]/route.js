@@ -775,12 +775,6 @@ async function handleRoute(request, { params }) {
       return json({ message: 'Test search route working - DEBUG', route, method, path })
     }
 
-    // Redirect search requests to dedicated route handlers
-    if (route.startsWith('/search/')) {
-      // Let Next.js handle these with the dedicated route files
-      return json({ error: `This route should be handled by dedicated handler: ${route}` }, { status: 500 })
-    }
-
     return json({ error: `Route ${route} not found` }, { status: 404 })
   } catch (error) {
     console.error('API Error (outer):', error)
