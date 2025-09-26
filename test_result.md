@@ -105,6 +105,17 @@
 ## user_problem_statement: "Design, build, and deploy Book8 AI MVP with local bookings, JWT auth, and stubs for Google Calendar, OpenAI Realtime Audio, Tavily, Stripe, and n8n. Run automated backend tests."
 
 ## backend:
+  - task: "Restore App Router structure and Tavily routes under app/"
+    implemented: true
+    working: false
+    file: "/app/app/layout.js, /app/app/page.js, /app/app/api/search/_selftest/route.js, /app/app/api/search/route.js, /app/app/api/search/booking-assistant/route.js, /app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Restored Next.js app directory at repo root with layout.js, page.js, globals.css; moved/added API routes under app/api including /search and catch-all. Ready to verify /api/search/_selftest returns JSON."
   - task: "Health and root endpoints"
     implemented: true
     working: true
