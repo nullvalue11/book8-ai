@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    console.log('[Tavily:_selftest] Route hit')
     const key = process.env.TAVILY_API_KEY || null;
     return new Response(JSON.stringify({
       ok: true,
@@ -16,6 +17,7 @@ export async function GET() {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (err) {
+    console.error('[Tavily:_selftest] Error', err)
     return new Response(JSON.stringify({ ok: false, error: err.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
