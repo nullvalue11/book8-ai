@@ -3,121 +3,26 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
-    const { query, maxResults = 5, depth = 'advanced' } = await req.json().catch(() => ({}));
+    const apiKey = process.env.TAVILY_API_KEY;
+    if (!apiKey) {
+      return Response.json({ ok: false, error: 'TAVILY_API_KEY missing' }, { status: 500 });
+    }
 
+    const { query, maxResults = 5 } = await req.json();
     if (!query || typeof query !== 'string') {
-      return new Response(JSON.stringify({ ok: false, error: 'Missing "query"' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return Response.json({ ok: false, error: 'query is required' }, { status: 400 });
     }
 
-    const apiKey = process.env.TAVILY_API_KEY;
-    if (!apiKey || apiKey === 'your_tavily_api_key_here') {
-      console.error('TAVILY_ERROR: missing TAVILY_API_KEY');
-      return new Response(JSON.stringify({ 
-        ok: false, 
-        error: 'Missing Tavily API key. Please set TAVILY_API_KEY environment variable.' 
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    const { TavilyClient } = await import('@tavily/core');
+    const tavily = new TavilyClient({ apiKey });
 
-    console.log('[Tavily General Search] Query:', query);
-
-    // Dynamic import to avoid compilation issues
-    const { tavily } = await import('@tavily/core');
-    const tavilyClient = tavily({ apiKey });
-
-    const result = await tavilyClient.search({
+    const res = await tavily.search({
       query,
-      search_depth: depth,
-      include_answer: true,
-      include_images: false,
-      max_results: Math.min(Math.max(Number(maxResults) || 5, 1), 10),
+      max_results: Math.min(Number(maxResults) || 5, 10)
     });
 
-    console.log('[Tavily General Search] Results:', result.results?.length || 0);
-
-    return new Response(JSON.stringify({
-      ok: true,
-      query: result.query || query,
-      answer: result.answer || null,
-      results: (result.results || []).map(r => ({
-        title: r.title || '',
-        url: r.url || '',
-        content: r.content || '',
-        score: r.score || 0,
-        published_date: r.published_date || null,
-      })),
-      total_results: result.results?.length || 0,
-      timestamp: new Date().toISOString(),
-      usage: result.response_time ? { response_time_ms: result.response_time } : undefined,
-    }, null, 2), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ ok: true, data: res }, { status: 200 });
   } catch (err) {
-    console.error('TAVILY_ERROR_GENERAL:', err?.stack || err);
-    
-    // Handle specific Tavily API errors
-    if (err.message?.includes('quota') || err.message?.includes('limit')) {
-      return new Response(JSON.stringify({ 
-        ok: false, 
-        error: 'Search quota exceeded. Please try again later.',
-        type: 'quota_exceeded'
-      }), {
-        status: 429,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    
-    if (err.message?.includes('unauthorized') || err.message?.includes('invalid key')) {
-      return new Response(JSON.stringify({ 
-        ok: false, 
-        error: 'Invalid Tavily API key. Please check your configuration.',
-        type: 'auth_error'
-      }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    
-    return new Response(JSON.stringify({ 
-      ok: false, 
-      error: 'Search failed. Please try again.',
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
-
-export async function GET() {
-  try {
-    const apiKey = process.env.TAVILY_API_KEY;
-    return new Response(JSON.stringify({ 
-      ok: true,
-      status: 'ready',
-      message: 'Tavily search API is ready',
-      configured: !!(apiKey && apiKey !== 'your_tavily_api_key_here'),
-      endpoint: '/api/search'
-    }, null, 2), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (error) {
-    console.error('TAVILY_ERROR_HEALTH:', error);
-    return new Response(JSON.stringify({ 
-      ok: false,
-      status: 'error',
-      message: 'Tavily API health check failed',
-      configured: false
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ ok: false, error: err.message }, { status: 500 });
   }
 }
