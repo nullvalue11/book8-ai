@@ -427,20 +427,28 @@ const TavilySearch = ({ token }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'application/json'
+          'Accept': 'application/json'
         },
         body: JSON.stringify({ query, maxResults: 5, includeAnswer: true })
       })
 
-      const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Search failed')
+      // Improved error handling as per fix plan
+      const text = await response.text()
+      let data
+      try { 
+        data = JSON.parse(text) 
+      } catch { 
+        data = { ok: false, error: 'Non-JSON response from server' }
+      }
+
+      if (!response.ok || !data?.ok) {
+        throw new Error(data?.error || `HTTP ${response.status}: ${response.statusText}`)
       }
 
       setResults(data)
       
     } catch (err) {
+      console.error('[TavilySearch] Error:', err)
       setError(err.message || 'Search failed. Please try again.')
     } finally {
       setLoading(false)
