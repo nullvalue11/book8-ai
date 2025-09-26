@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
-import { buildGoogleEventFromBooking } from '../../../../../lib/googleSync'
+import { buildGoogleEventFromBooking } from '../../../../lib/googleSync'
 
 export const runtime = 'nodejs'
 
