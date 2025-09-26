@@ -107,7 +107,7 @@
 ## backend:
   - task: "Restore App Router structure and Tavily routes under app/"
     implemented: true
-    working: "partial"
+    working: true
     file: "/app/app/layout.js, /app/app/page.js, /app/app/api/search/_selftest/route.js, /app/app/api/search/route.js, /app/app/api/search/booking-assistant/route.js, /app/app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "critical"
