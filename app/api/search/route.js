@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req) {
   try {
     console.log('[Tavily:general] Route hit')
-    const { query } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const query = typeof body === 'string' ? body : body?.query;
     if (!query) {
       return new Response(JSON.stringify({ ok: false, error: "Missing query" }), { status: 400 });
     }
@@ -17,15 +18,15 @@ export async function POST(req) {
       return new Response(JSON.stringify({ ok: false, error: 'TAVILY_API_KEY missing' }), { status: 500 });
     }
 
-    // Correct instantiation
+    // Instantiate client
     const client = new TavilyClient({ apiKey });
 
-    // Perform search (SDK supports passing a string query)
-    const results = await client.search(query);
+    // Prefer object signature for broader SDK compatibility
+    const results = await client.search({ query });
 
     return new Response(JSON.stringify({ ok: true, data: results }), { status: 200 });
   } catch (err) {
     console.error("[Tavily:general]", err);
-    return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: err?.message || 'Search failed' }), { status: 500 });
   }
 }

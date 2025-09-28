@@ -20,9 +20,8 @@ export async function POST(req) {
     const client = new TavilyClient({ apiKey });
 
     const enhanced = `Booking assistant task.\nContext: ${JSON.stringify(context)}\nUser prompt: ${prompt}`;
-    const results = await client.search(enhanced);
+    const results = await client.search({ query: enhanced });
 
-    // simple projection of results
     const answer = {
       summary: results?.answer ?? null,
       sources: results?.results?.map(r => ({ title: r.title, url: r.url })) ?? []
@@ -31,6 +30,6 @@ export async function POST(req) {
     return new Response(JSON.stringify({ ok: true, data: answer }), { status: 200 });
   } catch (err) {
     console.error('[Tavily:booking-assistant] Error', err)
-    return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: err?.message || 'Assistant failed' }), { status: 500 });
   }
 }
