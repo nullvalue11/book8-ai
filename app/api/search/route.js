@@ -1,4 +1,4 @@
-import TavilyClient from "@tavily/core";
+import { TavilyClient } from "@tavily/core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,9 +18,7 @@ export async function POST(req) {
       return new Response(JSON.stringify({ ok: false, error: 'TAVILY_API_KEY missing' }), { status: 500 });
     }
 
-    // Default export class
     const client = new TavilyClient({ apiKey });
-
     const results = await client.search({ query });
 
     return new Response(JSON.stringify({ ok: true, data: results }), { status: 200 });

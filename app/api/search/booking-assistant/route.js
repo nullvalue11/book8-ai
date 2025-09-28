@@ -1,4 +1,4 @@
-import TavilyClient from "@tavily/core";
+import { TavilyClient } from "@tavily/core";
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

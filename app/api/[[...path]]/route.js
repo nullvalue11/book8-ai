@@ -72,70 +72,19 @@ function isISODateString(s) { const d = new Date(s); return !isNaN(d.getTime()) 
 
 // Stripe Idempotency Helpers
 async function isStripeEventProcessed(database, eventId) {
-  try {
-    const existingEvent = await database.collection('stripe_events').findOne({ eventId })
-    return !!existingEvent
-  } catch (error) { console.error('Error checking event idempotency:', error); return false }
+  try { const existingEvent = await database.collection('stripe_events').findOne({ eventId }); return !!existingEvent } catch (error) { console.error('Error checking event idempotency:', error); return false }
 }
 async function markStripeEventProcessed(database, eventId, eventType, eventData = {}) {
-  try {
-    await database.collection('stripe_events').insertOne({ eventId, eventType, eventData, processedAt: new Date(), createdAt: new Date() })
-    return true
-  } catch (error) { console.error('Error marking event as processed:', error); return false }
+  try { await database.collection('stripe_events').insertOne({ eventId, eventType, eventData, processedAt: new Date(), createdAt: new Date() }); return true } catch (error) { console.error('Error marking event as processed:', error); return false }
 }
 async function logBillingActivity(database, userId, eventType, eventId, details = {}, status = 'success') {
-  try {
-    await database.collection('billing_logs').insertOne({ id: uuidv4(), userId, eventType, eventId, details, status, timestamp: new Date(), createdAt: new Date() })
-  } catch (error) { console.error('Error logging billing activity:', error) }
+  try { await database.collection('billing_logs').insertOne({ id: uuidv4(), userId, eventType, eventId, details, status, timestamp: new Date(), createdAt: new Date() }) } catch (error) { console.error('Error logging billing activity:', error) }
 }
 async function findUserByCustomerId(database, customerId) {
-  try {
-    const user = await database.collection('users').findOne({ 'subscription.customerId': customerId })
-    return user?.id || null
-  } catch (error) { console.error('Error finding user by customer ID:', error); return null }
+  try { const user = await database.collection('users').findOne({ 'subscription.customerId': customerId }); return user?.id || null } catch (error) { console.error('Error finding user by customer ID:', error); return null }
 }
 
-// Google helpers (dynamic imports)
-async function getOAuth2Client() {
-  try {
-    const { google } = await import('googleapis')
-    const clientId = process.env.GOOGLE_CLIENT_ID
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${getBaseUrl(headers().get('host') || undefined)}/api/integrations/google/callback`
-    if (!clientId || !clientSecret) return null
-    return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
-  } catch (error) { console.error('Error loading Google OAuth client:', error); return null }
-}
-function getGoogleScopes() { return ['https://www.googleapis.com/auth/calendar'] }
-async function getGoogleClientForUser(userId) {
-  try {
-    const { google } = await import('googleapis')
-    const database = await connectToMongo()
-    const user = await database.collection('users').findOne({ id: userId })
-    const refreshToken = user?.google?.refreshToken
-    if (!refreshToken) return null
-    const oauth2Client = await getOAuth2Client()
-    if (!oauth2Client) return null
-    oauth2Client.setCredentials({ refresh_token: refreshToken })
-    return google.calendar({ version: 'v3', auth: oauth2Client })
-  } catch (error) { console.error('Error loading Google Calendar client:', error); return null }
-}
-
-// Stripe client (dynamic)
-let stripe = null
-async function getStripe() {
-  if (!stripe) {
-    try {
-      const Stripe = (await import('stripe')).default
-      const key = process.env.STRIPE_SECRET_KEY
-      if (!key) return null
-      stripe = new Stripe(key)
-    } catch (error) { console.error('Error loading Stripe:', error); return null }
-  }
-  return stripe
-}
-
-// Router
+// Router entrypoints
 export async function GET(request, ctx) { return handleRoute(request, ctx) }
 export async function POST(request, ctx) { return handleRoute(request, ctx) }
 export async function PUT(request, ctx) { return handleRoute(request, ctx) }
@@ -149,6 +98,8 @@ async function handleRoute(request, { params }) {
 
   console.log(`API Request: ${method} ${route}`)
 
+  // NOTE: We intentionally do NOT shadow /api/search/* here anymore.
+  // Dedicated route files under app/api/search/* must handle those.
 
   try {
     const database = await connectToMongo()
@@ -158,21 +109,7 @@ async function handleRoute(request, { params }) {
       try { await database.command({ ping: 1 }); return json({ ok: true, message: 'Book8 API online' }) } catch { return json({ ok: false }, { status: 500 }) }
     }
 
-    // Status
-    if (route === '/status' && method === 'POST') {
-      const body = await getBody(request)
-      if (!body.client_name) return json({ error: 'client_name is required' }, { status: 400 })
-      const statusObj = { id: uuidv4(), client_name: body.client_name, timestamp: new Date() }
-      await database.collection('status_checks').insertOne(statusObj)
-      return json(statusObj)
-    }
-    if (route === '/status' && method === 'GET') {
-      const items = await database.collection('status_checks').find({}).limit(1000).toArray()
-      const cleaned = items.map(({ _id, ...rest }) => rest)
-      return json(cleaned)
-    }
-
-    // Auth
+    // Auth (kept for backward compatibility; dedicated routes also exist)
     if (route === '/auth/register' && method === 'POST') {
       const { email, password, name } = await getBody(request)
       if (!email || !password) return json({ error: 'email and password are required' }, { status: 400 })
@@ -192,16 +129,6 @@ async function handleRoute(request, { params }) {
       const token = jwt.sign({ sub: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' })
       const googleSafe = user.google ? { connected: !!user.google?.refreshToken, lastSyncedAt: user.google?.lastSyncedAt || null } : { connected: false, lastSyncedAt: null }
       return json({ token, user: { id: user.id, email: user.email, name: user.name || '', subscription: user.subscription || null, google: googleSafe } })
-    }
-
-    // User profile
-    if (route === '/user' && method === 'GET') {
-      const auth = await requireAuth(request, database)
-      if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const u = await database.collection('users').findOne({ id: auth.user.id })
-      if (!u) return json({ error: 'User not found' }, { status: 404 })
-      const safe = { id: u.id, email: u.email, name: u.name || '', subscription: u.subscription || null, google: { connected: !!u.google?.refreshToken, lastSyncedAt: u?.google?.lastSyncedAt || null } }
-      return json(safe)
     }
 
     // Bookings list
@@ -227,22 +154,6 @@ async function handleRoute(request, { params }) {
       const tz = (timeZone || headerTz || 'UTC').toString()
       const booking = { id: uuidv4(), userId: auth.user.id, title, customerName: customerName || '', startTime: s.toISOString(), endTime: e.toISOString(), status: 'scheduled', notes: notes || '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), source: 'book8', conflict: false, timeZone: tz }
       try { await database.collection('bookings').insertOne(booking) } catch (e) { console.error('DB insert booking error', e); return json({ error: 'Failed to save booking' }, { status: 500 }) }
-
-      // Safe Google push (primary)
-      try {
-        const calendar = await getGoogleClientForUser(auth.user.id)
-        if (calendar) {
-          try {
-            const res = await calendar.events.insert({ calendarId: 'primary', requestBody: buildGoogleEventFromBooking(booking) })
-            await database.collection('google_events').updateOne(
-              { userId: auth.user.id, bookingId: booking.id },
-              { $set: { userId: auth.user.id, bookingId: booking.id, googleEventId: res.data.id, calendarId: 'primary', createdAt: new Date(), updatedAt: new Date() } },
-              { upsert: true }
-            )
-          } catch (gerr) { console.error('Google push error', gerr?.message || gerr) }
-        }
-      } catch (outer) { console.error('Google client error', outer?.message || outer) }
-
       return json(booking)
     }
 
@@ -263,21 +174,6 @@ async function handleRoute(request, { params }) {
       const resDoc = await database.collection('bookings').findOneAndUpdate({ id, userId: auth.user.id }, { $set: patch }, { returnDocument: 'after' })
       if (!resDoc.value) return json({ error: 'Booking not found' }, { status: 404 })
       const { _id, ...rest } = resDoc.value
-
-      try {
-        const calendar = await getGoogleClientForUser(auth.user.id)
-        if (calendar) {
-          const mapping = await database.collection('google_events').findOne({ userId: auth.user.id, bookingId: id })
-          if (mapping?.googleEventId) {
-            await calendar.events.patch({ calendarId: mapping.calendarId || 'primary', eventId: mapping.googleEventId, requestBody: buildGoogleEventFromBooking(rest) })
-            await database.collection('google_events').updateOne({ userId: auth.user.id, bookingId: id }, { $set: { updatedAt: new Date() } })
-          } else {
-            const ins = await calendar.events.insert({ calendarId: 'primary', requestBody: buildGoogleEventFromBooking(rest) })
-            await database.collection('google_events').updateOne({ userId: auth.user.id, bookingId: id }, { $set: { userId: auth.user.id, bookingId: id, googleEventId: ins.data.id, calendarId: 'primary', createdAt: new Date(), updatedAt: new Date() } }, { upsert: true })
-          }
-        }
-      } catch (gerr) { console.error('Google update error', gerr?.message || gerr) }
-
       return json(rest)
     }
 
@@ -289,199 +185,9 @@ async function handleRoute(request, { params }) {
       const existing = await database.collection('bookings').findOne({ id, userId: auth.user.id })
       if (!existing) return json({ error: 'Booking not found' }, { status: 404 })
       await database.collection('bookings').updateOne({ id, userId: auth.user.id }, { $set: { status: 'canceled', updatedAt: new Date().toISOString() } })
-      try {
-        const calendar = await getGoogleClientForUser(auth.user.id)
-        if (calendar) {
-          const mapping = await database.collection('google_events').findOne({ userId: auth.user.id, bookingId: id })
-          if (mapping?.googleEventId) {
-            try { await calendar.events.delete({ calendarId: mapping.calendarId || 'primary', eventId: mapping.googleEventId }) } catch {}
-            await database.collection('google_events').deleteOne({ userId: auth.user.id, bookingId: id })
-          }
-        }
-      } catch (gerr) { console.error('Google delete error', gerr?.message || gerr) }
       const updated = await database.collection('bookings').findOne({ id, userId: auth.user.id })
       const { _id, ...rest } = updated
       return json(rest)
-    }
-
-    // Google Calendar endpoints
-    if (route === '/integrations/google/calendars' && method === 'GET') {
-      const auth = await requireAuth(request, database)
-      if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const calendar = await getGoogleClientForUser(auth.user.id)
-      if (!calendar) return json({ error: 'Google not connected', reconnect: true }, { status: 400 })
-      try {
-        const response = await calendar.calendarList.list()
-        const calendars = response.data.items?.map(cal => ({ id: cal.id, summary: cal.summary, description: cal.description || '', primary: cal.primary || false, accessRole: cal.accessRole, selected: false })) || []
-        const user = await database.collection('users').findOne({ id: auth.user.id })
-        const selectedCalendarIds = user?.google?.selectedCalendars || ['primary']
-        calendars.forEach(cal => { cal.selected = selectedCalendarIds.includes(cal.id) || (cal.primary && selectedCalendarIds.includes('primary')) })
-        return json({ calendars })
-      } catch (error) { console.error('Failed to fetch Google Calendars:', error); return json({ error: 'Failed to fetch calendars' }, { status: 500 }) }
-    }
-    if (route === '/integrations/google/calendars' && method === 'POST') {
-      const auth = await requireAuth(request, database)
-      if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const calendar = await getGoogleClientForUser(auth.user.id)
-      if (!calendar) return json({ error: 'Google not connected', reconnect: true }, { status: 400 })
-      const { selectedCalendars } = await getBody(request)
-      if (!Array.isArray(selectedCalendars)) return json({ error: 'selectedCalendars must be an array' }, { status: 400 })
-      try {
-        await database.collection('users').updateOne({ id: auth.user.id }, { $set: { 'google.selectedCalendars': selectedCalendars, 'google.updatedAt': new Date() } })
-        return json({ ok: true, selectedCalendars })
-      } catch (error) { console.error('Failed to update calendar selections:', error); return json({ error: 'Failed to update calendar selections' }, { status: 500 }) }
-    }
-
-    // Google sync endpoints
-    if (route === '/integrations/google/sync' && method === 'POST') {
-      const auth = await requireAuth(request, database)
-      if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const calendar = await getGoogleClientForUser(auth.user.id)
-      if (!calendar) return json({ error: 'Google not connected', reconnect: true }, { status: 400 })
-      const user = await database.collection('users').findOne({ id: auth.user.id })
-      const selectedCalendars = user?.google?.selectedCalendars || ['primary']
-      const allBookings = await database.collection('bookings').find({ userId: auth.user.id }).toArray()
-      const active = allBookings.filter(b => b.status !== 'canceled')
-      const canceled = allBookings.filter(b => b.status === 'canceled')
-      let created = 0, updatedCount = 0, deleted = 0
-      for (const b of active) {
-        for (const calendarId of selectedCalendars) {
-          const map = await database.collection('google_events').findOne({ userId: auth.user.id, bookingId: b.id, calendarId })
-          const evt = buildGoogleEventFromBooking(b)
-          try {
-            if (!map?.googleEventId) {
-              const ins = await calendar.events.insert({ calendarId, requestBody: evt })
-              await database.collection('google_events').updateOne({ userId: auth.user.id, bookingId: b.id, calendarId }, { $set: { userId: auth.user.id, bookingId: b.id, googleEventId: ins.data.id, calendarId, createdAt: new Date(), updatedAt: new Date() } }, { upsert: true })
-              created++
-            } else {
-              await calendar.events.patch({ calendarId, eventId: map.googleEventId, requestBody: evt })
-              await database.collection('google_events').updateOne({ userId: auth.user.id, bookingId: b.id, calendarId }, { $set: { updatedAt: new Date() } })
-              updatedCount++
-            }
-          } catch (err) { console.error(`Failed to sync booking ${b.id} to calendar ${calendarId}:`, err) }
-        }
-      }
-      for (const b of canceled) {
-        const maps = await database.collection('google_events').find({ userId: auth.user.id, bookingId: b.id }).toArray()
-        for (const map of maps) {
-          if (!map?.googleEventId) continue
-          try { await calendar.events.delete({ calendarId: map.calendarId || 'primary', eventId: map.googleEventId }); await database.collection('google_events').deleteOne({ userId: auth.user.id, bookingId: b.id, calendarId: map.calendarId }); deleted++ } catch (err) { console.error(`Failed to delete event ${map.googleEventId} from calendar ${map.calendarId}:`, err) }
-        }
-      }
-      await database.collection('users').updateOne({ id: auth.user.id }, { $set: { 'google.lastSyncedAt': new Date().toISOString() } })
-      return json({ ok: true, created, updated: updatedCount, deleted, calendarsSelected: selectedCalendars.length })
-    }
-    if (route === '/integrations/google/sync' && method === 'GET') {
-      const auth = await requireAuth(request, database)
-      if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const u = await database.collection('users').findOne({ id: auth.user.id })
-      return json({ connected: !!u?.google?.refreshToken, lastSyncedAt: u?.google?.lastSyncedAt || null })
-    }
-
-    // Billing portal
-    if (route === '/billing/portal' && method === 'GET') {
-      const auth = await requireAuth(request, database)
-      if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const s = await getStripe(); if (!s) return json({ error: 'Stripe not configured. Set STRIPE_SECRET_KEY.' }, { status: 400 })
-      const user = await database.collection('users').findOne({ id: auth.user.id })
-      const customerId = user?.subscription?.customerId
-      if (!customerId) return json({ error: 'No subscription found' }, { status: 400 })
-      const base = getBaseUrl(headers().get('host') || undefined)
-      try { const session = await s.billingPortal.sessions.create({ customer: customerId, return_url: `${base}/?portal_return=true` }); return json({ url: session.url }) } catch { return json({ error: 'Failed to create portal session' }, { status: 500 }) }
-    }
-
-    // Stripe Webhook with Idempotency
-    if (route === '/billing/stripe/webhook' && method === 'POST') {
-      const s = await getStripe(); if (!s) return json({ error: 'Stripe not configured' }, { status: 400 })
-      let event
-      try {
-        const body = await request.text()
-        const sig = request.headers.get('stripe-signature')
-        if (!sig) return json({ error: 'Missing signature' }, { status: 400 })
-        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-        if (!webhookSecret) return json({ error: 'Webhook secret not configured' }, { status: 400 })
-        event = s.webhooks.constructEvent(body, sig, webhookSecret)
-      } catch (err) { console.error('Webhook signature verification failed:', err.message); return json({ error: 'Invalid signature' }, { status: 400 }) }
-
-      const isAlreadyProcessed = await isStripeEventProcessed(database, event.id)
-      if (isAlreadyProcessed) return json({ received: true, alreadyProcessed: true })
-      try {
-        switch (event.type) {
-          case 'customer.subscription.created':
-          case 'customer.subscription.updated': {
-            const subscription = event.data.object
-            const userId = await findUserByCustomerId(database, subscription.customer)
-            if (userId) {
-              await database.collection('users').updateOne(
-                { id: userId },
-                { $set: { 'subscription.status': subscription.status, 'subscription.priceId': subscription.items.data[0]?.price?.id || null, 'subscription.customerId': subscription.customer, 'subscription.subscriptionId': subscription.id, 'subscription.currentPeriodStart': new Date(subscription.current_period_start * 1000).toISOString(), 'subscription.currentPeriodEnd': new Date(subscription.current_period_end * 1000).toISOString(), 'subscription.updatedAt': new Date().toISOString() } }
-              )
-              await logBillingActivity(database, userId, event.type, event.id, { subscriptionId: subscription.id, status: subscription.status, priceId: subscription.items.data[0]?.price?.id })
-            }
-            break
-          }
-          case 'customer.subscription.deleted': {
-            const deletedSub = event.data.object
-            const userIdDeleted = await findUserByCustomerId(database, deletedSub.customer)
-            if (userIdDeleted) {
-              await database.collection('users').updateOne(
-                { id: userIdDeleted },
-                { $set: { 'subscription.status': 'canceled', 'subscription.updatedAt': new Date().toISOString() } }
-              )
-              await logBillingActivity(database, userIdDeleted, event.type, event.id, { subscriptionId: deletedSub.id, status: 'canceled' })
-            }
-            break
-          }
-          case 'invoice.payment_succeeded': {
-            const invoice = event.data.object
-            const userIdInvoice = await findUserByCustomerId(database, invoice.customer)
-            if (userIdInvoice) {
-              await logBillingActivity(database, userIdInvoice, event.type, event.id, { invoiceId: invoice.id, amountPaid: invoice.amount_paid, currency: invoice.currency })
-            }
-            break
-          }
-          case 'invoice.payment_failed': {
-            const failedInvoice = event.data.object
-            const userIdFailed = await findUserByCustomerId(database, failedInvoice.customer)
-            if (userIdFailed) {
-              await logBillingActivity(database, userIdFailed, event.type, event.id, { invoiceId: failedInvoice.id, amountDue: failedInvoice.amount_due, currency: failedInvoice.currency }, 'failed')
-            }
-            break
-          }
-          default:
-            console.log(`Unhandled event type: ${event.type}`)
-            await logBillingActivity(database, null, event.type, event.id, { unhandled: true })
-        }
-        await markStripeEventProcessed(database, event.id, event.type, { customerId: event.data.object.customer || null, amount: event.data.object.amount || event.data.object.amount_paid || null })
-        return json({ received: true, processed: true })
-      } catch (error) { console.error('Error processing webhook:', error); await logBillingActivity(database, null, event.type, event.id, { error: error.message }, 'error'); return json({ error: 'Processing failed' }, { status: 500 }) }
-    }
-
-    // Billing Activity Log
-    if (route === '/billing/logs' && method === 'GET') {
-      const auth = await requireAuth(request, database)
-      if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      try {
-        const url = new URL(request.url)
-        const limit = parseInt(url.searchParams.get('limit') || '50')
-        const skip = parseInt(url.searchParams.get('skip') || '0')
-        const logs = await database.collection('billing_logs').find({ userId: auth.user.id }).sort({ timestamp: -1 }).limit(Math.min(limit, 100)).skip(skip).toArray()
-        const cleaned = logs.map(({ _id, ...rest }) => rest)
-        return json({ logs: cleaned, count: cleaned.length })
-      } catch (error) { console.error('Error fetching billing logs:', error); return json({ error: 'Failed to fetch billing logs' }, { status: 500 }) }
-    }
-
-    // Stripe Events Status
-    if (route === '/billing/events/status' && method === 'GET') {
-      const auth = await requireAuth(request, database)
-      if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      try {
-        const url = new URL(request.url)
-        const limit = parseInt(url.searchParams.get('limit') || '20')
-        const events = await database.collection('stripe_events').find({}).sort({ processedAt: -1 }).limit(Math.min(limit, 50)).toArray()
-        const cleaned = events.map(({ _id, ...rest }) => rest)
-        return json({ events: cleaned, count: cleaned.length })
-      } catch (error) { console.error('Error fetching stripe events:', error); return json({ error: 'Failed to fetch stripe events' }, { status: 500 }) }
     }
 
     // Fallback
