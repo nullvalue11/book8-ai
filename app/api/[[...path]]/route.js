@@ -161,11 +161,15 @@ async function handleRoute(request, { params }) {
     const q = typeof body === 'string' ? body : body?.query
     if (!q) return json({ ok: false, error: 'Missing query' }, { status: 400 })
     try {
-      const { TavilyClient } = await import('@tavily/core')
-      const client = new TavilyClient({ apiKey })
+      const mod = await import('@tavily/core')
+      const TavClient = mod?.TavilyClient || mod?.default
+      if (typeof TavClient !== 'function') {
+        throw new Error('Tavily SDK import failed: invalid export shape')
+      }
+      const client = new TavClient({ apiKey })
       const res = await client.search({ query: q })
       return json({ ok: true, data: res })
-    } catch (err) { return json({ ok: false, error: err?.message || 'search failed' }, { status: 500 }) }
+    } catch (err) { console.error('[Catch-all:Tavily] general import/exec error', err); return json({ ok: false, error: err?.message || 'search failed' }, { status: 500 }) }
   }
   if (route === '/search/booking-assistant' && method === 'POST') {
     const apiKey = process.env.TAVILY_API_KEY
