@@ -149,42 +149,6 @@ async function handleRoute(request, { params }) {
 
   console.log(`API Request: ${method} ${route}`)
 
-  // Tavily fallbacks (ensure these never 404)
-  if (route === '/search/_selftest' && method === 'GET') {
-    const key = process.env.TAVILY_API_KEY || null
-    return json({ ok: true, route: '/api/search/_selftest', tavilyKeyPresent: !!key, tavilyKeyLen: key ? key.length : 0, runtime: 'nodejs', timestamp: new Date().toISOString() })
-  }
-  if (route === '/search' && method === 'POST') {
-    const apiKey = process.env.TAVILY_API_KEY
-    if (!apiKey) return json({ ok: false, error: 'TAVILY_API_KEY missing' }, { status: 500 })
-    const body = await getBody(request)
-    const q = typeof body === 'string' ? body : body?.query
-    if (!q) return json({ ok: false, error: 'Missing query' }, { status: 400 })
-    try {
-      const mod = await import('@tavily/core')
-      const TavClient = mod?.TavilyClient || mod?.default
-      if (typeof TavClient !== 'function') {
-        throw new Error('Tavily SDK import failed: invalid export shape')
-      }
-      const client = new TavClient({ apiKey })
-      const res = await client.search({ query: q })
-      return json({ ok: true, data: res })
-    } catch (err) { console.error('[Catch-all:Tavily] general import/exec error', err); return json({ ok: false, error: err?.message || 'search failed' }, { status: 500 }) }
-  }
-  if (route === '/search/booking-assistant' && method === 'POST') {
-    const apiKey = process.env.TAVILY_API_KEY
-    if (!apiKey) return json({ ok: false, error: 'TAVILY_API_KEY missing' }, { status: 500 })
-    const { prompt, context = {} } = await getBody(request)
-    if (!prompt) return json({ ok: false, error: 'prompt is required' }, { status: 400 })
-    try {
-      const { TavilyClient } = await import('@tavily/core')
-      const client = new TavilyClient({ apiKey })
-      const enhanced = `Booking assistant task.\n${JSON.stringify(context)}\nUser prompt: ${prompt}`
-      const res = await client.search({ query: enhanced })
-      const answer = { summary: res?.answer ?? null, sources: res?.results?.map(r => ({ title: r.title, url: r.url })) ?? [] }
-      return json({ ok: true, data: answer })
-    } catch (err) { return json({ ok: false, error: err?.message || 'booking search failed' }, { status: 500 }) }
-  }
 
   try {
     const database = await connectToMongo()
