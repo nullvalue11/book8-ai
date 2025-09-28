@@ -39,7 +39,7 @@
         "@radix-ui/react-toggle-group": "^1.1.10",
         "@radix-ui/react-tooltip": "^1.2.7",
         "@tanstack/react-table": "^8.21.3",
-        "@tavily/core": "^0.5.12",
+        "@tavily/core": "0.5.12",
         "axios": "^1.10.0",
         "bcryptjs": "^3.0.2",
         "class-variance-authority": "^0.7.1",
