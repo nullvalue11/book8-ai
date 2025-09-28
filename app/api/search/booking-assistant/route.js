@@ -1,7 +1,14 @@
-import { TavilyClient } from "@tavily/core";
-
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+async function getTavilyCtor() {
+  const mod = await import("@tavily/core");
+  const TavClient = mod?.TavilyClient || mod?.default || mod?.Tavily;
+  if (typeof TavClient !== "function") {
+    throw new Error("TavilyClient export not found in @tavily/core");
+  }
+  return TavClient;
+}
 
 export async function POST(req) {
   try {
@@ -17,6 +24,7 @@ export async function POST(req) {
       return new Response(JSON.stringify({ ok: false, error: 'TAVILY_API_KEY missing' }), { status: 500 });
     }
 
+    const TavilyClient = await getTavilyCtor();
     const client = new TavilyClient({ apiKey });
 
     const enhanced = `Booking assistant task.\nContext: ${JSON.stringify(context)}\nUser prompt: ${prompt}`;
