@@ -1,32 +1,31 @@
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+import { TavilyClient } from "@tavily/core";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(req) {
   try {
     console.log('[Tavily:general] Route hit')
+    const { query } = await req.json();
+    if (!query) {
+      return new Response(JSON.stringify({ ok: false, error: "Missing query" }), { status: 400 });
+    }
+
     const apiKey = process.env.TAVILY_API_KEY;
     if (!apiKey) {
       console.warn('[Tavily:general] Missing TAVILY_API_KEY')
-      return Response.json({ ok: false, error: 'TAVILY_API_KEY missing' }, { status: 500 });
+      return new Response(JSON.stringify({ ok: false, error: 'TAVILY_API_KEY missing' }), { status: 500 });
     }
 
-    const { query, maxResults = 5 } = await req.json();
-    if (!query || typeof query !== 'string') {
-      console.warn('[Tavily:general] Invalid query payload')
-      return Response.json({ ok: false, error: 'query is required' }, { status: 400 });
-    }
+    // Correct instantiation
+    const client = new TavilyClient({ apiKey });
 
-    const { TavilyClient } = await import('@tavily/core');
-    const tavily = new TavilyClient({ apiKey });
+    // Perform search (SDK supports passing a string query)
+    const results = await client.search(query);
 
-    const res = await tavily.search({
-      query,
-      max_results: Math.min(Number(maxResults) || 5, 10)
-    });
-
-    return Response.json({ ok: true, data: res }, { status: 200 });
+    return new Response(JSON.stringify({ ok: true, data: results }), { status: 200 });
   } catch (err) {
-    console.error('[Tavily:general] Error', err)
-    return Response.json({ ok: false, error: err.message }, { status: 500 });
+    console.error("[Tavily:general]", err);
+    return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 500 });
   }
 }

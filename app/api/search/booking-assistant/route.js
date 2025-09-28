@@ -1,35 +1,36 @@
+import { TavilyClient } from "@tavily/core";
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
     console.log('[Tavily:booking-assistant] Route hit')
+    const { prompt, context = {} } = await req.json();
+    if (!prompt) {
+      return new Response(JSON.stringify({ ok: false, error: 'prompt is required' }), { status: 400 });
+    }
+
     const apiKey = process.env.TAVILY_API_KEY;
     if (!apiKey) {
       console.warn('[Tavily:booking-assistant] Missing TAVILY_API_KEY')
-      return Response.json({ ok: false, error: 'TAVILY_API_KEY missing' }, { status: 500 });
+      return new Response(JSON.stringify({ ok: false, error: 'TAVILY_API_KEY missing' }), { status: 500 });
     }
 
-    const { prompt, context = {} } = await req.json();
-    if (!prompt || typeof prompt !== 'string') {
-      console.warn('[Tavily:booking-assistant] Invalid prompt payload')
-      return Response.json({ ok: false, error: 'prompt is required' }, { status: 400 });
-    }
+    const client = new TavilyClient({ apiKey });
 
-    const { TavilyClient } = await import('@tavily/core');
-    const tavily = new TavilyClient({ apiKey });
+    const enhanced = `Booking assistant task.\nContext: ${JSON.stringify(context)}\nUser prompt: ${prompt}`;
+    const results = await client.search(enhanced);
 
-    const q = `Booking assistant task.\n${JSON.stringify(context)}\nUser prompt: ${prompt}`;
-    const res = await tavily.search({ query: q, max_results: 5 });
-
+    // simple projection of results
     const answer = {
-      summary: res?.answer ?? null,
-      sources: res?.results?.map(r => ({ title: r.title, url: r.url })) ?? []
+      summary: results?.answer ?? null,
+      sources: results?.results?.map(r => ({ title: r.title, url: r.url })) ?? []
     };
 
-    return Response.json({ ok: true, data: answer }, { status: 200 });
+    return new Response(JSON.stringify({ ok: true, data: answer }), { status: 200 });
   } catch (err) {
     console.error('[Tavily:booking-assistant] Error', err)
-    return Response.json({ ok: false, error: err.message }, { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 500 });
   }
 }
