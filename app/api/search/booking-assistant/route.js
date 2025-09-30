@@ -1,4 +1,4 @@
-import Tavily from "@tavily/core";
+const { Tavily } = require("@tavily/core");
 
 export const runtime = "nodejs";
 
