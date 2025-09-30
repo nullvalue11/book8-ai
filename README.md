@@ -332,4 +332,7 @@ Optional logging (enable observability):
 Testing:
 - Manually run: `curl -i "https://book8-ai.vercel.app/api/cron/sync?secret=YOUR_SECRET"`
 - Should return 200 with `{ ok: true, processed: N }`
+
+## Deployment Test
+Testing Vercel deployment with proper git configuration - January 2025
 >>>>>>> 87195ff9cba19e80bc2fcf4bee619181aa347613
