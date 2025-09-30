@@ -77,6 +77,10 @@ Book8 AI is a comprehensive appointment scheduling platform that combines tradit
    # Application
    NEXT_PUBLIC_BASE_URL=http://localhost:3000
    CORS_ORIGINS=http://localhost:3000
+   
+   # Cron Job (for external scheduling)
+   CRON_SECRET=your-secure-cron-secret
+   CRON_LOGS=true  # Optional: enable cron logging
    ```
 
 4. **Start the development server**
@@ -125,10 +129,13 @@ python backend_test.py
 - `PATCH /api/bookings/:id` - Update booking
 - `DELETE /api/bookings/:id` - Cancel booking
 
-### Integration Endpoints (Stubbed)
+### Integration Endpoints
 - `POST /api/integrations/google/sync` - Google Calendar sync
 - `POST /api/integrations/voice/call` - Voice call integration
 - `POST /api/integrations/search` - Web search integration
+
+### Cron Endpoints
+- `GET /api/cron/sync?secret=CRON_SECRET` - External cron job for Google Calendar sync
 
 ### Utility Endpoints
 - `GET /api/health` - Health check
@@ -156,7 +163,33 @@ Ensure all required environment variables are set:
 - `DB_NAME` - Database name
 - `JWT_SECRET` - Secure JWT secret key
 - `NEXT_PUBLIC_BASE_URL` - Your domain URL
+- `CRON_SECRET` - Secure secret for cron job authentication
+- `CRON_LOGS` - Optional: enable cron logging (true/false)
 - Stripe variables (if using billing features)
+
+## 🕒 External Cron Jobs
+
+We recommend using an external scheduler (like cron-job.org) due to Vercel Hobby limitations.
+
+- **Endpoint**: `GET /api/cron/sync?secret=CRON_SECRET`
+- **Set CRON_SECRET** in Vercel Project → Settings → Environment Variables
+- **Example URL**: `https://book8-ai.vercel.app/api/cron/sync?secret=YOUR_SECRET`
+- **Interval**: Every 10 minutes
+- **Expected response**: `{ ok: true, processed: N }`
+- **Unauthorized (bad secret)**: HTTP 401
+
+### Optional Logging
+- Set `CRON_LOGS=true` in Vercel environment variables
+- Each run is logged to `cron_logs` collection with `{ runId, startedAt, finishedAt, processed, triggeredBy }`
+
+### Testing Cron Jobs
+```bash
+# Test with correct secret
+curl -i "https://book8-ai.vercel.app/api/cron/sync?secret=YOUR_SECRET"
+
+# Test with wrong secret (should return 401)
+curl -i "https://book8-ai.vercel.app/api/cron/sync?secret=wrong"
+```
 
 ## 🏗️ Project Structure
 
@@ -164,7 +197,10 @@ Ensure all required environment variables are set:
 book8-ai/
 ├── app/                    # Next.js app directory
 │   ├── api/               # API routes
-│   │   └── [[...path]]/   # Dynamic API routing
+│   │   ├── [[...path]]/   # Dynamic API routing
+│   │   ├── auth/          # Authentication endpoints
+│   │   ├── cron/          # Cron job endpoints
+│   │   └── integrations/  # AI integration endpoints
 │   ├── globals.css        # Global styles
 │   ├── layout.js          # Root layout
 │   └── page.js            # Main application page
@@ -219,6 +255,7 @@ For support and questions:
 - ✅ Basic appointment scheduling
 - ✅ Modern UI with responsive design
 - ✅ API foundation with proper error handling
+- ✅ External cron job support
 
 ### Phase 2 (Future)
 - 🔄 Google Calendar integration
