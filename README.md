@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Book8 AI
 
 **Scheduling, voice, and web search — wired with a modular workflow engine.**
@@ -77,10 +78,6 @@ Book8 AI is a comprehensive appointment scheduling platform that combines tradit
    # Application
    NEXT_PUBLIC_BASE_URL=http://localhost:3000
    CORS_ORIGINS=http://localhost:3000
-   
-   # Cron Job (for external scheduling)
-   CRON_SECRET=your-secure-cron-secret
-   CRON_LOGS=true  # Optional: enable cron logging
    ```
 
 4. **Start the development server**
@@ -129,13 +126,10 @@ python backend_test.py
 - `PATCH /api/bookings/:id` - Update booking
 - `DELETE /api/bookings/:id` - Cancel booking
 
-### Integration Endpoints
+### Integration Endpoints (Stubbed)
 - `POST /api/integrations/google/sync` - Google Calendar sync
 - `POST /api/integrations/voice/call` - Voice call integration
 - `POST /api/integrations/search` - Web search integration
-
-### Cron Endpoints
-- `GET /api/cron/sync?secret=CRON_SECRET` - External cron job for Google Calendar sync
 
 ### Utility Endpoints
 - `GET /api/health` - Health check
@@ -163,33 +157,7 @@ Ensure all required environment variables are set:
 - `DB_NAME` - Database name
 - `JWT_SECRET` - Secure JWT secret key
 - `NEXT_PUBLIC_BASE_URL` - Your domain URL
-- `CRON_SECRET` - Secure secret for cron job authentication
-- `CRON_LOGS` - Optional: enable cron logging (true/false)
 - Stripe variables (if using billing features)
-
-## 🕒 External Cron Jobs
-
-We recommend using an external scheduler (like cron-job.org) due to Vercel Hobby limitations.
-
-- **Endpoint**: `GET /api/cron/sync?secret=CRON_SECRET`
-- **Set CRON_SECRET** in Vercel Project → Settings → Environment Variables
-- **Example URL**: `https://book8-ai.vercel.app/api/cron/sync?secret=YOUR_SECRET`
-- **Interval**: Every 10 minutes
-- **Expected response**: `{ ok: true, processed: N }`
-- **Unauthorized (bad secret)**: HTTP 401
-
-### Optional Logging
-- Set `CRON_LOGS=true` in Vercel environment variables
-- Each run is logged to `cron_logs` collection with `{ runId, startedAt, finishedAt, processed, triggeredBy }`
-
-### Testing Cron Jobs
-```bash
-# Test with correct secret
-curl -i "https://book8-ai.vercel.app/api/cron/sync?secret=YOUR_SECRET"
-
-# Test with wrong secret (should return 401)
-curl -i "https://book8-ai.vercel.app/api/cron/sync?secret=wrong"
-```
 
 ## 🏗️ Project Structure
 
@@ -197,10 +165,7 @@ curl -i "https://book8-ai.vercel.app/api/cron/sync?secret=wrong"
 book8-ai/
 ├── app/                    # Next.js app directory
 │   ├── api/               # API routes
-│   │   ├── [[...path]]/   # Dynamic API routing
-│   │   ├── auth/          # Authentication endpoints
-│   │   ├── cron/          # Cron job endpoints
-│   │   └── integrations/  # AI integration endpoints
+│   │   └── [[...path]]/   # Dynamic API routing
 │   ├── globals.css        # Global styles
 │   ├── layout.js          # Root layout
 │   └── page.js            # Main application page
@@ -255,7 +220,6 @@ For support and questions:
 - ✅ Basic appointment scheduling
 - ✅ Modern UI with responsive design
 - ✅ API foundation with proper error handling
-- ✅ External cron job support
 
 ### Phase 2 (Future)
 - 🔄 Google Calendar integration
@@ -269,4 +233,106 @@ For support and questions:
 
 **Book8 AI** - Where scheduling meets AI intelligence.
 
-*Last updated: January 2025*
+*Last updated: January 2025 - SSH signing enabled*
+=======
+# Book8 AI — MVP
+
+A modern, modular scheduling and AI integration service.
+
+This repository contains the Next.js (App Router) app with MongoDB and a single catch‑all API route. It supports JWT auth, bookings CRUD, and stubs for Google Calendar, OpenAI Realtime Audio, Tavily, Stripe billing, and n8n. Stripe subscriptions (test mode) are implemented with webhooks.
+
+## Quick Links
+- App entry: `/` (dashboard)
+- Legacy shim: `/account` (redirect info + link to dashboard)
+- API root: `/api`
+
+## Environment
+Required environment variables (set these in Vercel Project → Settings → Environment Variables):
+
+- `MONGO_URL`
+- `DB_NAME`
+- `NEXT_PUBLIC_BASE_URL` (e.g. `https://book8-ai.vercel.app`) — used to build absolute success/cancel/return URLs
+- `CORS_ORIGINS` (optional, defaults to `*` for MVP)
+
+Stripe (test mode):
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_STARTER`
+- `STRIPE_PRICE_GROWTH`
+- `STRIPE_PRICE_ENTERPRISE`
+
+## Stripe return URLs (environment‑aware)
+We centralize base URL resolution in `lib/baseUrl.js`. API routes call this helper using the `Host` header so that return URLs work in production and preview environments.
+
+- Checkout success: `${base}/?success=true&session_id={CHECKOUT_SESSION_ID}`
+- Checkout cancel: `${base}/?canceled=true`
+- Customer portal return: `${base}/?portal_return=true`
+
+The dashboard shows a small banner when any of these query flags are present.
+
+## Webhook
+`POST /api/billing/stripe/webhook` uses `request.text()` to verify the Stripe signature with `STRIPE_WEBHOOK_SECRET` and updates the user’s `subscription` object.
+
+Events handled:
+- `checkout.session.completed`
+- `customer.subscription.updated`
+- `invoice.payment_succeeded`
+- `customer.subscription.deleted`
+
+## Dev Notes
+- All API routes must be called with `/api` prefix (K8s ingress rule).
+- MongoDB responses avoid ObjectId by using UUIDs.
+- JWT auth via `jsonwebtoken`, passwords with `bcryptjs`.
+
+## Trigger a Vercel build
+This repo is designed for Git‑based deploys. Push any change (like this README) to your connected branch to trigger a new deployment.
+
+Example commands:
+```
+# from the repository root
+git add -A
+# sign commit if configured (SSH signing recommended)
+git commit -S -m "docs: add README and deployment notes"
+git push origin main
+```
+
+If using a Deploy Hook instead, create a hook for the production branch and `POST` to it. The hook will redeploy the latest commit from Git.
+
+## Roadmap
+- Google Calendar OAuth + sync
+- Tavily live search integration
+- OpenAI Realtime Audio call flows
+- n8n workflow templates
+- Analytics dashboard (Phase 2)
+
+
+Note: Test deploy trigger at 2025-09-13T20:41:25Z
+
+Verified commit test at 2025-09-13T20:55:37Z
+
+Deploy test: hook + cancel-sync fixes at 2025-09-16T00:12:17Z
+
+Deploy test (re-add remote) at 2025-09-16T00:13:18Z
+
+## External Cron (cron-job.org)
+
+We recommend using an external scheduler due to Vercel Hobby limitations.
+
+- Endpoint: `GET /api/cron/sync?secret=CRON_SECRET`
+- Set `CRON_SECRET` in Vercel Project → Settings → Environment Variables
+- Example URL: `https://book8-ai.vercel.app/api/cron/sync?secret=YOUR_SECRET`
+- Interval: Every 10 minutes
+- Expected response: `{ ok: true, processed: N }`
+- Unauthorized (bad secret): HTTP 401
+
+Optional logging (enable observability):
+- Set `CRON_LOGS=true` in Vercel env
+- Each run is logged to `cron_logs` collection with `{ runId, startedAt, finishedAt, processed, triggeredBy }`
+
+Testing:
+- Manually run: `curl -i "https://book8-ai.vercel.app/api/cron/sync?secret=YOUR_SECRET"`
+- Should return 200 with `{ ok: true, processed: N }`
+
+## Deployment Test
+Testing Vercel deployment with proper git configuration - January 2025
+>>>>>>> 87195ff9cba19e80bc2fcf4bee619181aa347613
