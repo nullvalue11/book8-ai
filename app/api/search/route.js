@@ -1,37 +1,27 @@
+import TavilyClient from "@tavily/core";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-async function getTavilyCtor() {
-  const mod = await import("@tavily/core");
-  const TavClient = mod?.TavilyClient || mod?.default || mod?.Tavily;
-  if (typeof TavClient !== "function") {
-    throw new Error("TavilyClient export not found in @tavily/core");
-  }
-  return TavClient;
-}
 
 export async function POST(req) {
   try {
     console.log('[Tavily:general] Route hit')
-    const body = await req.json().catch(() => ({}));
-    const query = typeof body === 'string' ? body : body?.query;
+    const { query } = await req.json();
     if (!query) {
-      return new Response(JSON.stringify({ ok: false, error: "Missing query" }), { status: 400 });
+      return Response.json({ ok: false, error: "Missing query" }, { status: 400 });
     }
 
     const apiKey = process.env.TAVILY_API_KEY;
     if (!apiKey) {
-      console.warn('[Tavily:general] Missing TAVILY_API_KEY')
-      return new Response(JSON.stringify({ ok: false, error: 'TAVILY_API_KEY missing' }), { status: 500 });
+      return Response.json({ ok: false, error: 'TAVILY_API_KEY missing' }, { status: 500 });
     }
 
-    const TavilyClient = await getTavilyCtor();
     const client = new TavilyClient({ apiKey });
     const results = await client.search({ query });
 
-    return new Response(JSON.stringify({ ok: true, data: results }), { status: 200 });
+    return Response.json({ ok: true, data: results });
   } catch (err) {
     console.error("[Tavily:general]", err);
-    return new Response(JSON.stringify({ ok: false, error: err?.message || 'Search failed' }), { status: 500 });
+    return Response.json({ ok: false, error: err?.message || 'Search failed' }, { status: 500 });
   }
 }
