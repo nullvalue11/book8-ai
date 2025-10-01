@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 function formatDT(dt) {
   try {
@@ -16,6 +17,19 @@ function formatDT(dt) {
   } catch {
     return dt;
   }
+}
+function toAmount(obj) {
+  const o = obj?.rawEvent?.data?.object || {};
+  const currency = (o.currency || o.lines?.data?.[0]?.price?.currency || "usd").toUpperCase();
+  const cent = o.amount_paid ?? o.amount_due ?? o.amount ?? o.total ?? null;
+  if (cent == null) return null;
+  return `${(cent / 100).toFixed(2)} ${currency}`;
+}
+function StatusBadge({ status }) {
+  const s = String(status || "").toLowerCase();
+  if (["paid","succeeded","active","completed"].some(x => s.includes(x))) return <Badge className="bg-green-600">success</Badge>;
+  if (["failed","past_due","canceled","unpaid"].some(x => s.includes(x))) return <Badge className="bg-red-600">failed</Badge>;
+  return <Badge className="bg-yellow-500 text-black">pending</Badge>;
 }
 
 export default function Home() {
@@ -56,6 +70,12 @@ export default function Home() {
   const [assistantResults, setAssistantResults] = useState(null);
   const [assistantLoading, setAssistantLoading] = useState(false);
 
+  // Billing logs (user)
+  const [bLogs, setBLogs] = useState([]);
+  const [bPage, setBPage] = useState(1);
+  const [bHasMore, setBHasMore] = useState(true);
+  const [bLoading, setBLoading] = useState(false);
+
   useEffect(() => {
     const t = localStorage.getItem("book8_token");
     const u = localStorage.getItem("book8_user");
@@ -67,6 +87,7 @@ export default function Home() {
     if (token) {
       fetchBookings();
       fetchGoogleStatus();
+      fetchBillingLogs(1, true);
     }
   }, [token]);
 
@@ -81,6 +102,20 @@ export default function Home() {
     const body = isJson ? await res.json() : await res.text();
     if (!res.ok) throw new Error(body?.error || body || `Request failed: ${res.status}`);
     return body;
+  }
+
+  async function fetchBillingLogs(page = 1, reset = false) {
+    try {
+      setBLoading(true);
+      const data = await api(`/billing/logs?page=${page}&limit=10`, { method: "GET" });
+      const list = data?.logs || [];
+      setBLogs(reset ? list : [...bLogs, ...list]);
+      setBPage(data?.page || page);
+      const total = data?.total ?? (reset ? list.length : bLogs.length + list.length);
+      setBHasMore(total > (page * 10));
+    } catch (e) {
+      console.warn('billing logs load failed', e?.message);
+    } finally { setBLoading(false); }
   }
 
   async function handleRegister(e) {
@@ -127,6 +162,7 @@ export default function Home() {
     setToken(null);
     setUser(null);
     setBookings([]);
+    setBLogs([]);
   }
 
   async function fetchBookings() {
@@ -446,6 +482,49 @@ export default function Home() {
                   </div>
                   <Button size="sm" variant="secondary">Contact</Button>
                 </div>
+              </div>
+            </div>
+
+            {/* Billing Activity Logs (User) */}
+            <div className="rounded-md border p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-medium">Billing Activity</p>
+                <div className="text-xs text-muted-foreground">Latest events</div>
+              </div>
+              <div className="rounded border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date/Time</TableHead>
+                      <TableHead>Event</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(bLogs || []).length === 0 && !bLoading && (
+                      <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-6">No billing activity yet.</TableCell></TableRow>
+                    )}
+                    {(bLogs || []).map((l) => (
+                      <TableRow key={l.id}>
+                        <TableCell className="whitespace-nowrap">{formatDT(l.createdAt || l.processedAt)}</TableCell>
+                        <TableCell className="text-xs">{l.type}</TableCell>
+                        <TableCell>{toAmount(l) || '-'}</TableCell>
+                        <TableCell><StatusBadge status={l.status} /></TableCell>
+                      </TableRow>
+                    ))}
+                    {bLoading && (
+                      <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-6">Loading...</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="mt-3 flex justify-end">
+                {bHasMore ? (
+                  <Button size="sm" variant="secondary" onClick={() => fetchBillingLogs(bPage + 1)} disabled={bLoading}>{bLoading ? 'Loading...' : 'Load more'}</Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">No more events</span>
+                )}
               </div>
             </div>
           </CardContent>
