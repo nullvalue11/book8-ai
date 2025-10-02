@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 
+// Ensure this API route is always dynamic and never statically optimized
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 export const runtime = 'nodejs'
 
 let client
