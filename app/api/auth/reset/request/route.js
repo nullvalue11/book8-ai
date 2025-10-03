@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { headers } from 'next/headers'
+import { Resend } from 'resend'
 
 // Ensure dynamic runtime
 export const runtime = 'nodejs'
@@ -29,21 +30,24 @@ function baseUrl() {
   return `${proto}://${h}`
 }
 
-async function sendResetEmail({ to, resetUrl }) {
+async function sendResetEmail({ to, resetLink }) {
   try {
-    const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.FROM_EMAIL
     const apiKey = process.env.RESEND_API_KEY
-    if (!apiKey || !fromEmail) {
-      console.warn('[reset/request] Missing RESEND_API_KEY or FROM email; skipping email send')
+    const from = process.env.EMAIL_FROM // e.g. "Book8 <noreply@book8.io>"
+    const replyTo = process.env.EMAIL_REPLY_TO // e.g. support@book8.io
+
+    if (!apiKey || !from) {
+      console.warn('[reset/request] Missing RESEND_API_KEY or EMAIL_FROM; skipping email send')
       return { sent: false, reason: 'missing_config' }
     }
-    const { Resend } = await import('resend')
+
     const resend = new Resend(apiKey)
     await resend.emails.send({
-      from: fromEmail,
+      from,
       to,
-      subject: 'Reset your Book8 AI password',
-      html: `<p>You requested a password reset.</p><p>Click <a href="${resetUrl}">this secure link</a> to reset your password.</p><p>If you did not request this, you can ignore this email.</p>`
+      reply_to: replyTo,
+      subject: 'Reset your Book8 password',
+      html: `<p>Click here to reset: <a href="${resetLink}">${resetLink}</a></p>`
     })
     return { sent: true }
   } catch (e) {
@@ -67,12 +71,12 @@ export async function POST(req) {
 
     await database.collection('users').updateOne({ id: user.id }, { $set: { resetTokenHash: tokenHash, resetTokenExpires: expires } })
 
-    const resetUrl = `${baseUrl()}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`
+    const resetLink = `${baseUrl()}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`
 
-    const emailResult = await sendResetEmail({ to: user.email, resetUrl })
+    const emailResult = await sendResetEmail({ to: user.email, resetLink })
 
-    // Still include resetUrl for dev/testing; production clients can ignore it
-    return NextResponse.json({ ok: true, message: emailResult.sent ? 'Email sent' : 'Email not sent (fallback delivered)', emailSent: emailResult.sent, resetUrl })
+    // Still include link for dev/testing; production clients can ignore it
+    return NextResponse.json({ ok: true, message: emailResult.sent ? 'Email sent' : 'Email not sent (fallback delivered)', emailSent: emailResult.sent, resetUrl: resetLink })
   } catch (e) {
     console.error('[auth/reset/request]', e)
     return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 })
