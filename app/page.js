@@ -111,6 +111,49 @@ export default function Home() {
 
   async function cancelBooking(id) { if (!confirm("Cancel this booking?")) return; try { await api(`/bookings/${id}`, { method: "DELETE" }); await fetchBookings(); } catch (err) { alert(err.message); } }
 
+  async function archiveBookings() {
+    if (!confirm("Archive all completed and canceled bookings?")) return;
+    try {
+      const result = await api(`/bookings/archive`, { method: "POST" });
+      alert(`Archived ${result.archived || 0} booking(s)`);
+      await fetchBookings();
+      await fetchArchivedCount();
+    } catch (err) { alert(err.message); }
+  }
+
+  async function fetchArchivedCount() {
+    try {
+      const items = await api(`/bookings/archived`, { method: "GET" });
+      setArchivedCount((items || []).length);
+    } catch (err) { console.error("fetchArchivedCount", err); }
+  }
+
+  function copyBookingLink() {
+    if (!user?.scheduling?.handle) return;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${baseUrl}/b/${user.scheduling.handle}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(err => alert('Failed to copy: ' + err.message));
+  }
+
+  function shareBookingLink(platform) {
+    if (!user?.scheduling?.handle) return;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${baseUrl}/b/${user.scheduling.handle}`;
+    const text = 'Book time with me';
+    
+    const urls = {
+      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+      email: `mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(url)}`
+    };
+    
+    if (urls[platform]) window.open(urls[platform], '_blank', 'width=600,height=400');
+  }
+
   async function fetchGoogleStatus() { try { const status = await api(`/integrations/google/sync`, { method: "GET" }); setGoogleStatus(status || { connected: false, lastSyncedAt: null }); } catch (err) { setGoogleStatus({ connected: false, lastSyncedAt: null }); } }
   async function connectGoogle() { if (!token) return alert("Please login first"); window.location.href = `/api/integrations/google/auth?jwt=${token}`; }
   async function openCalendars() { try { const res = await api(`/integrations/google/calendars`, { method: "GET" }); setCalendars(res?.calendars || []); setCalendarDialogOpen(true); } catch (err) { alert(err.message || "Failed to load calendars"); } }
