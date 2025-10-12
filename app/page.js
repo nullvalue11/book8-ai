@@ -67,6 +67,10 @@ export default function Home() {
   const [dashError, setDashError] = useState("");
   const fetchAbort = useRef(null);
 
+  const [copied, setCopied] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [archivedCount, setArchivedCount] = useState(0);
+
   useEffect(() => { const t = localStorage.getItem("book8_token"); const u = localStorage.getItem("book8_user"); if (t) setToken(t); if (u) setUser(JSON.parse(u)); }, []);
   useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchBillingLogs(1, true); } }, [token]);
 
