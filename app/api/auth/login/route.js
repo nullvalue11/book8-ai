@@ -43,7 +43,7 @@ export async function POST(req) {
     const token = jwt.sign({ sub: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' })
     const googleSafe = user.google ? { connected: !!user.google?.refreshToken, lastSyncedAt: user.google?.lastSyncedAt || null } : { connected: false, lastSyncedAt: null }
 
-    return NextResponse.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name || '', subscription: user.subscription || null, google: googleSafe } })
+    return NextResponse.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name || '', subscription: user.subscription || null, google: googleSafe }, redirect: '/dashboard' })
   } catch (err) {
     console.error('[auth/login] error', err)
     return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 })
