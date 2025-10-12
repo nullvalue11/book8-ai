@@ -148,7 +148,27 @@ async function handleRoute(request, { params }) {
     if (route === '/bookings' && method === 'GET') {
       const auth = await requireAuth(request, database)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const items = await database.collection('bookings').find({ userId: auth.user.id }).sort({ startTime: 1 }).toArray()
+      const items = await database.collection('bookings').find({ userId: auth.user.id, archived: { $ne: true } }).sort({ startTime: 1 }).toArray()
+      const cleaned = items.map(({ _id, ...rest }) => rest)
+      return json(cleaned)
+    }
+
+    // Bookings archive (clear completed/canceled)
+    if (route === '/bookings/archive' && method === 'POST') {
+      const auth = await requireAuth(request, database)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const result = await database.collection('bookings').updateMany(
+        { userId: auth.user.id, status: { $in: ['canceled', 'completed'] }, archived: { $ne: true } },
+        { $set: { archived: true, archivedAt: new Date().toISOString() } }
+      )
+      return json({ ok: true, archived: result.modifiedCount })
+    }
+
+    // Bookings archived list
+    if (route === '/bookings/archived' && method === 'GET') {
+      const auth = await requireAuth(request, database)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const items = await database.collection('bookings').find({ userId: auth.user.id, archived: true }).sort({ archivedAt: -1 }).toArray()
       const cleaned = items.map(({ _id, ...rest }) => rest)
       return json(cleaned)
     }
