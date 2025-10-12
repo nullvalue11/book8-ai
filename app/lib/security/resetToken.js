@@ -4,9 +4,7 @@ import jwt from 'jsonwebtoken'
 function b64url(input) {
   return Buffer.from(input).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
 }
-function randomNonce(len = 16) {
-  return b64url(crypto.randomBytes(len))
-}
+function randomNonce(len = 16) { return b64url(crypto.randomBytes(len)) }
 
 export function signResetToken({ sub, purpose = 'password_reset', ttlMinutes = 30, extra = {} }) {
   const secret = process.env.RESET_TOKEN_SECRET
@@ -20,15 +18,22 @@ export function signResetToken({ sub, purpose = 'password_reset', ttlMinutes = 3
 }
 
 export function verifyResetToken(token) {
+  return verifyActionToken(token, 'password_reset')
+}
+
+export function signActionToken({ sub, purpose, ttlMinutes = 30, extra = {} }) {
+  if (!purpose) throw new Error('purpose required')
+  return signResetToken({ sub, purpose, ttlMinutes, extra })
+}
+
+export function verifyActionToken(token, expectedPurpose) {
   const secret = process.env.RESET_TOKEN_SECRET
   if (!secret) throw new Error('RESET_TOKEN_SECRET missing')
   try {
     const payload = jwt.verify(token, secret, { algorithms: ['HS256'] })
-    if (payload.purpose !== 'password_reset') throw new Error('Invalid purpose')
+    if (expectedPurpose && payload.purpose !== expectedPurpose) throw new Error('Invalid purpose')
     return { valid: true, payload }
-  } catch (e) {
-    return { valid: false, error: e }
-  }
+  } catch (e) { return { valid: false, error: e } }
 }
 
 export function ttlMinutes() {
