@@ -423,7 +423,19 @@ export default function Home() {
       {/* Bookings List & AI Search */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-card">
-          <CardHeader><CardTitle>Your Bookings</CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Your Bookings</CardTitle>
+              <div className="flex items-center gap-2">
+                {archivedCount > 0 && (
+                  <span className="text-xs text-muted-foreground">{archivedCount} archived</span>
+                )}
+                <Button size="sm" variant="outline" onClick={archiveBookings}>
+                  Clear
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
           <CardContent>
             {loadingBookings ? (<p className="text-sm text-muted-foreground">Loading...</p>) : (
               <Table>
