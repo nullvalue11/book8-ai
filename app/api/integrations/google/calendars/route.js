@@ -21,6 +21,8 @@ async function connectToMongo() {
   return db
 }
 
+export async function OPTIONS() { return new Response(null, { status: 204 }) }
+
 function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret-change-me' }
 
 async function requireAuth(request, database) {
@@ -71,15 +73,38 @@ export async function GET(request) {
     if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
 
     const user = await database.collection('users').findOne({ id: auth.user.id })
+    const selectedIds = user?.google?.selectedCalendarIds || (user?.google?.selectedCalendars) || []
     const calendar = await getCalendarClientForUser(user)
     if (!calendar) return NextResponse.json({ ok: false, error: 'Google not connected' }, { status: 400 })
 
     const resp = await calendar.calendarList.list()
     const items = resp.data.items || []
-    const mapped = items.map(x => ({ id: x.id, summary: x.summary, accessRole: x.accessRole, primary: !!x.primary }))
-    return NextResponse.json({ ok: true, calendars: mapped })
+    const calendars = items.map(x => ({ id: x.id, summary: x.summary, accessRole: x.accessRole, primary: !!x.primary, selected: Array.isArray(selectedIds) ? selectedIds.includes(x.id) || (x.primary && selectedIds.includes('primary')) : false }))
+
+    console.info('[google/calendars] returned', calendars.length)
+    return NextResponse.json({ ok: true, calendars })
   } catch (e) {
     console.error('[google/calendars] error', e)
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 })
+  }
+}
+
+export async function POST(request) {
+  try {
+    const database = await connectToMongo()
+    const auth = await requireAuth(request, database)
+    if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+
+    const body = await request.json().catch(() => ({}))
+    let ids = body?.selectedCalendarIds || body?.selectedCalendars || []
+    if (!Array.isArray(ids)) ids = []
+    ids = ids.map(String)
+
+    await database.collection('users').updateOne({ id: auth.user.id }, { $set: { 'google.selectedCalendarIds': ids, 'google.updatedAt': new Date() } })
+    console.info('[google/calendars] saved selectedCalendarIds', ids)
+    return NextResponse.json({ ok: true, selectedCalendarIds: ids })
+  } catch (e) {
+    console.error('[google/calendars] save error', e)
     return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 })
   }
 }
