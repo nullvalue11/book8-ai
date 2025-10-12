@@ -319,6 +319,77 @@ export default function Home() {
               )}
             </div>
 
+            {/* Public Booking Link */}
+            <div className="rounded-md border p-3">
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-medium">Public Booking Link</p>
+                {user?.scheduling?.handle && (
+                  <Button size="sm" variant="ghost" onClick={() => window.location.href = '/dashboard/settings/scheduling'}>
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              
+              {user?.scheduling?.handle ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 p-2 bg-muted rounded-md break-all text-sm">
+                    <ExternalLink className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 min-w-0 break-all">{typeof window !== 'undefined' ? window.location.origin : ''}/b/{user.scheduling.handle}</span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={copyBookingLink} className="gap-2">
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copied ? 'Copied!' : 'Copy Link'}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowQR(!showQR)} className="gap-2">
+                      <QrCode className="h-4 w-4" />
+                      {showQR ? 'Hide QR' : 'Show QR'}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => shareBookingLink('twitter')} className="gap-2">
+                      <Share2 className="h-3 w-3" />
+                      Twitter
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => shareBookingLink('linkedin')} className="gap-2">
+                      <Share2 className="h-3 w-3" />
+                      LinkedIn
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => shareBookingLink('email')} className="gap-2">
+                      <Share2 className="h-3 w-3" />
+                      Email
+                    </Button>
+                  </div>
+                  
+                  {showQR && (
+                    <div className="flex justify-center p-4 bg-white rounded-md">
+                      <QRCodeSVG 
+                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/b/${user.scheduling.handle}`}
+                        size={160}
+                        level="H"
+                        includeMargin={true}
+                      />
+                    </div>
+                  )}
+                  
+                  <a 
+                    href={`/b/${user.scheduling.handle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    Preview booking page <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Set up your public booking page to accept bookings from anyone.</p>
+                  <Button size="sm" onClick={() => window.location.href = '/dashboard/settings/scheduling'}>
+                    Configure Scheduling
+                  </Button>
+                </div>
+              )}
+            </div>
+
             <div className="rounded-md border p-3">
               <p className="font-medium">Billing</p>
               <div className="mt-2 grid grid-cols-1 gap-2 text-sm">
