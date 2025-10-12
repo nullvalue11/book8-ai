@@ -285,16 +285,20 @@ export default function Home() {
           <CardHeader><CardTitle>Integrations</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="rounded-md border p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Google Calendar</p>
-                  <p className="text-xs text-muted-foreground">{googleStatus?.connected ? `Connected • Last synced ${googleStatus?.lastSyncedAt ? formatDT(googleStatus.lastSyncedAt) : "never"}` : "Not connected"}</p>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">Google Calendar</p>
+                    <p className="text-xs text-muted-foreground break-words">{googleStatus?.connected ? `Connected • Last synced ${googleStatus?.lastSyncedAt ? formatDT(googleStatus.lastSyncedAt) : "never"}` : "Not connected"}</p>
+                  </div>
+                  <Button size="sm" variant={googleStatus?.connected ? "secondary" : "default"} onClick={connectGoogle} className="shrink-0">{googleStatus?.connected ? "Reconnect" : "Connect"}</Button>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant={googleStatus?.connected ? "secondary" : "default"} onClick={connectGoogle}>{googleStatus?.connected ? "Reconnect" : "Connect"}</Button>
-                  <Button size="sm" variant="secondary" onClick={openCalendars} disabled={!googleStatus?.connected}>Choose calendars</Button>
-                  <Button size="sm" onClick={syncGoogle} disabled={!googleStatus?.connected}>Sync now</Button>
-                </div>
+                {googleStatus?.connected && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" onClick={openCalendars}>Choose calendars</Button>
+                    <Button size="sm" onClick={syncGoogle}>Sync now</Button>
+                  </div>
+                )}
               </div>
               {calendarDialogOpen && (
                 <div className="mt-3 border-t pt-3">
