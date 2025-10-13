@@ -165,16 +165,101 @@ export default function Home() {
 
   if (!token) {
     return (
-      <main className="container mx-auto max-w-4xl p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Book8 AI</h1>
-          <ThemeToggle resolved={resolved} setTheme={setTheme} />
-        </header>
+      <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        {/* Navigation */}
+        <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img 
+                src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
+                alt="Book8 AI Logo" 
+                className="h-10 w-auto"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <ThemeToggle resolved={resolved} setTheme={setTheme} />
+              <Button variant="ghost" onClick={() => setAuthMode("login")}>Sign In</Button>
+              <Button className="gradient-primary text-white" onClick={() => setAuthMode("register")}>Get Started</Button>
+            </div>
+          </div>
+        </nav>
 
-        <div className="mt-8 grid grid-cols-1 gap-6">
-          <Card className="bg-card">
+        {/* Hero Section */}
+        <section className="container mx-auto max-w-7xl px-6 pt-20 pb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-8">
+              <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                🤖 AI-Powered Scheduling
+              </div>
+              <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
+                Intelligent Booking <span className="text-gradient">& Automation</span>
+              </h1>
+              <p className="text-xl text-muted-foreground">
+                Transform your scheduling with AI-powered automation. Connect calendars, enable voice bookings, and leverage real-time web search—all in one platform.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Button size="lg" className="gradient-primary text-white text-lg px-8" onClick={() => setAuthMode("register")}>
+                  Start Free Trial
+                </Button>
+                <Button size="lg" variant="outline" className="text-lg px-8">
+                  Watch Demo →
+                </Button>
+              </div>
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-accent" />
+                  <span>No credit card required</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-accent" />
+                  <span>Free 14-day trial</span>
+                </div>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="absolute inset-0 gradient-hero rounded-3xl blur-3xl"></div>
+              <img 
+                src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
+                alt="Book8 AI Platform" 
+                className="relative z-10 w-full max-w-md mx-auto animate-float"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="container mx-auto max-w-7xl px-6 py-20">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">Everything You Need</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Powerful features to streamline your scheduling and boost productivity
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { icon: "🗓️", title: "Smart Calendar Sync", desc: "Two-way Google Calendar integration with timezone awareness" },
+              { icon: "🔍", title: "Live Web Search", desc: "Real-time venue and booking information powered by Tavily AI" },
+              { icon: "📞", title: "Voice Booking", desc: "OpenAI Realtime Audio for natural voice-based scheduling" },
+              { icon: "💳", title: "Stripe Billing", desc: "Secure subscription management and payment processing" },
+              { icon: "🔗", title: "Public Booking Links", desc: "Shareable links with QR codes for easy client booking" },
+              { icon: "⚡", title: "Workflow Automation", desc: "n8n integration for custom scheduling workflows" }
+            ].map((feature, i) => (
+              <Card key={i} className="border-2 hover:border-primary transition-all duration-300 hover:shadow-lg">
+                <CardContent className="pt-6 space-y-4">
+                  <div className="text-4xl">{feature.icon}</div>
+                  <h3 className="text-xl font-semibold">{feature.title}</h3>
+                  <p className="text-muted-foreground">{feature.desc}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* Auth Section */}
+        <section className="container mx-auto max-w-4xl px-6 py-20">
+          <Card className="bg-card shadow-2xl">
             <CardHeader>
-              <CardTitle>{authMode === "login" ? "Login" : "Create Account"}</CardTitle>
+              <CardTitle className="text-2xl text-center">{authMode === "login" ? "Welcome Back" : "Create Your Account"}</CardTitle>
             </CardHeader>
             <CardContent>
               {!showReset ? (
