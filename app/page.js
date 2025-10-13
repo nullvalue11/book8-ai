@@ -296,32 +296,110 @@ export default function Home() {
               )}
             </CardContent>
           </Card>
+        </section>
 
-          <Card className="bg-card">
-            <CardHeader>
-              <CardTitle>Pricing</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  { name: "Starter", price: "$9/mo", features: ["Basic bookings", "Email support"] },
-                  { name: "Growth", price: "$29/mo", features: ["Google Calendar", "Web Search", "Priority support"] },
-                  { name: "Enterprise", price: "Contact", features: ["Dedicated support", "SLA", "Custom workflows"] },
-                ].map((p) => (
-                  <Card key={p.name} className="border bg-card">
-                    <CardHeader><CardTitle>{p.name}</CardTitle></CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-semibold">{p.price}</p>
-                      <ul className="mt-3 list-disc ml-5 text-sm text-muted-foreground">
-                        {p.features.map((f) => (<li key={f}>{f}</li>))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                ))}
+        {/* Pricing Section */}
+        <section className="container mx-auto max-w-7xl px-6 py-20 bg-muted/30">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h2>
+            <p className="text-xl text-muted-foreground">Choose the plan that fits your needs</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {[
+              { 
+                name: "Starter", 
+                price: "$9", 
+                period: "/month",
+                features: ["Basic bookings", "Email notifications", "Mobile responsive", "Email support"],
+                popular: false
+              },
+              { 
+                name: "Growth", 
+                price: "$29", 
+                period: "/month",
+                features: ["Everything in Starter", "Google Calendar sync", "Live web search", "QR code sharing", "Priority support"],
+                popular: true
+              },
+              { 
+                name: "Enterprise", 
+                price: "Custom", 
+                period: "",
+                features: ["Everything in Growth", "Dedicated support", "SLA guarantee", "Custom workflows", "n8n integration", "White-label option"],
+                popular: false
+              },
+            ].map((plan) => (
+              <Card key={plan.name} className={`relative border-2 ${plan.popular ? 'border-primary shadow-2xl scale-105' : 'border-border'} transition-all duration-300 hover:shadow-xl`}>
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="gradient-primary text-white px-4 py-1 rounded-full text-sm font-medium">Most Popular</span>
+                  </div>
+                )}
+                <CardHeader className="text-center pb-8 pt-8">
+                  <CardTitle className="text-2xl mb-2">{plan.name}</CardTitle>
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="text-5xl font-bold">{plan.price}</span>
+                    <span className="text-muted-foreground">{plan.period}</span>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <ul className="space-y-3">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-start gap-3">
+                        <Check className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                        <span className="text-sm">{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button className={`w-full ${plan.popular ? 'gradient-primary text-white' : ''}`} size="lg">
+                    {plan.price === "Custom" ? "Contact Sales" : "Get Started"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="border-t bg-card mt-20">
+          <div className="container mx-auto max-w-7xl px-6 py-12">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+              <div className="col-span-1 md:col-span-2">
+                <img 
+                  src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
+                  alt="Book8 AI" 
+                  className="h-10 w-auto mb-4"
+                />
+                <p className="text-muted-foreground mb-4">Intelligent booking and automation platform powered by AI.</p>
+                <div className="flex gap-4">
+                  <Button size="icon" variant="ghost"><Share2 className="h-5 w-5" /></Button>
+                  <Button size="icon" variant="ghost"><Share2 className="h-5 w-5" /></Button>
+                  <Button size="icon" variant="ghost"><Share2 className="h-5 w-5" /></Button>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div>
+                <h4 className="font-semibold mb-4">Product</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li><a href="#" className="hover:text-foreground transition-colors">Features</a></li>
+                  <li><a href="#" className="hover:text-foreground transition-colors">Pricing</a></li>
+                  <li><a href="#" className="hover:text-foreground transition-colors">Integrations</a></li>
+                  <li><a href="#" className="hover:text-foreground transition-colors">API</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Company</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li><a href="#" className="hover:text-foreground transition-colors">About</a></li>
+                  <li><a href="#" className="hover:text-foreground transition-colors">Blog</a></li>
+                  <li><a href="#" className="hover:text-foreground transition-colors">Careers</a></li>
+                  <li><a href="#" className="hover:text-foreground transition-colors">Contact</a></li>
+                </ul>
+              </div>
+            </div>
+            <div className="border-t pt-8 text-center text-sm text-muted-foreground">
+              <p>© 2025 Book8 AI. All rights reserved.</p>
+            </div>
+          </div>
+        </footer>
       </main>
     );
   }
