@@ -405,15 +405,27 @@ export default function Home() {
   }
 
   return (
-    <main className="container mx-auto max-w-7xl p-6">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Book8 AI Dashboard</h1>
-        <div className="flex items-center gap-2 text-sm">
-          <ThemeToggle resolved={resolved} setTheme={setTheme} />
-          <span className="text-muted-foreground hidden sm:inline">{user?.email}</span>
-          <Button variant="destructive" onClick={handleLogout}>Logout</Button>
+    <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
+              alt="Book8 AI" 
+              className="h-10 w-auto"
+            />
+            <div className="hidden md:block h-6 w-px bg-border"></div>
+            <span className="hidden md:inline text-sm text-muted-foreground">Dashboard</span>
+          </div>
+          <div className="flex items-center gap-3 text-sm">
+            <ThemeToggle resolved={resolved} setTheme={setTheme} />
+            <span className="text-muted-foreground hidden sm:inline truncate max-w-[200px]">{user?.email}</span>
+            <Button variant="destructive" size="sm" onClick={handleLogout}>Logout</Button>
+          </div>
         </div>
       </header>
+
+      <div className="container mx-auto max-w-7xl p-6">
 
       {dashLoading && (<div className="mt-4 text-sm text-muted-foreground">Loading dashboard...</div>)}
       {dashError && (<div className="mt-4 text-sm text-red-600">{dashError}</div>)}
