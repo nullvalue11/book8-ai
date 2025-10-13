@@ -10,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Copy, Check, QrCode, Share2, Settings, ExternalLink } from "lucide-react";
 import { useTheme } from "next-themes";
+import { QRCodeSVG } from "qrcode.react";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function toAmount(obj) { const o = obj?.rawEvent?.data?.object || {}; const currency = (o.currency || o.lines?.data?.[0]?.price?.currency || "usd").toUpperCase(); const cent = o.amount_paid ?? o.amount_due ?? o.amount ?? o.total ?? null; if (cent == null) return null; return `${(cent / 100).toFixed(2)} ${currency}`; }
@@ -66,8 +67,12 @@ export default function Home() {
   const [dashError, setDashError] = useState("");
   const fetchAbort = useRef(null);
 
+  const [copied, setCopied] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [archivedCount, setArchivedCount] = useState(0);
+
   useEffect(() => { const t = localStorage.getItem("book8_token"); const u = localStorage.getItem("book8_user"); if (t) setToken(t); if (u) setUser(JSON.parse(u)); }, []);
-  useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchBillingLogs(1, true); } }, [token]);
+  useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchBillingLogs(1, true); fetchArchivedCount(); } }, [token]);
 
   async function api(path, opts = {}) { const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {}, token ? { Authorization: `Bearer ${token}` } : {}); const res = await fetch(`/api${path}`, { ...opts, headers }); const isJson = (res.headers.get("content-type") || "").includes("application/json"); const body = isJson ? await res.json() : await res.text(); if (!res.ok) throw new Error(body?.error || body || `Request failed: ${res.status}`); return body; }
 
@@ -105,6 +110,49 @@ export default function Home() {
   async function createBooking(e) { e.preventDefault(); try { const payload = { title, customerName, startTime: startTime ? new Date(startTime).toISOString() : null, endTime: endTime ? new Date(endTime).toISOString() : null, notes, timeZone, }; const created = await api(`/bookings`, { method: "POST", headers: { "x-client-timezone": timeZone }, body: JSON.stringify(payload), }); setTitle("Intro call"); setCustomerName(""); setStartTime(""); setEndTime(""); setNotes(""); await fetchBookings(); alert(`Booking created: ${created?.title || created?.id}`); } catch (err) { alert(err.message); } }
 
   async function cancelBooking(id) { if (!confirm("Cancel this booking?")) return; try { await api(`/bookings/${id}`, { method: "DELETE" }); await fetchBookings(); } catch (err) { alert(err.message); } }
+
+  async function archiveBookings() {
+    if (!confirm("Archive all completed and canceled bookings?")) return;
+    try {
+      const result = await api(`/bookings/archive`, { method: "POST" });
+      alert(`Archived ${result.archived || 0} booking(s)`);
+      await fetchBookings();
+      await fetchArchivedCount();
+    } catch (err) { alert(err.message); }
+  }
+
+  async function fetchArchivedCount() {
+    try {
+      const items = await api(`/bookings/archived`, { method: "GET" });
+      setArchivedCount((items || []).length);
+    } catch (err) { console.error("fetchArchivedCount", err); }
+  }
+
+  function copyBookingLink() {
+    if (!user?.scheduling?.handle) return;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${baseUrl}/b/${user.scheduling.handle}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(err => alert('Failed to copy: ' + err.message));
+  }
+
+  function shareBookingLink(platform) {
+    if (!user?.scheduling?.handle) return;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${baseUrl}/b/${user.scheduling.handle}`;
+    const text = 'Book time with me';
+    
+    const urls = {
+      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+      email: `mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(url)}`
+    };
+    
+    if (urls[platform]) window.open(urls[platform], '_blank', 'width=600,height=400');
+  }
 
   async function fetchGoogleStatus() { try { const status = await api(`/integrations/google/sync`, { method: "GET" }); setGoogleStatus(status || { connected: false, lastSyncedAt: null }); } catch (err) { setGoogleStatus({ connected: false, lastSyncedAt: null }); } }
   async function connectGoogle() { if (!token) return alert("Please login first"); window.location.href = `/api/integrations/google/auth?jwt=${token}`; }
@@ -237,16 +285,20 @@ export default function Home() {
           <CardHeader><CardTitle>Integrations</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="rounded-md border p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Google Calendar</p>
-                  <p className="text-xs text-muted-foreground">{googleStatus?.connected ? `Connected • Last synced ${googleStatus?.lastSyncedAt ? formatDT(googleStatus.lastSyncedAt) : "never"}` : "Not connected"}</p>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">Google Calendar</p>
+                    <p className="text-xs text-muted-foreground break-words">{googleStatus?.connected ? `Connected • Last synced ${googleStatus?.lastSyncedAt ? formatDT(googleStatus.lastSyncedAt) : "never"}` : "Not connected"}</p>
+                  </div>
+                  <Button size="sm" variant={googleStatus?.connected ? "secondary" : "default"} onClick={connectGoogle} className="shrink-0">{googleStatus?.connected ? "Reconnect" : "Connect"}</Button>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant={googleStatus?.connected ? "secondary" : "default"} onClick={connectGoogle}>{googleStatus?.connected ? "Reconnect" : "Connect"}</Button>
-                  <Button size="sm" variant="secondary" onClick={openCalendars} disabled={!googleStatus?.connected}>Choose calendars</Button>
-                  <Button size="sm" onClick={syncGoogle} disabled={!googleStatus?.connected}>Sync now</Button>
-                </div>
+                {googleStatus?.connected && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" onClick={openCalendars}>Choose calendars</Button>
+                    <Button size="sm" onClick={syncGoogle}>Sync now</Button>
+                  </div>
+                )}
               </div>
               {calendarDialogOpen && (
                 <div className="mt-3 border-t pt-3">
@@ -263,6 +315,77 @@ export default function Home() {
                     <Button size="sm" onClick={saveCalendars} disabled={savingCalendars}>{savingCalendars ? "Saving..." : "Save"}</Button>
                     <Button size="sm" variant="secondary" onClick={() => setCalendarDialogOpen(false)}>Close</Button>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Public Booking Link */}
+            <div className="rounded-md border p-3">
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-medium">Public Booking Link</p>
+                {user?.scheduling?.handle && (
+                  <Button size="sm" variant="ghost" onClick={() => window.location.href = '/dashboard/settings/scheduling'}>
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              
+              {user?.scheduling?.handle ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 p-2 bg-muted rounded-md break-all text-sm">
+                    <ExternalLink className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 min-w-0 break-all">{typeof window !== 'undefined' ? window.location.origin : ''}/b/{user.scheduling.handle}</span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={copyBookingLink} className="gap-2">
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copied ? 'Copied!' : 'Copy Link'}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowQR(!showQR)} className="gap-2">
+                      <QrCode className="h-4 w-4" />
+                      {showQR ? 'Hide QR' : 'Show QR'}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => shareBookingLink('twitter')} className="gap-2">
+                      <Share2 className="h-3 w-3" />
+                      Twitter
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => shareBookingLink('linkedin')} className="gap-2">
+                      <Share2 className="h-3 w-3" />
+                      LinkedIn
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => shareBookingLink('email')} className="gap-2">
+                      <Share2 className="h-3 w-3" />
+                      Email
+                    </Button>
+                  </div>
+                  
+                  {showQR && (
+                    <div className="flex justify-center p-4 bg-white rounded-md">
+                      <QRCodeSVG 
+                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/b/${user.scheduling.handle}`}
+                        size={160}
+                        level="H"
+                        includeMargin={true}
+                      />
+                    </div>
+                  )}
+                  
+                  <a 
+                    href={`/b/${user.scheduling.handle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    Preview booking page <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Set up your public booking page to accept bookings from anyone.</p>
+                  <Button size="sm" onClick={() => window.location.href = '/dashboard/settings/scheduling'}>
+                    Configure Scheduling
+                  </Button>
                 </div>
               )}
             </div>
@@ -300,7 +423,19 @@ export default function Home() {
       {/* Bookings List & AI Search */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-card">
-          <CardHeader><CardTitle>Your Bookings</CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Your Bookings</CardTitle>
+              <div className="flex items-center gap-2">
+                {archivedCount > 0 && (
+                  <span className="text-xs text-muted-foreground">{archivedCount} archived</span>
+                )}
+                <Button size="sm" variant="outline" onClick={archiveBookings}>
+                  Clear
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
           <CardContent>
             {loadingBookings ? (<p className="text-sm text-muted-foreground">Loading...</p>) : (
               <Table>

@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 import os
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://tavily-search-debug.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://aibook-scheduler.preview.emergentagent.com')
 print(f"Testing against: {BASE_URL}")
 
 def test_app_router_presence():

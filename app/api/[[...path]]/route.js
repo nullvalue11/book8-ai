@@ -52,9 +52,7 @@ const json = (data, init = {}) => cors(NextResponse.json(data, init))
 
 function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret-change-me' }
 
-async function getBody(request) {
-  try { return await request.json() } catch { return {} }
-}
+async function getBody(request) { try { return await request.json() } catch { return {} } }
 
 async function requireAuth(request, db) {
   const auth = request.headers.get('authorization') || ''
@@ -71,17 +69,32 @@ async function requireAuth(request, db) {
 function isISODateString(s) { const d = new Date(s); return !isNaN(d.getTime()) }
 
 // Stripe Idempotency Helpers
-async function isStripeEventProcessed(database, eventId) {
-  try { const existingEvent = await database.collection('stripe_events').findOne({ eventId }); return !!existingEvent } catch (error) { console.error('Error checking event idempotency:', error); return false }
+async function isStripeEventProcessed(database, eventId) { try { const existingEvent = await database.collection('stripe_events').findOne({ eventId }); return !!existingEvent } catch (error) { console.error('Error checking event idempotency:', error); return false } }
+async function markStripeEventProcessed(database, eventId, eventType, eventData = {}) { try { await database.collection('stripe_events').insertOne({ eventId, eventType, eventData, processedAt: new Date(), createdAt: new Date() }); return true } catch (error) { console.error('Error marking event as processed:', error); return false } }
+async function logBillingActivity(database, userId, eventType, eventId, details = {}, status = 'success') { try { await database.collection('billing_logs').insertOne({ id: uuidv4(), userId, eventType, eventId, details, status, timestamp: new Date(), createdAt: new Date() }) } catch (error) { console.error('Error logging billing activity:', error) } }
+async function findUserByCustomerId(database, customerId) { try { const user = await database.collection('users').findOne({ 'subscription.customerId': customerId }); return user?.id || null } catch (error) { console.error('Error finding user by customer ID:', error); return null } }
+
+// Google helpers (dynamic import)
+async function getOAuth2Client() {
+  try {
+    const { google } = await import('googleapis')
+    const clientId = process.env.GOOGLE_CLIENT_ID
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI
+    if (!clientId || !clientSecret || !redirectUri) return null
+    return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
+  } catch (e) { console.error('[bookings] googleapis load failed', e?.message || e); return null }
 }
-async function markStripeEventProcessed(database, eventId, eventType, eventData = {}) {
-  try { await database.collection('stripe_events').insertOne({ eventId, eventType, eventData, processedAt: new Date(), createdAt: new Date() }); return true } catch (error) { console.error('Error marking event as processed:', error); return false }
-}
-async function logBillingActivity(database, userId, eventType, eventId, details = {}, status = 'success') {
-  try { await database.collection('billing_logs').insertOne({ id: uuidv4(), userId, eventType, eventId, details, status, timestamp: new Date(), createdAt: new Date() }) } catch (error) { console.error('Error logging billing activity:', error) }
-}
-async function findUserByCustomerId(database, customerId) {
-  try { const user = await database.collection('users').findOne({ 'subscription.customerId': customerId }); return user?.id || null } catch (error) { console.error('Error finding user by customer ID:', error); return null }
+async function getCalendarClientForUser(user) {
+  try {
+    const { google } = await import('googleapis')
+    const refreshToken = user?.google?.refreshToken
+    if (!refreshToken) return null
+    const oauth = await getOAuth2Client()
+    if (!oauth) return null
+    oauth.setCredentials({ refresh_token: refreshToken })
+    return google.calendar({ version: 'v3', auth: oauth })
+  } catch (e) { console.error('[bookings] calendar client failed', e?.message || e); return null }
 }
 
 // Router entrypoints
@@ -135,7 +148,27 @@ async function handleRoute(request, { params }) {
     if (route === '/bookings' && method === 'GET') {
       const auth = await requireAuth(request, database)
       if (auth.error) return json({ error: auth.error }, { status: auth.status })
-      const items = await database.collection('bookings').find({ userId: auth.user.id }).sort({ startTime: 1 }).toArray()
+      const items = await database.collection('bookings').find({ userId: auth.user.id, archived: { $ne: true } }).sort({ startTime: 1 }).toArray()
+      const cleaned = items.map(({ _id, ...rest }) => rest)
+      return json(cleaned)
+    }
+
+    // Bookings archive (clear completed/canceled)
+    if (route === '/bookings/archive' && method === 'POST') {
+      const auth = await requireAuth(request, database)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const result = await database.collection('bookings').updateMany(
+        { userId: auth.user.id, status: { $in: ['canceled', 'completed'] }, archived: { $ne: true } },
+        { $set: { archived: true, archivedAt: new Date().toISOString() } }
+      )
+      return json({ ok: true, archived: result.modifiedCount })
+    }
+
+    // Bookings archived list
+    if (route === '/bookings/archived' && method === 'GET') {
+      const auth = await requireAuth(request, database)
+      if (auth.error) return json({ error: auth.error }, { status: auth.status })
+      const items = await database.collection('bookings').find({ userId: auth.user.id, archived: true }).sort({ archivedAt: -1 }).toArray()
       const cleaned = items.map(({ _id, ...rest }) => rest)
       return json(cleaned)
     }
@@ -153,7 +186,33 @@ async function handleRoute(request, { params }) {
       const headerTz = request.headers.get('x-client-timezone') || undefined
       const tz = (timeZone || headerTz || 'UTC').toString()
       const booking = { id: uuidv4(), userId: auth.user.id, title, customerName: customerName || '', startTime: s.toISOString(), endTime: e.toISOString(), status: 'scheduled', notes: notes || '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), source: 'book8', conflict: false, timeZone: tz }
+
       try { await database.collection('bookings').insertOne(booking) } catch (e) { console.error('DB insert booking error', e); return json({ error: 'Failed to save booking' }, { status: 500 }) }
+
+      // Attempt Google insert to selected calendars
+      try {
+        const userDoc = await database.collection('users').findOne({ id: auth.user.id })
+        const calendar = await getCalendarClientForUser(userDoc)
+        const selected = (userDoc?.scheduling?.selectedCalendarIds && userDoc.scheduling.selectedCalendarIds.length)
+          ? userDoc.scheduling.selectedCalendarIds
+          : (userDoc?.google?.selectedCalendarIds && userDoc.google.selectedCalendarIds.length ? userDoc.google.selectedCalendarIds : ['primary'])
+        if (calendar && selected?.length) {
+          const evt = buildGoogleEventFromBooking(booking)
+          for (const calendarId of selected) {
+            try {
+              const ins = await calendar.events.insert({ calendarId, requestBody: evt })
+              await database.collection('google_events').updateOne(
+                { userId: auth.user.id, bookingId: booking.id, calendarId },
+                { $set: { userId: auth.user.id, bookingId: booking.id, calendarId, googleEventId: ins?.data?.id || null, createdAt: new Date(), updatedAt: new Date() } },
+                { upsert: true }
+              )
+              console.info('[bookings] inserted event', calendarId, ins?.data?.id)
+            } catch (e) { console.error('[bookings] google insert failed', calendarId, e?.message || e) }
+          }
+          await database.collection('users').updateOne({ id: auth.user.id }, { $set: { 'google.lastSyncedAt': new Date().toISOString() } })
+        }
+      } catch (e) { console.error('[bookings] google client error', e?.message || e) }
+
       return json(booking)
     }
 
