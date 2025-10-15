@@ -1,12 +1,26 @@
 @charset "UTF-8";
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Book8 AI Brand Tokens - Light Mode */
+    --book8-primary: #65E0C1;
+    --book8-secondary: #8FD0FF;
+    --book8-bg-light: #F9FAFB;
+    --book8-bg-dark: #0E1A26;
+    --book8-surface: #FFFFFF;
+    --book8-border: #E2E8F0;
+    --book8-text-primary: #111827;
+    --book8-text-secondary: #4B5563;
+    --book8-success: #65E0C1;
+    --book8-error: #F87171;
+
+    --background: 0 0% 98%;
     --foreground: 222 47% 11%;
 
     --muted: 210 40% 96%;
@@ -21,82 +35,91 @@
     --border: 214 32% 91%;
     --input: 214 32% 91%;
 
-    --primary: 217 91% 60%;
+    --primary: 165 71% 64%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
+    --secondary: 207 100% 77%;
     --secondary-foreground: 222 47% 11%;
 
-    --accent: 180 65% 57%;
+    --accent: 165 71% 64%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 71%;
     --destructive-foreground: 0 0% 100%;
 
-    --ring: 217 91% 60%;
+    --ring: 165 71% 64%;
 
-    --radius: 0.75rem;
-
-    --chart-1: 217 91% 60%;
-    --chart-2: 180 65% 57%;
-    --chart-3: 262 83% 58%;
-    --chart-4: 198 93% 60%;
-    --chart-5: 280 75% 65%;
+    --radius: 0.5rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary: 165 71% 64%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 40% 96%;
     --sidebar-accent-foreground: 222 47% 11%;
     --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-ring: 165 71% 64%;
   }
 
   .dark {
-    --background: 222 84% 5%;
+    /* Book8 AI Brand Tokens - Dark Mode */
+    --book8-bg-light: #0E1A26;
+    --book8-surface: #1B2733;
+    --book8-border: #2E3A47;
+    --book8-text-primary: #FFFFFF;
+    --book8-text-secondary: #B6C4D1;
+
+    --background: 210 50% 8%;
     --foreground: 210 40% 98%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 210 30% 18%;
+    --muted-foreground: 210 15% 72%;
 
-    --popover: 222 84% 5%;
+    --popover: 210 50% 11%;
     --popover-foreground: 210 40% 98%;
 
-    --card: 222 84% 5%;
+    --card: 210 50% 11%;
     --card-foreground: 210 40% 98%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
+    --border: 210 25% 23%;
+    --input: 210 25% 23%;
 
-    --primary: 217 91% 60%;
+    --primary: 165 71% 64%;
     --primary-foreground: 222 47% 11%;
 
-    --secondary: 217 33% 17%;
+    --secondary: 210 30% 18%;
     --secondary-foreground: 210 40% 98%;
 
-    --accent: 180 65% 57%;
+    --accent: 165 71% 64%;
     --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 63% 31%;
+    --destructive: 0 63% 71%;
     --destructive-foreground: 210 40% 98%;
 
-    --ring: 217 33% 17%;
+    --ring: 210 25% 23%;
 
-    --chart-1: 217 91% 60%;
-    --chart-2: 180 65% 57%;
-    --chart-3: 262 83% 58%;
-    --chart-4: 198 93% 60%;
-    --chart-5: 280 75% 65%;
-
-    --sidebar-background: 222 84% 5%;
+    --sidebar-background: 210 50% 8%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary: 165 71% 64%;
     --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent: 210 30% 18%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 217 33% 17%;
+    --sidebar-border: 210 25% 23%;
+    --sidebar-ring: 210 25% 23%;
+  }
+
+  * {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6, button {
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  body {
+    font-weight: 400;
+    letter-spacing: 0;
   }
 }
 
