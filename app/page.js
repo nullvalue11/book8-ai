@@ -198,10 +198,10 @@ export default function Home() {
                 Transform your scheduling with AI-powered automation. Connect calendars, enable voice bookings, and leverage real-time web search—all in one platform.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Button size="lg" className="gradient-primary text-white text-lg px-8" onClick={() => setAuthMode("register")}>
+                <Button size="lg" className="gradient-primary text-white text-lg px-8 btn-glow" onClick={() => setAuthMode("register")}>
                   Start Free Trial
                 </Button>
-                <Button size="lg" variant="outline" className="text-lg px-8">
+                <Button size="lg" variant="outline" className="text-lg px-8 border-2">
                   Watch Demo →
                 </Button>
               </div>
