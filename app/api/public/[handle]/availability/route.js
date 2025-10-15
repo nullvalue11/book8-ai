@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
-import { checkRateLimit } from '../../../../../lib/rateLimiting'
-import { RateLimitTelemetry, logError } from '../../../../../lib/telemetry'
+import { checkRateLimit } from '../../../../../../lib/rateLimiting'
+import { RateLimitTelemetry, logError } from '../../../../../../lib/telemetry'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
