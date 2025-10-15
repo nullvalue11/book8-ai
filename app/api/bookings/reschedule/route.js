@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
-import { verifyRescheduleToken } from '../../../../../lib/security/rescheduleToken'
+import { verifyRescheduleToken } from '../../../lib/security/rescheduleToken'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
