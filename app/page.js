@@ -216,12 +216,12 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative logo-container">
               <div className="absolute inset-0 gradient-hero rounded-3xl blur-3xl"></div>
               <img 
                 src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
                 alt="Book8 AI Platform" 
-                className="relative z-10 w-full max-w-md mx-auto animate-float"
+                className="relative z-10 w-full max-w-md mx-auto animate-float animate-neural-pulse"
               />
             </div>
           </div>
