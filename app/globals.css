@@ -124,25 +124,42 @@
 }
 
 @layer utilities {
+  /* Book8 AI Brand Gradients */
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(217 91% 60%), hsl(180 65% 57%));
+    background: linear-gradient(135deg, #65E0C1 0%, #8FD0FF 100%);
   }
   
   .gradient-accent {
-    background: linear-gradient(135deg, hsl(180 65% 57%), hsl(262 83% 58%));
+    background: linear-gradient(135deg, #8FD0FF 0%, #65E0C1 100%);
   }
   
   .gradient-hero {
-    background: linear-gradient(135deg, hsl(217 91% 60% / 0.1), hsl(180 65% 57% / 0.1));
+    background: linear-gradient(135deg, rgba(101, 224, 193, 0.1) 0%, rgba(143, 208, 255, 0.1) 100%);
   }
   
   .text-gradient {
-    background: linear-gradient(135deg, hsl(217 91% 60%), hsl(180 65% 57%));
+    background: linear-gradient(135deg, #65E0C1 0%, #8FD0FF 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   
+  /* Button Hover Glow */
+  .btn-glow:hover {
+    box-shadow: 0 0 12px 2px rgba(101, 224, 193, 0.4);
+  }
+  
+  /* Logo Neural Pulse */
+  .animate-neural-pulse {
+    animation: neural-pulse 6s ease-in-out infinite;
+  }
+  
+  @keyframes neural-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.97; }
+  }
+  
+  /* Float Animation */
   .animate-float {
     animation: float 6s ease-in-out infinite;
   }
@@ -150,5 +167,48 @@
   @keyframes float {
     0%, 100% { transform: translateY(0px); }
     50% { transform: translateY(-20px); }
+  }
+  
+  /* Card Fade In */
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+  
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Brand-specific component styles */
+  .book8-card {
+    border-radius: 8px;
+    border: 1px solid var(--book8-border);
+    padding: 16px 20px;
+    background: var(--book8-surface);
+  }
+  
+  .book8-input {
+    height: 40px;
+    background: var(--book8-surface);
+    border: 1px solid var(--book8-border);
+    border-radius: 6px;
+  }
+  
+  .book8-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 1px #65E0C1;
+  }
+  
+  .book8-badge {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  
+  /* Logo Padding */
+  .logo-container {
+    padding: 24px;
   }
 }
