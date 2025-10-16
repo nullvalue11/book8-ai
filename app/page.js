@@ -198,10 +198,10 @@ export default function Home() {
                 Transform your scheduling with AI-powered automation. Connect calendars, enable voice bookings, and leverage real-time web search—all in one platform.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Button size="lg" className="gradient-primary text-white text-lg px-8" onClick={() => setAuthMode("register")}>
+                <Button size="lg" className="gradient-primary text-white text-lg px-8 btn-glow" onClick={() => setAuthMode("register")}>
                   Start Free Trial
                 </Button>
-                <Button size="lg" variant="outline" className="text-lg px-8">
+                <Button size="lg" variant="outline" className="text-lg px-8 border-2">
                   Watch Demo →
                 </Button>
               </div>
@@ -216,12 +216,12 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative logo-container">
               <div className="absolute inset-0 gradient-hero rounded-3xl blur-3xl"></div>
               <img 
                 src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
                 alt="Book8 AI Platform" 
-                className="relative z-10 w-full max-w-md mx-auto animate-float"
+                className="relative z-10 w-full max-w-md mx-auto animate-float animate-neural-pulse"
               />
             </div>
           </div>
