@@ -77,11 +77,9 @@ async function findUserByCustomerId(database, customerId) { try { const user = a
 async function getOAuth2Client() {
   try {
     const { google } = await import('googleapis')
-    const clientId = process.env.GOOGLE_CLIENT_ID
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI
-    if (!clientId || !clientSecret || !redirectUri) return null
-    return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
+    const google_config = env.GOOGLE
+    if (!google_config) return null
+    return new google.auth.OAuth2(google_config.CLIENT_ID, google_config.CLIENT_SECRET, google_config.REDIRECT_URI)
   } catch (e) { console.error('[bookings] googleapis load failed', e?.message || e); return null }
 }
 async function getCalendarClientForUser(user) {
