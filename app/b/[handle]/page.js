@@ -52,7 +52,13 @@ export default function PublicBookingPage({ params }) {
       
       if (!res.ok) {
         if (res.status === 404) {
-          setError('Booking page not found')
+          if (data.error?.includes('not configured')) {
+            setError('⚙️ This booking page is being set up. Please check back later or contact the owner.')
+            setState('error')
+          } else {
+            setError('Booking page not found')
+            setState('error')
+          }
         } else if (res.status === 429) {
           setError('Too many requests. Please wait a moment and try again.')
         } else {
@@ -63,6 +69,10 @@ export default function PublicBookingPage({ params }) {
       }
       
       setSlots(data.slots || [])
+      if (data.slots && data.slots.length > 0 && ownerName === '') {
+        // Try to get owner name from somewhere if available
+        setOwnerName(handle)
+      }
     } catch (err) {
       console.error('Load slots error:', err)
       setError('Failed to connect. Please try again.')
