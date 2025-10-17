@@ -314,10 +314,14 @@ export async function POST(request, { params }) {
     })
 
   } catch (error) {
-    console.error('[book] Error:', error)
-    logError(error, { endpoint: '/api/public/[handle]/book', handle: params.handle })
+    console.error('=== BOOK ERROR ===')
+    console.error('ERROR:', error.message)
+    console.error('STACK:', error.stack)
+    console.error('PARAMS:', params)
+    console.error('==================')
+    logError(error, { endpoint: '/api/public/[handle]/book', handle: params?.handle })
     return NextResponse.json(
-      { ok: false, error: 'Internal server error' },
+      { ok: false, error: 'Internal server error', debug: error.message },
       { status: 500 }
     )
   }
