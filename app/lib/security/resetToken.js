@@ -40,3 +40,14 @@ export function ttlMinutes() {
   const n = parseInt(process.env.RESET_TOKEN_TTL_MINUTES || '30', 10)
   return isNaN(n) ? 30 : Math.max(5, Math.min(n, 120))
 }
+
+// Helper for generating cancel tokens for bookings
+export function generateCancelToken(bookingId, guestEmail) {
+  const { token } = signActionToken({
+    sub: guestEmail,
+    purpose: 'booking_cancel',
+    ttlMinutes: 60 * 24 * 365, // 1 year validity
+    extra: { bookingId }
+  })
+  return token
+}
