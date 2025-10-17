@@ -223,10 +223,14 @@ export async function GET(request, { params }) {
     })
 
   } catch (error) {
-    console.error('[availability] Error:', error)
-    logError(error, { endpoint: '/api/public/[handle]/availability', handle: params.handle })
+    console.error('=== AVAILABILITY ERROR ===')
+    console.error('ERROR:', error.message)
+    console.error('STACK:', error.stack)
+    console.error('PARAMS:', params)
+    console.error('=========================')
+    logError(error, { endpoint: '/api/public/[handle]/availability', handle: params?.handle })
     return NextResponse.json(
-      { ok: false, error: 'Internal server error' },
+      { ok: false, error: 'Internal server error', debug: error.message },
       { status: 500 }
     )
   }
