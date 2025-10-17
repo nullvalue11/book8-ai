@@ -2,7 +2,9 @@
  * Telemetry and logging utility
  */
 
-const TELEMETRY_ENABLED = process.env.NODE_ENV === 'production'
+import { env } from './env'
+
+const TELEMETRY_ENABLED = env.IS_PRODUCTION
 
 /**
  * Log telemetry event

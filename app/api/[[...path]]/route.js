@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../lib/baseUrl'
 import { buildGoogleEventFromBooking } from '../../../lib/googleSync'
+import { env } from '@/app/lib/env'
 
 // Mongo connection
 let client
@@ -15,11 +16,11 @@ let indexesEnsured = false
 
 async function connectToMongo() {
   if (!client) {
-    if (!process.env.MONGO_URL) throw new Error('MONGO_URL is missing')
-    if (!process.env.DB_NAME) throw new Error('DB_NAME is missing')
-    client = new MongoClient(process.env.MONGO_URL)
+    if (!env.MONGO_URL) throw new Error('MONGO_URL is missing')
+    if (!env.DB_NAME) throw new Error('DB_NAME is missing')
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   if (!indexesEnsured) {
     try {
@@ -39,7 +40,7 @@ async function connectToMongo() {
 
 // Helpers
 function cors(resp) {
-  resp.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
+  resp.headers.set('Access-Control-Allow-Origin', '*')
   resp.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
   resp.headers.set('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, stripe-signature, x-client-timezone')
   resp.headers.set('Access-Control-Allow-Credentials', 'true')
@@ -50,8 +51,6 @@ export async function OPTIONS() { return cors(new NextResponse(null, { status: 2
 
 const json = (data, init = {}) => cors(NextResponse.json(data, init))
 
-function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret-change-me' }
-
 async function getBody(request) { try { return await request.json() } catch { return {} } }
 
 async function requireAuth(request, db) {
@@ -59,7 +58,7 @@ async function requireAuth(request, db) {
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
   if (!token) return { error: 'Missing Authorization header', status: 401 }
   try {
-    const payload = jwt.verify(token, getJwtSecret())
+    const payload = jwt.verify(token, env.JWT_SECRET)
     const user = await db.collection('users').findOne({ id: payload.sub })
     if (!user) return { error: 'User not found', status: 401 }
     return { user }
@@ -78,11 +77,9 @@ async function findUserByCustomerId(database, customerId) { try { const user = a
 async function getOAuth2Client() {
   try {
     const { google } = await import('googleapis')
-    const clientId = process.env.GOOGLE_CLIENT_ID
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI
-    if (!clientId || !clientSecret || !redirectUri) return null
-    return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
+    const google_config = env.GOOGLE
+    if (!google_config) return null
+    return new google.auth.OAuth2(google_config.CLIENT_ID, google_config.CLIENT_SECRET, google_config.REDIRECT_URI)
   } catch (e) { console.error('[bookings] googleapis load failed', e?.message || e); return null }
 }
 async function getCalendarClientForUser(user) {
@@ -129,7 +126,7 @@ async function handleRoute(request, { params }) {
       const hashed = await bcrypt.hash(password, 10)
       const user = { id: uuidv4(), email: String(email).toLowerCase(), name: name || '', passwordHash: hashed, createdAt: new Date(), subscription: null, google: null }
       try { await database.collection('users').insertOne(user) } catch (e) { if (String(e?.message || '').includes('duplicate')) return json({ error: 'Email already registered' }, { status: 409 }); throw e }
-      const token = jwt.sign({ sub: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' })
+      const token = jwt.sign({ sub: user.id, email: user.email }, env.JWT_SECRET, { expiresIn: '7d' })
       return json({ token, user: { id: user.id, email: user.email, name: user.name, subscription: user.subscription, google: { connected: false, lastSyncedAt: null } } })
     }
     if (route === '/auth/login' && method === 'POST') {
@@ -139,7 +136,7 @@ async function handleRoute(request, { params }) {
       if (!user) return json({ error: 'Invalid credentials' }, { status: 401 })
       const ok = await bcrypt.compare(password, user.passwordHash)
       if (!ok) return json({ error: 'Invalid credentials' }, { status: 401 })
-      const token = jwt.sign({ sub: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' })
+      const token = jwt.sign({ sub: user.id, email: user.email }, env.JWT_SECRET, { expiresIn: '7d' })
       const googleSafe = user.google ? { connected: !!user.google?.refreshToken, lastSyncedAt: user.google?.lastSyncedAt || null } : { connected: false, lastSyncedAt: null }
       return json({ token, user: { id: user.id, email: user.email, name: user.name || '', subscription: user.subscription || null, google: googleSafe } })
     }

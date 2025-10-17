@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 
 function getJwtSecret() {
-  return process.env.JWT_SECRET || 'dev-secret-change-me'
+  return env.JWT_SECRET || 'dev-secret-change-me'
 }
 
 function getGoogleScopes() {
@@ -14,9 +15,9 @@ function getGoogleScopes() {
 }
 
 async function getOAuth2Client(base) {
-  const clientId = process.env.GOOGLE_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${base}/api/integrations/google/callback`
+  const clientId = env.GOOGLE?.CLIENT_ID
+  const clientSecret = env.GOOGLE?.CLIENT_SECRET
+  const redirectUri = env.GOOGLE?.REDIRECT_URI || `${base}/api/integrations/google/callback`
   try {
     const { google } = await import('googleapis')
     if (!clientId || !clientSecret) return null

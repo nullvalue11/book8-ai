@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
+import { env } from '../env'
 
 function b64url(input) {
   return Buffer.from(input).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
@@ -7,7 +8,7 @@ function b64url(input) {
 function randomNonce(len = 16) { return b64url(crypto.randomBytes(len)) }
 
 export function signResetToken({ sub, purpose = 'password_reset', ttlMinutes = 30, extra = {} }) {
-  const secret = process.env.RESET_TOKEN_SECRET
+  const secret = env.RESET_TOKEN_SECRET
   if (!secret) throw new Error('RESET_TOKEN_SECRET missing')
   const now = Math.floor(Date.now() / 1000)
   const exp = now + Math.max(1, Math.floor(ttlMinutes)) * 60
@@ -27,7 +28,7 @@ export function signActionToken({ sub, purpose, ttlMinutes = 30, extra = {} }) {
 }
 
 export function verifyActionToken(token, expectedPurpose) {
-  const secret = process.env.RESET_TOKEN_SECRET
+  const secret = env.RESET_TOKEN_SECRET
   if (!secret) throw new Error('RESET_TOKEN_SECRET missing')
   try {
     const payload = jwt.verify(token, secret, { algorithms: ['HS256'] })
@@ -37,8 +38,7 @@ export function verifyActionToken(token, expectedPurpose) {
 }
 
 export function ttlMinutes() {
-  const n = parseInt(process.env.RESET_TOKEN_TTL_MINUTES || '30', 10)
-  return isNaN(n) ? 30 : Math.max(5, Math.min(n, 120))
+  return env.RESET_TOKEN_TTL_MINUTES
 }
 
 // Helper for generating cancel tokens for bookings

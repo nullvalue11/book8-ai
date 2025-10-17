@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 
@@ -11,22 +12,22 @@ let db
 
 async function connectToMongo() {
   if (!client) {
-    if (!process.env.MONGO_URL) throw new Error('MONGO_URL missing')
-    if (!process.env.DB_NAME) throw new Error('DB_NAME missing')
-    client = new MongoClient(process.env.MONGO_URL)
+    if (!env.MONGO_URL) throw new Error('MONGO_URL missing')
+    if (!env.DB_NAME) throw new Error('DB_NAME missing')
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   return db
 }
 
-function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret-change-me' }
+function getJwtSecret() { return env.JWT_SECRET || 'dev-secret-change-me' }
 function getGoogleScopes() { return ['https://www.googleapis.com/auth/calendar'] }
 
 async function getOAuth2Client(base) {
-  const clientId = process.env.GOOGLE_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${base}/api/integrations/google/callback`
+  const clientId = env.GOOGLE?.CLIENT_ID
+  const clientSecret = env.GOOGLE?.CLIENT_SECRET
+  const redirectUri = env.GOOGLE?.REDIRECT_URI || `${base}/api/integrations/google/callback`
   try {
     const { google } = await import('googleapis')
     if (!clientId || !clientSecret) return null

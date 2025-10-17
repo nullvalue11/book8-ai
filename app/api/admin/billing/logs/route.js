@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
+import { env } from '@/app/lib/env'
 
 // Ensure this API route is always dynamic and never statically optimized
 export const dynamic = 'force-dynamic'
@@ -12,16 +13,16 @@ let db
 
 async function connectToMongo() {
   if (!client) {
-    if (!process.env.MONGO_URL) throw new Error('MONGO_URL missing')
-    if (!process.env.DB_NAME) throw new Error('DB_NAME missing')
-    client = new MongoClient(process.env.MONGO_URL)
+    if (!env.MONGO_URL) throw new Error('MONGO_URL missing')
+    if (!env.DB_NAME) throw new Error('DB_NAME missing')
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   return db
 }
 
-function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret-change-me' }
+function getJwtSecret() { return env.JWT_SECRET || 'dev-secret-change-me' }
 
 async function requireAuth(request, database) {
   const auth = request.headers.get('authorization') || ''
@@ -37,7 +38,7 @@ async function requireAuth(request, database) {
 }
 
 function isAdmin(user) {
-  const allow = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+  const allow = ('' || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
   return allow.includes(String(user?.email || '').toLowerCase())
 }
 

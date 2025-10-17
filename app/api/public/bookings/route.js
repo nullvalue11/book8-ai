@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcryptjs'
 import { buildICS } from '@/app/lib/ics'
 import { signActionToken, ttlMinutes } from '@/app/lib/security/resetToken'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,16 +12,16 @@ export const revalidate = 0
 export const fetchCache = 'force-no-store'
 
 let client, db, indexed = false
-async function connect() { if (!client) { client = new MongoClient(process.env.MONGO_URL); await client.connect(); db = client.db(process.env.DB_NAME) } if (!indexed) { try { await db.collection('public_booking_tokens').createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 }); await db.collection('rate_limits').createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 }); } catch{} indexed = true } return db }
+async function connect() { if (!client) { client = new MongoClient(env.MONGO_URL); await client.connect(); db = client.db(env.DB_NAME) } if (!indexed) { try { await db.collection('public_booking_tokens').createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 }); await db.collection('rate_limits').createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 }); } catch{} indexed = true } return db }
 
 export async function OPTIONS() { return new Response(null, { status: 204 }) }
 
 async function getCalendarClient(user) {
   try {
     const { google } = await import('googleapis')
-    const clientId = process.env.GOOGLE_CLIENT_ID
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI
+    const clientId = env.GOOGLE?.CLIENT_ID
+    const clientSecret = env.GOOGLE?.CLIENT_SECRET
+    const redirectUri = env.GOOGLE?.REDIRECT_URI
     if (!clientId || !clientSecret || !redirectUri) return null
     const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUri)
     if (!user?.google?.refreshToken) return null
@@ -86,14 +87,14 @@ export async function POST(req) {
     const tokenHash = await bcrypt.hash(cancelTok.token, 10)
     await database.collection('public_booking_tokens').insertOne({ bookingId: booking.id, purpose: 'cancel_booking', tokenHash, used: false, createdAt: new Date(), expireAt: new Date(cancelTok.payload.exp * 1000) })
 
-    const base = process.env.APP_BASE_URL || ''
+    const base = env.BASE_URL || ''
     const cancelLink = `${base}/api/public/bookings/cancel?id=${encodeURIComponent(booking.id)}&token=${encodeURIComponent(cancelTok.token)}`
 
     try {
       const { Resend } = await import('resend')
-      const resend = new Resend(process.env.RESEND_API_KEY)
+      const resend = new Resend(env.RESEND_API_KEY)
       const ics = buildICS({ uid: booking.id, start: booking.startTime, end: booking.endTime, summary: booking.title, description: booking.notes, organizer: user.email, attendees: [{ email: user.email }, { email: guest.email }] })
-      await resend.emails.send({ from: process.env.EMAIL_FROM, to: guest.email, cc: user.email, reply_to: process.env.EMAIL_REPLY_TO, subject: 'Your Book8 meeting is confirmed', html: `<p>Hi ${guest.name || ''},</p><p>Your meeting is confirmed.</p><p>${new Date(booking.startTime).toLocaleString()} – ${new Date(booking.endTime).toLocaleString()} (${booking.timeZone})</p><p><a href="${cancelLink}">Cancel meeting</a> (reschedule coming soon)</p>`, attachments: [{ filename: 'invite.ics', content: Buffer.from(ics).toString('base64') }] })
+      await resend.emails.send({ from: env.EMAIL_FROM, to: guest.email, cc: user.email, reply_to: env.EMAIL_REPLY_TO, subject: 'Your Book8 meeting is confirmed', html: `<p>Hi ${guest.name || ''},</p><p>Your meeting is confirmed.</p><p>${new Date(booking.startTime).toLocaleString()} – ${new Date(booking.endTime).toLocaleString()} (${booking.timeZone})</p><p><a href="${cancelLink}">Cancel meeting</a> (reschedule coming soon)</p>`, attachments: [{ filename: 'invite.ics', content: Buffer.from(ics).toString('base64') }] })
     } catch (e) { console.error('[public/bookings] email failed', e?.message || e) }
 
     return NextResponse.json({ ok: true, bookingId: booking.id, eventId })

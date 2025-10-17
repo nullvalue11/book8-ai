@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -8,15 +9,13 @@ export const fetchCache = 'force-no-store'
 
 let client, db, indexed = false
 async function connect() {
-  if (!client) { client = new MongoClient(process.env.MONGO_URL); await client.connect(); db = client.db(process.env.DB_NAME) }
+  if (!client) { client = new MongoClient(env.MONGO_URL); await client.connect(); db = client.db(env.DB_NAME) }
   if (!indexed) {
     try { await db.collection('users').createIndex({ 'scheduling.handleLower': 1 }, { unique: true, sparse: true }) } catch {}
     indexed = true
   }
   return db
 }
-
-function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret-change-me' }
 
 export async function OPTIONS() { return new Response(null, { status: 204 }) }
 
@@ -28,7 +27,7 @@ export async function GET(request) {
     if (!token) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
     const jwt = (await import('jsonwebtoken')).default
     let payload
-    try { payload = jwt.verify(token, getJwtSecret()) } catch { return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }) }
+    try { payload = jwt.verify(token, env.JWT_SECRET) } catch { return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }) }
     const u = await database.collection('users').findOne({ id: payload.sub })
     const scheduling = u?.scheduling || null
     return NextResponse.json({ ok: true, scheduling })
@@ -43,7 +42,7 @@ export async function POST(request) {
     if (!token) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
     const jwt = (await import('jsonwebtoken')).default
     let payload
-    try { payload = jwt.verify(token, getJwtSecret()) } catch { return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }) }
+    try { payload = jwt.verify(token, env.JWT_SECRET) } catch { return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }) }
 
     const body = await request.json()
     let { handle, timeZone, workingHours, defaultDurationMin, bufferMin, minNoticeMin, selectedCalendarIds } = body || {}

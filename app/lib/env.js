@@ -71,6 +71,8 @@ function loadConfig() {
     
     // Authentication
     const JWT_SECRET = getEnvVar('JWT_SECRET', true)
+    const RESET_TOKEN_SECRET = getEnvVar('RESET_TOKEN_SECRET', false, JWT_SECRET)
+    const RESET_TOKEN_TTL_MINUTES = parseInt(getEnvVar('RESET_TOKEN_TTL_MINUTES', false, '30'), 10)
     
     if (JWT_SECRET.length < 32) {
       console.warn('[env] WARNING: JWT_SECRET should be at least 32 characters for security')
@@ -92,6 +94,8 @@ function loadConfig() {
     
     // Email Service (Resend)
     const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', false)
+    const EMAIL_FROM = getEnvVar('EMAIL_FROM', false, 'Book8 <onboarding@resend.dev>')
+    const EMAIL_REPLY_TO = getEnvVar('EMAIL_REPLY_TO', false, 'support@book8.ai')
     
     if (!RESEND_API_KEY && NODE_ENV === 'production') {
       console.warn('[env] WARNING: RESEND_API_KEY not set. Email notifications will be disabled.')
@@ -109,6 +113,7 @@ function loadConfig() {
     
     // Optional Services
     const TAVILY_API_KEY = getEnvVar('TAVILY_API_KEY', false)
+    const CRON_SECRET = getEnvVar('CRON_SECRET', false)
     
     // Feature Flags
     const FEATURE_RESCHEDULE = getEnvVar('FEATURE_RESCHEDULE', false, 'true') === 'true'
@@ -137,6 +142,8 @@ function loadConfig() {
       
       // Auth
       JWT_SECRET,
+      RESET_TOKEN_SECRET,
+      RESET_TOKEN_TTL_MINUTES: isNaN(RESET_TOKEN_TTL_MINUTES) ? 30 : Math.max(5, Math.min(RESET_TOKEN_TTL_MINUTES, 120)),
       
       // Google
       GOOGLE: hasGoogleOAuth ? {
@@ -147,6 +154,8 @@ function loadConfig() {
       
       // Email
       RESEND_API_KEY,
+      EMAIL_FROM,
+      EMAIL_REPLY_TO,
       
       // Stripe
       STRIPE: hasStripe ? {
@@ -157,6 +166,7 @@ function loadConfig() {
       
       // Optional
       TAVILY_API_KEY,
+      CRON_SECRET,
       
       // Features
       FEATURES: {

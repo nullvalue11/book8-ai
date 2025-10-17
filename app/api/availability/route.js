@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { buildSlotsForDate, weekdayKey, slotsToResponse } from '@/app/lib/time'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -8,16 +9,16 @@ export const revalidate = 0
 export const fetchCache = 'force-no-store'
 
 let client, db
-async function connect() { if (!client) { client = new MongoClient(process.env.MONGO_URL); await client.connect(); db = client.db(process.env.DB_NAME) } return db }
+async function connect() { if (!client) { client = new MongoClient(env.MONGO_URL); await client.connect(); db = client.db(env.DB_NAME) } return db }
 
 export async function OPTIONS() { return new Response(null, { status: 204 }) }
 
 async function getCalendarClient(user) {
   try {
     const { google } = await import('googleapis')
-    const clientId = process.env.GOOGLE_CLIENT_ID
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI
+    const clientId = env.GOOGLE?.CLIENT_ID
+    const clientSecret = env.GOOGLE?.CLIENT_SECRET
+    const redirectUri = env.GOOGLE?.REDIRECT_URI
     if (!clientId || !clientSecret || !redirectUri) return null
     const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUri)
     if (!user?.google?.refreshToken) return null

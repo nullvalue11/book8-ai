@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
 import { buildGoogleEventFromBooking } from '../../../../lib/googleSync'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 
@@ -11,11 +12,11 @@ let indexes = false
 
 async function connectToMongo() {
   if (!client) {
-    if (!process.env.MONGO_URL) throw new Error('MONGO_URL missing')
-    if (!process.env.DB_NAME) throw new Error('DB_NAME missing')
-    client = new MongoClient(process.env.MONGO_URL)
+    if (!env.MONGO_URL) throw new Error('MONGO_URL missing')
+    if (!env.DB_NAME) throw new Error('DB_NAME missing')
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   if (!indexes) {
     try {
@@ -30,7 +31,7 @@ async function connectToMongo() {
 }
 
 function cors(resp) {
-  resp.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
+  resp.headers.set('Access-Control-Allow-Origin', '*' || '*')
   resp.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   resp.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   resp.headers.set('Access-Control-Allow-Credentials', 'true')
@@ -42,9 +43,9 @@ export async function OPTIONS() { return cors(new NextResponse(null, { status: 2
 function json(data, init = {}) { return cors(NextResponse.json(data, init)) }
 
 async function getOAuth2Client() {
-  const clientId = process.env.GOOGLE_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI
+  const clientId = env.GOOGLE?.CLIENT_ID
+  const clientSecret = env.GOOGLE?.CLIENT_SECRET
+  const redirectUri = env.GOOGLE?.REDIRECT_URI
   try {
     const { google } = await import('googleapis')
     if (!clientId || !clientSecret) return null
@@ -80,9 +81,9 @@ export async function GET(request) {
     const cronHeader = request.headers.get('x-vercel-cron')
 
     if (!secret && !cronHeader) return json({ error: 'Unauthorized' }, { status: 401 })
-    if (secret && process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) return json({ error: 'Unauthorized' }, { status: 401 })
+    if (secret && env.CRON_SECRET && secret !== env.CRON_SECRET) return json({ error: 'Unauthorized' }, { status: 401 })
 
-    const logsEnabled = String(process.env.CRON_LOGS || '').toLowerCase() === 'true'
+    const logsEnabled = String(env.DEBUG_LOGS || '').toLowerCase() === 'true'
     const runId = uuidv4()
     if (logsEnabled) await db.collection('cron_logs').insertOne({ runId, startedAt: new Date(), triggeredBy: cronHeader ? 'vercel' : 'external' })
 

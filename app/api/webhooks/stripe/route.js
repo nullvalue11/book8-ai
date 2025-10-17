@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,11 +12,11 @@ let indexesEnsured = false
 
 async function connectToMongo() {
   if (!client) {
-    if (!process.env.MONGO_URL) throw new Error('MONGO_URL missing')
-    if (!process.env.DB_NAME) throw new Error('DB_NAME missing')
-    client = new MongoClient(process.env.MONGO_URL)
+    if (!env.MONGO_URL) throw new Error('MONGO_URL missing')
+    if (!env.DB_NAME) throw new Error('DB_NAME missing')
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   if (!indexesEnsured) {
     try {
@@ -30,7 +31,7 @@ async function connectToMongo() {
 async function getStripe() {
   try {
     const Stripe = (await import('stripe')).default
-    const key = process.env.STRIPE_SECRET_KEY
+    const key = env.STRIPE?.SECRET_KEY
     if (!key) return null
     return new Stripe(key)
   } catch (e) {
@@ -86,7 +87,7 @@ export async function POST(req) {
 
     const body = await req.text()
     const sig = req.headers.get('stripe-signature')
-    const secret = process.env.STRIPE_WEBHOOK_SECRET
+    const secret = env.STRIPE?.WEBHOOK_SECRET
     if (!sig || !secret) {
       return NextResponse.json({ ok: false, error: 'Missing signature or webhook secret' }, { status: 400 })
     }
