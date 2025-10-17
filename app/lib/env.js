@@ -166,6 +166,7 @@ function loadConfig() {
       
       // Optional
       TAVILY_API_KEY,
+      CRON_SECRET,
       
       // Features
       FEATURES: {
