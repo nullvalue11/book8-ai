@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Calendar, Clock, Check, X, Loader2 } from 'lucide-react'
+import { Calendar, Clock, Check, X, Loader2, AlertCircle } from 'lucide-react'
 
 export default function PublicBookingPage({ params }) {
   const handle = params.handle
@@ -52,7 +52,13 @@ export default function PublicBookingPage({ params }) {
       
       if (!res.ok) {
         if (res.status === 404) {
-          setError('Booking page not found')
+          if (data.error?.includes('not configured')) {
+            setError('⚙️ This booking page is being set up. Please check back later or contact the owner.')
+            setState('error')
+          } else {
+            setError('Booking page not found')
+            setState('error')
+          }
         } else if (res.status === 429) {
           setError('Too many requests. Please wait a moment and try again.')
         } else {
@@ -63,6 +69,10 @@ export default function PublicBookingPage({ params }) {
       }
       
       setSlots(data.slots || [])
+      if (data.slots && data.slots.length > 0 && ownerName === '') {
+        // Try to get owner name from somewhere if available
+        setOwnerName(handle)
+      }
     } catch (err) {
       console.error('Load slots error:', err)
       setError('Failed to connect. Please try again.')
@@ -141,6 +151,32 @@ export default function PublicBookingPage({ params }) {
       minute: '2-digit',
       timeZone: guestTz
     })
+  }
+
+  // Error screen (not configured)
+  if (state === 'error') {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-12 pb-8 text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-950/20 flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-amber-600 dark:text-amber-500" />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold">Booking Page Setup Required</h1>
+              <p className="text-muted-foreground">{error}</p>
+            </div>
+
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Refresh Page
+            </Button>
+          </CardContent>
+        </Card>
+      </main>
+    )
   }
 
   // Success screen
