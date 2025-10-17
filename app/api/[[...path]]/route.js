@@ -16,11 +16,11 @@ let indexesEnsured = false
 
 async function connectToMongo() {
   if (!client) {
-    if (!process.env.MONGO_URL) throw new Error('MONGO_URL is missing')
-    if (!process.env.DB_NAME) throw new Error('DB_NAME is missing')
-    client = new MongoClient(process.env.MONGO_URL)
+    if (!env.MONGO_URL) throw new Error('MONGO_URL is missing')
+    if (!env.DB_NAME) throw new Error('DB_NAME is missing')
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   if (!indexesEnsured) {
     try {
