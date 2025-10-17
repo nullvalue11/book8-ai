@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-## user_problem_statement: "Design, build, and deploy Book8 AI MVP with local bookings, JWT auth, and stubs for Google Calendar, OpenAI Realtime Audio, Tavily, Stripe, and n8n. Run automated backend tests."
+## user_problem_statement: "Phase C.A Wrap-ups: Complete environment variable refactoring, remove process.env usage, add guardrails (ESLint, CI checks, unit tests), and update QA matrix documentation."
 
 ## backend:
   - task: "Restore App Router structure and Tavily routes under app/"
