@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { checkRateLimit } from '../../../../lib/rateLimiting'
 import { RateLimitTelemetry, logError } from '../../../../lib/telemetry'
+import { env, debugLog } from '../../../../lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,9 +11,9 @@ let client, db
 
 async function connect() {
   if (!client) {
-    client = new MongoClient(process.env.MONGO_URL)
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   return db
 }
