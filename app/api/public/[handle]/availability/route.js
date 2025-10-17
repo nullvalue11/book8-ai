@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import { checkRateLimit } from '../../../../lib/rateLimiting'
 import { RateLimitTelemetry, logError } from '../../../../lib/telemetry'
 import { env, debugLog } from '../../../../lib/env'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -24,9 +25,9 @@ async function getGoogleFreeBusy(owner, startDate, endDate, selectedCalendarIds)
     
     const { google } = await import('googleapis')
     const oauth = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
+      env.GOOGLE?.CLIENT_ID,
+      env.GOOGLE?.CLIENT_SECRET,
+      env.GOOGLE?.REDIRECT_URI
     )
     oauth.setCredentials({ refresh_token: owner.google.refreshToken })
     const calendar = google.calendar({ version: 'v3', auth: oauth })

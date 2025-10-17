@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -12,18 +13,18 @@ let db
 
 async function connectToMongo() {
   if (!client) {
-    if (!process.env.MONGO_URL) throw new Error('MONGO_URL missing')
-    if (!process.env.DB_NAME) throw new Error('DB_NAME missing')
-    client = new MongoClient(process.env.MONGO_URL)
+    if (!env.MONGO_URL) throw new Error('MONGO_URL missing')
+    if (!env.DB_NAME) throw new Error('DB_NAME missing')
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   return db
 }
 
 export async function OPTIONS() { return new Response(null, { status: 204 }) }
 
-function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret-change-me' }
+function getJwtSecret() { return env.JWT_SECRET || 'dev-secret-change-me' }
 
 async function requireAuth(request, database) {
   const auth = request.headers.get('authorization') || ''
@@ -40,9 +41,9 @@ async function requireAuth(request, database) {
 async function getOAuth2Client() {
   try {
     const { google } = await import('googleapis')
-    const clientId = process.env.GOOGLE_CLIENT_ID
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI
+    const clientId = env.GOOGLE?.CLIENT_ID
+    const clientSecret = env.GOOGLE?.CLIENT_SECRET
+    const redirectUri = env.GOOGLE?.REDIRECT_URI
     if (!clientId || !clientSecret || !redirectUri) return null
     return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
   } catch (e) {

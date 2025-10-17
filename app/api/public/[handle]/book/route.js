@@ -7,6 +7,7 @@ import { generateCancelToken } from '../../../../lib/security/resetToken'
 import { generateRescheduleToken } from '../../../../lib/security/rescheduleToken'
 import { bookingConfirmationEmail } from '../../../../lib/email/templates'
 import { buildICS } from '../../../../lib/ics'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -15,9 +16,9 @@ let client, db
 
 async function connect() {
   if (!client) {
-    client = new MongoClient(process.env.MONGO_URL)
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   return db
 }
@@ -99,9 +100,9 @@ export async function POST(request, { params }) {
       if (owner.google?.refreshToken) {
         const { google } = await import('googleapis')
         const oauth = new google.auth.OAuth2(
-          process.env.GOOGLE_CLIENT_ID,
-          process.env.GOOGLE_CLIENT_SECRET,
-          process.env.GOOGLE_REDIRECT_URI
+          env.GOOGLE?.CLIENT_ID,
+          env.GOOGLE?.CLIENT_SECRET,
+          env.GOOGLE?.REDIRECT_URI
         )
         oauth.setCredentials({ refresh_token: owner.google.refreshToken })
         const calendar = google.calendar({ version: 'v3', auth: oauth })
@@ -175,14 +176,14 @@ export async function POST(request, { params }) {
       if (owner.google?.refreshToken) {
         const { google } = await import('googleapis')
         const oauth = new google.auth.OAuth2(
-          process.env.GOOGLE_CLIENT_ID,
-          process.env.GOOGLE_CLIENT_SECRET,
-          process.env.GOOGLE_REDIRECT_URI
+          env.GOOGLE?.CLIENT_ID,
+          env.GOOGLE?.CLIENT_SECRET,
+          env.GOOGLE?.REDIRECT_URI
         )
         oauth.setCredentials({ refresh_token: owner.google.refreshToken })
         const calendar = google.calendar({ version: 'v3', auth: oauth })
 
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        const baseUrl = env.BASE_URL || 'http://localhost:3000'
         const event = {
           summary: booking.title,
           description: `${notes || ''}\n\n---\nSource: Book8 AI Public Booking\nGuest: ${email}\nBooking ID: ${bookingId}\n\nManage:\nReschedule: ${baseUrl}/b/${handle}/reschedule?token=${rescheduleToken}\nCancel: ${baseUrl}/api/public/bookings/cancel?token=${cancelToken}`,

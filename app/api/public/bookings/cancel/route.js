@@ -3,12 +3,13 @@ import { MongoClient } from 'mongodb'
 import bcrypt from 'bcryptjs'
 import { buildICS } from '@/app/lib/ics'
 import { verifyActionToken } from '@/app/lib/security/resetToken'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 let client, db
-async function connect() { if (!client) { client = new MongoClient(process.env.MONGO_URL); await client.connect(); db = client.db(process.env.DB_NAME) } return db }
+async function connect() { if (!client) { client = new MongoClient(env.MONGO_URL); await client.connect(); db = client.db(env.DB_NAME) } return db }
 
 export async function GET(request) {
   try {
@@ -37,7 +38,7 @@ export async function GET(request) {
       if (map?.googleEventId) {
         const { google } = await import('googleapis')
         const user = await database.collection('users').findOne({ id: booking.userId })
-        const oauth2 = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI)
+        const oauth2 = new google.auth.OAuth2(env.GOOGLE?.CLIENT_ID, env.GOOGLE?.CLIENT_SECRET, env.GOOGLE?.REDIRECT_URI)
         oauth2.setCredentials({ refresh_token: user?.google?.refreshToken })
         const cal = google.calendar({ version: 'v3', auth: oauth2 })
         await cal.events.delete({ calendarId: map.calendarId || 'primary', eventId: map.googleEventId })
@@ -52,9 +53,9 @@ export async function GET(request) {
     try {
       const user = await database.collection('users').findOne({ id: booking.userId })
       const { Resend } = await import('resend')
-      const resend = new Resend(process.env.RESEND_API_KEY)
+      const resend = new Resend(env.RESEND_API_KEY)
       const ics = buildICS({ uid: booking.id, start: booking.startTime, end: booking.endTime, summary: booking.title, description: booking.notes, organizer: user.email, attendees: [{ email: user.email }, { email: booking.customerName ? `${booking.customerName} <${booking.customerEmail || ''}>` : (booking.customerEmail || '') }], method: 'CANCEL' })
-      await resend.emails.send({ from: process.env.EMAIL_FROM, to: user.email, reply_to: process.env.EMAIL_REPLY_TO, subject: 'Booking canceled', html: `<p>The meeting ${booking.title} was canceled.</p>`, attachments: [{ filename: 'cancel.ics', content: Buffer.from(ics).toString('base64') }] })
+      await resend.emails.send({ from: env.EMAIL_FROM, to: user.email, reply_to: env.EMAIL_REPLY_TO, subject: 'Booking canceled', html: `<p>The meeting ${booking.title} was canceled.</p>`, attachments: [{ filename: 'cancel.ics', content: Buffer.from(ics).toString('base64') }] })
     } catch (e) { console.error('[public/cancel] email failed', e?.message || e) }
 
     return new Response('<p>Your meeting was canceled.</p>', { status: 200, headers: { 'Content-Type': 'text/html' } })

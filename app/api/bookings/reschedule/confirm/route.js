@@ -7,6 +7,7 @@ import { BookingTelemetry, RateLimitTelemetry, logError } from '../../../../lib/
 import { rescheduleConfirmationEmail } from '../../../../lib/email/templates'
 import { buildICS } from '../../../../lib/ics'
 import { env, isFeatureEnabled } from '../../../../lib/env'
+import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -235,7 +236,7 @@ export async function POST(request) {
         oauth.setCredentials({ refresh_token: owner.google.refreshToken })
         const calendar = google.calendar({ version: 'v3', auth: oauth })
 
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        const baseUrl = env.BASE_URL || 'http://localhost:3000'
         const newRescheduleToken = generateRescheduleToken(booking.id, booking.guestEmail)
         const newCancelToken = generateCancelToken(booking.id, booking.guestEmail)
 
@@ -300,10 +301,10 @@ export async function POST(request) {
 
     // Send confirmation emails
     try {
-      if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 'your_resend_api_key_here') {
+      if (env.RESEND_API_KEY && env.RESEND_API_KEY !== 'your_resend_api_key_here') {
         const { Resend } = await import('resend')
-        const resend = new Resend(process.env.RESEND_API_KEY)
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        const resend = new Resend(env.RESEND_API_KEY)
+        const baseUrl = env.BASE_URL || 'http://localhost:3000'
 
         const newRescheduleToken = generateRescheduleToken(booking.id, booking.guestEmail)
         const newCancelToken = generateCancelToken(booking.id, booking.guestEmail)
