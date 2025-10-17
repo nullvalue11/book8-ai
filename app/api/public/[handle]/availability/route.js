@@ -162,15 +162,30 @@ export async function GET(request, { params }) {
     for (const block of daySlots) {
       // Create datetime in host timezone
       let currentTime = new Date(`${date}T${block.start}:00`)
-      const endTime = new Date(`${date}T${block.end}:00`)
+      
+      // Handle end time - if 23:59, treat as end of day (one minute before midnight)
+      // Need to add 59 seconds to make it truly 23:59:59
+      let endTime
+      if (block.end === '23:59') {
+        // For 23:59, we want to allow slots up until the last possible slot before midnight
+        endTime = new Date(`${date}T23:59:59`)
+      } else {
+        endTime = new Date(`${date}T${block.end}:00`)
+      }
 
+      // Generate slots for this time block
       while (currentTime.getTime() + durationMin * 60000 <= endTime.getTime()) {
+        // Only add slots that meet minimum notice requirement
         if (currentTime >= minStartTime) {
           const slotEnd = new Date(currentTime.getTime() + durationMin * 60000)
-          slots.push({
-            start: currentTime.toISOString(),
-            end: slotEnd.toISOString()
-          })
+          
+          // Make sure the slot end doesn't go past the block end
+          if (slotEnd <= endTime) {
+            slots.push({
+              start: currentTime.toISOString(),
+              end: slotEnd.toISOString()
+            })
+          }
         }
         currentTime = new Date(currentTime.getTime() + (durationMin + bufferMin) * 60000)
       }
