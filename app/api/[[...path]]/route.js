@@ -126,7 +126,7 @@ async function handleRoute(request, { params }) {
       const hashed = await bcrypt.hash(password, 10)
       const user = { id: uuidv4(), email: String(email).toLowerCase(), name: name || '', passwordHash: hashed, createdAt: new Date(), subscription: null, google: null }
       try { await database.collection('users').insertOne(user) } catch (e) { if (String(e?.message || '').includes('duplicate')) return json({ error: 'Email already registered' }, { status: 409 }); throw e }
-      const token = jwt.sign({ sub: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' })
+      const token = jwt.sign({ sub: user.id, email: user.email }, env.JWT_SECRET, { expiresIn: '7d' })
       return json({ token, user: { id: user.id, email: user.email, name: user.name, subscription: user.subscription, google: { connected: false, lastSyncedAt: null } } })
     }
     if (route === '/auth/login' && method === 'POST') {
@@ -136,7 +136,7 @@ async function handleRoute(request, { params }) {
       if (!user) return json({ error: 'Invalid credentials' }, { status: 401 })
       const ok = await bcrypt.compare(password, user.passwordHash)
       if (!ok) return json({ error: 'Invalid credentials' }, { status: 401 })
-      const token = jwt.sign({ sub: user.id, email: user.email }, getJwtSecret(), { expiresIn: '7d' })
+      const token = jwt.sign({ sub: user.id, email: user.email }, env.JWT_SECRET, { expiresIn: '7d' })
       const googleSafe = user.google ? { connected: !!user.google?.refreshToken, lastSyncedAt: user.google?.lastSyncedAt || null } : { connected: false, lastSyncedAt: null }
       return json({ token, user: { id: user.id, email: user.email, name: user.name || '', subscription: user.subscription || null, google: googleSafe } })
     }
