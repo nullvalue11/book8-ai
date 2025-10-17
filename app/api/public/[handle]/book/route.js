@@ -253,10 +253,10 @@ export async function POST(request, { params }) {
 
     // Send confirmation emails
     try {
-      if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 'your_resend_api_key_here') {
+      if (env.RESEND_API_KEY) {
         const { Resend } = await import('resend')
-        const resend = new Resend(process.env.RESEND_API_KEY)
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        const resend = new Resend(env.RESEND_API_KEY)
+        const baseUrl = env.BASE_URL
 
         const emailHtml = bookingConfirmationEmail(
           booking,
