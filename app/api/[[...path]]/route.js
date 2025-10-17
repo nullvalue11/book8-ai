@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../lib/baseUrl'
 import { buildGoogleEventFromBooking } from '../../../lib/googleSync'
+import { env } from '@/app/lib/env'
 
 // Mongo connection
 let client
