@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
+import { env } from '@/app/lib/env'
 
 // Ensure this API route is always dynamic and never statically optimized
 export const dynamic = 'force-dynamic'
@@ -13,11 +14,11 @@ let indexesEnsured = false
 
 async function connectToMongo() {
   if (!client) {
-    if (!process.env.MONGO_URL) throw new Error('MONGO_URL missing')
-    if (!process.env.DB_NAME) throw new Error('DB_NAME missing')
-    client = new MongoClient(process.env.MONGO_URL)
+    if (!env.MONGO_URL) throw new Error('MONGO_URL missing')
+    if (!env.DB_NAME) throw new Error('DB_NAME missing')
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   if (!indexesEnsured) {
     try { await db.collection('billing_logs').createIndex({ eventId: 1 }, { unique: true }) } catch {}
@@ -26,15 +27,13 @@ async function connectToMongo() {
   return db
 }
 
-function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret-change-me' }
-
 async function requireAuth(request, database) {
   const auth = request.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
   if (!token) return { error: 'Missing Authorization header', status: 401 }
   try {
     const jwt = (await import('jsonwebtoken')).default
-    const payload = jwt.verify(token, getJwtSecret())
+    const payload = jwt.verify(token, env.JWT_SECRET)
     const user = await database.collection('users').findOne({ id: payload.sub })
     if (!user) return { error: 'User not found', status: 401 }
     return { user }
