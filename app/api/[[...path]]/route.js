@@ -58,7 +58,7 @@ async function requireAuth(request, db) {
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
   if (!token) return { error: 'Missing Authorization header', status: 401 }
   try {
-    const payload = jwt.verify(token, getJwtSecret())
+    const payload = jwt.verify(token, env.JWT_SECRET)
     const user = await db.collection('users').findOne({ id: payload.sub })
     if (!user) return { error: 'User not found', status: 401 }
     return { user }
