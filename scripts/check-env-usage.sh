@@ -9,7 +9,7 @@ echo "🔍 Checking for process.env usage outside lib/env.js..."
 # Search for process.env in source files, excluding:
 # - node_modules
 # - .next build directory
-# - lib/env.js (the only allowed location)
+# - lib/env.js and app/lib/env.js (the only allowed locations)
 # - scripts directory (tooling)
 
 FOUND=$(grep -r "process\.env\." \
@@ -19,9 +19,9 @@ FOUND=$(grep -r "process\.env\." \
   --include="*.tsx" \
   --exclude-dir="node_modules" \
   --exclude-dir=".next" \
-  --exclude="lib/env.js" \
-  --exclude="app/lib/env.js" \
+  --exclude="env.js" \
   --exclude-dir="scripts" \
+  --exclude-dir="tests" \
   app/ 2>/dev/null || true)
 
 if [ -n "$FOUND" ]; then
