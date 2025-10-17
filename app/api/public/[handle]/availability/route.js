@@ -3,7 +3,6 @@ import { MongoClient } from 'mongodb'
 import { checkRateLimit } from '../../../../lib/rateLimiting'
 import { RateLimitTelemetry, logError } from '../../../../lib/telemetry'
 import { env, debugLog } from '../../../../lib/env'
-import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
