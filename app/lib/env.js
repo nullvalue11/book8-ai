@@ -113,6 +113,7 @@ function loadConfig() {
     
     // Optional Services
     const TAVILY_API_KEY = getEnvVar('TAVILY_API_KEY', false)
+    const CRON_SECRET = getEnvVar('CRON_SECRET', false)
     
     // Feature Flags
     const FEATURE_RESCHEDULE = getEnvVar('FEATURE_RESCHEDULE', false, 'true') === 'true'
