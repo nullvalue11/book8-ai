@@ -38,10 +38,40 @@ export async function OPTIONS() {
 }
 
 export async function POST(request, { params }) {
+  console.log('=== BOOK DEBUG START ===')
+  console.log('book.debug', {
+    handle: params.handle,
+    time: new Date().toISOString(),
+    method: request.method,
+    headers: {
+      'content-type': request.headers.get('content-type'),
+      'user-agent': request.headers.get('user-agent'),
+      'x-forwarded-for': request.headers.get('x-forwarded-for')
+    }
+  })
+  
   try {
     const database = await connect()
+    console.log('book.database', { connected: !!database })
+    
     const handle = params.handle
-    const body = await request.json()
+    console.log('book.handle', { handle })
+    
+    let body
+    try {
+      body = await request.json()
+      console.log('book.body', { 
+        hasName: !!body.name,
+        hasEmail: !!body.email,
+        hasStart: !!body.start,
+        hasEnd: !!body.end,
+        guestTimezone: body.guestTimezone
+      })
+    } catch (jsonError) {
+      console.error('book.jsonError', jsonError.message)
+      throw new Error('Invalid JSON body')
+    }
+    
     const { name, email, notes, start, end, guestTimezone } = body
 
     if (!name || !email || !start || !end) {
