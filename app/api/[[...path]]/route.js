@@ -40,7 +40,7 @@ async function connectToMongo() {
 
 // Helpers
 function cors(resp) {
-  resp.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
+  resp.headers.set('Access-Control-Allow-Origin', '*')
   resp.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
   resp.headers.set('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, stripe-signature, x-client-timezone')
   resp.headers.set('Access-Control-Allow-Credentials', 'true')
@@ -50,8 +50,6 @@ function cors(resp) {
 export async function OPTIONS() { return cors(new NextResponse(null, { status: 200 })) }
 
 const json = (data, init = {}) => cors(NextResponse.json(data, init))
-
-function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret-change-me' }
 
 async function getBody(request) { try { return await request.json() } catch { return {} } }
 
