@@ -6,6 +6,7 @@ import { checkRateLimit } from '../../../../lib/rateLimiting'
 import { BookingTelemetry, RateLimitTelemetry, logError } from '../../../../lib/telemetry'
 import { rescheduleConfirmationEmail } from '../../../../lib/email/templates'
 import { buildICS } from '../../../../lib/ics'
+import { env, isFeatureEnabled } from '../../../../lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -14,15 +15,11 @@ let client, db
 
 async function connect() {
   if (!client) {
-    client = new MongoClient(process.env.MONGO_URL)
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(process.env.DB_NAME)
+    db = client.db(env.DB_NAME)
   }
   return db
-}
-
-function isFeatureEnabled(featureName) {
-  return process.env[featureName] === 'true'
 }
 
 export async function OPTIONS() {
