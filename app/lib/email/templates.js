@@ -2,6 +2,8 @@
  * Email templates with branding
  */
 
+import { env } from '../env'
+
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png'
 const BRAND_COLOR = '#65E0C1'
 const ACCENT_COLOR = '#8FD0FF'
@@ -204,7 +206,7 @@ export function reminderEmail(booking, owner, hoursUntil, guestTz = null) {
       ` : ''}
     </div>
     
-    ${calendarButtons(booking, process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')}
+    ${calendarButtons(booking, env.BASE_URL)}
   `
   
   return baseTemplate(content)
