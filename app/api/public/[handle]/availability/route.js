@@ -117,9 +117,16 @@ export async function GET(request, { params }) {
       'scheduling.handleLower': handle.toLowerCase() 
     })
     
-    if (!owner || !owner.scheduling) {
+    if (!owner) {
       return NextResponse.json(
         { ok: false, error: 'Booking page not found' },
+        { status: 404 }
+      )
+    }
+
+    if (!owner.scheduling || !owner.scheduling.handle) {
+      return NextResponse.json(
+        { ok: false, error: 'This booking page is not configured yet. Please contact the owner.' },
         { status: 404 }
       )
     }
