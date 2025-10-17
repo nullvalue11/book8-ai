@@ -7,7 +7,6 @@ import { BookingTelemetry, RateLimitTelemetry, logError } from '../../../../lib/
 import { rescheduleConfirmationEmail } from '../../../../lib/email/templates'
 import { buildICS } from '../../../../lib/ics'
 import { env, isFeatureEnabled } from '../../../../lib/env'
-import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
