@@ -1,10 +1,11 @@
+import { env } from '@/app/lib/env'
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    console.log('[Tavily:_selftest] Route hit')
-    const key = process.env.TAVILY_API_KEY || null;
+    const key = env.TAVILY_API_KEY || null;
     return new Response(JSON.stringify({
       ok: true,
       route: '/api/search/_selftest',

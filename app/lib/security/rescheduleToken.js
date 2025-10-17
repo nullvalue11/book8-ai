@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken'
+import { env } from '../env'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me'
 const RESCHEDULE_TOKEN_EXPIRY = '48h'
 
 /**
@@ -17,7 +17,7 @@ export function generateRescheduleToken(bookingId, guestEmail) {
     nonce: Math.random().toString(36).substring(2, 15)
   }
   
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: RESCHEDULE_TOKEN_EXPIRY })
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: RESCHEDULE_TOKEN_EXPIRY })
 }
 
 /**
@@ -27,7 +27,7 @@ export function generateRescheduleToken(bookingId, guestEmail) {
  */
 export function verifyRescheduleToken(token) {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET)
+    const decoded = jwt.verify(token, env.JWT_SECRET)
     
     if (decoded.type !== 'reschedule') {
       return null
