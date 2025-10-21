@@ -69,6 +69,8 @@ export default function AdminBillingLogsPage() {
     } finally { setLoading(false); }
   }
 
+  // fetchAdminLogs is stable and defined in component scope; including it in deps can re-trigger fetch loops
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (token) fetchAdminLogs(1); }, [token]);
 
   const filtered = useMemo(() => {

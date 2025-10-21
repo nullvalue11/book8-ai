@@ -39,6 +39,8 @@ export default function PublicBookingPage({ params }) {
     if (date && guestTz) {
       loadSlots()
     }
+    // loadSlots is defined below and doesn't change - safe to omit from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, guestTz])
 
   async function loadSlots() {

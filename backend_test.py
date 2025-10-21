@@ -15,7 +15,7 @@ import hmac
 import time
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://timeslot-ai-1.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://schedulesync-5.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 class BackendTester:

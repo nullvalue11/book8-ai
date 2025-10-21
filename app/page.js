@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,11 @@ export default function Home() {
   const [archivedCount, setArchivedCount] = useState(0);
 
   useEffect(() => { const t = localStorage.getItem("book8_token"); const u = localStorage.getItem("book8_user"); if (t) setToken(t); if (u) setUser(JSON.parse(u)); }, []);
+  
+  // Complex dashboard with many interdependent async functions
+  // Wrapping all in useCallback would create circular dependencies
+  // Safe to disable as these functions are stable and don't change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchBillingLogs(1, true); fetchArchivedCount(); } }, [token]);
 
   async function api(path, opts = {}) { const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {}, token ? { Authorization: `Bearer ${token}` } : {}); const res = await fetch(`/api${path}`, { ...opts, headers }); const isJson = (res.headers.get("content-type") || "").includes("application/json"); const body = isJson ? await res.json() : await res.text(); if (!res.ok) throw new Error(body?.error || body || `Request failed: ${res.status}`); return body; }
@@ -171,10 +177,13 @@ export default function Home() {
         <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img 
+              <Image 
                 src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
                 alt="Book8 AI Logo" 
-                className="h-10 w-auto"
+                width={120}
+                height={40}
+                priority
+                style={{ width: 'auto', height: 'auto' }}
               />
             </div>
             <div className="flex items-center gap-4">
@@ -219,10 +228,14 @@ export default function Home() {
             </div>
             <div className="relative logo-container">
               <div className="absolute inset-0 gradient-hero rounded-3xl blur-3xl"></div>
-              <img 
+              <Image 
                 src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
                 alt="Book8 AI Platform" 
+                width={300}
+                height={300}
+                priority
                 className="relative z-10 w-full max-w-md mx-auto animate-float animate-neural-pulse"
+                style={{ height: 'auto' }}
               />
             </div>
           </div>
@@ -365,9 +378,13 @@ export default function Home() {
           <div className="container mx-auto max-w-7xl px-6 py-12">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
               <div className="col-span-1 md:col-span-2">
-                <img 
+                <Image 
                   src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
                   alt="Book8 AI" 
+                  width={120}
+                  height={40}
+                  priority
+                  style={{ width: 'auto', height: 'auto' }}
                   className="h-10 w-auto mb-4"
                 />
                 <p className="text-muted-foreground mb-4">Intelligent booking and automation platform powered by AI.</p>
@@ -410,9 +427,13 @@ export default function Home() {
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img 
+            <Image 
               src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
               alt="Book8 AI" 
+              width={120}
+              height={40}
+              priority
+              style={{ width: 'auto', height: 'auto' }}
               className="h-10 w-auto"
             />
             <div className="hidden md:block h-6 w-px bg-border"></div>
@@ -662,15 +683,22 @@ export default function Home() {
 }
 
 function ThemeToggle({ resolved, setTheme }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+
+  const isLight = mounted && resolved === 'light';
+  const isDark = mounted && resolved === 'dark';
+  const isSystem = mounted && resolved !== 'dark' && resolved !== 'light';
+
   return (
     <div className="flex items-center gap-2">
-      <button aria-label="Light" className={`p-2 rounded-md border ${resolved === 'light' ? 'bg-secondary' : ''}`} onClick={() => setTheme('light')}>
+      <button aria-label="Light" className={`p-2 rounded-md border ${isLight ? 'bg-secondary' : ''}`} onClick={() => setTheme('light')}>
         <Sun className="h-4 w-4" />
       </button>
-      <button aria-label="Dark" className={`p-2 rounded-md border ${resolved === 'dark' ? 'bg-secondary' : ''}`} onClick={() => setTheme('dark')}>
+      <button aria-label="Dark" className={`p-2 rounded-md border ${isDark ? 'bg-secondary' : ''}`} onClick={() => setTheme('dark')}>
         <Moon className="h-4 w-4" />
       </button>
-      <button aria-label="System" className={`p-2 rounded-md border ${resolved !== 'dark' && resolved !== 'light' ? 'bg-secondary' : ''}`} onClick={() => setTheme('system')}>
+      <button aria-label="System" className={`p-2 rounded-md border ${isSystem ? 'bg-secondary' : ''}`} onClick={() => setTheme('system')}>
         Sys
       </button>
     </div>

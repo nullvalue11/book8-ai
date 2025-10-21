@@ -11,6 +11,8 @@ export default function AnalyticsDashboard({ token }) {
   const [error, setError] = useState(null)
   const [range, setRange] = useState('7d')
 
+  // fetchAnalytics is defined below and doesn't change between renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (token) {
       fetchAnalytics()

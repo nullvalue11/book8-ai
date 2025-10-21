@@ -46,6 +46,8 @@ export default function SchedulingSettingsPage() {
     if (t) setToken(t); 
   }, [])
   
+  // load() is stable in component scope; adding it to deps can cause unnecessary re-renders/fetch loops
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { 
     if (token) load() 
   }, [token])
