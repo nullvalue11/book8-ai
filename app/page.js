@@ -182,7 +182,8 @@ export default function Home() {
                 alt="Book8 AI Logo" 
                 width={120}
                 height={40}
-                className="h-10 w-auto"
+                priority
+                style={{ width: 'auto', height: 'auto' }}
               />
             </div>
             <div className="flex items-center gap-4">
