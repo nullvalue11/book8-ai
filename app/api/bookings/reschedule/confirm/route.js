@@ -37,7 +37,7 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    if (!isFeatureEnabled('FEATURE_RESCHEDULE')) {
+    if (!isFeatureEnabled('RESCHEDULE')) {
       return NextResponse.json(
         { ok: false, error: 'Reschedule feature is not enabled' },
         { status: 503 }
