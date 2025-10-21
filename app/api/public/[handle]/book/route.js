@@ -24,10 +24,6 @@ async function connect() {
   return db
 }
 
-function isFeatureEnabled(featureName) {
-  return env.FEATURES[featureName] === true
-}
-
 export async function OPTIONS() {
   return new Response(null, {
     status: 204,
