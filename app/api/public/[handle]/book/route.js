@@ -25,7 +25,7 @@ async function connect() {
 }
 
 function isFeatureEnabled(featureName) {
-  return process.env[featureName] === 'true'
+  return env.FEATURES[featureName] === true
 }
 
 export async function OPTIONS() {
