@@ -172,9 +172,11 @@ export default function Home() {
         <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img 
+              <Image 
                 src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
                 alt="Book8 AI Logo" 
+                width={120}
+                height={40}
                 className="h-10 w-auto"
               />
             </div>
