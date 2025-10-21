@@ -264,13 +264,20 @@ export async function POST(request) {
       console.error('[reschedule/confirm] Google insert error:', error.message)
     }
 
+    // Recompute reminders if feature enabled
+    let updatedReminders = booking.reminders || []
+    if (isFeatureEnabled('REMINDERS') && updatedReminders.length > 0) {
+      updatedReminders = recomputeReminders(updatedReminders, newStartTime.toISOString())
+    }
+
     // Update booking
     const updatedBooking = {
       startTime: newStartTime.toISOString(),
       endTime: newEndTime.toISOString(),
-      status: 'rescheduled',
+      status: 'confirmed',
       rescheduleCount: rescheduleCount + 1,
       googleEventId: newGoogleEventId || booking.googleEventId,
+      reminders: updatedReminders,
       updatedAt: new Date().toISOString()
     }
 
