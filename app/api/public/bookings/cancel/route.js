@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import bcrypt from 'bcryptjs'
 import { buildICS } from '@/app/lib/ics'
 import { verifyActionToken } from '@/app/lib/security/resetToken'
+import { renderHostCancel } from '@/app/lib/emailRenderer'
 import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
