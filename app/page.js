@@ -233,7 +233,9 @@ export default function Home() {
                 alt="Book8 AI Platform" 
                 width={300}
                 height={300}
+                priority
                 className="relative z-10 w-full max-w-md mx-auto animate-float animate-neural-pulse"
+                style={{ height: 'auto' }}
               />
             </div>
           </div>
