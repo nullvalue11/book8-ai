@@ -172,7 +172,8 @@ function loadConfig() {
       // Features
       FEATURES: {
         RESCHEDULE: FEATURE_RESCHEDULE,
-        GUEST_TZ: FEATURE_GUEST_TZ
+        GUEST_TZ: FEATURE_GUEST_TZ,
+        REMINDERS: FEATURE_REMINDERS
       },
       
       // Debug
