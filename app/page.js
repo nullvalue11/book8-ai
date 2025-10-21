@@ -626,6 +626,9 @@ export default function Home() {
           </CardContent>
         </Card>
 
+        {/* Analytics Dashboard */}
+        <AnalyticsDashboard token={token} />
+
         <Card className="bg-card">
           <CardHeader><CardTitle>AI Web Search</CardTitle></CardHeader>
           <CardContent>
