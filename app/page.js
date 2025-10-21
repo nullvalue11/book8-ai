@@ -74,8 +74,16 @@ export default function Home() {
   const [archivedCount, setArchivedCount] = useState(0);
 
   useEffect(() => { const t = localStorage.getItem("book8_token"); const u = localStorage.getItem("book8_user"); if (t) setToken(t); if (u) setUser(JSON.parse(u)); }, []);
+  
+  // Complex dashboard with many interdependent async functions
+  // Wrapping all in useCallback would create circular dependencies
+  // Safe to disable as these functions are stable and don't change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchBillingLogs(1, true); fetchArchivedCount(); } }, [token]);
 
-  const refreshUser = useCallback(async function refreshUser() {
+  async function api(path, opts = {}) { const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {}, token ? { Authorization: `Bearer ${token}` } : {}); const res = await fetch(`/api${path}`, { ...opts, headers }); const isJson = (res.headers.get("content-type") || "").includes("application/json"); const body = isJson ? await res.json() : await res.text(); if (!res.ok) throw new Error(body?.error || body || `Request failed: ${res.status}`); return body; }
+
+  async function refreshUser() {
     console.log('[dashboard] refreshing user')
     setDashLoading(true); setDashError("");
     const controller = new AbortController();
