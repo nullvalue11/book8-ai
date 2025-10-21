@@ -383,6 +383,8 @@ export default function Home() {
                   alt="Book8 AI" 
                   width={120}
                   height={40}
+                  priority
+                  style={{ width: 'auto', height: 'auto' }}
                   className="h-10 w-auto mb-4"
                 />
                 <p className="text-muted-foreground mb-4">Intelligent booking and automation platform powered by AI.</p>
