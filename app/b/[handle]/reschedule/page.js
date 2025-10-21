@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,26 +23,8 @@ export default function ReschedulePage({ params }) {
   const [selected, setSelected] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Token changes trigger data refresh - verifyToken stable
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (token) {
-      verifyToken()
-    } else {
-      setState('error')
-      setError('Missing reschedule token')
-    }
-  }, [token])
-
-  // Date and timezone changes trigger slot loading - loadSlots stable
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (date && guestTz && state === 'form') {
-      loadSlots()
-    }
-  }, [date, guestTz, state])
-
-  async function verifyToken() {
+  // Wrap async functions with useCallback so deps are explicit and stable for effects
+  const verifyToken = useCallback(async () => {
     try {
       const res = await fetch(`/api/bookings/reschedule?token=${encodeURIComponent(token)}`)
       const data = await res.json()
@@ -83,9 +65,9 @@ export default function ReschedulePage({ params }) {
       setError('Failed to verify reschedule link')
       setState('error')
     }
-  }
+  }, [token])
 
-  async function loadSlots() {
+  const loadSlots = useCallback(async () => {
     try {
       setLoadingSlots(true)
       setError('')
@@ -112,7 +94,24 @@ export default function ReschedulePage({ params }) {
     } finally {
       setLoadingSlots(false)
     }
-  }
+  }, [handle, date, guestTz, settings?.defaultDurationMin])
+
+  // Token changes trigger data refresh
+  useEffect(() => {
+    if (token) {
+      verifyToken()
+    } else {
+      setState('error')
+      setError('Missing reschedule token')
+    }
+  }, [token, verifyToken])
+
+  // Date and timezone changes trigger slot loading
+  useEffect(() => {
+    if (date && guestTz && state === 'form') {
+      loadSlots()
+    }
+  }, [date, guestTz, state, loadSlots])
 
   async function handleReschedule() {
     if (!selected) {

@@ -183,7 +183,7 @@ export default function Home() {
                 width={120}
                 height={40}
                 priority
-                style={{ width: 'auto', height: 'auto' }}
+                className="h-10 w-auto"
               />
             </div>
             <div className="flex items-center gap-4">
@@ -231,11 +231,11 @@ export default function Home() {
               <Image 
                 src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
                 alt="Book8 AI Platform" 
-                width={300}
-                height={300}
+                width={420}
+                height={420}
                 priority
-                className="relative z-10 w-full max-w-md mx-auto animate-float animate-neural-pulse"
-                style={{ height: 'auto' }}
+                className="relative z-10 w-full max-w-[420px] h-auto mx-auto lg:ml-auto animate-float animate-neural-pulse"
+                sizes="(min-width: 1024px) 420px, 60vw"
               />
             </div>
           </div>
