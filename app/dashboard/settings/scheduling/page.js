@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,31 +46,28 @@ export default function SchedulingSettingsPage() {
     if (t) setToken(t); 
   }, [])
   
-  // load() is stable in component scope; adding it to deps can cause unnecessary re-renders/fetch loops
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { 
-    if (token) load() 
-  }, [token])
-
-  async function load() {
+  const load = useCallback(async () => {
     try {
       const res = await fetch('/api/settings/scheduling', { 
         headers: { Authorization: `Bearer ${token}` } 
       })
       const data = await res.json()
       if (data?.scheduling) {
-        setForm({ ...form, ...data.scheduling })
+        setForm(prev => ({ ...prev, ...data.scheduling }))
         setWh(data.scheduling.workingHours || wh)
         setCalIds(data.scheduling.selectedCalendarIds || [])
         
-        // Check if it's 24/7
         const all24 = Object.values(data.scheduling.workingHours || {}).every(
           blocks => blocks.length === 1 && blocks[0].start === '00:00' && blocks[0].end === '23:59'
         )
         setIs24x7(all24)
       }
     } catch {}
-  }
+  }, [token, wh])
+  
+  useEffect(() => { 
+    if (token) load() 
+  }, [token, load])
 
   async function save() {
     try {
@@ -106,7 +103,6 @@ export default function SchedulingSettingsPage() {
 
   function toggle24x7() {
     if (!is24x7) {
-      // Set all days to 24/7
       const all24 = {}
       Object.keys(wh).forEach(day => {
         all24[day] = [{ start: '00:00', end: '23:59' }]
@@ -114,7 +110,6 @@ export default function SchedulingSettingsPage() {
       setWh(all24)
       setIs24x7(true)
     } else {
-      // Reset to default business hours
       setWh({
         mon: [{ start: '09:00', end: '17:00' }],
         tue: [{ start: '09:00', end: '17:00' }],
@@ -177,13 +172,8 @@ export default function SchedulingSettingsPage() {
   }
 
   const presets = [
-    { 
-      name: '24/7', 
-      apply: () => toggle24x7() 
-    },
-    { 
-      name: 'Business Hours (9-5)', 
-      apply: () => {
+    { name: '24/7', apply: () => toggle24x7() },
+    { name: 'Business Hours (9-5)', apply: () => {
         setWh({
           mon: [{ start: '09:00', end: '17:00' }],
           tue: [{ start: '09:00', end: '17:00' }],
@@ -194,11 +184,8 @@ export default function SchedulingSettingsPage() {
           sun: []
         })
         setIs24x7(false)
-      } 
-    },
-    { 
-      name: 'Extended (8am-8pm)', 
-      apply: () => {
+      } },
+    { name: 'Extended (8am-8pm)', apply: () => {
         setWh({
           mon: [{ start: '08:00', end: '20:00' }],
           tue: [{ start: '08:00', end: '20:00' }],
@@ -209,8 +196,7 @@ export default function SchedulingSettingsPage() {
           sun: []
         })
         setIs24x7(false)
-      } 
-    }
+      } }
   ]
 
   return (
