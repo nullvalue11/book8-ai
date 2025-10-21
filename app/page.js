@@ -432,6 +432,8 @@ export default function Home() {
               alt="Book8 AI" 
               width={120}
               height={40}
+              priority
+              style={{ width: 'auto', height: 'auto' }}
               className="h-10 w-auto"
             />
             <div className="hidden md:block h-6 w-px bg-border"></div>
