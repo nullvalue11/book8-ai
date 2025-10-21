@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
-import { buildGoogleEventFromBooking } from '../../../lib/googleSync'
-import { getDueReminders, markReminderSent } from '../../../lib/reminders'
-import { renderReminder24h, renderReminder1h, getReminderSubject } from '../../../lib/emailRenderer'
+import { buildGoogleEventFromBooking } from '@/app/lib/googleSync'
+import { getDueReminders, markReminderSent } from '@/app/lib/reminders'
+import { renderReminder24h, renderReminder1h, getReminderSubject } from '@/app/lib/emailRenderer'
 import { env, isFeatureEnabled } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
