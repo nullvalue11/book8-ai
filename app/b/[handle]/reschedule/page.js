@@ -23,6 +23,8 @@ export default function ReschedulePage({ params }) {
   const [selected, setSelected] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // Token changes trigger data refresh - verifyToken stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (token) {
       verifyToken()
@@ -32,6 +34,8 @@ export default function ReschedulePage({ params }) {
     }
   }, [token])
 
+  // Date and timezone changes trigger slot loading - loadSlots stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (date && guestTz && state === 'form') {
       loadSlots()
