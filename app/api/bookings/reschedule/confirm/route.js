@@ -6,6 +6,8 @@ import { checkRateLimit } from '../../../../lib/rateLimiting'
 import { BookingTelemetry, RateLimitTelemetry, logError } from '../../../../lib/telemetry'
 import { rescheduleConfirmationEmail } from '../../../../lib/email/templates'
 import { buildICS } from '../../../../lib/ics'
+import { recomputeReminders } from '../../../../lib/reminders'
+import { renderHostReschedule } from '../../../../lib/emailRenderer'
 import { env, isFeatureEnabled } from '../../../../lib/env'
 
 export const runtime = 'nodejs'
