@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Moon, Sun, Copy, Check, QrCode, Share2, Settings, ExternalLink } from "lucide-react";
 import { useTheme } from "next-themes";
 import { QRCodeSVG } from "qrcode.react";
+import AnalyticsDashboard from "./components/AnalyticsDashboard";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function toAmount(obj) { const o = obj?.rawEvent?.data?.object || {}; const currency = (o.currency || o.lines?.data?.[0]?.price?.currency || "usd").toUpperCase(); const cent = o.amount_paid ?? o.amount_due ?? o.amount ?? o.total ?? null; if (cent == null) return null; return `${(cent / 100).toFixed(2)} ${currency}`; }
@@ -624,6 +625,9 @@ export default function Home() {
             )}
           </CardContent>
         </Card>
+
+        {/* Analytics Dashboard */}
+        <AnalyticsDashboard token={token} />
 
         <Card className="bg-card">
           <CardHeader><CardTitle>AI Web Search</CardTitle></CardHeader>
