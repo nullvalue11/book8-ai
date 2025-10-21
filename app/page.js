@@ -370,9 +370,11 @@ export default function Home() {
           <div className="container mx-auto max-w-7xl px-6 py-12">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
               <div className="col-span-1 md:col-span-2">
-                <img 
+                <Image 
                   src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
                   alt="Book8 AI" 
+                  width={120}
+                  height={40}
                   className="h-10 w-auto mb-4"
                 />
                 <p className="text-muted-foreground mb-4">Intelligent booking and automation platform powered by AI.</p>
