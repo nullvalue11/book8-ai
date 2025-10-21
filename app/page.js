@@ -183,7 +183,7 @@ export default function Home() {
                 width={120}
                 height={40}
                 priority
-                style={{ width: 'auto', height: 'auto' }}
+                className="h-10 w-auto"
               />
             </div>
             <div className="flex items-center gap-4">
