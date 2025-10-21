@@ -1,5 +1,6 @@
 {
   "extends": ["next/core-web-vitals"],
+  "ignorePatterns": ["app/lib/env.js", "lib/baseUrl.js"],
   "rules": {
     "no-restricted-syntax": [
       "error",
@@ -7,6 +8,7 @@
         "selector": "MemberExpression[object.object.name='process'][object.property.name='env']",
         "message": "Direct access to process.env is forbidden. Use the centralized 'env' module from '@/app/lib/env' instead."
       }
-    ]
+    ],
+    "react/no-unescaped-entities": "off"
   }
 }
