@@ -7,7 +7,8 @@ import { generateCancelToken } from '../../../../lib/security/resetToken'
 import { generateRescheduleToken } from '../../../../lib/security/rescheduleToken'
 import { bookingConfirmationEmail } from '../../../../lib/email/templates'
 import { buildICS } from '../../../../lib/ics'
-import { env } from '@/app/lib/env'
+import { calculateReminders } from '../../../../lib/reminders'
+import { env, isFeatureEnabled } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,10 +22,6 @@ async function connect() {
     db = client.db(env.DB_NAME)
   }
   return db
-}
-
-function isFeatureEnabled(featureName) {
-  return process.env[featureName] === 'true'
 }
 
 export async function OPTIONS() {
@@ -171,9 +168,14 @@ export async function POST(request, { params }) {
     // Create booking
     const bookingId = uuidv4()
     const cancelToken = generateCancelToken(bookingId, email)
-    const rescheduleToken = isFeatureEnabled('FEATURE_RESCHEDULE') 
+    const rescheduleToken = isFeatureEnabled('RESCHEDULE') 
       ? generateRescheduleToken(bookingId, email) 
       : null
+    
+    // Calculate reminders if feature enabled
+    const reminders = isFeatureEnabled('REMINDERS')
+      ? calculateReminders(startTime.toISOString())
+      : []
 
     const booking = {
       id: bookingId,
@@ -186,12 +188,13 @@ export async function POST(request, { params }) {
       endTime: endTime.toISOString(),
       timeZone: owner.scheduling.timeZone || 'UTC',
       notes: notes || '',
-      status: 'scheduled',
+      status: 'confirmed',
       rescheduleCount: 0,
       rescheduleHistory: [],
       rescheduleNonces: [],
       cancelToken,
       rescheduleToken,
+      reminders,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }

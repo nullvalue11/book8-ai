@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import bcrypt from 'bcryptjs'
 import { buildICS } from '@/app/lib/ics'
 import { verifyActionToken } from '@/app/lib/security/resetToken'
+import { renderHostCancel } from '@/app/lib/emailRenderer'
 import { env } from '@/app/lib/env'
 
 export const runtime = 'nodejs'
@@ -56,6 +57,20 @@ export async function GET(request) {
       const resend = new Resend(env.RESEND_API_KEY)
       const ics = buildICS({ uid: booking.id, start: booking.startTime, end: booking.endTime, summary: booking.title, description: booking.notes, organizer: user.email, attendees: [{ email: user.email }, { email: booking.customerName ? `${booking.customerName} <${booking.customerEmail || ''}>` : (booking.customerEmail || '') }], method: 'CANCEL' })
       await resend.emails.send({ from: env.EMAIL_FROM, to: user.email, reply_to: env.EMAIL_REPLY_TO, subject: 'Booking canceled', html: `<p>The meeting ${booking.title} was canceled.</p>`, attachments: [{ filename: 'cancel.ics', content: Buffer.from(ics).toString('base64') }] })
+      
+      // Send host notification (synchronous)
+      try {
+        const hostEmailHtml = await renderHostCancel(booking, user, booking.guestTimezone)
+        await resend.emails.send({
+          from: 'Book8 AI <notifications@book8.ai>',
+          to: user.email,
+          subject: `Booking canceled: ${booking.customerName || 'Guest'} – ${booking.title}`,
+          html: hostEmailHtml
+        })
+        console.log('[public/cancel] Host notification sent')
+      } catch (hostError) {
+        console.error('[public/cancel] Host notification error:', hostError.message)
+      }
     } catch (e) { console.error('[public/cancel] email failed', e?.message || e) }
 
     return new Response('<p>Your meeting was canceled.</p>', { status: 200, headers: { 'Content-Type': 'text/html' } })

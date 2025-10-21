@@ -6,6 +6,8 @@ import { checkRateLimit } from '../../../../lib/rateLimiting'
 import { BookingTelemetry, RateLimitTelemetry, logError } from '../../../../lib/telemetry'
 import { rescheduleConfirmationEmail } from '../../../../lib/email/templates'
 import { buildICS } from '../../../../lib/ics'
+import { recomputeReminders } from '../../../../lib/reminders'
+import { renderHostReschedule } from '../../../../lib/emailRenderer'
 import { env, isFeatureEnabled } from '../../../../lib/env'
 
 export const runtime = 'nodejs'
@@ -35,7 +37,7 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    if (!isFeatureEnabled('FEATURE_RESCHEDULE')) {
+    if (!isFeatureEnabled('RESCHEDULE')) {
       return NextResponse.json(
         { ok: false, error: 'Reschedule feature is not enabled' },
         { status: 503 }
@@ -262,13 +264,20 @@ export async function POST(request) {
       console.error('[reschedule/confirm] Google insert error:', error.message)
     }
 
+    // Recompute reminders if feature enabled
+    let updatedReminders = booking.reminders || []
+    if (isFeatureEnabled('REMINDERS') && updatedReminders.length > 0) {
+      updatedReminders = recomputeReminders(updatedReminders, newStartTime.toISOString())
+    }
+
     // Update booking
     const updatedBooking = {
       startTime: newStartTime.toISOString(),
       endTime: newEndTime.toISOString(),
-      status: 'rescheduled',
+      status: 'confirmed',
       rescheduleCount: rescheduleCount + 1,
       googleEventId: newGoogleEventId || booking.googleEventId,
+      reminders: updatedReminders,
       updatedAt: new Date().toISOString()
     }
 
@@ -352,7 +361,29 @@ export async function POST(request) {
           ]
         })
 
-        console.log('[reschedule/confirm] Confirmation email sent')
+        console.log('[reschedule/confirm] Confirmation email sent to guest')
+        
+        // Send host notification (synchronous)
+        try {
+          const oldBooking = { ...booking }
+          const hostEmailHtml = await renderHostReschedule(
+            finalBooking,
+            owner,
+            oldBooking,
+            booking.guestTimezone
+          )
+          
+          await resend.emails.send({
+            from: 'Book8 AI <notifications@book8.ai>',
+            to: owner.email,
+            subject: `Booking rescheduled: ${booking.customerName || 'Guest'} – ${booking.title}`,
+            html: hostEmailHtml
+          })
+          
+          console.log('[reschedule/confirm] Host notification sent')
+        } catch (hostError) {
+          console.error('[reschedule/confirm] Host notification error:', hostError.message)
+        }
       }
     } catch (error) {
       console.error('[reschedule/confirm] Email error:', error.message)
