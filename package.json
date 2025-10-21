@@ -80,6 +80,8 @@
     "devDependencies": {
         "@types/jest": "^30.0.0",
         "autoprefixer": "^10.4.19",
+        "eslint": "^9.38.0",
+        "eslint-config-next": "^15.5.6",
         "globals": "^16.2.0",
         "jest": "^30.2.0",
         "postcss": "^8",
