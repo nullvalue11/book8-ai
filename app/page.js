@@ -676,15 +676,22 @@ export default function Home() {
 }
 
 function ThemeToggle({ resolved, setTheme }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+
+  const isLight = mounted && resolved === 'light';
+  const isDark = mounted && resolved === 'dark';
+  const isSystem = mounted && resolved !== 'dark' && resolved !== 'light';
+
   return (
     <div className="flex items-center gap-2">
-      <button aria-label="Light" className={`p-2 rounded-md border ${resolved === 'light' ? 'bg-secondary' : ''}`} onClick={() => setTheme('light')}>
+      <button aria-label="Light" className={`p-2 rounded-md border ${isLight ? 'bg-secondary' : ''}`} onClick={() => setTheme('light')}>
         <Sun className="h-4 w-4" />
       </button>
-      <button aria-label="Dark" className={`p-2 rounded-md border ${resolved === 'dark' ? 'bg-secondary' : ''}`} onClick={() => setTheme('dark')}>
+      <button aria-label="Dark" className={`p-2 rounded-md border ${isDark ? 'bg-secondary' : ''}`} onClick={() => setTheme('dark')}>
         <Moon className="h-4 w-4" />
       </button>
-      <button aria-label="System" className={`p-2 rounded-md border ${resolved !== 'dark' && resolved !== 'light' ? 'bg-secondary' : ''}`} onClick={() => setTheme('system')}>
+      <button aria-label="System" className={`p-2 rounded-md border ${isSystem ? 'bg-secondary' : ''}`} onClick={() => setTheme('system')}>
         Sys
       </button>
     </div>
