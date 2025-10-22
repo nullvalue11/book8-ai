@@ -22,6 +22,7 @@ function StatusBadge({ status }) { const s = String(status || "").toLowerCase();
 
 export default function Home(props) {
   const forceDashboard = !!props?.forceDashboard;
+  const hideHeader = !!props?.hideHeader;
   const { theme, setTheme, systemTheme } = useTheme();
   const resolved = theme === "system" ? systemTheme : theme;
 
@@ -61,8 +62,8 @@ export default function Home(props) {
   const [assistantResults, setAssistantResults] = useState(null);
   const [assistantLoading, setAssistantLoading] = useState(false);
 
-  // Auth helper
-  const isAuthed = !!user;
+  // Auth helper: consider token and forceDashboard to avoid hero flash on dashboard route
+  const isAuthed = !!user || !!token || !!forceDashboard;
 
   const [bLogs, setBLogs] = useState([]);
   const [bPage, setBPage] = useState(1);
@@ -474,47 +475,49 @@ export default function Home(props) {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Image 
-              src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
-              alt="Book8 AI" 
-              width={120}
-              height={40}
-              priority
-              style={{ width: 'auto', height: 'auto' }}
-              className="h-10 w-auto"
-            />
-            <div className="hidden md:block h-6 w-px bg-border"></div>
-            <span className="hidden md:inline text-sm text-muted-foreground">Dashboard</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <ThemeToggle resolved={resolved} setTheme={setTheme} />
-            <span className="text-muted-foreground hidden sm:inline truncate max-w-[200px]">{user?.email}</span>
-            <Button variant="destructive" size="sm" onClick={handleLogout}>Logout</Button>
-          </div>
+      {!hideHeader && (
+        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Image 
+                src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
+                alt="Book8 AI" 
+                width={120}
+                height={40}
+                priority
+                style={{ width: 'auto', height: 'auto' }}
+                className="h-10 w-auto"
+              />
+              <div className="hidden md:block h-6 w-px bg-border"></div>
+              <span className="hidden md:inline text-sm text-muted-foreground">Dashboard</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <ThemeToggle resolved={resolved} setTheme={setTheme} />
+              <span className="text-muted-foreground hidden sm:inline truncate max-w-[200px]">{user?.email}</span>
+              <Button variant="destructive" size="sm" onClick={handleLogout}>Logout</Button>
+            </div>
 
-      {/* Compact header for authenticated users, marketing hero otherwise */}
-      {isAuthed ? (
-        <div className="container mx-auto max-w-7xl px-6 mt-4">
-          <div className="flex items-center gap-3 mb-6">
-            <Image src="/logo-mark.png" alt="Book8 AI" width={40} height={40} priority className="rounded-xl" />
-            <h1 className="text-xl font-semibold">Book8 AI</h1>
-          </div>
-        </div>
-      ) : (
-        <section className="container mx-auto max-w-7xl px-6 pt-6">
-          <div className="mx-auto w-full max-w-3xl">
-            <div className="rounded-2xl bg-muted/20 p-4">
-              <Image src="/hero-book8.png" alt="Book8-AI" width={1200} height={1200} priority sizes="(max-width: 768px) 100vw, 768px" className="w-full h-auto max-h-96 object-contain mx-auto" />
+        {/* Compact header for authenticated users, marketing hero otherwise */}
+        {isAuthed ? (
+          <div className="container mx-auto max-w-7xl px-6 mt-4">
+            <div className="flex items-center gap-3 mb-6">
+              <Image src="/logo-mark.png" alt="Book8 AI" width={40} height={40} priority className="rounded-xl" />
+              <h1 className="text-xl font-semibold">Book8 AI</h1>
             </div>
           </div>
-        </section>
-      )}
+        ) : (
+          <section className="container mx-auto max-w-7xl px-6 pt-6">
+            <div className="mx-auto w-full max-w-3xl">
+              <div className="rounded-2xl bg-muted/20 p-4">
+                <Image src="/hero-book8.png" alt="Book8-AI" width={1200} height={1200} priority sizes="(max-width: 768px) 100vw, 768px" className="w-full h-auto max-h-96 object-contain mx-auto" />
+              </div>
+            </div>
+          </section>
+        )}
 
-        </div>
-      </header>
+          </div>
+        </header>
+      )}
 
       <div className="container mx-auto max-w-7xl p-6">
 
