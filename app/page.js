@@ -20,7 +20,8 @@ function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { re
 function toAmount(obj) { const o = obj?.rawEvent?.data?.object || {}; const currency = (o.currency || o.lines?.data?.[0]?.price?.currency || "usd").toUpperCase(); const cent = o.amount_paid ?? o.amount_due ?? o.amount ?? o.total ?? null; if (cent == null) return null; return `${(cent / 100).toFixed(2)} ${currency}`; }
 function StatusBadge({ status }) { const s = String(status || "").toLowerCase(); if (["paid","succeeded","active","completed"].some(x => s.includes(x))) return <Badge className="bg-green-600">success</Badge>; if (["failed","past_due","canceled","unpaid"].some(x => s.includes(x))) return <Badge className="bg-red-600">failed</Badge>; return <Badge className="bg-yellow-500 text-black">pending</Badge>; }
 
-export default function Home() {
+export default function Home(props) {
+  const forceDashboard = !!props?.forceDashboard;
   const { theme, setTheme, systemTheme } = useTheme();
   const resolved = theme === "system" ? systemTheme : theme;
 
@@ -73,17 +74,30 @@ export default function Home() {
   const [showQR, setShowQR] = useState(false);
   const [archivedCount, setArchivedCount] = useState(0);
   const [appReady, setAppReady] = useState(false);
+  const [pathname, setPathname] = useState('');
+
 
   useEffect(() => { 
     try {
-      const t = typeof window !== 'undefined' ? localStorage.getItem("book8_token") : null; 
-      const u = typeof window !== 'undefined' ? localStorage.getItem("book8_user") : null; 
-      if (t) setToken(t); 
-      if (u) setUser(JSON.parse(u)); 
+      if (typeof window !== 'undefined') {
+        setPathname(window.location.pathname);
+        const t = localStorage.getItem("book8_token"); 
+        const u = localStorage.getItem("book8_user"); 
+        if (t) setToken(t); 
+        if (u) setUser(JSON.parse(u)); 
+      }
     } finally {
       setAppReady(true);
     }
   }, []);
+
+  // If already authenticated and currently on '/', redirect to dedicated dashboard route to avoid SSR/CSR layout conflicts
+  useEffect(() => {
+    if (appReady && token && typeof window !== 'undefined' && window.location.pathname === '/') {
+      try { window.location.replace('/dashboard'); } catch {}
+    }
+  }, [appReady, token]);
+
   
   // Complex dashboard with many interdependent async functions
   // Wrapping all in useCallback would create circular dependencies
@@ -116,7 +130,7 @@ export default function Home() {
 
   async function handleRegister(e) { e.preventDefault(); try { const data = await fetch(`/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, name }), }).then((r) => r.json()); if (!data?.token) throw new Error(data?.error || "Registration failed"); localStorage.setItem("book8_token", data.token); localStorage.setItem("book8_user", JSON.stringify(data.user)); setToken(data.token); setUser(data.user); if (data.redirect) { window.location.href = data.redirect; } } catch (err) { alert(err.message); } }
 
-  async function handleLogin(e) { e.preventDefault(); try { const data = await fetch(`/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }), }).then((r) => r.json()); if (!data?.token) throw new Error(data?.error || "Login failed"); localStorage.setItem("book8_token", data.token); localStorage.setItem("book8_user", JSON.stringify(data.user)); setToken(data.token); setUser(data.user); if (data.redirect) { window.location.href = data.redirect; } else { window.location.href = '/'; } } catch (err) { alert(err.message); } }
+  async function handleLogin(e) { e.preventDefault(); try { const data = await fetch(`/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }), }).then((r) => r.json()); if (!data?.token) throw new Error(data?.error || "Login failed"); localStorage.setItem("book8_token", data.token); localStorage.setItem("book8_user", JSON.stringify(data.user)); setToken(data.token); setUser(data.user); if (data.redirect) { window.location.href = data.redirect; } else { window.location.href = '/dashboard'; } } catch (err) { alert(err.message); } }
 
   async function requestReset(e) { e.preventDefault(); try { setResetMsg(''); const res = await fetch('/api/auth/reset/request', { method:'POST', headers:{ 'Content-Type': 'application/json' }, body: JSON.stringify({ email: resetEmail }) }); const data = await res.json(); if (!res.ok) throw new Error(data?.error || 'Failed'); setResetMsg('If an account exists, we emailed a link.'); } catch (err) { setResetMsg('If an account exists, we emailed a link.'); } }
 
@@ -203,7 +217,7 @@ export default function Home() {
     );
   }
 
-  if (!token) {
+  if (!token && !forceDashboard) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
         {/* Navigation */}
