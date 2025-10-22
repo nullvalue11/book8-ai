@@ -217,7 +217,7 @@ export default function Home(props) {
     );
   }
 
-  if (!token) {
+  if (!token && !forceDashboard) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
         {/* Navigation */}
