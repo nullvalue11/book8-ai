@@ -72,8 +72,18 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [archivedCount, setArchivedCount] = useState(0);
+  const [appReady, setAppReady] = useState(false);
 
-  useEffect(() => { const t = localStorage.getItem("book8_token"); const u = localStorage.getItem("book8_user"); if (t) setToken(t); if (u) setUser(JSON.parse(u)); }, []);
+  useEffect(() => { 
+    try {
+      const t = typeof window !== 'undefined' ? localStorage.getItem("book8_token") : null; 
+      const u = typeof window !== 'undefined' ? localStorage.getItem("book8_user") : null; 
+      if (t) setToken(t); 
+      if (u) setUser(JSON.parse(u)); 
+    } finally {
+      setAppReady(true);
+    }
+  }, []);
   
   // Complex dashboard with many interdependent async functions
   // Wrapping all in useCallback would create circular dependencies
@@ -106,7 +116,7 @@ export default function Home() {
 
   async function handleRegister(e) { e.preventDefault(); try { const data = await fetch(`/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, name }), }).then((r) => r.json()); if (!data?.token) throw new Error(data?.error || "Registration failed"); localStorage.setItem("book8_token", data.token); localStorage.setItem("book8_user", JSON.stringify(data.user)); setToken(data.token); setUser(data.user); if (data.redirect) { window.location.href = data.redirect; } } catch (err) { alert(err.message); } }
 
-  async function handleLogin(e) { e.preventDefault(); try { const data = await fetch(`/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }), }).then((r) => r.json()); if (!data?.token) throw new Error(data?.error || "Login failed"); localStorage.setItem("book8_token", data.token); localStorage.setItem("book8_user", JSON.stringify(data.user)); setToken(data.token); setUser(data.user); if (data.redirect) { window.location.href = data.redirect; } else { window.location.href = '/dashboard'; } } catch (err) { alert(err.message); } }
+  async function handleLogin(e) { e.preventDefault(); try { const data = await fetch(`/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }), }).then((r) => r.json()); if (!data?.token) throw new Error(data?.error || "Login failed"); localStorage.setItem("book8_token", data.token); localStorage.setItem("book8_user", JSON.stringify(data.user)); setToken(data.token); setUser(data.user); if (data.redirect) { window.location.href = data.redirect; } else { window.location.href = '/'; } } catch (err) { alert(err.message); } }
 
   async function requestReset(e) { e.preventDefault(); try { setResetMsg(''); const res = await fetch('/api/auth/reset/request', { method:'POST', headers:{ 'Content-Type': 'application/json' }, body: JSON.stringify({ email: resetEmail }) }); const data = await res.json(); if (!res.ok) throw new Error(data?.error || 'Failed'); setResetMsg('If an account exists, we emailed a link.'); } catch (err) { setResetMsg('If an account exists, we emailed a link.'); } }
 
@@ -169,6 +179,29 @@ export default function Home() {
 
   async function doSearch() { try { setSearchLoading(true); const res = await fetch(`/api/search`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: searchQuery, maxResults: 5 }), }).then((r) => r.json()); setSearchResults(res); } catch (err) { setSearchResults({ ok: false, error: err.message }); } finally { setSearchLoading(false); } }
   async function doAssistant() { try { setAssistantLoading(true); const ctx = assistantContext ? JSON.parse(assistantContext) : {}; const res = await fetch(`/api/search/booking-assistant`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: assistantPrompt, context: ctx }), }).then((r) => r.json()); setAssistantResults(res); } catch (err) { setAssistantResults({ ok: false, error: err.message }); } finally { setAssistantLoading(false); } }
+
+  // Prevent SSR-first render from showing logged-out hero when user is already logged in (token in localStorage)
+  if (!appReady) {
+    return (
+      <main className="min-h-screen bg-background">
+        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
+            <div className="h-6 w-24 bg-muted rounded" />
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded bg-muted" />
+              <div className="h-8 w-20 rounded bg-muted" />
+            </div>
+          </div>
+        </header>
+        <div className="container mx-auto max-w-7xl p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="h-64 rounded-lg bg-muted" />
+            <div className="h-64 rounded-lg bg-muted lg:col-span-2" />
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (!token) {
     return (
