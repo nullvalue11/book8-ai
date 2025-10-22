@@ -78,10 +78,13 @@ export default function Home() {
 
   useEffect(() => { 
     try {
-      const t = typeof window !== 'undefined' ? localStorage.getItem("book8_token") : null; 
-      const u = typeof window !== 'undefined' ? localStorage.getItem("book8_user") : null; 
-      if (t) setToken(t); 
-      if (u) setUser(JSON.parse(u)); 
+      if (typeof window !== 'undefined') {
+        setPathname(window.location.pathname);
+        const t = localStorage.getItem("book8_token"); 
+        const u = localStorage.getItem("book8_user"); 
+        if (t) setToken(t); 
+        if (u) setUser(JSON.parse(u)); 
+      }
     } finally {
       setAppReady(true);
     }
