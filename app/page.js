@@ -22,6 +22,7 @@ function StatusBadge({ status }) { const s = String(status || "").toLowerCase();
 
 export default function Home(props) {
   const forceDashboard = !!props?.forceDashboard;
+  const hideHeader = !!props?.hideHeader;
   const { theme, setTheme, systemTheme } = useTheme();
   const resolved = theme === "system" ? systemTheme : theme;
 
