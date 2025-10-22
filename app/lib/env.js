@@ -119,6 +119,8 @@ function loadConfig() {
     const FEATURE_RESCHEDULE = getEnvVar('FEATURE_RESCHEDULE', false, 'true') === 'true'
     const FEATURE_GUEST_TZ = getEnvVar('FEATURE_GUEST_TZ', false, 'true') === 'true'
     const FEATURE_REMINDERS = getEnvVar('FEATURE_REMINDERS', false, 'true') === 'true'
+    const FEATURE_ASSISTANT = getEnvVar('FEATURE_ASSISTANT', false, 'false') === 'true'
+    const FEATURE_ASSISTANT_LLM = getEnvVar('FEATURE_ASSISTANT_LLM', false, 'false') === 'true'
     
     // Debug & Development
     const DEBUG_LOGS = getEnvVar('DEBUG_LOGS', false, 'false') === 'true'
@@ -173,7 +175,9 @@ function loadConfig() {
       FEATURES: {
         RESCHEDULE: FEATURE_RESCHEDULE,
         GUEST_TZ: FEATURE_GUEST_TZ,
-        REMINDERS: FEATURE_REMINDERS
+        REMINDERS: FEATURE_REMINDERS,
+        ASSISTANT: FEATURE_ASSISTANT,
+        ASSISTANT_LLM: FEATURE_ASSISTANT_LLM
       },
       
       // Debug
