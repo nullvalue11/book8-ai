@@ -43,23 +43,47 @@ export default function DashboardPage() {
 
   if (!hasToken) return null; // will redirect to '/'
 
-  // Render compact header here to ensure no large hero leaks onto dashboard
+  // Derive auth for header/hero rendering
+  const isAuthed = hasToken; // or derive from stored user if needed
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Image src="/logo-mark.png" alt="Book8 AI" width={40} height={40} priority className="rounded-xl" />
-            <h1 className="text-xl font-semibold">Book8 AI</h1>
-          </div>
-        </div>
-      </header>
-
       <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-[1fr,360px] gap-6 items-start">
+          {/* left column: compact header + main content */}
           <div className="lg:col-span-2">
-            <Home forceDashboard />
+            {isAuthed ? (
+              <div className="flex items-center gap-3 mb-6">
+                <Image
+                  src="/logo-mark.png"
+                  alt="Book8 AI"
+                  width={40}
+                  height={40}
+                  priority
+                  className="rounded-xl"
+                />
+                <h1 className="text-xl font-semibold">Book8 AI</h1>
+              </div>
+            ) : (
+              <div className="mx-auto w-full max-w-3xl mb-6">
+                <div className="rounded-2xl bg-muted/20 p-4">
+                  <Image
+                    src="/hero-book8.png"
+                    alt="Book8-AI"
+                    width={1200}
+                    height={1200}
+                    priority
+                    sizes="(max-width: 768px) 100vw, 768px"
+                    className="w-full h-auto max-h-96 object-contain mx-auto"
+                  />
+                </div>
+              </div>
+            )}
+
+            <Home forceDashboard hideHeader />
           </div>
+
+          {/* right column: sidebar cards (if any external to Home) */}
           <div />
         </div>
       </div>
