@@ -61,6 +61,9 @@ export default function Home(props) {
   const [assistantResults, setAssistantResults] = useState(null);
   const [assistantLoading, setAssistantLoading] = useState(false);
 
+  // Auth helper
+  const isAuthed = !!user;
+
   const [bLogs, setBLogs] = useState([]);
   const [bPage, setBPage] = useState(1);
   const [bHasMore, setBHasMore] = useState(true);
