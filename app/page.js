@@ -61,8 +61,8 @@ export default function Home(props) {
   const [assistantResults, setAssistantResults] = useState(null);
   const [assistantLoading, setAssistantLoading] = useState(false);
 
-  // Auth helper
-  const isAuthed = !!user;
+  // Auth helper: consider token and forceDashboard to avoid hero flash on dashboard route
+  const isAuthed = !!user || !!token || !!forceDashboard;
 
   const [bLogs, setBLogs] = useState([]);
   const [bPage, setBPage] = useState(1);
