@@ -43,5 +43,26 @@ export default function DashboardPage() {
 
   if (!hasToken) return null; // will redirect to '/'
 
-  return <Home forceDashboard />;
+  // Render compact header here to ensure no large hero leaks onto dashboard
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Image src="/logo-mark.png" alt="Book8 AI" width={40} height={40} priority className="rounded-xl" />
+            <h1 className="text-xl font-semibold">Book8 AI</h1>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4">
+        <div className="grid lg:grid-cols-[1fr,360px] gap-6 items-start">
+          <div className="lg:col-span-2">
+            <Home forceDashboard />
+          </div>
+          <div />
+        </div>
+      </div>
+    </main>
+  );
 }
