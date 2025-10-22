@@ -72,8 +72,18 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [archivedCount, setArchivedCount] = useState(0);
+  const [appReady, setAppReady] = useState(false);
 
-  useEffect(() => { const t = localStorage.getItem("book8_token"); const u = localStorage.getItem("book8_user"); if (t) setToken(t); if (u) setUser(JSON.parse(u)); }, []);
+  useEffect(() => { 
+    try {
+      const t = typeof window !== 'undefined' ? localStorage.getItem("book8_token") : null; 
+      const u = typeof window !== 'undefined' ? localStorage.getItem("book8_user") : null; 
+      if (t) setToken(t); 
+      if (u) setUser(JSON.parse(u)); 
+    } finally {
+      setAppReady(true);
+    }
+  }, []);
   
   // Complex dashboard with many interdependent async functions
   // Wrapping all in useCallback would create circular dependencies
