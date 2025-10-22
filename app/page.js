@@ -20,7 +20,8 @@ function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { re
 function toAmount(obj) { const o = obj?.rawEvent?.data?.object || {}; const currency = (o.currency || o.lines?.data?.[0]?.price?.currency || "usd").toUpperCase(); const cent = o.amount_paid ?? o.amount_due ?? o.amount ?? o.total ?? null; if (cent == null) return null; return `${(cent / 100).toFixed(2)} ${currency}`; }
 function StatusBadge({ status }) { const s = String(status || "").toLowerCase(); if (["paid","succeeded","active","completed"].some(x => s.includes(x))) return <Badge className="bg-green-600">success</Badge>; if (["failed","past_due","canceled","unpaid"].some(x => s.includes(x))) return <Badge className="bg-red-600">failed</Badge>; return <Badge className="bg-yellow-500 text-black">pending</Badge>; }
 
-export default function Home() {
+export default function Home(props) {
+  const forceDashboard = !!props?.forceDashboard;
   const { theme, setTheme, systemTheme } = useTheme();
   const resolved = theme === "system" ? systemTheme : theme;
 
