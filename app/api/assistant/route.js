@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server'
-
-// Attempt to import centralized env/telemetry utils if available
-let env = { BASE_URL: process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || '', FEATURES: {} }
-try { const m = await import('../../lib/env.js'); env = m.default || m.env || env } catch {}
-let telemetry = { log: async () => {} }
-try { const m = await import('../../lib/telemetry.js'); telemetry = m.default || telemetry } catch {}
+import { env } from '@/app/lib/env'
+import { logTelemetry } from '@/app/lib/telemetry'
+import { parseUserRequest } from '@/app/lib/assistantParser'
 
 // Simple memory rate limit (best-effort, serverless-unreliable acceptable for MVP)
 const bucket = new Map()
@@ -16,7 +13,6 @@ function allow(ip, handle) {
   const k = keyFor(ip, handle)
   const now = Date.now()
   let rec = bucket.get(k) || { hits: [], exp: now + WINDOW_MS }
-  // purge old
   rec.hits = rec.hits.filter(ts => now - ts < WINDOW_MS)
   if (rec.hits.length >= LIMIT) return false
   rec.hits.push(now)
@@ -29,13 +25,10 @@ function maskEmail(text = '') {
   return `${text[0]}***@${text.split('@')[1]}`
 }
 
-// Rule-based parsing util
-import { parseUserRequest } from '../../lib/assistantParser.js'
-
 export async function POST(req) {
   try {
-    // Feature flag
-    const enabled = Boolean(env?.FEATURES?.ASSISTANT ?? (process?.env?.FEATURE_ASSISTANT === 'true'))
+    // Feature flag via central env
+    const enabled = Boolean(env?.FEATURES?.ASSISTANT)
     if (!enabled) return NextResponse.json({ error: 'Assistant disabled' }, { status: 404 })
 
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || ''
@@ -52,7 +45,7 @@ export async function POST(req) {
 
     // small helper to call local API endpoints
     async function api(path, init = {}) {
-      const base = env?.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || ''
+      const base = env.BASE_URL
       const url = `${base}/api${path}`
       const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init.headers || {}) } })
       const data = await res.json().catch(() => ({}))
@@ -60,9 +53,8 @@ export async function POST(req) {
       return data
     }
 
-    // resolve plans
     if (intent.type === 'find_slots') {
-      const dates = intent.dates || [] // array of YYYY-MM-DD strings
+      const dates = intent.dates || []
       const duration = intent.durationMin || 30
       let allSlots = []
       for (const d of dates) {
@@ -73,8 +65,8 @@ export async function POST(req) {
             .slice(0, 8)
             .map(s => decorateSlotLabels(s, tz, data?.hostTimeZone || 'UTC'))
           allSlots = allSlots.concat(slots)
-        } catch (e) {
-          // ignore per-day failures and continue
+        } catch {
+          // continue on per-day failure
         }
       }
       await safeLog('assistant_turn', { intent: 'find_slots', handle, tz, message })
@@ -85,13 +77,11 @@ export async function POST(req) {
     if (intent.type === 'book') {
       const { start, end } = intent
       if (!start || !end) return NextResponse.json({ error: 'Missing start/end' }, { status: 400 })
-      // We do NOT book here directly from assistant; the UI will call the public book route after collecting user details.
       const slot = decorateSlotLabels({ start, end }, tz, intent.hostTz || 'UTC')
       await safeLog('assistant_turn', { intent: 'book', handle, tz, message })
       return NextResponse.json({ intent: 'book', slots: [slot], reply: 'Okay, I can book this. Please confirm your name and email.' })
     }
 
-    // clarify or unknown
     await safeLog('assistant_turn', { intent: 'clarify', handle, tz, message })
     return NextResponse.json({ intent: 'clarify', reply: 'Could you clarify a date/time? For example: "30m tomorrow afternoon" or "next Wed 3pm".' })
   } catch (e) {
@@ -113,7 +103,6 @@ function withinWindow(isoStart, window, tz) {
 
 function decorateSlotLabels(slot, guestTz, hostTz) {
   const start = new Date(slot.start)
-  const end = new Date(slot.end)
   const fmt = (d, tz) => new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: tz }).format(d)
   return { ...slot, guestLabel: fmt(start, guestTz), hostLabel: fmt(start, hostTz) }
 }
@@ -122,6 +111,6 @@ async function safeLog(event, data) {
   try {
     const masked = { ...data }
     if (masked.email) masked.email = maskEmail(masked.email)
-    await telemetry.log?.(event, masked)
+    logTelemetry(event, masked)
   } catch {}
 }
