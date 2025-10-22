@@ -61,6 +61,9 @@ export default function Home(props) {
   const [assistantResults, setAssistantResults] = useState(null);
   const [assistantLoading, setAssistantLoading] = useState(false);
 
+  // Auth helper
+  const isAuthed = !!user;
+
   const [bLogs, setBLogs] = useState([]);
   const [bPage, setBPage] = useState(1);
   const [bHasMore, setBHasMore] = useState(true);
@@ -491,10 +494,35 @@ export default function Home(props) {
             <span className="text-muted-foreground hidden sm:inline truncate max-w-[200px]">{user?.email}</span>
             <Button variant="destructive" size="sm" onClick={handleLogout}>Logout</Button>
           </div>
+
+      {/* Compact header for authenticated users, marketing hero otherwise */}
+      {isAuthed ? (
+        <div className="container mx-auto max-w-7xl px-6 mt-4">
+          <div className="flex items-center gap-3 mb-6">
+            <Image src="/logo-mark.png" alt="Book8 AI" width={40} height={40} priority className="rounded-xl" />
+            <h1 className="text-xl font-semibold">Book8 AI</h1>
+          </div>
+        </div>
+      ) : (
+        <section className="container mx-auto max-w-7xl px-6 pt-6">
+          <div className="mx-auto w-full max-w-3xl">
+            <div className="rounded-2xl bg-muted/20 p-4">
+              <Image src="/hero-book8.png" alt="Book8-AI" width={1200} height={1200} priority sizes="(max-width: 768px) 100vw, 768px" className="w-full h-auto max-h-96 object-contain mx-auto" />
+            </div>
+          </div>
+        </section>
+      )}
+
         </div>
       </header>
 
       <div className="container mx-auto max-w-7xl p-6">
+
+      {/* Top grid to avoid overlap */}
+      <div className="grid lg:grid-cols-[1fr,360px] gap-6 items-start mb-6">
+        <div>{/* left reserved for main content lead-in if needed */}</div>
+        <div>{/* right reserved for sidebar cards header space */}</div>
+      </div>
 
       {dashLoading && (<div className="mt-4 text-sm text-muted-foreground">Loading dashboard...</div>)}
       {dashError && (<div className="mt-4 text-sm text-red-600">{dashError}</div>)}
