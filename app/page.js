@@ -73,6 +73,8 @@ export default function Home() {
   const [showQR, setShowQR] = useState(false);
   const [archivedCount, setArchivedCount] = useState(0);
   const [appReady, setAppReady] = useState(false);
+  const [pathname, setPathname] = useState('');
+
 
   useEffect(() => { 
     try {
