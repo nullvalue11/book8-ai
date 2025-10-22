@@ -84,6 +84,14 @@ export default function Home() {
       setAppReady(true);
     }
   }, []);
+
+  // If already authenticated and currently on '/', redirect to dedicated dashboard route to avoid SSR/CSR layout conflicts
+  useEffect(() => {
+    if (appReady && token && typeof window !== 'undefined' && window.location.pathname === '/') {
+      try { window.location.replace('/dashboard'); } catch {}
+    }
+  }, [appReady, token]);
+
   
   // Complex dashboard with many interdependent async functions
   // Wrapping all in useCallback would create circular dependencies
