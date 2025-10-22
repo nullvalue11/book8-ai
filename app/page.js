@@ -180,6 +180,29 @@ export default function Home() {
   async function doSearch() { try { setSearchLoading(true); const res = await fetch(`/api/search`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: searchQuery, maxResults: 5 }), }).then((r) => r.json()); setSearchResults(res); } catch (err) { setSearchResults({ ok: false, error: err.message }); } finally { setSearchLoading(false); } }
   async function doAssistant() { try { setAssistantLoading(true); const ctx = assistantContext ? JSON.parse(assistantContext) : {}; const res = await fetch(`/api/search/booking-assistant`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: assistantPrompt, context: ctx }), }).then((r) => r.json()); setAssistantResults(res); } catch (err) { setAssistantResults({ ok: false, error: err.message }); } finally { setAssistantLoading(false); } }
 
+  // Prevent SSR-first render from showing logged-out hero when user is already logged in (token in localStorage)
+  if (!appReady) {
+    return (
+      <main className="min-h-screen bg-background">
+        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
+            <div className="h-6 w-24 bg-muted rounded" />
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded bg-muted" />
+              <div className="h-8 w-20 rounded bg-muted" />
+            </div>
+          </div>
+        </header>
+        <div className="container mx-auto max-w-7xl p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="h-64 rounded-lg bg-muted" />
+            <div className="h-64 rounded-lg bg-muted lg:col-span-2" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (!token) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
