@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Image from 'next/image'
 import Home from "../page";
 
 export default function DashboardPage() {
