@@ -518,6 +518,12 @@ export default function Home(props) {
 
       <div className="container mx-auto max-w-7xl p-6">
 
+      {/* Top grid to avoid overlap */}
+      <div className="grid lg:grid-cols-[1fr,360px] gap-6 items-start mb-6">
+        <div>{/* left reserved for main content lead-in if needed */}</div>
+        <div>{/* right reserved for sidebar cards header space */}</div>
+      </div>
+
       {dashLoading && (<div className="mt-4 text-sm text-muted-foreground">Loading dashboard...</div>)}
       {dashError && (<div className="mt-4 text-sm text-red-600">{dashError}</div>)}
 
