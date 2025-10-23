@@ -48,7 +48,7 @@ export default function HomeClient(props) {
         <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Image src="/logo-mark.png" alt="Book8 AI" width={32} height={32} priority className="rounded" />
+              <Image src="/logo-mark.svg" alt="Book8 AI" width={32} height={32} priority className="rounded" />
               <span className="font-semibold">Book8 AI</span>
             </div>
             <div className="flex items-center gap-3">
@@ -61,7 +61,7 @@ export default function HomeClient(props) {
       <div className="container mx-auto max-w-7xl px-6 py-10">
         {isAuthed ? (
           <div className="flex items-center gap-3 mb-6">
-            <Image src="/logo-mark.png" alt="Book8 AI" width={40} height={40} priority className="rounded-xl" />
+            <Image src="/logo-mark.svg" alt="Book8 AI" width={40} height={40} priority className="rounded-xl" />
             <h1 className="text-xl font-semibold">Book8 AI</h1>
           </div>
         ) : (
