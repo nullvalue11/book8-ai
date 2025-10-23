@@ -42,7 +42,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-2">
             {isAuthed ? (
               <div className="flex items-center gap-3 mb-6">
-                <Image src="/logo-mark.png" alt="Book8 AI" width={40} height={40} priority className="rounded-xl" />
+                <Image src="/logo-mark.svg" alt="Book8 AI" width={40} height={40} priority className="rounded-xl" />
                 <h1 className="text-xl font-semibold">Book8 AI</h1>
               </div>
             ) : (
