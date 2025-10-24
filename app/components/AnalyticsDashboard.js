@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { TrendingUp, Calendar, RotateCcw, XCircle, Bell } from 'lucide-react'
 
