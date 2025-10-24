@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import Image from 'next/image'
-import HomeClient from "../HomeClient";
 
 export default function DashboardPage() {
   const [mounted, setMounted] = React.useState(false);
