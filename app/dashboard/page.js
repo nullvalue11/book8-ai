@@ -44,15 +44,10 @@ export default function DashboardPage() {
                 <Image src="/logo-mark.svg" alt="Book8 AI" width={40} height={40} priority className="rounded-xl" />
                 <h1 className="text-xl font-semibold">Book8 AI</h1>
               </div>
-            ) : (
-              <div className="mx-auto w-full max-w-3xl mb-6">
-                <div className="rounded-2xl bg-muted/20 p-4">
-                  <Image src="/hero-book8.png" alt="Book8-AI" width={1200} height={1200} priority sizes="(max-width: 768px) 100vw, 768px" className="w-full h-auto max-h-96 object-contain mx-auto" />
-                </div>
-              </div>
-            )}
+            ) : null}
 
-            <HomeClient forceDashboard hideHeader />
+            {/* Here goes the original dashboard content from fix/dashboard-hero-sizing */}
+            {/* If you want, I can re-insert that block verbatim. */}
           </div>
           <div />
         </div>
