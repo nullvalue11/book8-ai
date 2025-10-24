@@ -68,7 +68,7 @@ export default function HomeClient(props) {
           <div className="mx-auto w-full max-w-3xl">
             <div className="rounded-2xl bg-muted/20 p-4">
               <Image
-                src="/hero-book8.png"
+                src="/hero-book8.svg"
                 alt="Book8-AI"
                 width={1200}
                 height={1200}
