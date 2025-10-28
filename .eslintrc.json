@@ -10,5 +10,11 @@
       }
     ],
     "react/no-unescaped-entities": "off"
+  },
+  "settings": {
+    "import/resolver": {
+      "typescript": {},
+      "node": { "paths": ["."], "extensions": [".js", ".jsx", ".ts", ".tsx"] }
+    }
   }
 }
