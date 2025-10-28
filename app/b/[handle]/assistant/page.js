@@ -1,11 +1,11 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import { Button } from '../../../components/ui/button'
-import { Input } from '../../../components/ui/input'
-import { Textarea } from '../../../components/ui/textarea'
-import { Label } from '../../../components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { Loader2, Send, Calendar, Clock } from 'lucide-react'
 
 function useGuestTz() {
