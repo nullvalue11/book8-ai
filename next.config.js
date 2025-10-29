@@ -7,6 +7,7 @@ const nextConfig = {
   webpack(config, { dev }) {
     // Aliases for CI safety
     config.resolve.alias["@"] = path.resolve(__dirname, "app");
+    config.resolve.alias["@app"] = path.resolve(__dirname, "app"); // legacy compat
     config.resolve.alias["@/components"] = path.resolve(__dirname, "app/components");
     config.resolve.alias["@/lib"] = path.resolve(__dirname, "app/lib");
 
