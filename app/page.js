@@ -150,29 +150,21 @@ export default function Home(props) {
 
   if (!token && !forceDashboard) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-        <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <main className="min-h-screen bg-gradient-to-b from-black to-background">
+        <nav className="sticky top-0 z-40 w-full border-b border-white/5 bg-black/40 backdrop-blur">
           <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <HeaderLogo width={120} height={40} />
+              <HeaderLogo width={148} height={28} />
             </div>
             <div className="flex items-center gap-4">
               <ThemeToggle resolved={resolved} setTheme={setTheme} />
               <Button variant="ghost" onClick={() => (typeof window !== 'undefined' ? window.location.assign('#auth') : null)}>Sign In</Button>
-              <Button className="gradient-primary text-white" onClick={() => (typeof window !== 'undefined' ? window.location.assign('#auth') : null)}>Get Started</Button>
+              <Button className="bg-brand-500 text-white hover:bg-brand-600" onClick={() => (typeof window !== 'undefined' ? window.location.assign('#auth') : null)}>Get Started</Button>
             </div>
           </div>
         </nav>
 
-        <section className="container mx-auto max-w-7xl px-6 pt-20 pb-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8">
-              <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                🤖 AI-Powered Scheduling
-              </div>
-              <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
-                Intelligent Booking <span className="text-teal-300">& Automation</span>
-              </h1>
+        <HomeHero />
               <p className="text-xl text-muted-foreground">
                 Transform your scheduling with AI-powered automation. Connect calendars, enable voice bookings, and leverage real-time web search—all in one platform.
               </p>
