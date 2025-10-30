@@ -188,7 +188,7 @@ export default function Home(props) {
             <div className="relative logo-container">
               <div className="absolute inset-0 gradient-hero rounded-3xl blur-3xl"></div>
               <Image 
-                src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
+                src="/book8_ai_logo.svg" 
                 alt="Book8 AI Platform" 
                 width={420}
                 height={420}
