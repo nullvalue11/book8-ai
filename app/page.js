@@ -45,6 +45,9 @@ export default function Home(props) {
   const [archivedCount, setArchivedCount] = useState(0);
   const [copied, setCopied] = useState(false);
 
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formError, setFormError] = useState("");
+
   const fetchAbort = useRef(null);
 
   useEffect(() => {
