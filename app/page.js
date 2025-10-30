@@ -165,31 +165,14 @@ export default function Home(props) {
         </nav>
 
         <HomeHero />
-              <p className="text-xl text-muted-foreground">
-                Transform your scheduling with AI-powered automation. Connect calendars, enable voice bookings, and leverage real-time web search—all in one platform.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Button size="lg" className="gradient-primary text-white text-lg px-8 btn-glow">Start Free Trial</Button>
-                <Button size="lg" variant="outline" className="text-lg px-8 border-2">Watch Demo →</Button>
-              </div>
-              <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2"><Check className="h-5 w-5 text-accent" /><span>No credit card required</span></div>
-                <div className="flex items-center gap-2"><Check className="h-5 w-5 text-accent" /><span>Free 14-day trial</span></div>
-              </div>
-            </div>
-            <div className="relative logo-container">
-              <div className="absolute inset-0 gradient-hero rounded-3xl blur-3xl"></div>
-              <Image 
-                src="/book8_ai_logo.svg" 
-                alt="Book8 AI Platform" 
-                width={420}
-                height={420}
-                priority
-                className="relative z-10 w-full max-w-[420px] h-auto mx-auto lg:ml-auto"
-                sizes="(min-width: 1024px) 420px, 60vw"
-              />
-            </div>
-          </div>
+
+        <section id="auth" className="container mx-auto max-w-md px-6 py-16">
+          <AuthCard 
+            formData={formData}
+            handleLogin={handleLogin}
+            handleRegister={handleRegister}
+            formError={formError}
+          />
         </section>
       </main>
     );
@@ -200,7 +183,7 @@ export default function Home(props) {
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <HeaderLogo width={120} height={40} />
+            <HeaderLogo width={148} height={28} />
             <div className="hidden md:block h-6 w-px bg-border"></div>
             <span className="hidden md:inline text-sm text-muted-foreground">Dashboard</span>
           </div>
