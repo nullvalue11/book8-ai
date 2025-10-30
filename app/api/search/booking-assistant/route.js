@@ -1,5 +1,5 @@
 import { tavily } from "@tavily/core";
-import { env } from '@/app/lib/env'
+import { env } from '@/lib/env'
 
 export const runtime = "nodejs";
 

@@ -3,7 +3,7 @@ import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
-import { env } from '@/app/lib/env'
+import { env } from '@/lib/env'
 
 export const runtime = 'nodejs'
 

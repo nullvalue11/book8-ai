@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { env } from '@/app/lib/env'
-import { logTelemetry } from '@/app/lib/telemetry'
-import { parseUserRequest } from '@/app/lib/assistantParser'
+import { env } from '@/lib/env'
+import { logTelemetry } from '@/lib/telemetry'
+import { parseUserRequest } from '@/lib/assistantParser'
 
 // Simple memory rate limit (best-effort MVP)
 const bucket = new Map()

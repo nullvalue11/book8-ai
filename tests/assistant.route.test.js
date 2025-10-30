@@ -1,8 +1,8 @@
 import { POST } from '@/api/assistant/route'
 
 // Mock env to enable assistant and base URL
-jest.mock('@/app/lib/env', () => ({ env: { BASE_URL: 'http://localhost:3000', FEATURES: { ASSISTANT: true } } }))
-jest.mock('@/app/lib/telemetry', () => ({ logTelemetry: jest.fn() }))
+jest.mock('@/lib/env', () => ({ env: { BASE_URL: 'http://localhost:3000', FEATURES: { ASSISTANT: true } } }))
+jest.mock('@/lib/telemetry', () => ({ logTelemetry: jest.fn() }))
 
 // Stub fetch to return fake availability
 beforeAll(() => {
