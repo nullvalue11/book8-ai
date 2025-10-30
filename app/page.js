@@ -154,14 +154,7 @@ export default function Home(props) {
         <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Image 
-                src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
-                alt="Book8 AI Logo" 
-                width={120}
-                height={40}
-                priority
-                className="h-10 w-auto"
-              />
+              <HeaderLogo width={120} height={40} />
             </div>
             <div className="flex items-center gap-4">
               <ThemeToggle resolved={resolved} setTheme={setTheme} />
