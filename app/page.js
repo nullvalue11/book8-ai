@@ -168,12 +168,38 @@ export default function Home(props) {
         <HomeHero />
 
         <section id="auth" className="container mx-auto max-w-md px-6 py-16">
-          <AuthCard 
-            formData={formData}
-            handleLogin={handleLogin}
-            handleRegister={handleRegister}
-            formError={formError}
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Get Started</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
+              </div>
+              {formError && <p className="text-sm text-destructive">{formError}</p>}
+              <div className="flex gap-2">
+                <Button className="flex-1 bg-brand-500 hover:bg-brand-600" onClick={handleLogin}>Sign In</Button>
+                <Button className="flex-1" variant="outline" onClick={handleRegister}>Register</Button>
+              </div>
+            </CardContent>
+          </Card>
         </section>
       </main>
     );
