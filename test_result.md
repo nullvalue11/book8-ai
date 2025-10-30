@@ -440,6 +440,20 @@
         comment: "✅ TAVILY SEARCH ROUTING ISSUE RESOLVED: Fixed Next.js 14 routing conflict! Root cause: Existing /app/api/integrations/google/ directory was taking precedence over catch-all route for /api/integrations/ paths. Solution: Moved Tavily search endpoints from /api/integrations/search/ to /api/search/ to avoid directory conflicts. Updated frontend TavilySearch component to use new endpoint URLs (/api/search, /api/search/booking-assistant). Local testing confirms all endpoints working: GET /api/search returns health status, POST /api/search processes search queries, POST /api/search/booking-assistant handles booking searches. TavilySearch component should now be functional on dashboard!"
 
 ## frontend:
+  - task: "Brand logo integration - Replace external URLs with Book8-AI assets"
+    implemented: true
+    working: true
+    file: "/app/app/components/HeaderLogo.tsx, /app/app/page.js, /app/app/layout.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "External customer-assets URLs being used for logos throughout the application. New Book8-AI brand assets available in /app/public/ directory but not integrated."
+      - working: true
+        agent: "main"
+        comment: "✅ BRAND INTEGRATION COMPLETE: Created HeaderLogo.tsx component for consistent logo usage. Updated app/page.js to use HeaderLogo component and /book8_ai_logo.svg for all logo instances (marketing header, hero section, dashboard header). Updated app/layout.js metadata with new favicon (/book8_ai_favicon.ico) and social images (/book8_ai_social_icon.png). All external logo URLs replaced with local Book8-AI assets. Screenshots verify logos displaying correctly."
   - task: "Dashboard UI with auth and bookings"
     implemented: true
     working: true
