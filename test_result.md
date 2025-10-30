@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-## user_problem_statement: "Phase C.A Wrap-ups: Complete environment variable refactoring, remove process.env usage, add guardrails (ESLint, CI checks, unit tests), and update QA matrix documentation."
+## user_problem_statement: "Fix critical build failures due to module resolution errors and complete brand logo integration for Book8-AI"
 
 ## backend:
   - task: "Restore App Router structure and Tavily routes under app/"
