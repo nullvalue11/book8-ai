@@ -31,61 +31,16 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 165 71% 64%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 165 71% 64%;
+    --chart-1: 165 71% 64%;
+    --chart-2: 207 100% 77%;
+    --chart-3: 30 100% 75%;
+    --chart-4: 345 100% 75%;
+    --chart-5: 260 100% 75%;
   }
 
   .dark {
-    /* Book8 AI Brand Tokens - Dark Mode */
-    --book8-bg-light: #0E1A26;
-    --book8-surface: #1B2733;
-    --book8-border: #2E3A47;
-    --book8-text-primary: #FFFFFF;
-    --book8-text-secondary: #B6C4D1;
-
-    --background: 210 50% 8%;
-    --foreground: 210 40% 98%;
-
-    --muted: 210 30% 18%;
-    --muted-foreground: 210 15% 72%;
-
-    --popover: 210 50% 11%;
-    --popover-foreground: 210 40% 98%;
-
-    --card: 210 50% 11%;
-    --card-foreground: 210 40% 98%;
-
-    --border: 210 25% 23%;
-    --input: 210 25% 23%;
-
-    --primary: 165 71% 64%;
-    --primary-foreground: 222 47% 11%;
-
-    --secondary: 210 30% 18%;
-    --secondary-foreground: 210 40% 98%;
-
-    --accent: 165 71% 64%;
-    --accent-foreground: 222 47% 11%;
-
-    --destructive: 0 63% 71%;
-    --destructive-foreground: 210 40% 98%;
-
-    --ring: 210 25% 23%;
-
-    --sidebar-background: 210 50% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 165 71% 64%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 210 30% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 210 25% 23%;
-    --sidebar-ring: 210 25% 23%;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
   }
 
   * {
