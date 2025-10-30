@@ -208,14 +208,7 @@ export default function Home(props) {
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Image 
-              src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png" 
-              alt="Book8 AI" 
-              width={120}
-              height={40}
-              priority
-              className="h-10 w-auto"
-            />
+            <HeaderLogo width={120} height={40} />
             <div className="hidden md:block h-6 w-px bg-border"></div>
             <span className="hidden md:inline text-sm text-muted-foreground">Dashboard</span>
           </div>
