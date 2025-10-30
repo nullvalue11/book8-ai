@@ -14,7 +14,7 @@ export default function HeaderLogo({
   width = 120,
   height = 32
 }: HeaderLogoProps) {
-  const logoSrc = darkMode ? '/book8_ai_logo.svg' : '/book8_ai_logo.svg';
+  const logoSrc = '/book8_ai_logo.svg';
   
   return (
     <Image
@@ -23,6 +23,7 @@ export default function HeaderLogo({
       width={width}
       height={height}
       className={className}
+      style={{ width: 'auto', height: 'auto' }}
       priority
     />
   );
