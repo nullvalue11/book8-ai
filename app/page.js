@@ -109,6 +109,42 @@ export default function Home(props) {
 
   function handleLogout() { if (fetchAbort.current) try { fetchAbort.current.abort(); } catch {} localStorage.removeItem("book8_token"); localStorage.removeItem("book8_user"); setToken(null); setUser(null); setBookings([]); }
 
+  async function handleLogin() {
+    try {
+      setFormError("");
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+      localStorage.setItem('book8_token', data.token);
+      setToken(data.token);
+      setFormData({ email: "", password: "" });
+    } catch (err) {
+      setFormError(err.message);
+    }
+  }
+
+  async function handleRegister() {
+    try {
+      setFormError("");
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Registration failed');
+      localStorage.setItem('book8_token', data.token);
+      setToken(data.token);
+      setFormData({ email: "", password: "" });
+    } catch (err) {
+      setFormError(err.message);
+    }
+  }
+
   function copyBookingLink() {
     if (!user?.scheduling?.handle) return;
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
