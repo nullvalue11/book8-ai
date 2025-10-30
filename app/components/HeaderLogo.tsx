@@ -11,19 +11,16 @@ interface HeaderLogoProps {
 export default function HeaderLogo({ 
   darkMode = false, 
   className = "",
-  width = 120,
-  height = 32
+  width = 148,
+  height = 28
 }: HeaderLogoProps) {
-  const logoSrc = '/book8_ai_logo.svg';
-  
   return (
     <Image
-      src={logoSrc}
+      src="/brand/book8_ai_logo.svg"
       alt="Book8 AI"
       width={width}
       height={height}
       className={className}
-      style={{ width: 'auto', height: 'auto' }}
       priority
     />
   );
