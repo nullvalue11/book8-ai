@@ -61,15 +61,15 @@
 @layer utilities {
   /* Book8 AI Brand Gradients */
   .gradient-primary {
-    background: linear-gradient(135deg, #65E0C1 0%, #8FD0FF 100%);
+    background: linear-gradient(90deg, #7C4DFF 0%, #9867FF 100%);
   }
   
   .gradient-accent {
-    background: linear-gradient(135deg, #8FD0FF 0%, #65E0C1 100%);
+    background: linear-gradient(135deg, #9867FF 0%, #7C4DFF 100%);
   }
   
   .gradient-hero {
-    background: linear-gradient(135deg, rgba(101, 224, 193, 0.1) 0%, rgba(143, 208, 255, 0.1) 100%);
+    background: radial-gradient(1200px 600px at 80% 10%, rgba(124,77,255,0.20), rgba(0,0,0,0));
   }
   
   .text-gradient {
