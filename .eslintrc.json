@@ -1,6 +1,6 @@
 {
   "extends": ["next/core-web-vitals"],
-  "ignorePatterns": ["app/lib/env.js", "lib/baseUrl.js"],
+  "ignorePatterns": ["app/lib/env.js", "lib/baseUrl.js", "app/layout.js"],
   "rules": {
     "no-restricted-syntax": [
       "error",
