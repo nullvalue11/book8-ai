@@ -190,20 +190,8 @@ export default function Home(props) {
 
   if (!token && !forceDashboard) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-black to-background">
-        <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-black/40 backdrop-blur">
-          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6">
-            <div className="flex items-center">
-              <HeaderLogo width={152} height={28} className="opacity-90 hover:opacity-100 transition" />
-            </div>
-            <div className="flex items-center gap-4">
-              <ThemeToggle resolved={resolved} setTheme={setTheme} />
-              <Button variant="ghost" onClick={() => (typeof window !== 'undefined' ? window.location.assign('#auth') : null)}>Sign In</Button>
-              <Button className="bg-brand-500 text-white hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand-500" onClick={() => (typeof window !== 'undefined' ? window.location.assign('#auth') : null)}>Get Started</Button>
-            </div>
-          </div>
-        </header>
-
+      <main className="min-h-screen bg-[#0A0F14] text-white">
+        <Header />
         <HomeHero />
 
         <section id="auth" className="container mx-auto max-w-md px-6 py-16">
