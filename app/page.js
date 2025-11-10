@@ -9,6 +9,7 @@ import { Label } from "./components/ui/label";
 import { Textarea } from "./components/ui/textarea";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import Header from "./components/Header";
+import HeaderLogo from "./components/HeaderLogo";
 import HomeHero from "./(home)/HomeHero";
 import { useTheme } from "next-themes";
 import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun } from "lucide-react";
