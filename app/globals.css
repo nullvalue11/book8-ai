@@ -147,4 +147,9 @@
   .logo-container {
     padding: 24px;
   }
+
+  /* Brand Utilities */
+  .bg-brand { background-color: var(--brand); }
+  .text-brand { color: var(--brand); }
+  .ring-brand { --tw-ring-color: var(--brand); }
 }
