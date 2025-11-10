@@ -25,9 +25,9 @@ export default function HomeHero() {
       </div>
 
       <div className="order-1 md:order-2 mt-8 md:mt-0">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 shadow-[0_0_80px_-28px_rgba(124,77,255,0.45)] transition-transform md:hover:-translate-y-0.5">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 shadow-[0_0_72px_-28px_rgba(124,77,255,.45)] transition-transform md:hover:-translate-y-0.5">
           <Image
-            src="/brand/book8_ai_icon_color.png"
+            src="/brand/book8_ai_icon_white.png"
             alt="Book8 Atom"
             width={320}
             height={320}
