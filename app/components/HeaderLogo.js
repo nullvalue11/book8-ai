@@ -9,7 +9,7 @@ export default function HeaderLogo() {
         alt="Book8 AI"
         width={152}
         height={28}
-        className="opacity-90 hover:opacity-100 transition"
+        className="opacity-90 hover:opacity-100 transition-opacity duration-150 ease-out"
         priority
       />
     </Link>
