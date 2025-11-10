@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { env } from '@/app/lib/env'
-import { logTelemetry } from '@/app/lib/telemetry'
-import { parseUserRequest } from '@/app/lib/assistantParser'
+import { env } from '@/lib/env'
+import { logTelemetry } from '@/lib/telemetry'
+import { parseUserRequest } from '@/lib/assistantParser'
 
-// Simple memory rate limit (best-effort, serverless-unreliable acceptable for MVP)
+// Simple memory rate limit (best-effort MVP)
 const bucket = new Map()
 const WINDOW_MS = 5 * 60 * 1000
 const LIMIT = 20
@@ -32,9 +32,20 @@ export async function POST(req) {
 
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || ''
     const tz = req.headers.get('x-client-timezone') || 'UTC'
-    const body = await req.json()
-    const handle = (body?.handle || '').trim()
-    const message = (body?.message || '').trim()
+    const overrideHandle = req.headers.get('x-assistant-handle')?.trim()
+
+    // Accept text/plain or JSON { query | message, context?, handle? }
+    const ctype = (req.headers.get('content-type') || '').toLowerCase()
+    let raw = ''
+    let json = null
+    if (ctype.startsWith('text/plain')) {
+      raw = (await req.text()) || ''
+    } else {
+      try { json = await req.json() } catch { json = null }
+    }
+
+    const message = (typeof raw === 'string' && raw.trim()) || json?.message || json?.query || ''
+    const handle = overrideHandle || json?.handle || json?.context?.handle || ''
 
     if (!handle || !message) return NextResponse.json({ error: 'Missing handle or message' }, { status: 400 })
 

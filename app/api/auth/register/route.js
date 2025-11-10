@@ -3,7 +3,7 @@ import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
-import { env } from '@/app/lib/env'
+import { env } from '@/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

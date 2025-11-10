@@ -8,7 +8,7 @@ import { generateRescheduleToken } from '../../../../lib/security/rescheduleToke
 import { bookingConfirmationEmail } from '../../../../lib/email/templates'
 import { buildICS } from '../../../../lib/ics'
 import { calculateReminders } from '../../../../lib/reminders'
-import { env, isFeatureEnabled } from '@/app/lib/env'
+import { env, isFeatureEnabled } from '@/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

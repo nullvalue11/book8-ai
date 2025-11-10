@@ -31,7 +31,6 @@ export function parseUserRequest(text, now = new Date()) {
   const dayKeyword = /tomorrow/.test(t) ? 'tomorrow' : /today/.test(t) ? 'today' : /next\s+(mon|tue|tues|weds?|thu|thur|thurs|fri|sat|sun)/.test(t) ? 'nextdow' : ''
 
   if (dayKeyword === 'today' && absTimeMatch) {
-    // We cannot convert to exact ISO without tz on server; client will use availability+filter
     return { type: 'find_slots', dates: [today], window, durationMin }
   }
   if (dayKeyword === 'tomorrow') {
@@ -54,7 +53,6 @@ export function parseUserRequest(text, now = new Date()) {
   }
 
   if (/book\b/.test(t) && /\d{4}-\d{2}-\d{2}t\d{2}:/i.test(t)) {
-    // naive ISO in text
     const iso = t.match(/\d{4}-\d{2}-\d{2}t\d{2}:[0-5]\d(?::[0-5]\d)?z?/i)?.[0]
     if (iso) {
       const start = new Date(iso)
@@ -63,8 +61,8 @@ export function parseUserRequest(text, now = new Date()) {
     }
   }
 
-  // default
   return { type: 'find_slots', dates: [today], window, durationMin }
 }
 
-export default { parseUserRequest }
+const parser = { parseUserRequest }
+export default parser

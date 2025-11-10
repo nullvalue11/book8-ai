@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
-import { env } from '@/app/lib/env'
+import { env } from '@/lib/env'
 
 // Ensure this API route is always dynamic and never statically optimized
 export const dynamic = 'force-dynamic'

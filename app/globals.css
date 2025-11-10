@@ -8,104 +8,40 @@
 
 @layer base {
   :root {
-    /* Book8 AI Brand Tokens - Light Mode */
-    --book8-primary: #65E0C1;
-    --book8-secondary: #8FD0FF;
-    --book8-bg-light: #F9FAFB;
-    --book8-bg-dark: #0E1A26;
-    --book8-surface: #FFFFFF;
-    --book8-border: #E2E8F0;
-    --book8-text-primary: #111827;
-    --book8-text-secondary: #4B5563;
-    --book8-success: #65E0C1;
-    --book8-error: #F87171;
-
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
-
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-
-    --primary: 165 71% 64%;
+    --brand: #7C4DFF;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --muted: 220 14% 20%;
+    --muted-foreground: 215 20% 65%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 96%;
+    --border: 220 14% 20%;
+    --input: 220 14% 20%;
+    --primary: 258 100% 65%; /* #7C4DFF */
     --primary-foreground: 0 0% 100%;
-
-    --secondary: 207 100% 77%;
-    --secondary-foreground: 222 47% 11%;
-
-    --accent: 165 71% 64%;
+    --secondary: 220 14% 20%;
+    --secondary-foreground: 210 40% 96%;
+    --accent: 258 100% 70%; /* #9867FF */
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 84% 71%;
     --destructive-foreground: 0 0% 100%;
-
-    --ring: 165 71% 64%;
+    --ring: 258 100% 65%;
+    --radius: 0.5rem;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 165 71% 64%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 165 71% 64%;
+    --chart-1: 165 71% 64%;
+    --chart-2: 207 100% 77%;
+    --chart-3: 30 100% 75%;
+    --chart-4: 345 100% 75%;
+    --chart-5: 260 100% 75%;
   }
 
   .dark {
-    /* Book8 AI Brand Tokens - Dark Mode */
-    --book8-bg-light: #0E1A26;
-    --book8-surface: #1B2733;
-    --book8-border: #2E3A47;
-    --book8-text-primary: #FFFFFF;
-    --book8-text-secondary: #B6C4D1;
-
-    --background: 210 50% 8%;
-    --foreground: 210 40% 98%;
-
-    --muted: 210 30% 18%;
-    --muted-foreground: 210 15% 72%;
-
-    --popover: 210 50% 11%;
-    --popover-foreground: 210 40% 98%;
-
-    --card: 210 50% 11%;
-    --card-foreground: 210 40% 98%;
-
-    --border: 210 25% 23%;
-    --input: 210 25% 23%;
-
-    --primary: 165 71% 64%;
-    --primary-foreground: 222 47% 11%;
-
-    --secondary: 210 30% 18%;
-    --secondary-foreground: 210 40% 98%;
-
-    --accent: 165 71% 64%;
-    --accent-foreground: 222 47% 11%;
-
-    --destructive: 0 63% 71%;
-    --destructive-foreground: 210 40% 98%;
-
-    --ring: 210 25% 23%;
-
-    --sidebar-background: 210 50% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 165 71% 64%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 210 30% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 210 25% 23%;
-    --sidebar-ring: 210 25% 23%;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
   }
 
   * {
@@ -126,15 +62,15 @@
 @layer utilities {
   /* Book8 AI Brand Gradients */
   .gradient-primary {
-    background: linear-gradient(135deg, #65E0C1 0%, #8FD0FF 100%);
+    background: linear-gradient(90deg, #7C4DFF 0%, #9867FF 100%);
   }
   
   .gradient-accent {
-    background: linear-gradient(135deg, #8FD0FF 0%, #65E0C1 100%);
+    background: linear-gradient(135deg, #9867FF 0%, #7C4DFF 100%);
   }
   
   .gradient-hero {
-    background: linear-gradient(135deg, rgba(101, 224, 193, 0.1) 0%, rgba(143, 208, 255, 0.1) 100%);
+    background: radial-gradient(1200px 600px at 80% 10%, rgba(124,77,255,0.20), rgba(0,0,0,0));
   }
   
   .text-gradient {
@@ -210,5 +146,28 @@
   /* Logo Padding */
   .logo-container {
     padding: 24px;
+  }
+
+  /* Brand Utilities */
+  .bg-brand { background-color: var(--brand); }
+  .text-brand { color: var(--brand); }
+  .ring-brand { --tw-ring-color: var(--brand); }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .hover\:scale-\[1\.01\]:hover,
+  .hover\:-translate-y-0\.5:hover,
+  .active\:scale-\[0\.99\]:active {
+    transform: none !important;
   }
 }

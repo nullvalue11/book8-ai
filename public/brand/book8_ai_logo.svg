@@ -1,0 +1,12 @@
+<svg width="148" height="28" viewBox="0 0 148 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Atom icon -->
+  <g transform="translate(0, 4)">
+    <circle cx="10" cy="10" r="2" fill="#7C4DFF"/>
+    <ellipse cx="10" cy="10" rx="8" ry="3" stroke="#7C4DFF" stroke-width="1.5" fill="none"/>
+    <ellipse cx="10" cy="10" rx="3" ry="8" stroke="#7C4DFF" stroke-width="1.5" fill="none"/>
+    <ellipse cx="10" cy="10" rx="6.5" ry="6.5" stroke="#7C4DFF" stroke-width="1.5" fill="none" transform="rotate(45 10 10)"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="28" y="20" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="600" fill="currentColor">Book8 AI</text>
+</svg>

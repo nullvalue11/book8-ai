@@ -1,4 +1,4 @@
-import { parseUserRequest } from '@/app/lib/assistantParser'
+import { parseUserRequest } from '@/lib/assistantParser'
 
 describe('assistant parser', () => {
   test('30m tomorrow afternoon', () => {
