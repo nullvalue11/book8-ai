@@ -8,6 +8,7 @@
 
 @layer base {
   :root {
+    --brand: #7C4DFF;
     --background: 222 47% 6%;
     --foreground: 210 40% 96%;
     --muted: 220 14% 20%;
