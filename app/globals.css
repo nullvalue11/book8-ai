@@ -153,3 +153,21 @@
   .text-brand { color: var(--brand); }
   .ring-brand { --tw-ring-color: var(--brand); }
 }
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .hover\:scale-\[1\.01\]:hover,
+  .hover\:-translate-y-0\.5:hover,
+  .active\:scale-\[0\.99\]:active {
+    transform: none !important;
+  }
+}
