@@ -37,7 +37,7 @@ export default function HomeHero() {
         </div>
       </div>
 
-      <div className="col-span-full mx-auto my-10 h-[0.5px] w-full max-w-6xl bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="col-span-full mx-auto my-10 h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-brand-500/15 to-transparent" />
     </section>
   );
 }
