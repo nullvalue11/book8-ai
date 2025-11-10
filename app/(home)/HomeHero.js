@@ -15,10 +15,10 @@ export default function HomeHero() {
           Connect calendars, enable voice/AI bookings, and leverage real-time web search—all in one platform.
         </p>
         <div className="mt-8 flex gap-3">
-          <a className="inline-flex h-11 items-center rounded-md px-4 font-medium bg-brand-500 text-white hover:bg-brand-600 hover:scale-[1.01] transition-transform shadow-[0_8px_24px_-12px_rgba(124,77,255,.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+          <a href="#auth" className="inline-flex h-11 items-center justify-center rounded-md px-4 font-medium bg-brand-500 text-white hover:bg-brand-600 hover:scale-[1.01] active:scale-[0.99] transition-transform shadow-[0_8px_24px_-12px_rgba(124,77,255,.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F14]">
             Start Free Trial
           </a>
-          <a className="inline-flex h-11 items-center rounded-md px-4 font-medium border border-white/12 text-white/80 hover:text-white hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand transition-colors">
+          <a href="#demo" className="inline-flex h-11 items-center justify-center rounded-md px-4 font-medium border border-white/12 text-white/80 hover:text-white hover:border-white/20 active:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F14] transition-colors">
             Watch Demo →
           </a>
         </div>
