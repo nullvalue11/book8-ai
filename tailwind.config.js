@@ -25,8 +25,8 @@ module.exports = {
                                 500: "#7C4DFF",
                                 600: "#6F37FF",
                                 700: "#5a2fcb",
-                                800: '#4A1DB8',
-                                900: '#3A178A'
+                                800: "#4a29a3",
+                                900: "#3b217f"
                         },
                         border: 'hsl(var(--border))',
                         input: 'hsl(var(--input))',
