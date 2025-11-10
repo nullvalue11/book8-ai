@@ -234,8 +234,8 @@ export default function Home(props) {
               </div>
               {formError && <p className="text-sm text-destructive">{formError}</p>}
               <div className="flex gap-2">
-                <Button className="flex-1 bg-brand-500 hover:bg-brand-600" onClick={handleLogin}>Sign In</Button>
-                <Button className="flex-1" variant="outline" onClick={handleRegister}>Register</Button>
+                <Button className="flex-1 bg-brand-500 hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand-500" onClick={handleLogin}>Sign In</Button>
+                <Button className="flex-1 border-white/12 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-brand-500" variant="outline" onClick={handleRegister}>Register</Button>
               </div>
             </CardContent>
           </Card>
