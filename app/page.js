@@ -246,10 +246,10 @@ export default function Home(props) {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-black/40 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">
-            <HeaderLogo width={148} height={28} />
+            <HeaderLogo width={152} height={28} className="opacity-90 hover:opacity-100 transition" />
             <div className="hidden md:block h-6 w-px bg-border"></div>
             <span className="hidden md:inline text-sm text-muted-foreground">Dashboard</span>
           </div>
