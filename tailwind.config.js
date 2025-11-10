@@ -2,10 +2,8 @@
 module.exports = {
     darkMode: ["class"],
     content: [
-      './pages/**/*.{js,jsx}',
-      './components/**/*.{js,jsx}',
-      './app/**/*.{js,jsx}',
-      './src/**/*.{js,jsx}',
+      "./app/**/*.{ts,tsx,js,jsx}",
+      "./components/**/*.{ts,tsx,js,jsx}"
     ],
     prefix: "",
     theme: {
@@ -19,15 +17,14 @@ module.exports = {
         extend: {
                 colors: {
                         brand: {
-                                DEFAULT: '#7C4DFF',
-                                50: '#F3ECFF',
-                                100: '#E7D9FF',
-                                200: '#CDB3FF',
-                                300: '#B28DFF',
-                                400: '#9867FF',
-                                500: '#7C4DFF',
-                                600: '#6F37FF',
-                                700: '#5B24E6',
+                                50:  "#f5f0ff",
+                                100: "#ede3ff",
+                                200: "#dac7ff",
+                                300: "#c1a4ff",
+                                400: "#a881ff",
+                                500: "#7C4DFF",
+                                600: "#6F37FF",
+                                700: "#5a2fcb",
                                 800: '#4A1DB8',
                                 900: '#3A178A'
                         },
