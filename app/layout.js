@@ -7,6 +7,9 @@ export const metadata = {
   metadataBase: new URL(baseUrl),
   title: 'Book8 AI',
   description: 'Intelligent booking & automation',
+  alternates: {
+    canonical: '/',
+  },
   icons: {
     icon: '/brand/book8_ai_favicon.ico',
     shortcut: '/brand/book8_ai_favicon.ico',
