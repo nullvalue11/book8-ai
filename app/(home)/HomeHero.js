@@ -28,7 +28,7 @@ export default function HomeHero() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 shadow-[0_0_72px_-28px_rgba(124,77,255,.45)] transition-transform md:hover:-translate-y-0.5">
           <Image
             src="/brand/book8_ai_icon_white.png"
-            alt="Book8 Atom"
+            alt="Book8 AI - Intelligent scheduling platform powered by artificial intelligence"
             width={320}
             height={320}
             className="mx-auto h-auto w-64 md:w-80"
