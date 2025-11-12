@@ -154,10 +154,14 @@ export async function GET(request, { params }) {
       )
     }
 
-    const settings = owner.scheduling
+    const settings = owner.scheduling || {}
     
-    // Add structured logging
-    const selectedCalendarIds = settings.selectedCalendarIds || ['primary']
+    // Calendars to use for availability (fallback to primary)
+    const selectedCalendarIds =
+      Array.isArray(settings.selectedCalendarIds) && settings.selectedCalendarIds.length
+        ? settings.selectedCalendarIds
+        : ['primary']
+    
     const logContext = {
       handle,
       userId: owner.id,
