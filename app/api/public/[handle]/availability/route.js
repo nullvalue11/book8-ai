@@ -142,14 +142,14 @@ export async function GET(request, { params }) {
     
     if (!owner) {
       return NextResponse.json(
-        { ok: false, error: 'Booking page not found' },
+        { ok: false, code: 'USER_NOT_FOUND', error: 'Booking page not found' },
         { status: 404 }
       )
     }
 
     if (!owner.scheduling || !owner.scheduling.handle) {
       return NextResponse.json(
-        { ok: false, error: 'This booking page is not configured yet. Please contact the owner.' },
+        { ok: false, code: 'SCHEDULING_NOT_CONFIGURED', error: '⚙️ This booking page is not configured yet. Please contact the owner.' },
         { status: 404 }
       )
     }
