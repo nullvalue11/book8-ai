@@ -57,16 +57,39 @@ async function getOAuth2Client() {
   } catch (e) { console.error('[google/sync] oauth load failed', e?.message || e); return null }
 }
 
-async function getCalendarClientForUser(user) {
+async function getCalendarClientForUser(user, database) {
   try {
     const { google } = await import('googleapis')
     const refreshToken = user?.google?.refreshToken
-    if (!refreshToken) return null
+    if (!refreshToken) return { error: 'NO_REFRESH_TOKEN' }
+    
     const oauth = await getOAuth2Client()
-    if (!oauth) return null
+    if (!oauth) return { error: 'OAUTH_CONFIG_MISSING' }
+    
     oauth.setCredentials({ refresh_token: refreshToken })
-    return google.calendar({ version: 'v3', auth: oauth })
-  } catch (e) { console.error('[google/sync] calendar client failed', e?.message || e); return null }
+    
+    // Test token by attempting a simple API call
+    try {
+      const calendar = google.calendar({ version: 'v3', auth: oauth })
+      await calendar.calendarList.list({ maxResults: 1 })
+      return { calendar }
+    } catch (testError) {
+      // Check for invalid_grant error
+      if (testError?.message?.includes('invalid_grant') || testError?.code === 401) {
+        console.error('[google/sync] invalid_grant detected - marking for reconnect')
+        // Mark user as needing reconnect
+        await database.collection('users').updateOne(
+          { id: user.id },
+          { $set: { 'google.needsReconnect': true, 'google.lastError': new Date().toISOString() } }
+        )
+        return { error: 'GOOGLE_INVALID_GRANT', needsReconnect: true }
+      }
+      throw testError
+    }
+  } catch (e) { 
+    console.error('[google/sync] calendar client failed', e?.message || e)
+    return { error: 'CALENDAR_CLIENT_FAILED' }
+  }
 }
 
 export async function GET(request) {
