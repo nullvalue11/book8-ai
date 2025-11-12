@@ -18,9 +18,14 @@ async function connect() {
   return db
 }
 
-async function getGoogleFreeBusy(owner, startDate, endDate, selectedCalendarIds) {
+async function getGoogleFreeBusy(owner, startDate, endDate, selectedCalendarIds, debugContext = {}) {
   try {
-    if (!owner.google?.refreshToken) return []
+    if (!owner.google?.refreshToken) {
+      if (env.DEBUG_LOGS) {
+        console.log('[availability] No refresh token', debugContext)
+      }
+      return { busy: [], error: null }
+    }
     
     const { google } = await import('googleapis')
     const oauth = new google.auth.OAuth2(
@@ -47,10 +52,27 @@ async function getGoogleFreeBusy(owner, startDate, endDate, selectedCalendarIds)
       }
     }
     
-    return busySlots
+    if (env.DEBUG_LOGS) {
+      console.log('[availability] FreeBusy success', { ...debugContext, busyCount: busySlots.length })
+    }
+    
+    return { busy: busySlots, error: null }
   } catch (error) {
-    console.error('[availability] FreeBusy error:', error.message)
-    return []
+    console.error('[availability] FreeBusy error:', error.message, debugContext)
+    
+    // Check for invalid_grant
+    if (error?.message?.includes('invalid_grant') || error?.code === 401) {
+      return { 
+        busy: [], 
+        error: {
+          code: 'GOOGLE_INVALID_GRANT',
+          message: 'Google Calendar connection expired',
+          hint: 'Please reconnect your Google Calendar in settings'
+        }
+      }
+    }
+    
+    return { busy: [], error: { code: 'GOOGLE_API_ERROR', message: error.message } }
   }
 }
 
