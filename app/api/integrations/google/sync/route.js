@@ -57,16 +57,39 @@ async function getOAuth2Client() {
   } catch (e) { console.error('[google/sync] oauth load failed', e?.message || e); return null }
 }
 
-async function getCalendarClientForUser(user) {
+async function getCalendarClientForUser(user, database) {
   try {
     const { google } = await import('googleapis')
     const refreshToken = user?.google?.refreshToken
-    if (!refreshToken) return null
+    if (!refreshToken) return { error: 'NO_REFRESH_TOKEN' }
+    
     const oauth = await getOAuth2Client()
-    if (!oauth) return null
+    if (!oauth) return { error: 'OAUTH_CONFIG_MISSING' }
+    
     oauth.setCredentials({ refresh_token: refreshToken })
-    return google.calendar({ version: 'v3', auth: oauth })
-  } catch (e) { console.error('[google/sync] calendar client failed', e?.message || e); return null }
+    
+    // Test token by attempting a simple API call
+    try {
+      const calendar = google.calendar({ version: 'v3', auth: oauth })
+      await calendar.calendarList.list({ maxResults: 1 })
+      return { calendar }
+    } catch (testError) {
+      // Check for invalid_grant error
+      if (testError?.message?.includes('invalid_grant') || testError?.code === 401) {
+        console.error('[google/sync] invalid_grant detected - marking for reconnect')
+        // Mark user as needing reconnect
+        await database.collection('users').updateOne(
+          { id: user.id },
+          { $set: { 'google.needsReconnect': true, 'google.lastError': new Date().toISOString() } }
+        )
+        return { error: 'GOOGLE_INVALID_GRANT', needsReconnect: true }
+      }
+      throw testError
+    }
+  } catch (e) { 
+    console.error('[google/sync] calendar client failed', e?.message || e)
+    return { error: 'CALENDAR_CLIENT_FAILED' }
+  }
 }
 
 export async function GET(request) {
@@ -85,9 +108,23 @@ export async function POST(request) {
     const database = await connectToMongo()
     const auth = await requireAuth(request, database)
     if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+    
     const user = await database.collection('users').findOne({ id: auth.user.id })
-    const calendar = await getCalendarClientForUser(user)
-    if (!calendar) return NextResponse.json({ ok: false, error: 'Google not connected' }, { status: 400 })
+    const calendarResult = await getCalendarClientForUser(user, database)
+    
+    if (calendarResult.error) {
+      const statusCode = calendarResult.error === 'GOOGLE_INVALID_GRANT' ? 401 : 400
+      return NextResponse.json({ 
+        ok: false, 
+        code: calendarResult.error,
+        error: calendarResult.error === 'GOOGLE_INVALID_GRANT' 
+          ? 'Google authorization expired. Please reconnect.' 
+          : 'Google not connected',
+        needsReconnect: calendarResult.needsReconnect || false
+      }, { status: statusCode })
+    }
+    
+    const calendar = calendarResult.calendar
 
     const selected = user?.google?.selectedCalendarIds
     const calendarsUsed = Array.isArray(selected) && selected.length > 0 ? selected : ['primary']
@@ -117,6 +154,7 @@ export async function POST(request) {
       }
     }
 
+    // Idempotent watch channel cleanup
     for (const b of canceled) {
       const maps = await database.collection('google_events').find({ userId: auth.user.id, bookingId: b.id }).toArray()
       for (const map of maps) {
@@ -125,7 +163,16 @@ export async function POST(request) {
           await calendar.events.delete({ calendarId: map.calendarId || 'primary', eventId: map.googleEventId })
           await database.collection('google_events').deleteOne({ userId: auth.user.id, bookingId: b.id, calendarId: map.calendarId })
           deleted++
-        } catch (e) { console.error('[google/sync] delete failed', map.calendarId, e?.message || e) }
+        } catch (e) {
+          // Treat 404/410 as idempotent success (resource already deleted)
+          if (e?.code === 404 || e?.code === 410 || e?.message?.includes('Resource has been deleted')) {
+            console.info('[google/sync] event already deleted (idempotent)', map.calendarId, map.googleEventId)
+            await database.collection('google_events').deleteOne({ userId: auth.user.id, bookingId: b.id, calendarId: map.calendarId })
+            deleted++
+          } else {
+            console.error('[google/sync] delete failed', map.calendarId, e?.message || e)
+          }
+        }
       }
     }
 

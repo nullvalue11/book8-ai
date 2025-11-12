@@ -65,7 +65,12 @@ export async function GET(request) {
     }
 
     const state = jwt.sign({ sub: userId }, getJwtSecret(), { expiresIn: '10m' })
-    const authUrl = oauth.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: getGoogleScopes(), state })
+    const authUrl = oauth.generateAuthUrl({ 
+      access_type: 'offline', 
+      prompt: 'consent',  // Force consent to get refresh token
+      scope: getGoogleScopes(), 
+      state 
+    })
     return NextResponse.redirect(authUrl)
   } catch (e) {
     console.error('google/auth error', e)

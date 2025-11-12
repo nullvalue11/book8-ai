@@ -18,9 +18,14 @@ async function connect() {
   return db
 }
 
-async function getGoogleFreeBusy(owner, startDate, endDate, selectedCalendarIds) {
+async function getGoogleFreeBusy(owner, startDate, endDate, selectedCalendarIds, debugContext = {}) {
   try {
-    if (!owner.google?.refreshToken) return []
+    if (!owner.google?.refreshToken) {
+      if (env.DEBUG_LOGS) {
+        console.log('[availability] No refresh token', debugContext)
+      }
+      return { busy: [], error: null }
+    }
     
     const { google } = await import('googleapis')
     const oauth = new google.auth.OAuth2(
@@ -47,10 +52,27 @@ async function getGoogleFreeBusy(owner, startDate, endDate, selectedCalendarIds)
       }
     }
     
-    return busySlots
+    if (env.DEBUG_LOGS) {
+      console.log('[availability] FreeBusy success', { ...debugContext, busyCount: busySlots.length })
+    }
+    
+    return { busy: busySlots, error: null }
   } catch (error) {
-    console.error('[availability] FreeBusy error:', error.message)
-    return []
+    console.error('[availability] FreeBusy error:', error.message, debugContext)
+    
+    // Check for invalid_grant
+    if (error?.message?.includes('invalid_grant') || error?.code === 401) {
+      return { 
+        busy: [], 
+        error: {
+          code: 'GOOGLE_INVALID_GRANT',
+          message: 'Google Calendar connection expired',
+          hint: 'Please reconnect your Google Calendar in settings'
+        }
+      }
+    }
+    
+    return { busy: [], error: { code: 'GOOGLE_API_ERROR', message: error.message } }
   }
 }
 
@@ -213,13 +235,36 @@ export async function GET(request, { params }) {
     const selectedCalendarIds = settings.selectedCalendarIds || ['primary']
     const startOfDay = new Date(date + 'T00:00:00')
     const endOfDay = new Date(date + 'T23:59:59')
-    const busySlots = await getGoogleFreeBusy(owner, startOfDay, endOfDay, selectedCalendarIds)
+    
+    const debugContext = {
+      handle,
+      userId: owner.id,
+      tz: guestTz,
+      date,
+      hasRefreshToken: !!owner.google?.refreshToken,
+      selectedCalendarCount: selectedCalendarIds.length,
+      needsReconnect: owner.google?.needsReconnect || false
+    }
+    
+    if (env.DEBUG_LOGS) {
+      console.log('[availability] Request context:', debugContext)
+    }
+    
+    const freeBusyResult = await getGoogleFreeBusy(owner, startOfDay, endOfDay, selectedCalendarIds, debugContext)
+    
+    // If there's a Google error, return it to the client
+    if (freeBusyResult.error) {
+      return NextResponse.json({
+        ok: false,
+        ...freeBusyResult.error
+      }, { status: 401 })
+    }
 
     // Filter out busy slots
     const availableSlots = slots.filter(slot => {
       const slotStart = new Date(slot.start)
       const slotEnd = new Date(slot.end)
-      return !isSlotBusy(slotStart, slotEnd, busySlots)
+      return !isSlotBusy(slotStart, slotEnd, freeBusyResult.busy)
     })
 
     return NextResponse.json({

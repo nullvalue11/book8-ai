@@ -68,12 +68,21 @@ export async function GET(request) {
     const user = await database.collection('users').findOne({ id: uid })
 
     const prev = user?.google || {}
+    
+    // Only overwrite refresh_token if Google returns a new one
+    // Don't clobber a good token with undefined
     const googleObj = {
       refreshToken: tokens.refresh_token || prev.refreshToken || null,
       scope: tokens.scope || prev.scope || getGoogleScopes().join(' '),
       connectedAt: prev.connectedAt || new Date().toISOString(),
       lastSyncedAt: prev.lastSyncedAt || null,
       connected: true,
+      needsReconnect: false, // Clear any previous reconnect flag
+    }
+    
+    // Log if we're preserving an existing token
+    if (!tokens.refresh_token && prev.refreshToken) {
+      console.info('[Google Callback] Preserving existing refresh_token (Google did not return new one)')
     }
 
     await database.collection('users').updateOne(
