@@ -155,6 +155,25 @@ export async function GET(request, { params }) {
     }
 
     const settings = owner.scheduling
+    
+    // Add structured logging
+    const selectedCalendarIds = settings.selectedCalendarIds || ['primary']
+    const logContext = {
+      handle,
+      userId: owner.id,
+      date,
+      duration,
+      tz: guestTz,
+      hasRefreshToken: !!owner.google?.refreshToken,
+      selectedCalendarCount: selectedCalendarIds.length,
+      needsReconnect: owner.google?.needsReconnect || false,
+      googleConnected: owner.google?.connected || false
+    }
+
+    if (env.DEBUG_LOGS) {
+      console.log('[availability] Processing request:', logContext)
+    }
+
     const hostTz = settings.timeZone || 'UTC'
     const minNoticeMin = settings.minNoticeMin || 120
     const bufferMin = settings.bufferMin || 0
