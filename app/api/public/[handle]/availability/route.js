@@ -237,8 +237,7 @@ export async function GET(request, { params }) {
       }
     }
 
-    // Check Google FreeBusy
-    const selectedCalendarIds = settings.selectedCalendarIds || ['primary']
+    // Check Google FreeBusy (use the previously computed selectedCalendarIds)
     const startOfDay = new Date(date + 'T00:00:00')
     const endOfDay = new Date(date + 'T23:59:59')
     
