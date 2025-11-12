@@ -50,21 +50,36 @@ export default function PublicBookingPage({ params }) {
       setSelected(null)
       
       const res = await fetch(`/api/public/${encodeURIComponent(handle)}/availability?date=${date}&tz=${encodeURIComponent(guestTz)}`)
+      
+      // Handle network errors
+      if (!res) {
+        setError('Failed to connect. Please check your internet connection and try again.')
+        setSlots([])
+        return
+      }
+      
       const data = await res.json()
       
       if (!res.ok) {
-        if (res.status === 404) {
+        // Handle specific error codes
+        if (data.code === 'GOOGLE_INVALID_GRANT') {
+          setError(data.hint || 'The calendar owner needs to reconnect their Google Calendar.')
+          setState('error')
+        } else if (res.status === 404) {
           if (data.error?.includes('not configured')) {
             setError('⚙️ This booking page is being set up. Please check back later or contact the owner.')
             setState('error')
           } else {
-            setError('Booking page not found')
+            setError('Booking page not found. Please check the URL.')
             setState('error')
           }
         } else if (res.status === 429) {
           setError('Too many requests. Please wait a moment and try again.')
+        } else if (res.status === 401 && data.code) {
+          // Structured error from API
+          setError(data.message || data.error || 'Authentication error')
         } else {
-          setError(data.error || 'Failed to load availability')
+          setError(data.error || 'Failed to load availability. Please try again.')
         }
         setSlots([])
         return
@@ -77,7 +92,12 @@ export default function PublicBookingPage({ params }) {
       }
     } catch (err) {
       console.error('Load slots error:', err)
-      setError('Failed to connect. Please try again.')
+      // Network error or parsing error
+      if (err.name === 'TypeError' || err.message?.includes('fetch')) {
+        setError('Unable to connect to the server. Please check your internet connection and try again.')
+      } else {
+        setError('An unexpected error occurred. Please refresh the page and try again.')
+      }
       setSlots([])
     } finally {
       setLoading(false)
