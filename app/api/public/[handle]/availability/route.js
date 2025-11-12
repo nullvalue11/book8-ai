@@ -123,7 +123,7 @@ export async function GET(request, { params }) {
     if (!rateLimit.allowed) {
       RateLimitTelemetry.exceeded(clientIp, 'publicBooking', clientIp)
       return NextResponse.json(
-        { ok: false, error: 'Too many requests. Please try again later.' },
+        { ok: false, code: 'RATE_LIMIT', error: 'Too many requests. Please try again later.' },
         { 
           status: 429,
           headers: {
