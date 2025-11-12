@@ -140,7 +140,7 @@ export async function GET(request, { params }) {
     if (!rateLimit.allowed) {
       RateLimitTelemetry.exceeded(clientIp, 'publicBooking', clientIp)
       return NextResponse.json(
-        { ok: false, error: 'Too many requests. Please try again later.' },
+        { ok: false, code: 'RATE_LIMIT', error: 'Too many requests. Please try again later.' },
         { 
           status: 429,
           headers: {
@@ -159,19 +159,42 @@ export async function GET(request, { params }) {
     
     if (!owner) {
       return NextResponse.json(
-        { ok: false, error: 'Booking page not found' },
+        { ok: false, code: 'USER_NOT_FOUND', error: 'Booking page not found' },
         { status: 404 }
       )
     }
 
     if (!owner.scheduling || !owner.scheduling.handle) {
       return NextResponse.json(
-        { ok: false, error: 'This booking page is not configured yet. Please contact the owner.' },
+        { ok: false, code: 'SCHEDULING_NOT_CONFIGURED', error: '⚙️ This booking page is not configured yet. Please contact the owner.' },
         { status: 404 }
       )
     }
 
-    const settings = owner.scheduling
+    const settings = owner.scheduling || {}
+    
+    // Calendars to use for availability (fallback to primary)
+    const selectedCalendarIds =
+      Array.isArray(settings.selectedCalendarIds) && settings.selectedCalendarIds.length
+        ? settings.selectedCalendarIds
+        : ['primary']
+    
+    const logContext = {
+      handle,
+      userId: owner.id,
+      date,
+      duration,
+      tz: guestTz,
+      hasRefreshToken: !!owner.google?.refreshToken,
+      selectedCalendarCount: selectedCalendarIds.length,
+      needsReconnect: owner.google?.needsReconnect || false,
+      googleConnected: owner.google?.connected || false
+    }
+
+    if (env.DEBUG_LOGS) {
+      console.log('[availability] Processing request:', logContext)
+    }
+
     const hostTz = settings.timeZone || 'UTC'
     const minNoticeMin = settings.minNoticeMin || 120
     const bufferMin = settings.bufferMin || 0
@@ -231,8 +254,7 @@ export async function GET(request, { params }) {
       }
     }
 
-    // Check Google FreeBusy
-    const selectedCalendarIds = settings.selectedCalendarIds || ['primary']
+    // Check Google FreeBusy (use the previously computed selectedCalendarIds)
     const startOfDay = new Date(date + 'T00:00:00')
     const endOfDay = new Date(date + 'T23:59:59')
     
