@@ -57,7 +57,27 @@ class BackendTester:
             'tavily_search_booking_assistant': False,
             'tavily_search_error_handling': False,
             'tavily_search_configuration': False,
-            'test_search_route_working': False
+            'test_search_route_working': False,
+            # Booking Confirmation Pipeline tests
+            'booking_confirmation_setup': False,
+            'ics_download_valid': False,
+            'ics_download_invalid_booking': False,
+            'ics_download_wrong_email': False,
+            'ics_download_missing_params': False,
+            'cancel_verify_valid_token': False,
+            'cancel_verify_invalid_token': False,
+            'cancel_verify_missing_token': False,
+            'cancel_execute_invalid_token': False,
+            'cancel_execute_missing_token': False,
+            'cancel_execute_valid_token': False,
+            'reschedule_verify_valid_token': False,
+            'reschedule_verify_invalid_token': False,
+            'reschedule_verify_missing_token': False,
+            'reschedule_execute_invalid_token': False,
+            'reschedule_execute_missing_fields': False,
+            'reschedule_execute_invalid_date': False,
+            'reschedule_execute_invalid_time_order': False,
+            'reschedule_execute_valid_request': False
         }
         
     def log(self, message):
