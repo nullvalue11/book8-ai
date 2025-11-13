@@ -1912,6 +1912,32 @@ class BackendTester:
             self.test_tavily_search_error_handling()
             self.test_tavily_search_configuration()
             
+            # Test Booking Confirmation Pipeline features
+            self.log("\n📅 Testing Booking Confirmation Pipeline Features...")
+            if self.setup_booking_confirmation_test():
+                self.test_ics_download_valid()
+                self.test_ics_download_invalid_booking()
+                self.test_ics_download_wrong_email()
+            self.test_ics_download_missing_params()
+            
+            # Test cancel endpoints
+            self.test_cancel_verify_valid_token()
+            self.test_cancel_verify_invalid_token()
+            self.test_cancel_verify_missing_token()
+            self.test_cancel_execute_invalid_token()
+            self.test_cancel_execute_missing_token()
+            self.test_cancel_execute_valid_token()
+            
+            # Test reschedule endpoints
+            self.test_reschedule_verify_valid_token()
+            self.test_reschedule_verify_invalid_token()
+            self.test_reschedule_verify_missing_token()
+            self.test_reschedule_execute_invalid_token()
+            self.test_reschedule_execute_missing_fields()
+            self.test_reschedule_execute_invalid_date()
+            self.test_reschedule_execute_invalid_time_order()
+            self.test_reschedule_execute_valid_request()
+            
         # Test error handling
         self.test_google_calendars_error_handling()
         
