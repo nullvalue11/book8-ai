@@ -100,13 +100,30 @@ export async function OPTIONS() {
 }
 
 export async function GET(request, { params }) {
+  console.log('=== AVAILABILITY DEBUG START ===')
+  console.log('availability.debug', {
+    handle: params.handle,
+    url: request.url,
+    time: new Date().toISOString(),
+    method: request.method,
+    headers: {
+      'user-agent': request.headers.get('user-agent'),
+      'x-forwarded-for': request.headers.get('x-forwarded-for'),
+      'referer': request.headers.get('referer')
+    }
+  })
+  
   try {
     const database = await connect()
+    console.log('availability.database', { connected: !!database })
+    
     const handle = params.handle
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date')
     const guestTz = searchParams.get('tz') || 'UTC'
     const duration = parseInt(searchParams.get('duration') || '0')
+    
+    console.log('availability.params', { handle, date, guestTz, duration })
 
     if (!date) {
       return NextResponse.json(
@@ -299,8 +316,12 @@ export async function GET(request, { params }) {
     })
 
   } catch (error) {
-    console.error('[availability] Error:', error)
-    logError(error, { endpoint: '/api/public/[handle]/availability', handle: params.handle })
+    console.error('=== AVAILABILITY ERROR ===')
+    console.error('ERROR:', error.message)
+    console.error('STACK:', error.stack)
+    console.error('PARAMS:', params)
+    console.error('=========================')
+    logError(error, { endpoint: '/api/public/[handle]/availability', handle: params?.handle })
     return NextResponse.json(
       { ok: false, error: 'Internal server error' },
       { 
