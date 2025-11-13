@@ -395,6 +395,61 @@
       - working: true
         agent: "main"
         comment: "✅ DIRECTORY STRUCTURE CORRECTED: Fixed the root cause by moving from app/app/ structure to proper app/ structure as required by Next.js App Router. All files now properly located: 1) /app/api/search/_selftest/route.js, 2) /app/api/search/route.js, 3) /app/api/search/booking-assistant/route.js. All routes include runtime='nodejs' and dynamic='force-dynamic'. Removed app/app directory completely. READY FOR DEPLOYMENT: Proper Next.js App Router structure implemented with correct file locations. Tavily endpoints will work correctly on Vercel deployment."
+  - task: "ICS Calendar Download Endpoint"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/public/bookings/ics/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: Created GET /api/public/bookings/ics endpoint for downloading booking calendar files. Validates bookingId and email parameters, queries MongoDB for matching booking, generates ICS file using buildICS(), returns downloadable .ics file with proper Content-Type and Content-Disposition headers. Needs backend testing."
+  - task: "Booking Cancellation - Verify Token"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/public/bookings/cancel/verify/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: Created GET /api/public/bookings/cancel/verify endpoint to verify cancel tokens and return booking details for confirmation page. Uses verifyCancelToken() for JWT validation, queries bookings collection by cancelToken, returns booking object with meeting details. Needs backend testing."
+  - task: "Booking Cancellation - Execute"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/public/bookings/cancel/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: Added POST /api/public/bookings/cancel endpoint (alongside existing GET) for modern cancel flow. Verifies token, finds booking, deletes Google Calendar event if present, updates booking status to 'canceled', sends cancellation emails with ICS attachments to both guest and host. Uses verifyCancelToken() for JWT validation. Needs backend testing."
+  - task: "Booking Reschedule - Verify Token"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/public/bookings/reschedule/verify/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: Created GET /api/public/bookings/reschedule/verify endpoint to verify reschedule tokens and return booking details plus owner handle. Uses verifyRescheduleToken() for JWT validation, queries bookings collection by rescheduleToken, returns booking object and handle for availability lookup. Needs backend testing."
+  - task: "Booking Reschedule - Execute"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/public/bookings/reschedule/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: Created POST /api/public/bookings/reschedule endpoint (replaced stub). Verifies token, validates new times, checks Google Calendar availability, updates booking with new times and reschedule history, updates Google Calendar event, generates new reschedule token for future use, sends confirmation emails with updated ICS files. Includes conflict detection logic that skips current booking's time slot. Needs backend testing."
     implemented: true
     working: false
     file: "/app/app/api/[[...path]]/route.js, /app/.env"
