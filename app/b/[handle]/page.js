@@ -203,44 +203,133 @@ export default function PublicBookingPage({ params }) {
 
   // Success screen
   if (state === 'success') {
+    const icsDownloadUrl = bookingResult?.bookingId 
+      ? `/api/public/bookings/ics?bookingId=${bookingResult.bookingId}&email=${encodeURIComponent(form.email)}`
+      : null
+    
+    const cancelUrl = bookingResult?.cancelToken 
+      ? `/bookings/cancel/${bookingResult.cancelToken}`
+      : null
+    
+    const rescheduleUrl = bookingResult?.rescheduleToken
+      ? `/bookings/reschedule/${bookingResult.rescheduleToken}`
+      : null
+
     return (
       <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center p-6">
-        <Card className="max-w-2xl w-full animate-fade-in">
-          <CardContent className="pt-12 pb-8 text-center space-y-6">
+        <Card className="max-w-2xl w-full animate-fade-in shadow-lg">
+          <CardContent className="pt-12 pb-8 space-y-8">
+            {/* Success Icon */}
             <div className="flex justify-center">
-              <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center">
-                <Check className="w-8 h-8 text-white" />
+              <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center shadow-lg">
+                <Check className="w-10 h-10 text-white" />
               </div>
             </div>
             
-            <div className="space-y-2">
-              <h1 className="text-3xl font-semibold">You're booked! 🎉</h1>
-              <p className="text-muted-foreground">A confirmation email is on its way to {form.email}</p>
+            {/* Success Message */}
+            <div className="space-y-3 text-center">
+              <h1 className="text-4xl font-bold">You're all set! 🎉</h1>
+              <p className="text-lg text-muted-foreground">
+                Your meeting has been confirmed
+              </p>
+              <p className="text-sm text-muted-foreground">
+                A confirmation email has been sent to <span className="font-medium text-foreground">{form.email}</span>
+              </p>
             </div>
 
+            {/* Meeting Details */}
             {selected && (
-              <div className="bg-muted/50 rounded-lg p-6 space-y-3 text-left">
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-primary mt-0.5" />
-                  <div>
-                    <p className="font-medium">{formatDate(selected.start)}</p>
-                    <p className="text-sm text-muted-foreground">All times in {guestTz}</p>
+              <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl p-6 space-y-4 border border-border/50">
+                <h2 className="font-semibold text-lg mb-4">Meeting Details</h2>
+                
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-lg">{formatDate(selected.start)}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {formatTime(selected.start)} - {formatTime(selected.end)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {guestTz}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">Meeting with {ownerName || handle}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{form.name}</p>
                   </div>
                 </div>
                 
                 {form.notes && (
-                  <div className="flex items-start gap-3 pt-3 border-t">
+                  <div className="pt-4 border-t border-border/50">
+                    <p className="text-sm font-medium mb-2">Your notes:</p>
                     <p className="text-sm text-muted-foreground">{form.notes}</p>
                   </div>
                 )}
               </div>
             )}
 
-            <div className="pt-4">
-              <Button onClick={() => window.location.reload()} variant="outline">
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              {icsDownloadUrl && (
+                <Button 
+                  onClick={() => window.open(icsDownloadUrl, '_blank')}
+                  className="w-full gradient-primary text-white btn-glow h-12 text-base"
+                  size="lg"
+                >
+                  <Calendar className="w-5 h-5 mr-2" />
+                  Add to Calendar
+                </Button>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {rescheduleUrl && (
+                  <Button 
+                    onClick={() => window.location.href = rescheduleUrl}
+                    variant="outline"
+                    className="h-11"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    Reschedule
+                  </Button>
+                )}
+                
+                {cancelUrl && (
+                  <Button 
+                    onClick={() => window.location.href = cancelUrl}
+                    variant="outline"
+                    className="h-11 text-destructive hover:text-destructive"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Cancel Meeting
+                  </Button>
+                )}
+              </div>
+
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="ghost"
+                className="w-full"
+              >
                 Book another time
               </Button>
             </div>
+
+            {/* Booking Reference */}
+            {bookingResult?.bookingId && (
+              <div className="pt-4 border-t border-border/50 text-center">
+                <p className="text-xs text-muted-foreground">
+                  Booking ID: <span className="font-mono">{bookingResult.bookingId}</span>
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>
