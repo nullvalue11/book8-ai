@@ -257,12 +257,21 @@ export async function GET(request, { params }) {
     
     const freeBusyResult = await getGoogleFreeBusy(owner, startOfDay, endOfDay, selectedCalendarIds, debugContext)
     
-    // If there's a Google error, return it to the client
+    // If there's a Google error, return it to the client with consistent format
     if (freeBusyResult.error) {
       return NextResponse.json({
         ok: false,
-        ...freeBusyResult.error
-      }, { status: 401 })
+        code: freeBusyResult.error.code,
+        message: freeBusyResult.error.message,
+        hint: freeBusyResult.error.hint,
+        error: freeBusyResult.error.message
+      }, { 
+        status: 401,
+        headers: {
+          'X-RateLimit-Limit': '10',
+          'X-RateLimit-Remaining': rateLimit.remaining.toString()
+        }
+      })
     }
 
     // Filter out busy slots
