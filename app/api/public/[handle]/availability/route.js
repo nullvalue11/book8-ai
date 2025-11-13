@@ -192,7 +192,8 @@ export async function GET(request, { params }) {
     if (daySlots.length === 0) {
       return NextResponse.json({ 
         ok: true, 
-        slots: [],
+        slots: []
+      }, {
         headers: {
           'X-RateLimit-Limit': '10',
           'X-RateLimit-Remaining': rateLimit.remaining.toString()
