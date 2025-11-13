@@ -23,19 +23,19 @@ export function generateRescheduleToken(bookingId, guestEmail) {
 /**
  * Verify and decode a reschedule token
  * @param {string} token - JWT token to verify
- * @returns {object|null} Decoded payload or null if invalid
+ * @returns {object} Object with valid boolean and payload/error
  */
 export function verifyRescheduleToken(token) {
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET)
     
     if (decoded.type !== 'reschedule') {
-      return null
+      return { valid: false, error: 'Invalid token type' }
     }
     
-    return decoded
+    return { valid: true, payload: decoded }
   } catch (error) {
     console.error('[rescheduleToken] Verification failed:', error.message)
-    return null
+    return { valid: false, error: error.message }
   }
 }
