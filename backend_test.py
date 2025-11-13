@@ -15,7 +15,7 @@ import hmac
 import time
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://nextjs-alias.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://book8-success.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 class BackendTester:
