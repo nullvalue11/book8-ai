@@ -568,15 +568,18 @@
         comment: "❌ CRITICAL FAILURE: Cancel Booking Page returns 404 'Page Not Found' error. TESTED: 1) /bookings/cancel/test-token returns generic 404 page with 'Back to Home' button, 2) /bookings/cancel/invalid-token-123 also returns 404, 3) No cancel-specific UI elements found (no 'Cancel This Meeting', 'Keep Meeting', or 'Yes, Cancel Meeting' buttons). ROOT CAUSE: The cancel page route is not properly configured in Next.js App Router or the page component is not being found. The API endpoint GET /api/public/bookings/cancel/verify also returns 404. BLOCKING ISSUE: Both the frontend page route and backend API endpoints for the cancel flow are inaccessible in the Vercel deployment."
   - task: "Reschedule Booking Page"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/app/bookings/reschedule/[token]/page.js"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: true
+    stuck_count: 1
+    priority: "critical"
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "IMPLEMENTED: Created comprehensive reschedule flow at /bookings/reschedule/[token]. Features: shows current meeting details, date picker and timezone selector, loads available time slots via availability API, time slot grid with selection, confirm button, loading/error states, success confirmation. Calls GET /api/public/bookings/reschedule/verify to get booking details and handle, GET /api/public/[handle]/availability to load slots, POST /api/public/bookings/reschedule to execute reschedule. Handles slot conflicts with user-friendly messages. Full Book8 AI branding. Needs frontend testing."
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL FAILURE: Reschedule Booking Page returns 404 'Page Not Found' error. TESTED: 1) /bookings/reschedule/test-token returns generic 404 page, 2) No reschedule-specific UI elements found (no 'Reschedule Your Meeting', date picker, timezone selector, or 'Confirm Reschedule' buttons). ROOT CAUSE: The reschedule page route is not properly configured in Next.js App Router or the page component is not being found. The API endpoints GET /api/public/bookings/reschedule/verify and POST /api/public/bookings/reschedule also return 404. BLOCKING ISSUE: Both the frontend page route and backend API endpoints for the reschedule flow are inaccessible in the Vercel deployment. Same routing issue as cancel page."
 
 ## metadata:
   created_by: "main_agent"
