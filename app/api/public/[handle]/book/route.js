@@ -314,7 +314,9 @@ export async function POST(request, { params }) {
 
     return NextResponse.json({
       ok: true,
-      bookingId
+      bookingId,
+      cancelToken,
+      rescheduleToken
     })
 
   } catch (error) {
