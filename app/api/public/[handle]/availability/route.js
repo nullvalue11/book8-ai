@@ -302,7 +302,13 @@ export async function GET(request, { params }) {
     logError(error, { endpoint: '/api/public/[handle]/availability', handle: params.handle })
     return NextResponse.json(
       { ok: false, error: 'Internal server error' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'X-RateLimit-Limit': '10',
+          'X-RateLimit-Remaining': '0'
+        }
+      }
     )
   }
 }
