@@ -51,3 +51,8 @@ export function generateCancelToken(bookingId, guestEmail) {
   })
   return token
 }
+
+// Helper for verifying cancel tokens
+export function verifyCancelToken(token) {
+  return verifyActionToken(token, 'booking_cancel')
+}
