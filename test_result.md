@@ -565,7 +565,16 @@
 
 ## test_plan:
   current_focus:
-    - "OpenAI Realtime Audio - Phone call capability"
+    - "ICS Calendar Download Endpoint"
+    - "Booking Cancellation - Verify Token"
+    - "Booking Cancellation - Execute"
+    - "Booking Reschedule - Verify Token"
+    - "Booking Reschedule - Execute"
+    - "Enhanced Booking Success Screen"
+    - "Cancel Booking Page"
+    - "Reschedule Booking Page"
+  phase_3_completed:
+    - "✅ Dashboard Improvements - Public booking link, Google Calendar layout, Archive functionality"
   phase_2_completed:
     - "✅ Tavily Live Web Search - Real-time intelligence and reasoning working"
   phase_1_completed:
@@ -574,10 +583,10 @@
     - "✅ Google Calendar Timezone Fix - Proper synchronization verified"
     - "✅ User Testing Complete - All Phase 1 features working correctly"
   upcoming_features:
-    - "OpenAI Realtime Audio - Phone call capability"
+    - "OpenAI Realtime Audio - Phone call capability (future phase)"
   stuck_tasks: []
   test_all: false
-  test_priority: "phase_2_development"
+  test_priority: "booking_confirmation_pipeline"
 
 ## agent_communication:
   - agent: "main"
