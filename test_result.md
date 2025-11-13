@@ -608,7 +608,10 @@
     - "✅ User Testing Complete - All Phase 1 features working correctly"
   upcoming_features:
     - "OpenAI Realtime Audio - Phone call capability (future phase)"
-  stuck_tasks: []
+  stuck_tasks:
+    - "Enhanced Booking Success Screen"
+    - "Cancel Booking Page" 
+    - "Reschedule Booking Page"
   test_all: false
   test_priority: "booking_confirmation_pipeline"
 
