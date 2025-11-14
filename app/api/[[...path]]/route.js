@@ -110,25 +110,30 @@ async function handleRoute(request, { params }) {
   console.log(`API Request: ${method} ${route}`)
 
   // Bypass catch-all for routes with dedicated handlers
+  // These routes have their own route.js files and should not be handled here
   const BYPASS_PREFIXES = [
     '/api/public/',
-    '/api/availability',
-    '/api/search',
-    '/api/integrations/google',
-    '/api/settings',
+    '/api/search/',
+    '/api/integrations/google/',
+    '/api/settings/',
     '/api/user',
-    '/api/webhooks',
-    '/api/admin',
-    '/api/analytics',
-    '/api/auth/reset',
-    '/api/cron',
+    '/api/webhooks/',
+    '/api/admin/',
+    '/api/analytics/',
+    '/api/auth/reset/',
+    '/api/cron/',
     '/api/billing/logs',
     '/api/assistant'
   ]
   
   if (BYPASS_PREFIXES.some(prefix => pathname.startsWith(prefix))) {
-    console.log(`[catch-all] Bypassing route ${pathname} - has dedicated handler`)
-    return NextResponse.next()
+    console.log(`[catch-all] Route ${pathname} should be handled by dedicated handler, not catch-all`)
+    // Return 404 here so Next.js will fall through to the specific route handler
+    return json({ 
+      ok: false, 
+      error: 'Route should be handled by dedicated handler',
+      debug: { pathname, route, bypassMatched: true }
+    }, { status: 404 })
   }
 
   // NOTE: We intentionally do NOT shadow /api/search/* here anymore.
