@@ -107,28 +107,30 @@ export async function OPTIONS() {
 
 // MINIMAL TEST HANDLER - Proves routing works
 export async function GET(request, { params }) {
-  const { handle } = params
-  const url = new URL(request.url)
-
-  return NextResponse.json({
-    ok: true,
-    source: 'availability-test',
-    handle,
-    query: Object.fromEntries(url.searchParams.entries()),
-    timestamp: new Date().toISOString(),
-    message: '✅ Dynamic route /api/public/[handle]/availability is working!'
+  console.log('=== AVAILABILITY DEBUG START ===')
+  console.log('availability.debug', {
+    handle: params.handle,
+    url: request.url,
+    time: new Date().toISOString(),
+    method: request.method,
+    headers: {
+      'user-agent': request.headers.get('user-agent'),
+      'x-forwarded-for': request.headers.get('x-forwarded-for'),
+      'referer': request.headers.get('referer')
+    }
   })
-}
-
-/* ORIGINAL IMPLEMENTATION - COMMENTED FOR DEBUGGING
-export async function GET_ORIGINAL(request, { params }) {
+  
   try {
     const database = await connect()
+    console.log('availability.database', { connected: !!database })
+    
     const handle = params.handle
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date')
     const guestTz = searchParams.get('tz') || 'UTC'
     const duration = parseInt(searchParams.get('duration') || '0')
+    
+    console.log('availability.params', { handle, date, guestTz, duration })
 
     if (!date) {
       return NextResponse.json(
@@ -321,8 +323,12 @@ export async function GET_ORIGINAL(request, { params }) {
     })
 
   } catch (error) {
-    console.error('[availability] Error:', error)
-    logError(error, { endpoint: '/api/public/[handle]/availability', handle: params.handle })
+    console.error('=== AVAILABILITY ERROR ===')
+    console.error('ERROR:', error.message)
+    console.error('STACK:', error.stack)
+    console.error('PARAMS:', params)
+    console.error('=========================')
+    logError(error, { endpoint: '/api/public/[handle]/availability', handle: params?.handle })
     return NextResponse.json(
       { ok: false, error: 'Internal server error' },
       { 
