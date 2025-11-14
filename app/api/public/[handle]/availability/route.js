@@ -105,7 +105,23 @@ export async function OPTIONS() {
   })
 }
 
+// MINIMAL TEST HANDLER - Proves routing works
 export async function GET(request, { params }) {
+  const { handle } = params
+  const url = new URL(request.url)
+
+  return NextResponse.json({
+    ok: true,
+    source: 'availability-test',
+    handle,
+    query: Object.fromEntries(url.searchParams.entries()),
+    timestamp: new Date().toISOString(),
+    message: '✅ Dynamic route /api/public/[handle]/availability is working!'
+  })
+}
+
+/* ORIGINAL IMPLEMENTATION - COMMENTED FOR DEBUGGING
+export async function GET_ORIGINAL(request, { params }) {
   try {
     const database = await connect()
     const handle = params.handle
@@ -319,3 +335,4 @@ export async function GET(request, { params }) {
     )
   }
 }
+*/
