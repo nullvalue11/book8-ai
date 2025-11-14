@@ -105,11 +105,18 @@ async function handleRoute(request, { params }) {
   const { path = [] } = params
   const route = `/${path.join('/')}`
   const method = request.method
+  const pathname = new URL(request.url).pathname
 
   console.log(`API Request: ${method} ${route}`)
 
-  // NOTE: We intentionally do NOT shadow /api/search/* here anymore.
-  // Dedicated route files under app/api/search/* must handle those.
+  // NOTE: Dedicated route files exist for:
+  // - /api/public/* (booking pages, availability, ICS downloads, cancel/reschedule)
+  // - /api/search/* (Tavily web search)
+  // - /api/integrations/google/* (OAuth, calendar sync)
+  // - /api/settings/*, /api/user, /api/webhooks/*, etc.
+  // 
+  // This catch-all ONLY handles legacy/backward-compat routes that don't have
+  // their own route.js files.
 
   try {
     const database = await connectToMongo()
