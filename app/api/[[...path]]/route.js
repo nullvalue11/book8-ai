@@ -105,8 +105,31 @@ async function handleRoute(request, { params }) {
   const { path = [] } = params
   const route = `/${path.join('/')}`
   const method = request.method
+  const pathname = new URL(request.url).pathname
 
   console.log(`API Request: ${method} ${route}`)
+
+  // Bypass catch-all for routes with dedicated handlers
+  const BYPASS_PREFIXES = [
+    '/api/public/',
+    '/api/availability',
+    '/api/search',
+    '/api/integrations/google',
+    '/api/settings',
+    '/api/user',
+    '/api/webhooks',
+    '/api/admin',
+    '/api/analytics',
+    '/api/auth/reset',
+    '/api/cron',
+    '/api/billing/logs',
+    '/api/assistant'
+  ]
+  
+  if (BYPASS_PREFIXES.some(prefix => pathname.startsWith(prefix))) {
+    console.log(`[catch-all] Bypassing route ${pathname} - has dedicated handler`)
+    return NextResponse.next()
+  }
 
   // NOTE: We intentionally do NOT shadow /api/search/* here anymore.
   // Dedicated route files under app/api/search/* must handle those.
