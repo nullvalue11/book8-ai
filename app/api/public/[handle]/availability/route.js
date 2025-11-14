@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+// TEMPORARY MINIMAL TEST IMPLEMENTATION
+// This is to debug routing issues in production
+// Real implementation is commented below
+
+/* ORIGINAL IMPORTS - COMMENTED FOR TESTING
 import { MongoClient } from 'mongodb'
 import { checkRateLimit } from '../../../../lib/rateLimiting'
 import { RateLimitTelemetry, logError } from '../../../../lib/telemetry'
 import { env, debugLog } from '../../../../lib/env'
-
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
 
 let client, db
 
