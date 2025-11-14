@@ -5,22 +5,16 @@ export const dynamic = 'force-dynamic'
 
 // MINIMAL TEST HANDLER - Proves routing works
 export async function GET(request, { params }) {
-  console.log('[availability-test] HIT', {
-    url: request.url,
-    params,
-    env: process.env.VERCEL_ENV || 'local',
-  })
-
-  const { handle } = params
   const url = new URL(request.url)
+  const searchParams = Object.fromEntries(url.searchParams.entries())
 
   return NextResponse.json({
     ok: true,
     source: 'availability-test',
-    handle,
-    query: Object.fromEntries(url.searchParams.entries()),
+    handle: params?.handle ?? null,
+    query: searchParams,
     timestamp: new Date().toISOString(),
-    message: '✅ Dynamic route /api/public/[handle]/availability is working!'
+    message: '✅ Dynamic route /api/public/[handle]/availability is working!',
   })
 }
 
