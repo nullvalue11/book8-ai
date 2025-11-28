@@ -49,7 +49,7 @@ export default function PublicBookingPage({ params }) {
       setError('')
       setSelected(null)
       
-      const res = await fetch(`/api/public/${encodeURIComponent(handle)}/availability?date=${date}&tz=${encodeURIComponent(guestTz)}`)
+      const res = await fetch(`/api/public/availability?handle=${encodeURIComponent(handle)}&date=${date}&tz=${encodeURIComponent(guestTz)}`)
       
       // Handle network errors
       if (!res) {
