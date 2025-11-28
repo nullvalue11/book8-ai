@@ -55,6 +55,11 @@ export default function AnalyticsDashboard({ token }) {
   }
 
   if (error) {
+    // Don't show error if it's just an auth issue - that's expected when not logged in
+    if (error.includes('Invalid or expired token') || error.includes('Missing Authorization')) {
+      return null
+    }
+    
     return (
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Analytics</h2>
