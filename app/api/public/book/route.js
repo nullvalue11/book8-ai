@@ -239,9 +239,6 @@ export async function POST(request) {
       if (!env.RESEND_API_KEY) {
         emailDebug = { status: 'skipped', reason: 'RESEND_API_KEY not configured' }
         console.log('[booking/email] Skipping email - no API key configured')
-      } else if (!isFeatureEnabled('RESEND')) {
-        emailDebug = { status: 'skipped', reason: 'RESEND feature disabled' }
-        console.log('[booking/email] Skipping email - RESEND feature disabled')
       } else {
         const { Resend } = await import('resend')
         const resend = new Resend(env.RESEND_API_KEY)
