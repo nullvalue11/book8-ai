@@ -249,7 +249,7 @@ export async function POST(request) {
           toHost: owner.email,
           bookingId,
           hasApiKey: !!env.RESEND_API_KEY,
-          from: 'Book8 AI <bookings@book8.ai>'
+          from: 'Book8 AI <onboarding@resend.dev>'
         })
 
         const emailHtml = bookingConfirmationEmail(
