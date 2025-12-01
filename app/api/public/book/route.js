@@ -285,7 +285,7 @@ export async function POST(request) {
         let emailResult
         try {
           emailResult = await resend.emails.send({
-            from: 'Book8 AI <bookings@book8.ai>',
+            from: 'Book8 AI <onboarding@resend.dev>',
             to: email,
             cc: owner.email,
             subject: `Your Book8 meeting is confirmed – ${dateStr} (${guestTzLabel})`,
