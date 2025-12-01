@@ -44,7 +44,7 @@ export async function GET(request) {
 
     try {
       const result = await resend.emails.send({
-        from: 'Book8 AI <bookings@book8.ai>',
+        from: 'Book8 AI <onboarding@resend.dev>',
         to,
         subject: 'Book8 AI Test Email - Production',
         html: `
