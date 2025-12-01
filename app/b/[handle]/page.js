@@ -119,7 +119,7 @@ export default function PublicBookingPage({ params }) {
       setBooking(true)
       setError('')
       
-      const res = await fetch(`/api/public/${encodeURIComponent(handle)}/book`, {
+      const res = await fetch(`/api/public/book?handle=${encodeURIComponent(handle)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
