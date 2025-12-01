@@ -51,7 +51,6 @@ export async function GET(request) {
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>✅ Test Email from Book8 AI</h2>
             <p>This is a production test email from Book8 AI.</p>
-            <p><strong>Environment:</strong> ${process.env.VERCEL_ENV || 'local'}</p>
             <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
             <p><strong>From:</strong> Book8 AI &lt;bookings@book8.ai&gt;</p>
             <p><strong>To:</strong> ${to}</p>
