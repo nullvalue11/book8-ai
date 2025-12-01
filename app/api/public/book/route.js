@@ -35,12 +35,20 @@ export async function OPTIONS() {
   })
 }
 
-export async function POST(request, { params }) {
+export async function POST(request) {
   try {
     const database = await connect()
-    const handle = params.handle
+    const url = new URL(request.url)
+    const handle = url.searchParams.get('handle')
     const body = await request.json()
     const { name, email, notes, start, end, guestTimezone } = body
+
+    if (!handle) {
+      return NextResponse.json(
+        { ok: false, error: 'Missing handle parameter' },
+        { status: 400 }
+      )
+    }
 
     if (!name || !email || !start || !end) {
       return NextResponse.json(
