@@ -234,11 +234,26 @@ export async function POST(request) {
     }
 
     // Send confirmation emails
+    let emailDebug = { status: 'not_attempted', reason: 'unknown' }
     try {
-      if (env.RESEND_API_KEY) {
+      if (!env.RESEND_API_KEY) {
+        emailDebug = { status: 'skipped', reason: 'RESEND_API_KEY not configured' }
+        console.log('[booking/email] Skipping email - no API key configured')
+      } else if (!isFeatureEnabled('RESEND')) {
+        emailDebug = { status: 'skipped', reason: 'RESEND feature disabled' }
+        console.log('[booking/email] Skipping email - RESEND feature disabled')
+      } else {
         const { Resend } = await import('resend')
         const resend = new Resend(env.RESEND_API_KEY)
         const baseUrl = env.BASE_URL
+
+        console.log('[booking/email] Preparing to send confirmation', {
+          toGuest: email,
+          toHost: owner.email,
+          bookingId,
+          hasApiKey: !!env.RESEND_API_KEY,
+          from: 'Book8 AI <bookings@book8.ai>'
+        })
 
         const emailHtml = bookingConfirmationEmail(
           booking,
@@ -270,31 +285,66 @@ export async function POST(request) {
           timeZone: guestTzLabel
         })
 
-        await resend.emails.send({
-          from: 'Book8 AI <bookings@book8.ai>',
-          to: email,
-          cc: owner.email,
-          subject: `Your Book8 meeting is confirmed – ${dateStr} (${guestTzLabel})`,
-          html: emailHtml,
-          attachments: [
-            {
-              filename: 'booking.ics',
-              content: Buffer.from(icsContent).toString('base64')
-            }
-          ]
-        })
+        let emailResult
+        try {
+          emailResult = await resend.emails.send({
+            from: 'Book8 AI <bookings@book8.ai>',
+            to: email,
+            cc: owner.email,
+            subject: `Your Book8 meeting is confirmed – ${dateStr} (${guestTzLabel})`,
+            html: emailHtml,
+            attachments: [
+              {
+                filename: 'booking.ics',
+                content: Buffer.from(icsContent).toString('base64')
+              }
+            ]
+          })
 
-        console.log('[book] Confirmation email sent')
+          console.log('[booking/email] Resend response SUCCESS', {
+            id: emailResult?.id,
+            data: emailResult
+          })
+          
+          emailDebug = { 
+            status: 'sent', 
+            id: emailResult?.id || null,
+            to: email,
+            cc: owner.email
+          }
+
+        } catch (err) {
+          console.error('[booking/email] Resend error FAILED', {
+            message: err?.message,
+            name: err?.name,
+            code: err?.code,
+            statusCode: err?.statusCode,
+            stack: err?.stack
+          })
+          
+          emailDebug = {
+            status: 'failed',
+            error: err?.message || 'Unknown error',
+            code: err?.code || null,
+            statusCode: err?.statusCode || null
+          }
+        }
       }
     } catch (error) {
-      console.error('[book] Email error:', error.message)
+      console.error('[book] Email outer catch error:', error.message, error)
+      emailDebug = {
+        status: 'failed',
+        error: error.message,
+        type: 'outer_catch'
+      }
     }
 
     return NextResponse.json({
       ok: true,
       bookingId,
       cancelToken,
-      rescheduleToken
+      rescheduleToken,
+      emailDebug  // Include for debugging
     })
 
   } catch (error) {
