@@ -336,13 +336,19 @@ export async function POST(request) {
       }
     }
 
-    return NextResponse.json({
+    const response = {
       ok: true,
       bookingId,
       cancelToken,
-      rescheduleToken,
-      emailDebug  // Include for debugging
-    })
+      rescheduleToken
+    }
+
+    // Only include emailDebug in non-production or when debug logs enabled
+    if (env.DEBUG_LOGS) {
+      response.emailDebug = emailDebug
+    }
+
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error('[book] Error:', error)
