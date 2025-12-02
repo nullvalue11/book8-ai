@@ -39,7 +39,7 @@ export async function GET(request) {
 
     console.log('[debug/test-email] Sending test email', {
       to,
-      from: 'Book8 AI <bookings@book8.ai>'
+      from: 'Book8 AI <bookings@book8.io>'
     })
 
     try {
