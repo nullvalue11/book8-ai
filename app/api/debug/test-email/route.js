@@ -44,7 +44,7 @@ export async function GET(request) {
 
     try {
       const result = await resend.emails.send({
-        from: 'Book8 AI <bookings@book8.ai>',
+        from: 'Book8 AI <bookings@book8.io>',
         to,
         subject: 'Book8 AI Test Email - Production',
         html: `
@@ -73,7 +73,7 @@ export async function GET(request) {
         result: {
           id: result?.id,
           to,
-          from: 'Book8 AI <bookings@book8.ai>',
+          from: 'Book8 AI <bookings@book8.io>',
           timestamp: new Date().toISOString()
         },
         env: envCheck
