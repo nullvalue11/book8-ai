@@ -348,7 +348,7 @@ export async function POST(request) {
         })
 
         await resend.emails.send({
-          from: 'Book8 AI <bookings@book8.ai>',
+          from: 'Book8 AI <bookings@book8.io>',
           to: booking.guestEmail,
           cc: owner.email,
           subject: `Your Book8 meeting was rescheduled – ${dateStr} (${guestTzLabel})`,
@@ -374,7 +374,7 @@ export async function POST(request) {
           )
           
           await resend.emails.send({
-            from: 'Book8 AI <notifications@book8.ai>',
+            from: 'Book8 AI <notifications@book8.io>',
             to: owner.email,
             subject: `Booking rescheduled: ${booking.customerName || 'Guest'} – ${booking.title}`,
             html: hostEmailHtml
