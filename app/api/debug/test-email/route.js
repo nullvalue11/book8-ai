@@ -73,7 +73,7 @@ export async function GET(request) {
         result: {
           id: result?.id,
           to,
-          from: 'Book8 AI <onboarding@resend.dev>',
+          from: 'Book8 AI <bookings@book8.io>',
           timestamp: new Date().toISOString()
         },
         env: envCheck
