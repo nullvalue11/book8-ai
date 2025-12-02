@@ -113,7 +113,7 @@ export async function POST(request) {
 
         // Send to guest
         await resend.emails.send({ 
-          from: 'Book8 AI <bookings@book8.ai>', 
+          from: 'Book8 AI <bookings@book8.io>', 
           to: booking.guestEmail, 
           subject: `Meeting canceled: ${booking.title}`,
           html: `
