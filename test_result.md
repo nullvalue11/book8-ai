@@ -512,15 +512,18 @@
 
   - task: "Reminder Settings API and UI"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/app/api/settings/scheduling/route.js, /app/app/dashboard/settings/scheduling/page.js, /app/vercel.json"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "IMPLEMENTED: 1) Created vercel.json with two cron jobs - daily Google Calendar sync (every 6 hours) and 5-minute reminder email processing. 2) Updated scheduling settings API to accept and store reminder preferences (enabled24h, enabled1h). 3) Added Email Reminders card to scheduling settings UI with toggles for 24-hour and 1-hour reminders. 4) Updated calculateReminders function to accept options for enabling/disabling specific reminder types. 5) Updated book routes to pass owner's reminder preferences when creating bookings. Needs backend testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ REMINDER SETTINGS API FULLY TESTED AND WORKING: Comprehensive testing completed successfully! 1) GET /api/settings/scheduling - Returns reminder preferences correctly, requires authentication (401 without Bearer token), handles initial state (null scheduling) properly. 2) POST /api/settings/scheduling - Accepts and saves reminder preferences (enabled24h, enabled1h), persists settings correctly in database, requires authentication. 3) All reminder combinations tested: both enabled (true/true), 24h only (true/false), 1h only (false/true), both disabled (false/false). 4) Default behavior working: when reminders field not specified, defaults to both enabled (enabled24h: true, enabled1h: true). 5) Data persistence verified: GET after POST returns saved reminder settings correctly. 6) Authentication properly enforced: both GET and POST return 401 without valid JWT token. 7) Response structure matches expected format: {ok: true, scheduling: {handle, timeZone, workingHours, reminders: {enabled24h: boolean, enabled1h: boolean}}}. The Reminder Settings API is production-ready and handles all test scenarios correctly!"
 
 ## frontend:
   - task: "Brand logo integration - Replace external URLs with Book8-AI assets"
