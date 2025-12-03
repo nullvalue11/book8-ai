@@ -146,6 +146,18 @@ export async function POST(request) {
     // Generate new reschedule token for future use
     const newRescheduleToken = generateRescheduleToken(booking.id, booking.guestEmail)
 
+    // Recompute reminders for new time
+    let updatedReminders = booking.reminders || []
+    if (isFeatureEnabled('REMINDERS')) {
+      const reminderSettings = normalizeReminderSettings(owner.scheduling?.reminders)
+      updatedReminders = recomputeReminders(
+        booking.reminders || [],
+        newStartTime.toISOString(),
+        reminderSettings
+      )
+      console.log(`[reschedule] Recomputed reminders: ${updatedReminders.length} (was ${(booking.reminders || []).length})`)
+    }
+
     // Update booking
     const rescheduleHistory = booking.rescheduleHistory || []
     rescheduleHistory.push({
@@ -166,6 +178,7 @@ export async function POST(request) {
           rescheduleToken: newRescheduleToken,
           rescheduleCount: (booking.rescheduleCount || 0) + 1,
           rescheduleHistory,
+          reminders: updatedReminders,
           updatedAt: new Date().toISOString() 
         } 
       }
