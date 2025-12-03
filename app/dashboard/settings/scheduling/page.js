@@ -5,7 +5,7 @@ import { Input } from '../../../../components/ui/input'
 import { Label } from '../../../../components/ui/label'
 import { Button } from '../../../../components/ui/button'
 import { Switch } from '../../../../components/ui/switch'
-import { Plus, Trash2, Copy, Check } from 'lucide-react'
+import { Plus, Trash2, Copy, Check, Bell, Clock } from 'lucide-react'
 
 export default function SchedulingSettingsPage() {
   const [token, setToken] = useState(null)
@@ -27,6 +27,7 @@ export default function SchedulingSettingsPage() {
   })
   const [is24x7, setIs24x7] = useState(false)
   const [calIds, setCalIds] = useState([])
+  const [reminders, setReminders] = useState({ enabled24h: true, enabled1h: true })
   const [msg, setMsg] = useState('')
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -56,6 +57,7 @@ export default function SchedulingSettingsPage() {
         setForm(prev => ({ ...prev, ...data.scheduling }))
         setWh(data.scheduling.workingHours || wh)
         setCalIds(data.scheduling.selectedCalendarIds || [])
+        setReminders(data.scheduling.reminders || { enabled24h: true, enabled1h: true })
         
         const all24 = Object.values(data.scheduling.workingHours || {}).every(
           blocks => blocks.length === 1 && blocks[0].start === '00:00' && blocks[0].end === '23:59'
@@ -77,7 +79,8 @@ export default function SchedulingSettingsPage() {
       const payload = { 
         ...form, 
         workingHours: wh, 
-        selectedCalendarIds: calIds 
+        selectedCalendarIds: calIds,
+        reminders 
       }
       
       const res = await fetch('/api/settings/scheduling', { 
@@ -398,6 +401,58 @@ export default function SchedulingSettingsPage() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Reminder Settings */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle>Email Reminders</CardTitle>
+              <CardDescription>Send automatic reminder emails to your guests before meetings</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-primary/10">
+                <Clock className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <Label htmlFor="reminder-24h" className="font-medium cursor-pointer">24-Hour Reminder</Label>
+                <p className="text-sm text-muted-foreground">Send a reminder email 24 hours before the meeting</p>
+              </div>
+            </div>
+            <Switch 
+              id="reminder-24h"
+              checked={reminders.enabled24h} 
+              onCheckedChange={(checked) => setReminders(prev => ({ ...prev, enabled24h: checked }))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-primary/10">
+                <Clock className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <Label htmlFor="reminder-1h" className="font-medium cursor-pointer">1-Hour Reminder</Label>
+                <p className="text-sm text-muted-foreground">Send a reminder email 1 hour before the meeting</p>
+              </div>
+            </div>
+            <Switch 
+              id="reminder-1h"
+              checked={reminders.enabled1h} 
+              onCheckedChange={(checked) => setReminders(prev => ({ ...prev, enabled1h: checked }))}
+            />
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Note: Reminders are sent to guests at the scheduled times. You can disable reminders if you prefer to manage notifications yourself.
+          </p>
         </CardContent>
       </Card>
 
