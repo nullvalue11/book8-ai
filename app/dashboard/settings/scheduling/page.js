@@ -5,7 +5,7 @@ import { Input } from '../../../../components/ui/input'
 import { Label } from '../../../../components/ui/label'
 import { Button } from '../../../../components/ui/button'
 import { Switch } from '../../../../components/ui/switch'
-import { Plus, Trash2, Copy, Check } from 'lucide-react'
+import { Plus, Trash2, Copy, Check, Bell, Clock } from 'lucide-react'
 
 export default function SchedulingSettingsPage() {
   const [token, setToken] = useState(null)
@@ -27,6 +27,7 @@ export default function SchedulingSettingsPage() {
   })
   const [is24x7, setIs24x7] = useState(false)
   const [calIds, setCalIds] = useState([])
+  const [reminders, setReminders] = useState({ enabled24h: true, enabled1h: true })
   const [msg, setMsg] = useState('')
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
