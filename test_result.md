@@ -509,6 +509,19 @@
         agent: "main"
         comment: "✅ TAVILY SEARCH ROUTING ISSUE RESOLVED: Fixed Next.js 14 routing conflict! Root cause: Existing /app/api/integrations/google/ directory was taking precedence over catch-all route for /api/integrations/ paths. Solution: Moved Tavily search endpoints from /api/integrations/search/ to /api/search/ to avoid directory conflicts. Updated frontend TavilySearch component to use new endpoint URLs (/api/search, /api/search/booking-assistant). Local testing confirms all endpoints working: GET /api/search returns health status, POST /api/search processes search queries, POST /api/search/booking-assistant handles booking searches. TavilySearch component should now be functional on dashboard!"
 
+
+  - task: "Reminder Settings API and UI"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/settings/scheduling/route.js, /app/app/dashboard/settings/scheduling/page.js, /app/vercel.json"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: 1) Created vercel.json with two cron jobs - daily Google Calendar sync (every 6 hours) and 5-minute reminder email processing. 2) Updated scheduling settings API to accept and store reminder preferences (enabled24h, enabled1h). 3) Added Email Reminders card to scheduling settings UI with toggles for 24-hour and 1-hour reminders. 4) Updated calculateReminders function to accept options for enabling/disabling specific reminder types. 5) Updated book routes to pass owner's reminder preferences when creating bookings. Needs backend testing."
+
 ## frontend:
   - task: "Brand logo integration - Replace external URLs with Book8-AI assets"
     implemented: true
