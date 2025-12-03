@@ -45,13 +45,19 @@ export async function POST(request) {
     try { payload = jwt.verify(token, env.JWT_SECRET) } catch { return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }) }
 
     const body = await request.json()
-    let { handle, timeZone, workingHours, defaultDurationMin, bufferMin, minNoticeMin, selectedCalendarIds } = body || {}
+    let { handle, timeZone, workingHours, defaultDurationMin, bufferMin, minNoticeMin, selectedCalendarIds, reminders } = body || {}
     if (handle) handle = String(handle).trim().toLowerCase()
 
     // validate uniqueness
     if (handle) {
       const existing = await database.collection('users').findOne({ 'scheduling.handleLower': handle, id: { $ne: payload.sub } })
       if (existing) return NextResponse.json({ ok: false, error: 'Handle already in use' }, { status: 409 })
+    }
+
+    // Parse reminder settings (default both enabled)
+    const reminderSettings = {
+      enabled24h: reminders?.enabled24h !== false, // Default true
+      enabled1h: reminders?.enabled1h !== false    // Default true
     }
 
     const scheduling = {
@@ -70,7 +76,8 @@ export async function POST(request) {
       defaultDurationMin: Number(defaultDurationMin || 30),
       bufferMin: Number(bufferMin || 0),
       minNoticeMin: Number(minNoticeMin || 120),
-      selectedCalendarIds: Array.isArray(selectedCalendarIds) ? selectedCalendarIds : []
+      selectedCalendarIds: Array.isArray(selectedCalendarIds) ? selectedCalendarIds : [],
+      reminders: reminderSettings
     }
 
     await database.collection('users').updateOne({ id: payload.sub }, { $set: { scheduling } })
