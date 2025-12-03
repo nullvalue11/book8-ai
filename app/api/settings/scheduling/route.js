@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
+import { DEFAULT_REMINDER_SETTINGS, normalizeReminderSettings } from '@/lib/reminders'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,16 @@ export async function GET(request) {
     let payload
     try { payload = jwt.verify(token, env.JWT_SECRET) } catch { return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }) }
     const u = await database.collection('users').findOne({ id: payload.sub })
-    const scheduling = u?.scheduling || null
+    
+    // Normalize reminders to new format if exists
+    let scheduling = u?.scheduling || null
+    if (scheduling?.reminders) {
+      scheduling = {
+        ...scheduling,
+        reminders: normalizeReminderSettings(scheduling.reminders)
+      }
+    }
+    
     return NextResponse.json({ ok: true, scheduling })
   } catch (e) { console.error('[settings/scheduling] GET', e); return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 }) }
 }
@@ -54,10 +64,16 @@ export async function POST(request) {
       if (existing) return NextResponse.json({ ok: false, error: 'Handle already in use' }, { status: 409 })
     }
 
-    // Parse reminder settings (default both enabled)
+    // Parse reminder settings with new structure
+    // Structure: { enabled, guestEnabled, hostEnabled, types: { '24h', '1h' } }
     const reminderSettings = {
-      enabled24h: reminders?.enabled24h !== false, // Default true
-      enabled1h: reminders?.enabled1h !== false    // Default true
+      enabled: reminders?.enabled ?? DEFAULT_REMINDER_SETTINGS.enabled,
+      guestEnabled: reminders?.guestEnabled ?? DEFAULT_REMINDER_SETTINGS.guestEnabled,
+      hostEnabled: reminders?.hostEnabled ?? DEFAULT_REMINDER_SETTINGS.hostEnabled,
+      types: {
+        '24h': reminders?.types?.['24h'] ?? DEFAULT_REMINDER_SETTINGS.types['24h'],
+        '1h': reminders?.types?.['1h'] ?? DEFAULT_REMINDER_SETTINGS.types['1h']
+      }
     }
 
     const scheduling = {
@@ -81,7 +97,7 @@ export async function POST(request) {
     }
 
     await database.collection('users').updateOne({ id: payload.sub }, { $set: { scheduling } })
-    console.info('[settings/scheduling] saved', payload.sub, scheduling.handle)
+    console.info('[settings/scheduling] saved', payload.sub, scheduling.handle, 'reminders:', reminderSettings)
     return NextResponse.json({ ok: true, scheduling })
   } catch (e) { console.error('[settings/scheduling] POST', e); return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 }) }
 }
