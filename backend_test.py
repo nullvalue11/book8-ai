@@ -2326,6 +2326,17 @@ class BackendTester:
             self.test_reschedule_execute_invalid_time_order()
             self.test_reschedule_execute_valid_request()
             
+            # Test Reminder Settings API features
+            self.log("\n🔔 Testing Reminder Settings API Features...")
+            self.test_reminder_settings_auth_required()
+            self.test_reminder_settings_get_initial()
+            self.test_reminder_settings_post_with_reminders()
+            self.test_reminder_settings_get_after_save()
+            self.test_reminder_settings_update_24h_only()
+            self.test_reminder_settings_update_1h_only()
+            self.test_reminder_settings_disable_both()
+            self.test_reminder_settings_default_behavior()
+            
         # Test error handling
         self.test_google_calendars_error_handling()
         
