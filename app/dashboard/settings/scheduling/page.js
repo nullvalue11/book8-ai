@@ -79,7 +79,8 @@ export default function SchedulingSettingsPage() {
       const payload = { 
         ...form, 
         workingHours: wh, 
-        selectedCalendarIds: calIds 
+        selectedCalendarIds: calIds,
+        reminders 
       }
       
       const res = await fetch('/api/settings/scheduling', { 
