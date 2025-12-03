@@ -142,9 +142,12 @@ export async function POST(request, { params }) {
       ? generateRescheduleToken(bookingId, email) 
       : null
     
-    // Calculate reminders if feature enabled
+    // Get owner's reminder preferences (default both enabled)
+    const reminderPrefs = owner.scheduling?.reminders || { enabled24h: true, enabled1h: true }
+    
+    // Calculate reminders if feature enabled, respecting owner's preferences
     const reminders = isFeatureEnabled('REMINDERS')
-      ? calculateReminders(startTime.toISOString())
+      ? calculateReminders(startTime.toISOString(), reminderPrefs)
       : []
 
     const booking = {
