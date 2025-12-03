@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 """
-Backend API Tests for Book8 AI MVP
-Tests all backend endpoints according to test_result.md requirements
+Backend API Testing Suite for Book8-AI
+Tests the updated Reminder Settings API with new data structure
 """
 
 import requests
 import json
 import os
 import sys
-from datetime import datetime, timedelta
-import uuid
-import hashlib
-import hmac
-import time
+from datetime import datetime
 
 # Get base URL from environment
 BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://book8-calendar.preview.emergentagent.com')
