@@ -8,33 +8,41 @@ import { v4 as uuidv4 } from 'uuid'
 /**
  * Calculate reminder times for a booking
  * @param {string} startTime - ISO datetime string
+ * @param {Object} options - Optional configuration
+ * @param {boolean} options.enabled24h - Whether to include 24h reminder (default true)
+ * @param {boolean} options.enabled1h - Whether to include 1h reminder (default true)
  * @returns {Array} Array of reminder objects (only future reminders)
  */
-export function calculateReminders(startTime) {
+export function calculateReminders(startTime, options = {}) {
+  const { enabled24h = true, enabled1h = true } = options
   const reminders = []
   const now = new Date()
   const start = new Date(startTime)
   
-  // 24 hour reminder
-  const reminder24h = new Date(start.getTime() - 24 * 60 * 60 * 1000)
-  if (reminder24h > now) {
-    reminders.push({
-      id: uuidv4(),
-      type: '24h',
-      sendAtUtc: reminder24h.toISOString(),
-      sentAtUtc: null
-    })
+  // 24 hour reminder (if enabled)
+  if (enabled24h) {
+    const reminder24h = new Date(start.getTime() - 24 * 60 * 60 * 1000)
+    if (reminder24h > now) {
+      reminders.push({
+        id: uuidv4(),
+        type: '24h',
+        sendAtUtc: reminder24h.toISOString(),
+        sentAtUtc: null
+      })
+    }
   }
   
-  // 1 hour reminder
-  const reminder1h = new Date(start.getTime() - 60 * 60 * 1000)
-  if (reminder1h > now) {
-    reminders.push({
-      id: uuidv4(),
-      type: '1h',
-      sendAtUtc: reminder1h.toISOString(),
-      sentAtUtc: null
-    })
+  // 1 hour reminder (if enabled)
+  if (enabled1h) {
+    const reminder1h = new Date(start.getTime() - 60 * 60 * 1000)
+    if (reminder1h > now) {
+      reminders.push({
+        id: uuidv4(),
+        type: '1h',
+        sendAtUtc: reminder1h.toISOString(),
+        sentAtUtc: null
+      })
+    }
   }
   
   return reminders
