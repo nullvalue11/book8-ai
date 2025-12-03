@@ -7,7 +7,7 @@ import { generateCancelToken } from '@/lib/security/resetToken'
 import { generateRescheduleToken } from '@/lib/security/rescheduleToken'
 import { bookingConfirmationEmail } from '@/lib/email/templates'
 import { buildICS } from '@/lib/ics'
-import { calculateReminders } from '@/lib/reminders'
+import { calculateReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
 
 export const runtime = 'nodejs'
