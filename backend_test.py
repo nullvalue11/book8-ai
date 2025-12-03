@@ -1867,6 +1867,386 @@ class BackendTester:
             
         self.results['reschedule_execute_valid_request'] = False
         return False
+
+    def test_reminder_settings_get_initial(self):
+        """Test GET /api/settings/scheduling - Initial state"""
+        self.log("Testing reminder settings GET (initial state)...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for reminder settings test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            url = f"{API_BASE}/settings/scheduling"
+            response = self.session.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    scheduling = data.get('scheduling')
+                    # Initial state - scheduling may be null or have reminders
+                    self.log(f"✅ GET reminder settings working - scheduling: {scheduling}")
+                    self.results['reminder_settings_get_initial'] = True
+                    return True
+                else:
+                    self.log(f"❌ GET reminder settings API error: {data}")
+            else:
+                self.log(f"❌ GET reminder settings failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ GET reminder settings test failed with error: {str(e)}")
+            
+        self.results['reminder_settings_get_initial'] = False
+        return False
+
+    def test_reminder_settings_post_with_reminders(self):
+        """Test POST /api/settings/scheduling with reminder settings"""
+        self.log("Testing reminder settings POST with reminders...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for reminder settings test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            url = f"{API_BASE}/settings/scheduling"
+            
+            # Test data with reminder settings
+            test_data = {
+                "handle": f"testuser{int(time.time())}",
+                "timeZone": "America/New_York",
+                "reminders": {
+                    "enabled24h": True,
+                    "enabled1h": True
+                }
+            }
+            
+            response = self.session.post(url, json=test_data, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    scheduling = data.get('scheduling')
+                    if scheduling:
+                        reminders = scheduling.get('reminders')
+                        if reminders:
+                            expected_reminders = {"enabled24h": True, "enabled1h": True}
+                            if reminders == expected_reminders:
+                                self.log(f"✅ POST reminder settings working - reminders saved: {reminders}")
+                                self.results['reminder_settings_post_with_reminders'] = True
+                                return True
+                            else:
+                                self.log(f"❌ Reminders mismatch. Expected: {expected_reminders}, Got: {reminders}")
+                        else:
+                            self.log("❌ No reminders in response")
+                    else:
+                        self.log("❌ No scheduling in response")
+                else:
+                    self.log(f"❌ POST reminder settings API error: {data}")
+            else:
+                self.log(f"❌ POST reminder settings failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ POST reminder settings test failed with error: {str(e)}")
+            
+        self.results['reminder_settings_post_with_reminders'] = False
+        return False
+
+    def test_reminder_settings_get_after_save(self):
+        """Test GET /api/settings/scheduling after saving reminders"""
+        self.log("Testing reminder settings GET after save...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for reminder settings test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            url = f"{API_BASE}/settings/scheduling"
+            response = self.session.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    scheduling = data.get('scheduling')
+                    if scheduling:
+                        reminders = scheduling.get('reminders')
+                        if reminders:
+                            # Should have the reminders from previous test
+                            if 'enabled24h' in reminders and 'enabled1h' in reminders:
+                                self.log(f"✅ GET reminder settings after save working - reminders persisted: {reminders}")
+                                self.results['reminder_settings_get_after_save'] = True
+                                return True
+                            else:
+                                self.log(f"❌ Reminders missing required fields: {reminders}")
+                        else:
+                            self.log("❌ No reminders in response after save")
+                    else:
+                        self.log("❌ No scheduling in response after save")
+                else:
+                    self.log(f"❌ GET reminder settings after save API error: {data}")
+            else:
+                self.log(f"❌ GET reminder settings after save failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ GET reminder settings after save test failed with error: {str(e)}")
+            
+        self.results['reminder_settings_get_after_save'] = False
+        return False
+
+    def test_reminder_settings_update_24h_only(self):
+        """Test updating reminder settings - 24h only"""
+        self.log("Testing reminder settings update (24h only)...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for reminder settings test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            url = f"{API_BASE}/settings/scheduling"
+            
+            # Test: Only 24h enabled
+            test_data = {
+                "reminders": {
+                    "enabled24h": True,
+                    "enabled1h": False
+                }
+            }
+            
+            response = self.session.post(url, json=test_data, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    scheduling = data.get('scheduling')
+                    if scheduling:
+                        reminders = scheduling.get('reminders')
+                        if reminders:
+                            expected_reminders = {"enabled24h": True, "enabled1h": False}
+                            if reminders == expected_reminders:
+                                self.log(f"✅ Reminder settings 24h only update working: {reminders}")
+                                self.results['reminder_settings_update_24h_only'] = True
+                                return True
+                            else:
+                                self.log(f"❌ 24h only reminders mismatch. Expected: {expected_reminders}, Got: {reminders}")
+                        else:
+                            self.log("❌ No reminders in 24h only response")
+                    else:
+                        self.log("❌ No scheduling in 24h only response")
+                else:
+                    self.log(f"❌ 24h only reminder settings API error: {data}")
+            else:
+                self.log(f"❌ 24h only reminder settings failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ 24h only reminder settings test failed with error: {str(e)}")
+            
+        self.results['reminder_settings_update_24h_only'] = False
+        return False
+
+    def test_reminder_settings_update_1h_only(self):
+        """Test updating reminder settings - 1h only"""
+        self.log("Testing reminder settings update (1h only)...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for reminder settings test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            url = f"{API_BASE}/settings/scheduling"
+            
+            # Test: Only 1h enabled
+            test_data = {
+                "reminders": {
+                    "enabled24h": False,
+                    "enabled1h": True
+                }
+            }
+            
+            response = self.session.post(url, json=test_data, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    scheduling = data.get('scheduling')
+                    if scheduling:
+                        reminders = scheduling.get('reminders')
+                        if reminders:
+                            expected_reminders = {"enabled24h": False, "enabled1h": True}
+                            if reminders == expected_reminders:
+                                self.log(f"✅ Reminder settings 1h only update working: {reminders}")
+                                self.results['reminder_settings_update_1h_only'] = True
+                                return True
+                            else:
+                                self.log(f"❌ 1h only reminders mismatch. Expected: {expected_reminders}, Got: {reminders}")
+                        else:
+                            self.log("❌ No reminders in 1h only response")
+                    else:
+                        self.log("❌ No scheduling in 1h only response")
+                else:
+                    self.log(f"❌ 1h only reminder settings API error: {data}")
+            else:
+                self.log(f"❌ 1h only reminder settings failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ 1h only reminder settings test failed with error: {str(e)}")
+            
+        self.results['reminder_settings_update_1h_only'] = False
+        return False
+
+    def test_reminder_settings_disable_both(self):
+        """Test disabling both reminder settings"""
+        self.log("Testing reminder settings disable both...")
+        
+        if not self.auth_token:
+            self.log("❌ No auth token available for reminder settings test")
+            return False
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            url = f"{API_BASE}/settings/scheduling"
+            
+            # Test: Both disabled
+            test_data = {
+                "reminders": {
+                    "enabled24h": False,
+                    "enabled1h": False
+                }
+            }
+            
+            response = self.session.post(url, json=test_data, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    scheduling = data.get('scheduling')
+                    if scheduling:
+                        reminders = scheduling.get('reminders')
+                        if reminders:
+                            expected_reminders = {"enabled24h": False, "enabled1h": False}
+                            if reminders == expected_reminders:
+                                self.log(f"✅ Reminder settings disable both working: {reminders}")
+                                self.results['reminder_settings_disable_both'] = True
+                                return True
+                            else:
+                                self.log(f"❌ Disable both reminders mismatch. Expected: {expected_reminders}, Got: {reminders}")
+                        else:
+                            self.log("❌ No reminders in disable both response")
+                    else:
+                        self.log("❌ No scheduling in disable both response")
+                else:
+                    self.log(f"❌ Disable both reminder settings API error: {data}")
+            else:
+                self.log(f"❌ Disable both reminder settings failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ Disable both reminder settings test failed with error: {str(e)}")
+            
+        self.results['reminder_settings_disable_both'] = False
+        return False
+
+    def test_reminder_settings_default_behavior(self):
+        """Test default reminder behavior when not specified"""
+        self.log("Testing reminder settings default behavior...")
+        
+        # Create a new user for clean test
+        try:
+            timestamp = int(time.time())
+            new_email = f"test.default.{timestamp}@example.com"
+            password = "TestPassword123!"
+            
+            # Register user
+            response = self.session.post(f"{API_BASE}/auth/register", json={
+                "email": new_email,
+                "password": password
+            })
+            
+            if response.status_code != 200:
+                self.log("❌ Failed to register new user for default test")
+                return False
+            
+            data = response.json()
+            if not data.get('ok') or not data.get('token'):
+                self.log("❌ Failed to get token for default test")
+                return False
+            
+            # Use new token
+            new_token = data['token']
+            headers = {'Authorization': f'Bearer {new_token}'}
+            
+            # Test: Save settings without reminders field
+            test_data = {
+                "handle": f"defaulttest{timestamp}",
+                "timeZone": "UTC"
+            }
+            
+            response = self.session.post(f"{API_BASE}/settings/scheduling", json=test_data, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    scheduling = data.get('scheduling')
+                    if scheduling:
+                        reminders = scheduling.get('reminders')
+                        if reminders:
+                            # Default should be both enabled (true)
+                            expected_reminders = {"enabled24h": True, "enabled1h": True}
+                            if reminders == expected_reminders:
+                                self.log(f"✅ Default reminder behavior working: {reminders}")
+                                self.results['reminder_settings_default_behavior'] = True
+                                return True
+                            else:
+                                self.log(f"❌ Default reminders incorrect. Expected: {expected_reminders}, Got: {reminders}")
+                        else:
+                            self.log("❌ No reminders in default behavior response")
+                    else:
+                        self.log("❌ No scheduling in default behavior response")
+                else:
+                    self.log(f"❌ Default behavior reminder settings API error: {data}")
+            else:
+                self.log(f"❌ Default behavior reminder settings failed with status {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log(f"❌ Default behavior reminder settings test failed with error: {str(e)}")
+            
+        self.results['reminder_settings_default_behavior'] = False
+        return False
+
+    def test_reminder_settings_auth_required(self):
+        """Test that reminder settings endpoints require authentication"""
+        self.log("Testing reminder settings authentication requirement...")
+        
+        try:
+            # Test GET without auth
+            response = self.session.get(f"{API_BASE}/settings/scheduling", timeout=10)
+            
+            if response.status_code == 401:
+                self.log("✅ GET reminder settings correctly requires authentication")
+            else:
+                self.log(f"❌ GET reminder settings expected 401, got {response.status_code}")
+                self.results['reminder_settings_auth_required'] = False
+                return False
+            
+            # Test POST without auth
+            response = self.session.post(f"{API_BASE}/settings/scheduling", 
+                                       json={"reminders": {"enabled24h": True, "enabled1h": True}}, 
+                                       timeout=10)
+            
+            if response.status_code == 401:
+                self.log("✅ POST reminder settings correctly requires authentication")
+                self.results['reminder_settings_auth_required'] = True
+                return True
+            else:
+                self.log(f"❌ POST reminder settings expected 401, got {response.status_code}")
+                
+        except Exception as e:
+            self.log(f"❌ Reminder settings auth test failed with error: {str(e)}")
+            
+        self.results['reminder_settings_auth_required'] = False
+        return False
         
     def run_all_tests(self):
         """Run all backend tests in sequence"""
