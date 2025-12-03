@@ -12,7 +12,12 @@ let client, db, indexed = false
 async function connect() {
   if (!client) { client = new MongoClient(env.MONGO_URL); await client.connect(); db = client.db(env.DB_NAME) }
   if (!indexed) {
-    try { await db.collection('users').createIndex({ 'scheduling.handleLower': 1 }, { unique: true, sparse: true }) } catch {}
+    try { 
+      // Drop existing index if it exists
+      await db.collection('users').dropIndex('scheduling.handleLower_1').catch(() => {})
+      // Create sparse unique index (allows multiple null values)
+      await db.collection('users').createIndex({ 'scheduling.handleLower': 1 }, { unique: true, sparse: true }) 
+    } catch {}
     indexed = true
   }
   return db
