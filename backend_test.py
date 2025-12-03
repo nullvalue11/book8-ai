@@ -77,7 +77,15 @@ class BackendTester:
             'reschedule_execute_missing_fields': False,
             'reschedule_execute_invalid_date': False,
             'reschedule_execute_invalid_time_order': False,
-            'reschedule_execute_valid_request': False
+            'reschedule_execute_valid_request': False,
+            'reminder_settings_get_initial': False,
+            'reminder_settings_post_with_reminders': False,
+            'reminder_settings_get_after_save': False,
+            'reminder_settings_update_24h_only': False,
+            'reminder_settings_update_1h_only': False,
+            'reminder_settings_disable_both': False,
+            'reminder_settings_default_behavior': False,
+            'reminder_settings_auth_required': False
         }
         
     def log(self, message):
