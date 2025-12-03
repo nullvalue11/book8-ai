@@ -57,6 +57,7 @@ export default function SchedulingSettingsPage() {
         setForm(prev => ({ ...prev, ...data.scheduling }))
         setWh(data.scheduling.workingHours || wh)
         setCalIds(data.scheduling.selectedCalendarIds || [])
+        setReminders(data.scheduling.reminders || { enabled24h: true, enabled1h: true })
         
         const all24 = Object.values(data.scheduling.workingHours || {}).every(
           blocks => blocks.length === 1 && blocks[0].start === '00:00' && blocks[0].end === '23:59'
