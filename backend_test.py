@@ -88,8 +88,9 @@ def test_reminder_settings_api():
     
     # Test 2: POST new reminder format - All enabled
     try:
+        unique_handle = f"remindertest{datetime.now().strftime('%H%M%S')}"
         reminder_payload = {
-            "handle": "remindertest",
+            "handle": unique_handle,
             "reminders": {
                 "enabled": True,
                 "guestEnabled": True,
