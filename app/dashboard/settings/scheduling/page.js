@@ -5,7 +5,15 @@ import { Input } from '../../../../components/ui/input'
 import { Label } from '../../../../components/ui/label'
 import { Button } from '../../../../components/ui/button'
 import { Switch } from '../../../../components/ui/switch'
-import { Plus, Trash2, Copy, Check, Bell, Clock } from 'lucide-react'
+import { Plus, Trash2, Copy, Check, Bell, Clock, User, Users } from 'lucide-react'
+
+// Default reminder settings structure
+const DEFAULT_REMINDERS = {
+  enabled: true,
+  guestEnabled: true,
+  hostEnabled: false,
+  types: { '24h': true, '1h': true }
+}
 
 export default function SchedulingSettingsPage() {
   const [token, setToken] = useState(null)
@@ -27,7 +35,7 @@ export default function SchedulingSettingsPage() {
   })
   const [is24x7, setIs24x7] = useState(false)
   const [calIds, setCalIds] = useState([])
-  const [reminders, setReminders] = useState({ enabled24h: true, enabled1h: true })
+  const [reminders, setReminders] = useState(DEFAULT_REMINDERS)
   const [msg, setMsg] = useState('')
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -57,7 +65,36 @@ export default function SchedulingSettingsPage() {
         setForm(prev => ({ ...prev, ...data.scheduling }))
         setWh(data.scheduling.workingHours || wh)
         setCalIds(data.scheduling.selectedCalendarIds || [])
-        setReminders(data.scheduling.reminders || { enabled24h: true, enabled1h: true })
+        
+        // Handle both legacy and new reminder format
+        const savedReminders = data.scheduling.reminders
+        if (savedReminders) {
+          // Check if it's legacy format (has enabled24h/enabled1h)
+          if ('enabled24h' in savedReminders || 'enabled1h' in savedReminders) {
+            setReminders({
+              enabled: true,
+              guestEnabled: true,
+              hostEnabled: false,
+              types: {
+                '24h': savedReminders.enabled24h !== false,
+                '1h': savedReminders.enabled1h !== false
+              }
+            })
+          } else {
+            // New format
+            setReminders({
+              enabled: savedReminders.enabled ?? DEFAULT_REMINDERS.enabled,
+              guestEnabled: savedReminders.guestEnabled ?? DEFAULT_REMINDERS.guestEnabled,
+              hostEnabled: savedReminders.hostEnabled ?? DEFAULT_REMINDERS.hostEnabled,
+              types: {
+                '24h': savedReminders.types?.['24h'] ?? DEFAULT_REMINDERS.types['24h'],
+                '1h': savedReminders.types?.['1h'] ?? DEFAULT_REMINDERS.types['1h']
+              }
+            })
+          }
+        } else {
+          setReminders(DEFAULT_REMINDERS)
+        }
         
         const all24 = Object.values(data.scheduling.workingHours || {}).every(
           blocks => blocks.length === 1 && blocks[0].start === '00:00' && blocks[0].end === '23:59'
