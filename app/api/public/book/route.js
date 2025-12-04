@@ -168,20 +168,29 @@ export async function POST(request) {
       ? generateRescheduleToken(bookingId, email) 
       : null
     
-    // Get owner's reminder preferences (normalized to new format)
-    const reminderPrefs = normalizeReminderSettings(owner.scheduling?.reminders)
+    // Get reminder preferences: event type override > owner default
+    const eventReminderSettings = eventType?.scheduling?.reminders
+    const ownerReminderSettings = owner.scheduling?.reminders
+    const reminderPrefs = normalizeReminderSettings(eventReminderSettings || ownerReminderSettings)
     
-    // Calculate reminders if feature enabled, respecting owner's preferences
+    // Calculate reminders if feature enabled, respecting preferences
     const reminders = isFeatureEnabled('REMINDERS')
       ? calculateReminders(startTime.toISOString(), reminderPrefs)
       : []
     
-    console.log(`[book] Creating booking with ${reminders.length} reminders (enabled: ${reminderPrefs.enabled}, guest: ${reminderPrefs.guestEnabled}, host: ${reminderPrefs.hostEnabled})`)
+    // Build booking title
+    const bookingTitle = eventType 
+      ? `${eventType.name} with ${name}`
+      : `Meeting with ${name}`
+    
+    console.log(`[book] Creating booking with ${reminders.length} reminders (enabled: ${reminderPrefs.enabled}, guest: ${reminderPrefs.guestEnabled}, host: ${reminderPrefs.hostEnabled}, eventType: ${eventType?.slug || 'default'})`)
 
     const booking = {
       id: bookingId,
       userId: owner.id,
-      title: `Meeting with ${name}`,
+      eventTypeId: eventType?.id || null,
+      eventTypeSlug: eventType?.slug || null,
+      title: bookingTitle,
       customerName: name,
       guestEmail: email,
       guestTimezone: guestTimezone || owner.scheduling.timeZone || 'UTC',
