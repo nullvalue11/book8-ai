@@ -40,6 +40,7 @@ export async function POST(request) {
     const database = await connect()
     const url = new URL(request.url)
     const handle = url.searchParams.get('handle')
+    const eventSlug = url.searchParams.get('eventSlug')
     const body = await request.json()
     const { name, email, notes, start, end, guestTimezone } = body
 
@@ -80,6 +81,23 @@ export async function POST(request) {
         { ok: false, error: 'Booking page not found' },
         { status: 404 }
       )
+    }
+
+    // Load event type if specified
+    let eventType = null
+    if (eventSlug) {
+      eventType = await database.collection('event_types').findOne({
+        userId: owner.id,
+        slug: eventSlug.toLowerCase(),
+        isActive: true
+      })
+      
+      if (!eventType) {
+        return NextResponse.json(
+          { ok: false, error: 'Event type not found or inactive' },
+          { status: 404 }
+        )
+      }
     }
 
     // Validate times
