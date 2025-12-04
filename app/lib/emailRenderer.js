@@ -87,7 +87,7 @@ export async function renderHostReminder24h(booking, owner, guestTz = null) {
     startTimeHost: formatEmailDateTime(booking.startTime, hostTz),
     guestTimeZone: displayTz,
     hostTimeZone: hostTz,
-    manageLink: `${booking.baseUrl || process.env.NEXT_PUBLIC_BASE_URL}/dashboard`,
+    manageLink: `${booking.baseUrl || env.NEXT_PUBLIC_BASE_URL}/dashboard`,
     showDualTz: guestTz && guestTz !== hostTz
   }))
   
@@ -111,7 +111,7 @@ export async function renderHostReminder1h(booking, owner, guestTz = null) {
     startTimeHost: formatEmailDateTime(booking.startTime, hostTz),
     guestTimeZone: displayTz,
     hostTimeZone: hostTz,
-    manageLink: `${booking.baseUrl || process.env.NEXT_PUBLIC_BASE_URL}/dashboard`,
+    manageLink: `${booking.baseUrl || env.NEXT_PUBLIC_BASE_URL}/dashboard`,
     showDualTz: guestTz && guestTz !== hostTz
   }))
   
