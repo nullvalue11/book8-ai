@@ -40,6 +40,7 @@ export async function POST(request) {
     const database = await connect()
     const url = new URL(request.url)
     const handle = url.searchParams.get('handle')
+    const eventSlug = url.searchParams.get('eventSlug')
     const body = await request.json()
     const { name, email, notes, start, end, guestTimezone } = body
 
@@ -80,6 +81,23 @@ export async function POST(request) {
         { ok: false, error: 'Booking page not found' },
         { status: 404 }
       )
+    }
+
+    // Load event type if specified
+    let eventType = null
+    if (eventSlug) {
+      eventType = await database.collection('event_types').findOne({
+        userId: owner.id,
+        slug: eventSlug.toLowerCase(),
+        isActive: true
+      })
+      
+      if (!eventType) {
+        return NextResponse.json(
+          { ok: false, error: 'Event type not found or inactive' },
+          { status: 404 }
+        )
+      }
     }
 
     // Validate times
@@ -150,20 +168,29 @@ export async function POST(request) {
       ? generateRescheduleToken(bookingId, email) 
       : null
     
-    // Get owner's reminder preferences (normalized to new format)
-    const reminderPrefs = normalizeReminderSettings(owner.scheduling?.reminders)
+    // Get reminder preferences: event type override > owner default
+    const eventReminderSettings = eventType?.scheduling?.reminders
+    const ownerReminderSettings = owner.scheduling?.reminders
+    const reminderPrefs = normalizeReminderSettings(eventReminderSettings || ownerReminderSettings)
     
-    // Calculate reminders if feature enabled, respecting owner's preferences
+    // Calculate reminders if feature enabled, respecting preferences
     const reminders = isFeatureEnabled('REMINDERS')
       ? calculateReminders(startTime.toISOString(), reminderPrefs)
       : []
     
-    console.log(`[book] Creating booking with ${reminders.length} reminders (enabled: ${reminderPrefs.enabled}, guest: ${reminderPrefs.guestEnabled}, host: ${reminderPrefs.hostEnabled})`)
+    // Build booking title
+    const bookingTitle = eventType 
+      ? `${eventType.name} with ${name}`
+      : `Meeting with ${name}`
+    
+    console.log(`[book] Creating booking with ${reminders.length} reminders (enabled: ${reminderPrefs.enabled}, guest: ${reminderPrefs.guestEnabled}, host: ${reminderPrefs.hostEnabled}, eventType: ${eventType?.slug || 'default'})`)
 
     const booking = {
       id: bookingId,
       userId: owner.id,
-      title: `Meeting with ${name}`,
+      eventTypeId: eventType?.id || null,
+      eventTypeSlug: eventType?.slug || null,
+      title: bookingTitle,
       customerName: name,
       guestEmail: email,
       guestTimezone: guestTimezone || owner.scheduling.timeZone || 'UTC',

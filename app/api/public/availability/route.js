@@ -102,6 +102,7 @@ export async function GET(request) {
     const date = url.searchParams.get('date')
     const guestTz = url.searchParams.get('tz') || 'UTC'
     const duration = parseInt(url.searchParams.get('duration') || '0')
+    const eventSlug = url.searchParams.get('eventSlug')
 
     if (!handle) {
       return NextResponse.json(
@@ -158,7 +159,26 @@ export async function GET(request) {
       )
     }
 
+    // Load event type if specified
+    let eventType = null
+    if (eventSlug) {
+      eventType = await database.collection('event_types').findOne({
+        userId: owner.id,
+        slug: eventSlug.toLowerCase(),
+        isActive: true
+      })
+      
+      if (!eventType) {
+        return NextResponse.json(
+          { ok: false, code: 'EVENT_TYPE_NOT_FOUND', error: 'Event type not found or inactive' },
+          { status: 404 }
+        )
+      }
+    }
+
+    // Merge settings: event type overrides > user defaults
     const settings = owner.scheduling || {}
+    const eventSettings = eventType?.scheduling || {}
     
     // Calendars to use for availability (fallback to primary)
     const selectedCalendarIds =
@@ -171,6 +191,8 @@ export async function GET(request) {
       userId: owner.id,
       date,
       duration,
+      eventSlug: eventSlug || null,
+      eventTypeId: eventType?.id || null,
       tz: guestTz,
       hasRefreshToken: !!owner.google?.refreshToken,
       selectedCalendarCount: selectedCalendarIds.length,
@@ -183,14 +205,17 @@ export async function GET(request) {
     }
 
     const hostTz = settings.timeZone || 'UTC'
-    const minNoticeMin = settings.minNoticeMin || 120
-    const bufferMin = settings.bufferMin || 0
-    const durationMin = duration || settings.defaultDurationMin || 30
+    // Event type overrides
+    const minNoticeMin = eventSettings.minNoticeMin ?? settings.minNoticeMin ?? 120
+    const bufferMin = eventSettings.bufferMin ?? settings.bufferMin ?? 0
+    // Duration priority: query param > event type > user default
+    const durationMin = duration || eventType?.durationMinutes || settings.defaultDurationMin || 30
+    // Working hours: event type override or user default
+    const workingHours = eventSettings.workingHours || settings.workingHours || {}
 
     // Parse date in host timezone
     const requestDate = new Date(date + 'T00:00:00')
     const dayOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][requestDate.getDay()]
-    const workingHours = settings.workingHours || {}
     const daySlots = workingHours[dayOfWeek] || []
 
     if (daySlots.length === 0) {
