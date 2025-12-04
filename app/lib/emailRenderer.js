@@ -63,7 +63,7 @@ export async function renderReminder1h(booking, owner, guestTz = null) {
     startTimeHost: formatEmailDateTime(booking.startTime, hostTz),
     guestTimeZone: displayTz,
     hostTimeZone: hostTz,
-    manageLink: `${booking.baseUrl || process.env.NEXT_PUBLIC_BASE_URL}/bookings/reschedule/${booking.rescheduleToken}`,
+    manageLink: `${booking.baseUrl || env.NEXT_PUBLIC_BASE_URL}/bookings/reschedule/${booking.rescheduleToken}`,
     showDualTz: guestTz && guestTz !== hostTz
   }))
   
