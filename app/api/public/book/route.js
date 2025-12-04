@@ -7,7 +7,7 @@ import { generateCancelToken } from '@/lib/security/resetToken'
 import { generateRescheduleToken } from '@/lib/security/rescheduleToken'
 import { bookingConfirmationEmail } from '@/lib/email/templates'
 import { buildICS } from '@/lib/ics'
-import { calculateReminders } from '@/lib/reminders'
+import { calculateReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
 
 export const runtime = 'nodejs'
@@ -150,13 +150,15 @@ export async function POST(request) {
       ? generateRescheduleToken(bookingId, email) 
       : null
     
-    // Get owner's reminder preferences (default both enabled)
-    const reminderPrefs = owner.scheduling?.reminders || { enabled24h: true, enabled1h: true }
+    // Get owner's reminder preferences (normalized to new format)
+    const reminderPrefs = normalizeReminderSettings(owner.scheduling?.reminders)
     
     // Calculate reminders if feature enabled, respecting owner's preferences
     const reminders = isFeatureEnabled('REMINDERS')
       ? calculateReminders(startTime.toISOString(), reminderPrefs)
       : []
+    
+    console.log(`[book] Creating booking with ${reminders.length} reminders (enabled: ${reminderPrefs.enabled}, guest: ${reminderPrefs.guestEnabled}, host: ${reminderPrefs.hostEnabled})`)
 
     const booking = {
       id: bookingId,

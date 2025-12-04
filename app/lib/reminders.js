@@ -1,48 +1,96 @@
 /**
  * Reminder Helper Functions
  * Handles reminder calculation and management for bookings
+ * Supports both guest and host reminders with configurable settings
  */
 
 import { v4 as uuidv4 } from 'uuid'
 
 /**
+ * Default reminder settings structure
+ */
+export const DEFAULT_REMINDER_SETTINGS = {
+  enabled: true,
+  guestEnabled: true,
+  hostEnabled: false,
+  types: { '24h': true, '1h': true }
+}
+
+/**
  * Calculate reminder times for a booking
  * @param {string} startTime - ISO datetime string
- * @param {Object} options - Optional configuration
- * @param {boolean} options.enabled24h - Whether to include 24h reminder (default true)
- * @param {boolean} options.enabled1h - Whether to include 1h reminder (default true)
+ * @param {Object} settings - Reminder settings from owner's scheduling config
+ * @param {boolean} settings.enabled - Master switch for reminders
+ * @param {boolean} settings.guestEnabled - Whether to send guest reminders
+ * @param {boolean} settings.hostEnabled - Whether to send host reminders
+ * @param {Object} settings.types - Which reminder types are enabled { '24h': boolean, '1h': boolean }
  * @returns {Array} Array of reminder objects (only future reminders)
  */
-export function calculateReminders(startTime, options = {}) {
-  const { enabled24h = true, enabled1h = true } = options
+export function calculateReminders(startTime, settings = {}) {
+  // Merge with defaults
+  const config = {
+    enabled: settings.enabled ?? DEFAULT_REMINDER_SETTINGS.enabled,
+    guestEnabled: settings.guestEnabled ?? DEFAULT_REMINDER_SETTINGS.guestEnabled,
+    hostEnabled: settings.hostEnabled ?? DEFAULT_REMINDER_SETTINGS.hostEnabled,
+    types: {
+      '24h': settings.types?.['24h'] ?? DEFAULT_REMINDER_SETTINGS.types['24h'],
+      '1h': settings.types?.['1h'] ?? DEFAULT_REMINDER_SETTINGS.types['1h']
+    }
+  }
+  
+  // If reminders are completely disabled, return empty array
+  if (!config.enabled) {
+    return []
+  }
+  
+  // If neither guest nor host reminders are enabled, return empty
+  if (!config.guestEnabled && !config.hostEnabled) {
+    return []
+  }
+  
   const reminders = []
   const now = new Date()
   const start = new Date(startTime)
   
-  // 24 hour reminder (if enabled)
-  if (enabled24h) {
-    const reminder24h = new Date(start.getTime() - 24 * 60 * 60 * 1000)
-    if (reminder24h > now) {
-      reminders.push({
-        id: uuidv4(),
-        type: '24h',
-        sendAtUtc: reminder24h.toISOString(),
-        sentAtUtc: null
-      })
+  // Helper to add reminders for a specific audience
+  const addRemindersForAudience = (audience) => {
+    // 24 hour reminder (if enabled)
+    if (config.types['24h']) {
+      const reminder24h = new Date(start.getTime() - 24 * 60 * 60 * 1000)
+      if (reminder24h > now) {
+        reminders.push({
+          id: uuidv4(),
+          type: '24h',
+          audience,
+          sendAtUtc: reminder24h.toISOString(),
+          sentAtUtc: null
+        })
+      }
+    }
+    
+    // 1 hour reminder (if enabled)
+    if (config.types['1h']) {
+      const reminder1h = new Date(start.getTime() - 60 * 60 * 1000)
+      if (reminder1h > now) {
+        reminders.push({
+          id: uuidv4(),
+          type: '1h',
+          audience,
+          sendAtUtc: reminder1h.toISOString(),
+          sentAtUtc: null
+        })
+      }
     }
   }
   
-  // 1 hour reminder (if enabled)
-  if (enabled1h) {
-    const reminder1h = new Date(start.getTime() - 60 * 60 * 1000)
-    if (reminder1h > now) {
-      reminders.push({
-        id: uuidv4(),
-        type: '1h',
-        sendAtUtc: reminder1h.toISOString(),
-        sentAtUtc: null
-      })
-    }
+  // Add guest reminders if enabled
+  if (config.guestEnabled) {
+    addRemindersForAudience('guest')
+  }
+  
+  // Add host reminders if enabled
+  if (config.hostEnabled) {
+    addRemindersForAudience('host')
   }
   
   return reminders
@@ -51,24 +99,48 @@ export function calculateReminders(startTime, options = {}) {
 /**
  * Recompute reminders for a rescheduled booking
  * Keeps already-sent reminders, recomputes pending ones
+ * Handles both guest and host reminders
  * @param {Array} existingReminders - Current reminders array
  * @param {string} newStartTime - New ISO datetime string
+ * @param {Object} settings - Reminder settings from owner's scheduling config
  * @returns {Array} Updated reminders array
  */
-export function recomputeReminders(existingReminders, newStartTime) {
+export function recomputeReminders(existingReminders, newStartTime, settings = {}) {
+  const config = {
+    enabled: settings.enabled ?? DEFAULT_REMINDER_SETTINGS.enabled,
+    guestEnabled: settings.guestEnabled ?? DEFAULT_REMINDER_SETTINGS.guestEnabled,
+    hostEnabled: settings.hostEnabled ?? DEFAULT_REMINDER_SETTINGS.hostEnabled,
+    types: {
+      '24h': settings.types?.['24h'] ?? DEFAULT_REMINDER_SETTINGS.types['24h'],
+      '1h': settings.types?.['1h'] ?? DEFAULT_REMINDER_SETTINGS.types['1h']
+    }
+  }
+  
+  // If reminders are disabled, clear all unsent reminders
+  if (!config.enabled) {
+    return existingReminders.filter(r => r.sentAtUtc)
+  }
+  
   const now = new Date()
   const newStart = new Date(newStartTime)
   
   // Keep reminders that were already sent
   const sentReminders = existingReminders.filter(r => r.sentAtUtc)
   
-  // Calculate new reminders for unsent types
-  const unsentTypes = new Set(['24h', '1h'])
-  sentReminders.forEach(r => unsentTypes.delete(r.type))
+  // Track which type+audience combinations have been sent
+  const sentCombos = new Set()
+  sentReminders.forEach(r => {
+    const audience = r.audience || 'guest' // Legacy reminders default to guest
+    sentCombos.add(`${r.type}-${audience}`)
+  })
   
   const newReminders = []
   
-  unsentTypes.forEach(type => {
+  // Helper to add new reminders for a type and audience
+  const addIfNeeded = (type, audience) => {
+    const combo = `${type}-${audience}`
+    if (sentCombos.has(combo)) return // Already sent
+    
     const hoursOffset = type === '24h' ? 24 : 1
     const reminderTime = new Date(newStart.getTime() - hoursOffset * 60 * 60 * 1000)
     
@@ -76,11 +148,24 @@ export function recomputeReminders(existingReminders, newStartTime) {
       newReminders.push({
         id: uuidv4(),
         type,
+        audience,
         sendAtUtc: reminderTime.toISOString(),
         sentAtUtc: null
       })
     }
-  })
+  }
+  
+  // Process guest reminders
+  if (config.guestEnabled) {
+    if (config.types['24h']) addIfNeeded('24h', 'guest')
+    if (config.types['1h']) addIfNeeded('1h', 'guest')
+  }
+  
+  // Process host reminders
+  if (config.hostEnabled) {
+    if (config.types['24h']) addIfNeeded('24h', 'host')
+    if (config.types['1h']) addIfNeeded('1h', 'host')
+  }
   
   return [...sentReminders, ...newReminders]
 }
@@ -120,4 +205,37 @@ export function markReminderSent(reminders, reminderId) {
     }
     return r
   })
+}
+
+/**
+ * Normalize legacy reminder settings to new format
+ * @param {Object} reminders - Raw reminder settings from DB
+ * @returns {Object} Normalized reminder settings
+ */
+export function normalizeReminderSettings(reminders) {
+  if (!reminders) return DEFAULT_REMINDER_SETTINGS
+  
+  // Handle legacy format: { enabled24h: boolean, enabled1h: boolean }
+  if ('enabled24h' in reminders || 'enabled1h' in reminders) {
+    return {
+      enabled: true,
+      guestEnabled: true,
+      hostEnabled: false,
+      types: {
+        '24h': reminders.enabled24h !== false,
+        '1h': reminders.enabled1h !== false
+      }
+    }
+  }
+  
+  // New format - merge with defaults
+  return {
+    enabled: reminders.enabled ?? DEFAULT_REMINDER_SETTINGS.enabled,
+    guestEnabled: reminders.guestEnabled ?? DEFAULT_REMINDER_SETTINGS.guestEnabled,
+    hostEnabled: reminders.hostEnabled ?? DEFAULT_REMINDER_SETTINGS.hostEnabled,
+    types: {
+      '24h': reminders.types?.['24h'] ?? DEFAULT_REMINDER_SETTINGS.types['24h'],
+      '1h': reminders.types?.['1h'] ?? DEFAULT_REMINDER_SETTINGS.types['1h']
+    }
+  }
 }

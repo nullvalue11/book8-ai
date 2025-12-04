@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
+import { DEFAULT_REMINDER_SETTINGS, normalizeReminderSettings } from '@/lib/reminders'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,7 +12,12 @@ let client, db, indexed = false
 async function connect() {
   if (!client) { client = new MongoClient(env.MONGO_URL); await client.connect(); db = client.db(env.DB_NAME) }
   if (!indexed) {
-    try { await db.collection('users').createIndex({ 'scheduling.handleLower': 1 }, { unique: true, sparse: true }) } catch {}
+    try { 
+      // Drop existing index if it exists
+      await db.collection('users').dropIndex('scheduling.handleLower_1').catch(() => {})
+      // Create sparse unique index (allows multiple null values)
+      await db.collection('users').createIndex({ 'scheduling.handleLower': 1 }, { unique: true, sparse: true }) 
+    } catch {}
     indexed = true
   }
   return db
@@ -29,7 +35,16 @@ export async function GET(request) {
     let payload
     try { payload = jwt.verify(token, env.JWT_SECRET) } catch { return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }) }
     const u = await database.collection('users').findOne({ id: payload.sub })
-    const scheduling = u?.scheduling || null
+    
+    // Normalize reminders to new format if exists
+    let scheduling = u?.scheduling || null
+    if (scheduling?.reminders) {
+      scheduling = {
+        ...scheduling,
+        reminders: normalizeReminderSettings(scheduling.reminders)
+      }
+    }
+    
     return NextResponse.json({ ok: true, scheduling })
   } catch (e) { console.error('[settings/scheduling] GET', e); return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 }) }
 }
@@ -48,23 +63,34 @@ export async function POST(request) {
     let { handle, timeZone, workingHours, defaultDurationMin, bufferMin, minNoticeMin, selectedCalendarIds, reminders } = body || {}
     if (handle) handle = String(handle).trim().toLowerCase()
 
+    // Get existing user data
+    const user = await database.collection('users').findOne({ id: payload.sub })
+    const existingScheduling = user?.scheduling || {}
+
     // validate uniqueness
     if (handle) {
       const existing = await database.collection('users').findOne({ 'scheduling.handleLower': handle, id: { $ne: payload.sub } })
       if (existing) return NextResponse.json({ ok: false, error: 'Handle already in use' }, { status: 409 })
     }
 
-    // Parse reminder settings (default both enabled)
+    // Parse reminder settings with new structure
+    // Structure: { enabled, guestEnabled, hostEnabled, types: { '24h', '1h' } }
     const reminderSettings = {
-      enabled24h: reminders?.enabled24h !== false, // Default true
-      enabled1h: reminders?.enabled1h !== false    // Default true
+      enabled: reminders?.enabled ?? DEFAULT_REMINDER_SETTINGS.enabled,
+      guestEnabled: reminders?.guestEnabled ?? DEFAULT_REMINDER_SETTINGS.guestEnabled,
+      hostEnabled: reminders?.hostEnabled ?? DEFAULT_REMINDER_SETTINGS.hostEnabled,
+      types: {
+        '24h': reminders?.types?.['24h'] ?? DEFAULT_REMINDER_SETTINGS.types['24h'],
+        '1h': reminders?.types?.['1h'] ?? DEFAULT_REMINDER_SETTINGS.types['1h']
+      }
     }
 
+    // Build scheduling object, preserving existing values when not provided
     const scheduling = {
-      handle: handle || null,
-      handleLower: handle || null,
-      timeZone: timeZone || 'UTC',
-      workingHours: workingHours || {
+      handle: handle !== undefined ? handle : existingScheduling.handle || null,
+      handleLower: handle !== undefined ? handle : existingScheduling.handleLower || null,
+      timeZone: timeZone || existingScheduling.timeZone || 'UTC',
+      workingHours: workingHours || existingScheduling.workingHours || {
         mon: [{ start: '09:00', end: '17:00' }],
         tue: [{ start: '09:00', end: '17:00' }],
         wed: [{ start: '09:00', end: '17:00' }],
@@ -73,15 +99,15 @@ export async function POST(request) {
         sat: [],
         sun: []
       },
-      defaultDurationMin: Number(defaultDurationMin || 30),
-      bufferMin: Number(bufferMin || 0),
-      minNoticeMin: Number(minNoticeMin || 120),
-      selectedCalendarIds: Array.isArray(selectedCalendarIds) ? selectedCalendarIds : [],
+      defaultDurationMin: Number(defaultDurationMin || existingScheduling.defaultDurationMin || 30),
+      bufferMin: Number(bufferMin || existingScheduling.bufferMin || 0),
+      minNoticeMin: Number(minNoticeMin || existingScheduling.minNoticeMin || 120),
+      selectedCalendarIds: Array.isArray(selectedCalendarIds) ? selectedCalendarIds : (existingScheduling.selectedCalendarIds || []),
       reminders: reminderSettings
     }
 
     await database.collection('users').updateOne({ id: payload.sub }, { $set: { scheduling } })
-    console.info('[settings/scheduling] saved', payload.sub, scheduling.handle)
+    console.info('[settings/scheduling] saved', payload.sub, scheduling.handle, 'reminders:', reminderSettings)
     return NextResponse.json({ ok: true, scheduling })
   } catch (e) { console.error('[settings/scheduling] POST', e); return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 }) }
 }

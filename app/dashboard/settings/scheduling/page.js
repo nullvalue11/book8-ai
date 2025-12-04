@@ -5,7 +5,15 @@ import { Input } from '../../../../components/ui/input'
 import { Label } from '../../../../components/ui/label'
 import { Button } from '../../../../components/ui/button'
 import { Switch } from '../../../../components/ui/switch'
-import { Plus, Trash2, Copy, Check, Bell, Clock } from 'lucide-react'
+import { Plus, Trash2, Copy, Check, Bell, Clock, User, Users } from 'lucide-react'
+
+// Default reminder settings structure
+const DEFAULT_REMINDERS = {
+  enabled: true,
+  guestEnabled: true,
+  hostEnabled: false,
+  types: { '24h': true, '1h': true }
+}
 
 export default function SchedulingSettingsPage() {
   const [token, setToken] = useState(null)
@@ -27,7 +35,7 @@ export default function SchedulingSettingsPage() {
   })
   const [is24x7, setIs24x7] = useState(false)
   const [calIds, setCalIds] = useState([])
-  const [reminders, setReminders] = useState({ enabled24h: true, enabled1h: true })
+  const [reminders, setReminders] = useState(DEFAULT_REMINDERS)
   const [msg, setMsg] = useState('')
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -57,7 +65,36 @@ export default function SchedulingSettingsPage() {
         setForm(prev => ({ ...prev, ...data.scheduling }))
         setWh(data.scheduling.workingHours || wh)
         setCalIds(data.scheduling.selectedCalendarIds || [])
-        setReminders(data.scheduling.reminders || { enabled24h: true, enabled1h: true })
+        
+        // Handle both legacy and new reminder format
+        const savedReminders = data.scheduling.reminders
+        if (savedReminders) {
+          // Check if it's legacy format (has enabled24h/enabled1h)
+          if ('enabled24h' in savedReminders || 'enabled1h' in savedReminders) {
+            setReminders({
+              enabled: true,
+              guestEnabled: true,
+              hostEnabled: false,
+              types: {
+                '24h': savedReminders.enabled24h !== false,
+                '1h': savedReminders.enabled1h !== false
+              }
+            })
+          } else {
+            // New format
+            setReminders({
+              enabled: savedReminders.enabled ?? DEFAULT_REMINDERS.enabled,
+              guestEnabled: savedReminders.guestEnabled ?? DEFAULT_REMINDERS.guestEnabled,
+              hostEnabled: savedReminders.hostEnabled ?? DEFAULT_REMINDERS.hostEnabled,
+              types: {
+                '24h': savedReminders.types?.['24h'] ?? DEFAULT_REMINDERS.types['24h'],
+                '1h': savedReminders.types?.['1h'] ?? DEFAULT_REMINDERS.types['1h']
+              }
+            })
+          }
+        } else {
+          setReminders(DEFAULT_REMINDERS)
+        }
         
         const all24 = Object.values(data.scheduling.workingHours || {}).every(
           blocks => blocks.length === 1 && blocks[0].start === '00:00' && blocks[0].end === '23:59'
@@ -407,51 +444,115 @@ export default function SchedulingSettingsPage() {
       {/* Reminder Settings */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Email Reminders</CardTitle>
-              <CardDescription>Send automatic reminder emails to your guests before meetings</CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>Email Reminders</CardTitle>
+                <CardDescription>Send automatic reminder emails before meetings</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="reminders-enabled" className="text-sm font-normal cursor-pointer">Enable Reminders</Label>
+              <Switch 
+                id="reminders-enabled"
+                checked={reminders.enabled} 
+                onCheckedChange={(checked) => setReminders(prev => ({ ...prev, enabled: checked }))}
+              />
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-primary/10">
-                <Clock className="h-4 w-4 text-primary" />
+        <CardContent className={`space-y-6 ${!reminders.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+          {/* Recipients Section */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Send reminders to:</Label>
+            
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-green-500/10">
+                  <User className="h-4 w-4 text-green-500" />
+                </div>
+                <div>
+                  <Label htmlFor="reminder-guest" className="font-medium cursor-pointer">Guest Reminders</Label>
+                  <p className="text-sm text-muted-foreground">Send reminders to the person who booked</p>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="reminder-24h" className="font-medium cursor-pointer">24-Hour Reminder</Label>
-                <p className="text-sm text-muted-foreground">Send a reminder email 24 hours before the meeting</p>
-              </div>
+              <Switch 
+                id="reminder-guest"
+                checked={reminders.guestEnabled} 
+                onCheckedChange={(checked) => setReminders(prev => ({ ...prev, guestEnabled: checked }))}
+                disabled={!reminders.enabled}
+              />
             </div>
-            <Switch 
-              id="reminder-24h"
-              checked={reminders.enabled24h} 
-              onCheckedChange={(checked) => setReminders(prev => ({ ...prev, enabled24h: checked }))}
-            />
+
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-blue-500/10">
+                  <Users className="h-4 w-4 text-blue-500" />
+                </div>
+                <div>
+                  <Label htmlFor="reminder-host" className="font-medium cursor-pointer">Host Reminders</Label>
+                  <p className="text-sm text-muted-foreground">Send reminders to yourself (the host)</p>
+                </div>
+              </div>
+              <Switch 
+                id="reminder-host"
+                checked={reminders.hostEnabled} 
+                onCheckedChange={(checked) => setReminders(prev => ({ ...prev, hostEnabled: checked }))}
+                disabled={!reminders.enabled}
+              />
+            </div>
           </div>
 
-          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-primary/10">
-                <Clock className="h-4 w-4 text-primary" />
+          {/* Timing Section */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Reminder timing:</Label>
+            
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-primary/10">
+                  <Clock className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <Label htmlFor="reminder-24h" className="font-medium cursor-pointer">24-Hour Reminder</Label>
+                  <p className="text-sm text-muted-foreground">Send a reminder 24 hours before the meeting</p>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="reminder-1h" className="font-medium cursor-pointer">1-Hour Reminder</Label>
-                <p className="text-sm text-muted-foreground">Send a reminder email 1 hour before the meeting</p>
-              </div>
+              <Switch 
+                id="reminder-24h"
+                checked={reminders.types['24h']} 
+                onCheckedChange={(checked) => setReminders(prev => ({ 
+                  ...prev, 
+                  types: { ...prev.types, '24h': checked }
+                }))}
+                disabled={!reminders.enabled}
+              />
             </div>
-            <Switch 
-              id="reminder-1h"
-              checked={reminders.enabled1h} 
-              onCheckedChange={(checked) => setReminders(prev => ({ ...prev, enabled1h: checked }))}
-            />
+
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-orange-500/10">
+                  <Clock className="h-4 w-4 text-orange-500" />
+                </div>
+                <div>
+                  <Label htmlFor="reminder-1h" className="font-medium cursor-pointer">1-Hour Reminder</Label>
+                  <p className="text-sm text-muted-foreground">Send a reminder 1 hour before the meeting</p>
+                </div>
+              </div>
+              <Switch 
+                id="reminder-1h"
+                checked={reminders.types['1h']} 
+                onCheckedChange={(checked) => setReminders(prev => ({ 
+                  ...prev, 
+                  types: { ...prev.types, '1h': checked }
+                }))}
+                disabled={!reminders.enabled}
+              />
+            </div>
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Note: Reminders are sent to guests at the scheduled times. You can disable reminders if you prefer to manage notifications yourself.
+            Note: Reminders are sent via email at the scheduled times. Guest and host will receive separate personalized reminder emails.
           </p>
         </CardContent>
       </Card>

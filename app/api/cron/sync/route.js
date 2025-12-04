@@ -2,8 +2,14 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
 import { buildGoogleEventFromBooking } from '@/lib/googleSync'
-import { getDueReminders, markReminderSent } from '@/lib/reminders'
-import { renderReminder24h, renderReminder1h, getReminderSubject } from '@/lib/emailRenderer'
+import { getDueReminders, markReminderSent, normalizeReminderSettings } from '@/lib/reminders'
+import { 
+  renderReminder24h, 
+  renderReminder1h, 
+  renderHostReminder24h, 
+  renderHostReminder1h, 
+  getReminderSubject 
+} from '@/lib/emailRenderer'
 import { env, isFeatureEnabled } from '@/lib/env'
 
 export const runtime = 'nodejs'
@@ -199,12 +205,62 @@ async function handleRemindersTask(db, runId, logsEnabled) {
             continue
           }
           
-          // Render email based on reminder type
-          const emailHtml = reminder.type === '24h'
-            ? await renderReminder24h(booking, owner, booking.guestTimezone)
-            : await renderReminder1h(booking, owner, booking.guestTimezone)
+          // Get owner's reminder settings (normalized)
+          const reminderSettings = normalizeReminderSettings(owner.scheduling?.reminders)
           
-          const subject = getReminderSubject(reminder.type, booking.title)
+          // Check if reminders are globally disabled for this owner
+          if (!reminderSettings.enabled) {
+            console.log(`[cron:reminders] Reminders disabled for owner ${owner.id}, skipping`)
+            // Mark as sent to avoid re-processing
+            const updatedReminders = markReminderSent(booking.reminders, reminder.id)
+            await db.collection('bookings').updateOne(
+              { id: booking.id },
+              { $set: { reminders: updatedReminders } }
+            )
+            continue
+          }
+          
+          // Determine audience for this reminder (default to 'guest' for legacy)
+          const audience = reminder.audience || 'guest'
+          const isHost = audience === 'host'
+          
+          // Check if this audience type is enabled
+          if (isHost && !reminderSettings.hostEnabled) {
+            console.log(`[cron:reminders] Host reminders disabled, skipping ${reminder.id}`)
+            const updatedReminders = markReminderSent(booking.reminders, reminder.id)
+            await db.collection('bookings').updateOne(
+              { id: booking.id },
+              { $set: { reminders: updatedReminders } }
+            )
+            continue
+          }
+          
+          if (!isHost && !reminderSettings.guestEnabled) {
+            console.log(`[cron:reminders] Guest reminders disabled, skipping ${reminder.id}`)
+            const updatedReminders = markReminderSent(booking.reminders, reminder.id)
+            await db.collection('bookings').updateOne(
+              { id: booking.id },
+              { $set: { reminders: updatedReminders } }
+            )
+            continue
+          }
+          
+          // Render email based on reminder type and audience
+          let emailHtml
+          if (isHost) {
+            emailHtml = reminder.type === '24h'
+              ? await renderHostReminder24h(booking, owner, booking.guestTimezone)
+              : await renderHostReminder1h(booking, owner, booking.guestTimezone)
+          } else {
+            emailHtml = reminder.type === '24h'
+              ? await renderReminder24h(booking, owner, booking.guestTimezone)
+              : await renderReminder1h(booking, owner, booking.guestTimezone)
+          }
+          
+          const subject = getReminderSubject(reminder.type, booking.title, isHost)
+          
+          // Determine recipient
+          const recipientEmail = isHost ? owner.email : booking.guestEmail
           
           // Send via Resend with idempotency
           if (env.RESEND_API_KEY) {
@@ -215,7 +271,7 @@ async function handleRemindersTask(db, runId, logsEnabled) {
             
             await resend.emails.send({
               from: 'Book8 AI <reminders@book8.io>',
-              to: booking.guestEmail,
+              to: recipientEmail,
               subject,
               html: emailHtml,
               headers: {
@@ -231,7 +287,7 @@ async function handleRemindersTask(db, runId, logsEnabled) {
             )
             
             successes++
-            console.log(`[cron:reminders] Sent ${reminder.type} reminder for booking ${booking.id}`)
+            console.log(`[cron:reminders] Sent ${reminder.type} ${audience} reminder for booking ${booking.id} to ${recipientEmail}`)
           }
           
         } catch (error) {

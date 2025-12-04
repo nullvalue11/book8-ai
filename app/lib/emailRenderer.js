@@ -4,6 +4,7 @@
  */
 
 import { render } from '@react-email/components'
+import { env } from '@/lib/env'
 
 /**
  * Format datetime for display in emails
@@ -24,7 +25,7 @@ function formatEmailDateTime(dateTime, timezone) {
 }
 
 /**
- * Render 24-hour reminder email
+ * Render 24-hour reminder email for guest
  */
 export async function renderReminder24h(booking, owner, guestTz = null) {
   const Reminder24h = (await import('../../emails/reminder-24h')).default
@@ -34,12 +35,12 @@ export async function renderReminder24h(booking, owner, guestTz = null) {
   const html = render(Reminder24h({
     bookingTitle: booking.title,
     hostName: owner.name || owner.email,
-    guestName: booking.customer?.name || 'Guest',
+    guestName: booking.customerName || booking.customer?.name || 'Guest',
     startTimeGuest: formatEmailDateTime(booking.startTime, displayTz),
     startTimeHost: formatEmailDateTime(booking.startTime, hostTz),
     guestTimeZone: displayTz,
     hostTimeZone: hostTz,
-    manageLink: `${booking.baseUrl}/b/${owner.scheduling?.handle}/reschedule?token=${booking.rescheduleToken}`,
+    manageLink: `${booking.baseUrl || env.NEXT_PUBLIC_BASE_URL}/bookings/reschedule/${booking.rescheduleToken}`,
     showDualTz: guestTz && guestTz !== hostTz
   }))
   
@@ -47,7 +48,7 @@ export async function renderReminder24h(booking, owner, guestTz = null) {
 }
 
 /**
- * Render 1-hour reminder email
+ * Render 1-hour reminder email for guest
  */
 export async function renderReminder1h(booking, owner, guestTz = null) {
   const Reminder1h = (await import('../../emails/reminder-1h')).default
@@ -57,12 +58,60 @@ export async function renderReminder1h(booking, owner, guestTz = null) {
   const html = render(Reminder1h({
     bookingTitle: booking.title,
     hostName: owner.name || owner.email,
-    guestName: booking.customer?.name || 'Guest',
+    guestName: booking.customerName || booking.customer?.name || 'Guest',
     startTimeGuest: formatEmailDateTime(booking.startTime, displayTz),
     startTimeHost: formatEmailDateTime(booking.startTime, hostTz),
     guestTimeZone: displayTz,
     hostTimeZone: hostTz,
-    manageLink: `${booking.baseUrl}/b/${owner.scheduling?.handle}/reschedule?token=${booking.rescheduleToken}`,
+    manageLink: `${booking.baseUrl || env.NEXT_PUBLIC_BASE_URL}/bookings/reschedule/${booking.rescheduleToken}`,
+    showDualTz: guestTz && guestTz !== hostTz
+  }))
+  
+  return html
+}
+
+/**
+ * Render 24-hour reminder email for host
+ */
+export async function renderHostReminder24h(booking, owner, guestTz = null) {
+  const HostReminder24h = (await import('../../emails/host-reminder-24h')).default
+  const hostTz = owner.scheduling?.timeZone || 'UTC'
+  const displayTz = guestTz || booking.timeZone || 'UTC'
+  
+  const html = render(HostReminder24h({
+    bookingTitle: booking.title,
+    hostName: owner.name || owner.email,
+    guestName: booking.customerName || booking.customer?.name || 'Guest',
+    guestEmail: booking.guestEmail,
+    startTimeGuest: formatEmailDateTime(booking.startTime, displayTz),
+    startTimeHost: formatEmailDateTime(booking.startTime, hostTz),
+    guestTimeZone: displayTz,
+    hostTimeZone: hostTz,
+    manageLink: `${booking.baseUrl || env.NEXT_PUBLIC_BASE_URL}/dashboard`,
+    showDualTz: guestTz && guestTz !== hostTz
+  }))
+  
+  return html
+}
+
+/**
+ * Render 1-hour reminder email for host
+ */
+export async function renderHostReminder1h(booking, owner, guestTz = null) {
+  const HostReminder1h = (await import('../../emails/host-reminder-1h')).default
+  const hostTz = owner.scheduling?.timeZone || 'UTC'
+  const displayTz = guestTz || booking.timeZone || 'UTC'
+  
+  const html = render(HostReminder1h({
+    bookingTitle: booking.title,
+    hostName: owner.name || owner.email,
+    guestName: booking.customerName || booking.customer?.name || 'Guest',
+    guestEmail: booking.guestEmail,
+    startTimeGuest: formatEmailDateTime(booking.startTime, displayTz),
+    startTimeHost: formatEmailDateTime(booking.startTime, hostTz),
+    guestTimeZone: displayTz,
+    hostTimeZone: hostTz,
+    manageLink: `${booking.baseUrl || env.NEXT_PUBLIC_BASE_URL}/dashboard`,
     showDualTz: guestTz && guestTz !== hostTz
   }))
   
@@ -120,9 +169,10 @@ export async function renderHostCancel(booking, owner, guestTz = null) {
 /**
  * Get subject line for reminder
  */
-export function getReminderSubject(type, bookingTitle) {
+export function getReminderSubject(type, bookingTitle, isHost = false) {
+  const prefix = isHost ? 'Host reminder: ' : ''
   if (type === '24h') {
-    return `Reminder: ${bookingTitle} tomorrow`
+    return `${prefix}Reminder: ${bookingTitle} tomorrow`
   }
-  return `Starting soon: ${bookingTitle}`
+  return `${prefix}Starting soon: ${bookingTitle}`
 }
