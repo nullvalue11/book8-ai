@@ -204,12 +204,15 @@ export async function OPTIONS() {
   return new Response(null, { status: 204 })
 }
 
-export async function POST(request) {
+/**
+ * Core handler logic shared by GET and POST
+ */
+async function runDailyUsageReport(request, overrideDate = null) {
   const startTime = Date.now()
   console.log('[billing/usage/run-daily] Starting daily usage report...')
   
-  // 1. Verify cron token
-  const authCheck = verifyCronToken(request)
+  // 1. Verify cron auth
+  const authCheck = verifyCronAuth(request)
   if (!authCheck.valid) {
     console.log('[billing/usage/run-daily] Auth failed:', authCheck.error)
     return NextResponse.json(
@@ -228,16 +231,7 @@ export async function POST(request) {
   }
   
   try {
-    // 3. Parse optional date override from body
-    let overrideDate = null
-    try {
-      const body = await request.json().catch(() => ({}))
-      if (body.date) {
-        overrideDate = body.date
-      }
-    } catch {}
-    
-    // 4. Get date window
+    // 3. Get date window
     let dateWindow
     try {
       dateWindow = getYesterdayWindow(overrideDate)
