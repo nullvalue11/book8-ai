@@ -106,6 +106,20 @@ function loadConfig() {
     const STRIPE_PUBLISHABLE_KEY = getEnvVar('STRIPE_PUBLISHABLE_KEY', false)
     const STRIPE_WEBHOOK_SECRET = getEnvVar('STRIPE_WEBHOOK_SECRET', false)
     
+    // Stripe Price IDs
+    const STRIPE_PRICE_STARTER = getEnvVar('STRIPE_PRICE_STARTER', false)
+    const STRIPE_PRICE_GROWTH = getEnvVar('STRIPE_PRICE_GROWTH', false)
+    const STRIPE_PRICE_ENTERPRISE = getEnvVar('STRIPE_PRICE_ENTERPRISE', false)
+    const STRIPE_PRICE_CALL_MINUTE_METERED = getEnvVar('STRIPE_PRICE_CALL_MINUTE_METERED', false)
+    
+    // Admin Token for protected endpoints
+    const ADMIN_TOKEN = getEnvVar('ADMIN_TOKEN', false)
+    
+    // Billing/Usage Reporting (uses existing CRON_SECRET for auth)
+    const CORE_API_BASE_URL = getEnvVar('CORE_API_BASE_URL', false)
+    const CORE_API_INTERNAL_SECRET = getEnvVar('CORE_API_INTERNAL_SECRET', false)
+    const BILLING_TIMEZONE = getEnvVar('BILLING_TIMEZONE', false, 'UTC')
+    
     const hasStripe = STRIPE_SECRET_KEY && STRIPE_PUBLISHABLE_KEY && STRIPE_WEBHOOK_SECRET
     if (!hasStripe && NODE_ENV === 'production') {
       console.warn('[env] WARNING: Stripe not configured. Billing features will be disabled.')
@@ -164,8 +178,20 @@ function loadConfig() {
       STRIPE: hasStripe ? {
         SECRET_KEY: STRIPE_SECRET_KEY,
         PUBLISHABLE_KEY: STRIPE_PUBLISHABLE_KEY,
-        WEBHOOK_SECRET: STRIPE_WEBHOOK_SECRET
+        WEBHOOK_SECRET: STRIPE_WEBHOOK_SECRET,
+        PRICE_STARTER: STRIPE_PRICE_STARTER,
+        PRICE_GROWTH: STRIPE_PRICE_GROWTH,
+        PRICE_ENTERPRISE: STRIPE_PRICE_ENTERPRISE,
+        PRICE_CALL_MINUTE_METERED: STRIPE_PRICE_CALL_MINUTE_METERED
       } : null,
+      
+      // Admin
+      ADMIN_TOKEN,
+      
+      // Billing/Usage Reporting
+      CORE_API_BASE_URL,
+      CORE_API_INTERNAL_SECRET,
+      BILLING_TIMEZONE,
       
       // Optional
       TAVILY_API_KEY,
