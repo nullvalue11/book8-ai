@@ -134,6 +134,9 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: 'Insert failed' }, { status: 500 })
     }
 
+    // Handle subscription-related events
+    await handleSubscriptionEvent(event, stripe, database)
+
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[webhooks/stripe] unexpected', e)
