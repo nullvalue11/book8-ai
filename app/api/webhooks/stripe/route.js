@@ -209,9 +209,6 @@ async function handleSubscriptionEvent(event, stripe, database) {
   }
 }
 
-  return { type, customerId, subscriptionId, plan, status }
-}
-
 export async function POST(req) {
   try {
     const stripe = await getStripe()
