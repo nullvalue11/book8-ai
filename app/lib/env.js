@@ -191,7 +191,6 @@ function loadConfig() {
       // Billing/Usage Reporting
       CORE_API_BASE_URL,
       CORE_API_INTERNAL_SECRET,
-      BILLING_CRON_TOKEN,
       BILLING_TIMEZONE,
       
       // Optional
