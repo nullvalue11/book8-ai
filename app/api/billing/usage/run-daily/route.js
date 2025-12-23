@@ -355,3 +355,28 @@ async function runDailyUsageReport(request, overrideDate = null) {
     )
   }
 }
+
+/**
+ * GET handler - Used by Vercel Cron
+ * Accepts ?date=YYYY-MM-DD query param for testing
+ */
+export async function GET(request) {
+  const url = new URL(request.url)
+  const dateParam = url.searchParams.get('date')
+  return runDailyUsageReport(request, dateParam)
+}
+
+/**
+ * POST handler - For manual runs
+ * Accepts { "date": "YYYY-MM-DD" } in body for testing
+ */
+export async function POST(request) {
+  let overrideDate = null
+  try {
+    const body = await request.json().catch(() => ({}))
+    if (body.date) {
+      overrideDate = body.date
+    }
+  } catch {}
+  return runDailyUsageReport(request, overrideDate)
+}
