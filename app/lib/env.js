@@ -115,6 +115,12 @@ function loadConfig() {
     // Admin Token for protected endpoints
     const ADMIN_TOKEN = getEnvVar('ADMIN_TOKEN', false)
     
+    // Billing/Usage Reporting
+    const CORE_API_BASE_URL = getEnvVar('CORE_API_BASE_URL', false)
+    const CORE_API_INTERNAL_SECRET = getEnvVar('CORE_API_INTERNAL_SECRET', false)
+    const BILLING_CRON_TOKEN = getEnvVar('BILLING_CRON_TOKEN', false)
+    const BILLING_TIMEZONE = getEnvVar('BILLING_TIMEZONE', false, 'UTC')
+    
     const hasStripe = STRIPE_SECRET_KEY && STRIPE_PUBLISHABLE_KEY && STRIPE_WEBHOOK_SECRET
     if (!hasStripe && NODE_ENV === 'production') {
       console.warn('[env] WARNING: Stripe not configured. Billing features will be disabled.')
