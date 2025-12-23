@@ -106,6 +106,15 @@ function loadConfig() {
     const STRIPE_PUBLISHABLE_KEY = getEnvVar('STRIPE_PUBLISHABLE_KEY', false)
     const STRIPE_WEBHOOK_SECRET = getEnvVar('STRIPE_WEBHOOK_SECRET', false)
     
+    // Stripe Price IDs
+    const STRIPE_PRICE_STARTER = getEnvVar('STRIPE_PRICE_STARTER', false)
+    const STRIPE_PRICE_GROWTH = getEnvVar('STRIPE_PRICE_GROWTH', false)
+    const STRIPE_PRICE_ENTERPRISE = getEnvVar('STRIPE_PRICE_ENTERPRISE', false)
+    const STRIPE_PRICE_CALL_MINUTE_METERED = getEnvVar('STRIPE_PRICE_CALL_MINUTE_METERED', false)
+    
+    // Admin Token for protected endpoints
+    const ADMIN_TOKEN = getEnvVar('ADMIN_TOKEN', false)
+    
     const hasStripe = STRIPE_SECRET_KEY && STRIPE_PUBLISHABLE_KEY && STRIPE_WEBHOOK_SECRET
     if (!hasStripe && NODE_ENV === 'production') {
       console.warn('[env] WARNING: Stripe not configured. Billing features will be disabled.')
