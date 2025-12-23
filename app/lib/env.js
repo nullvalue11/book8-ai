@@ -189,6 +189,12 @@ function loadConfig() {
       // Admin
       ADMIN_TOKEN,
       
+      // Billing/Usage Reporting
+      CORE_API_BASE_URL,
+      CORE_API_INTERNAL_SECRET,
+      BILLING_CRON_TOKEN,
+      BILLING_TIMEZONE,
+      
       // Optional
       TAVILY_API_KEY,
       CRON_SECRET,
