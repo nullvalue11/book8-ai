@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/sync?task=reminders",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/billing/usage/run-daily",
+      "schedule": "0 2 * * *"
     }
   ]
 }
