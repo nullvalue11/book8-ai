@@ -1,12 +1,12 @@
 /**
- * POST /api/billing/usage/run-daily
+ * GET/POST /api/billing/usage/run-daily
  * 
  * Purpose:
  * Daily cron job that reports yesterday's call minutes to Stripe for each active subscriber.
  * Runs at 02:00 UTC daily via Vercel Cron.
  * 
  * Authentication:
- * Protected by `x-cron-token` header matching BILLING_CRON_TOKEN env var.
+ * Protected by Authorization: Bearer <CRON_SECRET> header (Vercel standard pattern).
  * 
  * Flow:
  * 1. Calculate yesterday's UTC window (00:00:00 to 23:59:59)
@@ -19,10 +19,14 @@
  * Uses Stripe idempotency key format: usage:{businessId}:{YYYY-MM-DD}
  * Safe to retry - will not double-bill.
  * 
- * Request:
+ * Request (GET - Vercel Cron):
+ * GET /api/billing/usage/run-daily?date=YYYY-MM-DD (optional date override)
+ * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
+ * 
+ * Request (POST - Manual):
  * POST /api/billing/usage/run-daily
- * Headers: { "x-cron-token": "<BILLING_CRON_TOKEN>" }
- * Body (optional): { "date": "YYYY-MM-DD" } // Override date for testing
+ * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
+ * Body (optional): { "date": "YYYY-MM-DD" }
  * 
  * Response:
  * {
@@ -56,21 +60,24 @@ async function connect() {
 }
 
 /**
- * Verify cron token
+ * Verify cron secret using Authorization: Bearer <CRON_SECRET> pattern
  */
-function verifyCronToken(request) {
-  const cronToken = env.BILLING_CRON_TOKEN
-  if (!cronToken) {
-    return { valid: false, error: 'BILLING_CRON_TOKEN not configured' }
+function verifyCronAuth(request) {
+  const cronSecret = env.CRON_SECRET
+  if (!cronSecret) {
+    return { valid: false, error: 'CRON_SECRET not configured' }
   }
   
-  const providedToken = request.headers.get('x-cron-token')
-  if (!providedToken) {
-    return { valid: false, error: 'Missing x-cron-token header' }
+  const authHeader = request.headers.get('authorization')
+  if (!authHeader) {
+    return { valid: false, error: 'Missing Authorization header' }
   }
   
-  if (providedToken !== cronToken) {
-    return { valid: false, error: 'Invalid cron token' }
+  // Support both "Bearer <token>" format
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
+  
+  if (token !== cronSecret) {
+    return { valid: false, error: 'Invalid cron secret' }
   }
   
   return { valid: true }
