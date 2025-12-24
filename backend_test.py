@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Book8 AI Phone Agent API Endpoints
+Backend Test Suite for Book8 Stripe Backfill Endpoint
 
-This test suite validates the AI Phone Agent API endpoints:
-- POST /api/agent/availability - Check availability for a business
-- POST /api/agent/book - Create a booking
+This test suite validates the Stripe backfill endpoint:
+- POST /api/admin/stripe/backfill-call-minutes - Backfill call minutes for existing subscriptions
 
-Focus on validation logic and error handling since we don't have test API keys configured.
+Focus on authentication and response structure validation.
 """
 
 import requests
@@ -17,6 +16,9 @@ import os
 
 # Get base URL from environment
 BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://meter-inspect.preview.emergentagent.com')
+
+# Get admin token from environment (placeholder value expected in test environment)
+ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', 'your_admin_token_here')
 
 def test_agent_availability_endpoint():
     """Test POST /api/agent/availability endpoint"""
