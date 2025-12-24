@@ -16,12 +16,17 @@
  * Response:
  * {
  *   "ok": true,
- *   "summary": {
- *     "total": 10,
- *     "updated": 5,
- *     "skipped": 3,
- *     "failed": 2,
- *     "failedIds": ["user-123", "user-456"]
+ *   "total": 3,
+ *   "updated": 2,
+ *   "skipped": 1,
+ *   "failed": 0,
+ *   "failedIds": [],
+ *   "debug": {
+ *     "hasSubId": 5,
+ *     "activeOrTrialingOrPastDue": 3,
+ *     "hasMinutesItemId": 0,
+ *     "missingMinutesItemId": 3,
+ *     "selected": 3
  *   }
  * }
  */
@@ -29,11 +34,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
-import {
-  getStripe,
-  attachMeteredItemToSubscription,
-  extractSubscriptionBillingFields
-} from '@/lib/stripeSubscription'
+import { getStripe, getCallMinutesItemId } from '@/lib/stripeSubscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -106,42 +107,66 @@ export async function POST(request) {
   
   try {
     const database = await connect()
+    const usersCollection = database.collection('users')
     
-    // Diagnostic counts - understand what's in the DB
+    // ===== DIAGNOSTIC COUNTS =====
+    // Compute via separate count queries to see exactly where the filter is failing
+    
+    const hasSubId = await usersCollection.countDocuments({
+      'subscription.stripeSubscriptionId': { $exists: true, $ne: null }
+    })
+    
+    const activeOrTrialingOrPastDue = await usersCollection.countDocuments({
+      'subscription.status': { $in: ['active', 'trialing', 'past_due'] }
+    })
+    
+    const hasMinutesItemId = await usersCollection.countDocuments({
+      'subscription.stripeCallMinutesItemId': { $exists: true, $ne: null }
+    })
+    
+    const missingMinutesItemId = await usersCollection.countDocuments({
+      'subscription.stripeSubscriptionId': { $exists: true, $ne: null },
+      'subscription.status': { $in: ['active', 'trialing', 'past_due'] },
+      $or: [
+        { 'subscription.stripeCallMinutesItemId': { $exists: false } },
+        { 'subscription.stripeCallMinutesItemId': null }
+      ]
+    })
+    
     const debug = {
-      totalUsers: await database.collection('users').countDocuments({}),
-      hasAnySubscription: await database.collection('users').countDocuments({
-        'subscription': { $exists: true }
-      }),
-      hasStripeSubId: await database.collection('users').countDocuments({
-        'subscription.stripeSubscriptionId': { $exists: true, $ne: null }
-      }),
-      hasStripeCustomerId: await database.collection('users').countDocuments({
-        'subscription.stripeCustomerId': { $exists: true, $ne: null }
-      }),
-      hasActiveStatus: await database.collection('users').countDocuments({
-        'subscription.status': { $in: ['active', 'trialing', 'past_due'] }
-      }),
-      alreadyHasMinutesItemId: await database.collection('users').countDocuments({
-        'subscription.stripeCallMinutesItemId': { $exists: true, $ne: null }
-      }),
-      selectionModel: 'users'
+      hasSubId,
+      activeOrTrialingOrPastDue,
+      hasMinutesItemId,
+      missingMinutesItemId,
+      selected: 0 // Will update after query
     }
     
     console.log(`[admin/stripe/backfill-call-minutes] Debug counts:`, debug)
     
-    // 3. Find all users with active subscriptions
-    const usersWithSubscriptions = await database.collection('users').find({
+    // ===== SELECTION QUERY =====
+    // Select users who:
+    // - have subscription.stripeSubscriptionId
+    // - have billable subscription status
+    // - are missing subscription.stripeCallMinutesItemId
+    
+    const selectionQuery = {
       'subscription.stripeSubscriptionId': { $exists: true, $ne: null },
-      'subscription.status': { $in: ['active', 'trialing', 'past_due'] }
-    }).toArray()
+      'subscription.status': { $in: ['active', 'trialing', 'past_due'] },
+      $or: [
+        { 'subscription.stripeCallMinutesItemId': { $exists: false } },
+        { 'subscription.stripeCallMinutesItemId': null }
+      ]
+    }
     
-    debug.selectedForBackfill = usersWithSubscriptions.length
+    const usersToBackfill = await usersCollection.find(selectionQuery).toArray()
+    debug.selected = usersToBackfill.length
     
-    console.log(`[admin/stripe/backfill-call-minutes] Found ${usersWithSubscriptions.length} users with active subscriptions`)
+    console.log(`[admin/stripe/backfill-call-minutes] Found ${usersToBackfill.length} users to backfill`)
     
-    const summary = {
-      total: usersWithSubscriptions.length,
+    // ===== RESPONSE STRUCTURE =====
+    const response = {
+      ok: true,
+      total: usersToBackfill.length,
       updated: 0,
       skipped: 0,
       failed: 0,
@@ -149,75 +174,76 @@ export async function POST(request) {
       debug
     }
     
-    // 4. Process each subscription
-    for (const user of usersWithSubscriptions) {
+    // ===== PROCESS EACH USER =====
+    for (const user of usersToBackfill) {
       const userId = user.id
       const subscriptionId = user.subscription?.stripeSubscriptionId
       
       if (!subscriptionId) {
-        summary.skipped++
-        continue
-      }
-      
-      // Check if already has call minutes item stored
-      if (user.subscription?.stripeCallMinutesItemId) {
-        console.log(`[admin/stripe/backfill-call-minutes] User ${userId} already has call minutes item, skipping`)
-        summary.skipped++
+        console.log(`[admin/stripe/backfill-call-minutes] User ${userId} has no subscriptionId, skipping`)
+        response.skipped++
         continue
       }
       
       try {
-        // Attach metered item
-        const result = await attachMeteredItemToSubscription(stripe, subscriptionId)
+        // ===== JOB A: Ensure the subscription has the metered price item =====
         
-        if (!result.success) {
-          console.error(`[admin/stripe/backfill-call-minutes] Failed for user ${userId}:`, result.error)
-          summary.failed++
-          summary.failedIds.push(userId)
+        // First, fetch the subscription to check if it already has the metered item
+        let subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+          expand: ['items.data.price']
+        })
+        
+        // Check if metered item already exists in Stripe
+        let itemId = getCallMinutesItemId(subscription, meteredPriceId)
+        
+        if (!itemId) {
+          // Metered item is missing - add it to the subscription
+          console.log(`[admin/stripe/backfill-call-minutes] User ${userId}: Adding metered item to subscription ${subscriptionId}`)
+          
+          subscription = await stripe.subscriptions.update(subscriptionId, {
+            items: [
+              ...subscription.items.data.map(item => ({ id: item.id })), // Keep existing items
+              { price: meteredPriceId } // Add metered item
+            ],
+            proration_behavior: 'none' // Avoid surprise proration charges
+          })
+          
+          // ===== JOB B: Fetch subscription again and store stripeCallMinutesItemId =====
+          itemId = getCallMinutesItemId(subscription, meteredPriceId)
+        }
+        
+        // If itemId is still null, mark as failed
+        if (!itemId) {
+          console.error(`[admin/stripe/backfill-call-minutes] User ${userId}: Could not get metered item ID after update`)
+          response.failed++
+          response.failedIds.push(userId)
           continue
         }
         
-        if (result.alreadyExists) {
-          // Update the stored item ID even if it already exists in Stripe
-          await database.collection('users').updateOne(
-            { id: userId },
-            { 
-              $set: { 
-                'subscription.stripeCallMinutesItemId': result.itemId,
-                'subscription.updatedAt': new Date().toISOString()
-              } 
-            }
-          )
-          console.log(`[admin/stripe/backfill-call-minutes] User ${userId}: item already exists, stored ID ${result.itemId}`)
-          summary.skipped++
-        } else {
-          // New item was attached
-          await database.collection('users').updateOne(
-            { id: userId },
-            { 
-              $set: { 
-                'subscription.stripeCallMinutesItemId': result.itemId,
-                'subscription.updatedAt': new Date().toISOString()
-              } 
-            }
-          )
-          console.log(`[admin/stripe/backfill-call-minutes] User ${userId}: attached new item ${result.itemId}`)
-          summary.updated++
-        }
+        // Persist the stripeCallMinutesItemId
+        await usersCollection.updateOne(
+          { id: userId },
+          { 
+            $set: { 
+              'subscription.stripeCallMinutesItemId': itemId,
+              'subscription.updatedAt': new Date().toISOString()
+            } 
+          }
+        )
+        
+        console.log(`[admin/stripe/backfill-call-minutes] User ${userId}: Successfully stored item ID ${itemId}`)
+        response.updated++
         
       } catch (error) {
         console.error(`[admin/stripe/backfill-call-minutes] Error for user ${userId}:`, error.message)
-        summary.failed++
-        summary.failedIds.push(userId)
+        response.failed++
+        response.failedIds.push(userId)
       }
     }
     
-    console.log('[admin/stripe/backfill-call-minutes] Backfill complete:', summary)
+    console.log('[admin/stripe/backfill-call-minutes] Backfill complete:', response)
     
-    return NextResponse.json({
-      ok: true,
-      summary
-    })
+    return NextResponse.json(response)
     
   } catch (error) {
     console.error('[admin/stripe/backfill-call-minutes] Error:', error)

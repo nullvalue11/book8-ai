@@ -10,7 +10,7 @@ import sys
 from datetime import datetime, timedelta
 
 # Configuration
-BASE_URL = "https://book8-calendar.preview.emergentagent.com"
+BASE_URL = "https://meter-inspect.preview.emergentagent.com"
 ENDPOINT = "/api/billing/usage/run-daily"
 VALID_TOKEN = "your_billing_cron_token_here"  # Placeholder token that works
 
