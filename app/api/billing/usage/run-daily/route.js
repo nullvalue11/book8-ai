@@ -246,13 +246,43 @@ async function runDailyUsageReport(request, overrideDate = null) {
     
     const database = await connect()
     
-    // 5. Find all tenants with active subscriptions and stripeCallMinutesItemId
-    const tenantsWithSubscriptions = await database.collection('users').find({
+    // 5. Diagnostic counts - understand what's in the DB
+    const diagnostics = {
+      hasSubId: 0,
+      hasMinutesItemId: 0,
+      activeOrTrialing: 0,
+      selected: 0,
+      selectionModel: 'users'  // Collection we're querying
+    }
+    
+    // Count users with stripeSubscriptionId
+    diagnostics.hasSubId = await database.collection('users').countDocuments({
+      'subscription.stripeSubscriptionId': { $exists: true, $ne: null }
+    })
+    
+    // Count users with stripeCallMinutesItemId
+    diagnostics.hasMinutesItemId = await database.collection('users').countDocuments({
+      'subscription.stripeCallMinutesItemId': { $exists: true, $ne: null }
+    })
+    
+    // Count users with active or trialing status
+    diagnostics.activeOrTrialing = await database.collection('users').countDocuments({
+      'subscription.status': { $in: ['active', 'trialing'] }
+    })
+    
+    console.log(`[billing/usage/run-daily] Diagnostics:`, diagnostics)
+    
+    // Selection query - require BOTH stripeCallMinutesItemId AND active/trialing status
+    const selectionQuery = {
       'subscription.stripeCallMinutesItemId': { $exists: true, $ne: null },
       'subscription.status': { $in: ['active', 'trialing'] }
-    }).toArray()
+    }
+    
+    const tenantsWithSubscriptions = await database.collection('users').find(selectionQuery).toArray()
+    diagnostics.selected = tenantsWithSubscriptions.length
     
     console.log(`[billing/usage/run-daily] Found ${tenantsWithSubscriptions.length} tenants with active subscriptions`)
+    console.log(`[billing/usage/run-daily] Selection query:`, JSON.stringify(selectionQuery))
     
     const summary = {
       ok: true,
@@ -262,6 +292,7 @@ async function runDailyUsageReport(request, overrideDate = null) {
       skipped: 0,
       failed: 0,
       failedIds: [],
+      debug: diagnostics,
       details: [] // For debugging, can be removed in production
     }
     
