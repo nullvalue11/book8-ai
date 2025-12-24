@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 import os
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://book8-calendar.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://meter-inspect.preview.emergentagent.com')
 
 def test_agent_availability_endpoint():
     """Test POST /api/agent/availability endpoint"""

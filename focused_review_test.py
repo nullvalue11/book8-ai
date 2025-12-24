@@ -7,7 +7,7 @@ import os
 from datetime import datetime, timedelta
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://book8-calendar.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://meter-inspect.preview.emergentagent.com')
 
 def test_endpoint(method, endpoint, expected_status=200, expected_content=None, headers=None, data=None):
     """Test a single endpoint and return result"""

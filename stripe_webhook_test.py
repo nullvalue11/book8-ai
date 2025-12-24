@@ -9,7 +9,7 @@ from datetime import datetime
 import uuid
 
 # Configuration
-BASE_URL = "https://book8-calendar.preview.emergentagent.com"
+BASE_URL = "https://meter-inspect.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test user credentials
