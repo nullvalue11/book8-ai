@@ -107,11 +107,36 @@ export async function POST(request) {
   try {
     const database = await connect()
     
+    // Diagnostic counts - understand what's in the DB
+    const debug = {
+      totalUsers: await database.collection('users').countDocuments({}),
+      hasAnySubscription: await database.collection('users').countDocuments({
+        'subscription': { $exists: true }
+      }),
+      hasStripeSubId: await database.collection('users').countDocuments({
+        'subscription.stripeSubscriptionId': { $exists: true, $ne: null }
+      }),
+      hasStripeCustomerId: await database.collection('users').countDocuments({
+        'subscription.stripeCustomerId': { $exists: true, $ne: null }
+      }),
+      hasActiveStatus: await database.collection('users').countDocuments({
+        'subscription.status': { $in: ['active', 'trialing', 'past_due'] }
+      }),
+      alreadyHasMinutesItemId: await database.collection('users').countDocuments({
+        'subscription.stripeCallMinutesItemId': { $exists: true, $ne: null }
+      }),
+      selectionModel: 'users'
+    }
+    
+    console.log(`[admin/stripe/backfill-call-minutes] Debug counts:`, debug)
+    
     // 3. Find all users with active subscriptions
     const usersWithSubscriptions = await database.collection('users').find({
       'subscription.stripeSubscriptionId': { $exists: true, $ne: null },
       'subscription.status': { $in: ['active', 'trialing', 'past_due'] }
     }).toArray()
+    
+    debug.selectedForBackfill = usersWithSubscriptions.length
     
     console.log(`[admin/stripe/backfill-call-minutes] Found ${usersWithSubscriptions.length} users with active subscriptions`)
     
@@ -120,7 +145,8 @@ export async function POST(request) {
       updated: 0,
       skipped: 0,
       failed: 0,
-      failedIds: []
+      failedIds: [],
+      debug
     }
     
     // 4. Process each subscription
