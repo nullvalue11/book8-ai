@@ -194,7 +194,7 @@ function PricingContent() {
               return (
                 <Card
                   key={plan.id}
-                  className={`relative bg-card/50 backdrop-blur border-white/10 overflow-hidden transition-all hover:border-white/20 ${
+                  className={`relative bg-card backdrop-blur border-border overflow-hidden transition-all hover:border-foreground/20 ${
                     plan.popular ? "border-brand-500/50 shadow-[0_0_40px_-12px_rgba(124,77,255,0.3)]" : ""
                   }`}
                 >
@@ -209,22 +209,22 @@ function PricingContent() {
                       <Icon className="w-6 h-6 text-white" />
                     </div>
                     <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                    <CardDescription className="text-white/50">
+                    <CardDescription>
                       {plan.description}
                     </CardDescription>
                   </CardHeader>
 
                   <CardContent className="space-y-6">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      <span className="text-white/50">{plan.period}</span>
+                      <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+                      <span className="text-muted-foreground">{plan.period}</span>
                     </div>
 
                     <ul className="space-y-3">
                       {plan.features.map((feat, i) => (
                         <li key={i} className="flex items-start gap-3">
                           <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                          <span className="text-sm text-white/70">{feat}</span>
+                          <span className="text-sm text-muted-foreground">{feat}</span>
                         </li>
                       ))}
                     </ul>
@@ -232,8 +232,8 @@ function PricingContent() {
                     <Button
                       className={`w-full ${
                         plan.popular
-                          ? "bg-gradient-to-r from-brand-500 to-purple-500 hover:from-brand-600 hover:to-purple-600"
-                          : "bg-white/10 hover:bg-white/20"
+                          ? "bg-gradient-to-r from-brand-500 to-purple-500 hover:from-brand-600 hover:to-purple-600 text-white"
+                          : "bg-secondary hover:bg-secondary/80"
                       }`}
                       onClick={() => handleSelectPlan(plan.id)}
                       disabled={isLoading[plan.id]}
