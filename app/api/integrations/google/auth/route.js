@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server'
+import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
 import { env } from '@/lib/env'
+import { isSubscribed } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
+
+let client, db
+
+async function connect() {
+  if (!client) {
+    client = new MongoClient(env.MONGO_URL)
+    await client.connect()
+    db = client.db(env.DB_NAME)
+  }
+  return db
+}
 
 function getJwtSecret() {
   return env.JWT_SECRET || 'dev-secret-change-me'
@@ -62,6 +75,19 @@ export async function GET(request) {
     }
     if (!userId) {
       return NextResponse.redirect(`${base}/?google_error=auth_required`)
+    }
+
+    // Check subscription status - block if not subscribed
+    const database = await connect()
+    const user = await database.collection('users').findOne({ id: userId })
+    
+    if (!user) {
+      return NextResponse.redirect(`${base}/?google_error=user_not_found`)
+    }
+    
+    if (!isSubscribed(user)) {
+      console.log(`[Google Auth] User ${userId} blocked - no active subscription`)
+      return NextResponse.redirect(`${base}/pricing?paywall=1&feature=calendar`)
     }
 
     const state = jwt.sign({ sub: userId }, getJwtSecret(), { expiresIn: '10m' })
