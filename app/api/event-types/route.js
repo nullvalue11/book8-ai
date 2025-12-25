@@ -72,12 +72,17 @@ export async function OPTIONS() {
 // GET - List user's event types
 export async function GET(request) {
   try {
-    const payload = await verifyAuth(request)
+    const database = await connect()
+    const { payload, user } = await verifyAuth(request, database)
     if (!payload) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
     }
     
-    const database = await connect()
+    // Check subscription
+    if (!isSubscribed(user)) {
+      return subscriptionRequiredResponse('event-types')
+    }
+    
     const eventTypes = await database.collection('event_types')
       .find({ userId: payload.sub })
       .sort({ createdAt: -1 })
