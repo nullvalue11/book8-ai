@@ -161,6 +161,17 @@ export async function POST(request) {
     const { owner, agent } = agentResult
     agentLabel = agent.label || 'unnamed'
     
+    // Check owner's subscription status
+    if (!isSubscribed(owner)) {
+      logAgentCall('availability', { 
+        handle: resolvedHandle, 
+        agentLabel, 
+        success: false, 
+        error: 'Owner subscription not active' 
+      })
+      return NextResponse.json(SUBSCRIPTION_REQUIRED_ERROR, { status: 402 })
+    }
+    
     // 2. Resolve handle (provided or from owner)
     resolvedHandle = handle || agentResult.handle
     
