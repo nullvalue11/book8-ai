@@ -113,38 +113,64 @@ export default function Home(props) {
   function handleLogout() { if (fetchAbort.current) try { fetchAbort.current.abort(); } catch {} localStorage.removeItem("book8_token"); localStorage.removeItem("book8_user"); setToken(null); setUser(null); setBookings([]); }
 
   async function handleLogin() {
+    if (!formData.email || !formData.password) {
+      setFormError("Please enter both email and password");
+      return;
+    }
     try {
       setFormError("");
+      setIsLoading(true);
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ email: formData.email, password: formData.password })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
       localStorage.setItem('book8_token', data.token);
+      localStorage.setItem('book8_user', JSON.stringify(data.user));
       setToken(data.token);
-      setFormData({ email: "", password: "" });
+      setUser(data.user);
+      setFormData({ email: "", password: "", name: "" });
     } catch (err) {
       setFormError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   }
 
   async function handleRegister() {
+    if (!formData.email || !formData.password) {
+      setFormError("Please enter both email and password");
+      return;
+    }
+    if (formData.password.length < 6) {
+      setFormError("Password must be at least 6 characters");
+      return;
+    }
     try {
       setFormError("");
+      setIsLoading(true);
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ 
+          email: formData.email, 
+          password: formData.password,
+          name: formData.name || ""
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
       localStorage.setItem('book8_token', data.token);
+      localStorage.setItem('book8_user', JSON.stringify(data.user));
       setToken(data.token);
-      setFormData({ email: "", password: "" });
+      setUser(data.user);
+      setFormData({ email: "", password: "", name: "" });
     } catch (err) {
       setFormError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   }
 
