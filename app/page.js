@@ -80,7 +80,24 @@ export default function Home(props) {
   }, [appReady, token]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchArchivedCount(); } }, [token]);
+  useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchArchivedCount(); checkSubscription(); } }, [token]);
+
+  // Check subscription status
+  async function checkSubscription() {
+    try {
+      const res = await fetch('/api/billing/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setIsSubscribed(data.subscribed);
+      }
+    } catch (err) {
+      console.error('Subscription check failed:', err);
+    } finally {
+      setSubscriptionChecked(true);
+    }
+  }
 
   async function api(path, opts = {}) {
     const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {}, token ? { Authorization: `Bearer ${token}` } : {});
