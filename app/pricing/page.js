@@ -149,18 +149,18 @@ function PricingContent() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0A0F14] text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <Header />
 
       {/* Paywall Banner */}
       {isPaywall && token && (
-        <div className="bg-gradient-to-r from-brand-500/20 to-purple-500/20 border-b border-brand-500/30">
+        <div className="bg-brand-500/10 border-b border-brand-500/30">
           <div className="max-w-4xl mx-auto px-6 py-4">
             <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-brand-400 shrink-0" />
+              <AlertCircle className="w-5 h-5 text-brand-500 shrink-0" />
               <div>
-                <p className="font-medium text-brand-300">Subscription Required</p>
-                <p className="text-sm text-white/70">
+                <p className="font-medium text-brand-600 dark:text-brand-400">Subscription Required</p>
+                <p className="text-sm text-muted-foreground">
                   {feature && featureMessages[feature] 
                     ? featureMessages[feature] 
                     : "Choose a plan below to unlock all features and start using Book8 AI."}
@@ -174,10 +174,10 @@ function PricingContent() {
       {/* Hero Section */}
       <section className="pt-20 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 text-foreground">
             {isPaywall && token ? "Choose Your Plan" : "Simple, transparent pricing"}
           </h1>
-          <p className="text-xl text-white/60 max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             {isPaywall && token 
               ? "Subscribe to unlock calendar sync, AI phone agents, and all premium features."
               : "Choose the plan that's right for you. All plans include our core scheduling features with metered billing for AI call minutes."}
@@ -194,7 +194,7 @@ function PricingContent() {
               return (
                 <Card
                   key={plan.id}
-                  className={`relative bg-card/50 backdrop-blur border-white/10 overflow-hidden transition-all hover:border-white/20 ${
+                  className={`relative bg-card backdrop-blur border-border overflow-hidden transition-all hover:border-foreground/20 ${
                     plan.popular ? "border-brand-500/50 shadow-[0_0_40px_-12px_rgba(124,77,255,0.3)]" : ""
                   }`}
                 >
@@ -209,22 +209,22 @@ function PricingContent() {
                       <Icon className="w-6 h-6 text-white" />
                     </div>
                     <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                    <CardDescription className="text-white/50">
+                    <CardDescription>
                       {plan.description}
                     </CardDescription>
                   </CardHeader>
 
                   <CardContent className="space-y-6">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      <span className="text-white/50">{plan.period}</span>
+                      <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+                      <span className="text-muted-foreground">{plan.period}</span>
                     </div>
 
                     <ul className="space-y-3">
                       {plan.features.map((feat, i) => (
                         <li key={i} className="flex items-start gap-3">
                           <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                          <span className="text-sm text-white/70">{feat}</span>
+                          <span className="text-sm text-muted-foreground">{feat}</span>
                         </li>
                       ))}
                     </ul>
@@ -232,8 +232,8 @@ function PricingContent() {
                     <Button
                       className={`w-full ${
                         plan.popular
-                          ? "bg-gradient-to-r from-brand-500 to-purple-500 hover:from-brand-600 hover:to-purple-600"
-                          : "bg-white/10 hover:bg-white/20"
+                          ? "bg-gradient-to-r from-brand-500 to-purple-500 hover:from-brand-600 hover:to-purple-600 text-white"
+                          : "bg-muted hover:bg-muted/80 text-foreground border border-border"
                       }`}
                       onClick={() => handleSelectPlan(plan.id)}
                       disabled={isLoading[plan.id]}
@@ -261,24 +261,24 @@ function PricingContent() {
       </section>
 
       {/* Call Minutes Info */}
-      <section className="py-16 px-6 border-t border-white/5">
+      <section className="py-16 px-6 border-t border-border">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl font-bold mb-4">AI Call Minutes</h2>
-          <p className="text-white/60 mb-6">
+          <h2 className="text-2xl font-bold mb-4 text-foreground">AI Call Minutes</h2>
+          <p className="text-muted-foreground mb-6">
             All plans include metered billing for AI phone agent calls at
-            <span className="text-white font-semibold"> $0.10 CAD per minute</span>.
+            <span className="text-foreground font-semibold"> $0.10 CAD per minute</span>.
             Only pay for what you use.
           </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted border border-border">
             <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-sm text-white/70">Usage tracked automatically</span>
+            <span className="text-sm text-muted-foreground">Usage tracked automatically</span>
           </div>
         </div>
       </section>
 
       {/* FAQ or Footer */}
-      <footer className="py-8 px-6 border-t border-white/5">
-        <div className="max-w-6xl mx-auto text-center text-white/40 text-sm">
+      <footer className="py-8 px-6 border-t border-border">
+        <div className="max-w-6xl mx-auto text-center text-muted-foreground text-sm">
           <p>Questions? Contact us at support@book8.ai</p>
         </div>
       </footer>
@@ -288,12 +288,12 @@ function PricingContent() {
 
 function LoadingFallback() {
   return (
-    <main className="min-h-screen bg-[#0A0F14] text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <Header />
       <div className="pt-20 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="h-12 w-64 bg-white/10 rounded mx-auto mb-6 animate-pulse" />
-          <div className="h-6 w-96 bg-white/10 rounded mx-auto animate-pulse" />
+          <div className="h-12 w-64 bg-muted rounded mx-auto mb-6 animate-pulse" />
+          <div className="h-6 w-96 bg-muted rounded mx-auto animate-pulse" />
         </div>
       </div>
     </main>
