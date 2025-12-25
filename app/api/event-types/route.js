@@ -3,11 +3,23 @@ import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
 import { env } from '@/lib/env'
 import { DEFAULT_REMINDER_SETTINGS } from '@/lib/reminders'
+import { isSubscribed } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 let client, db, indexed = false
+
+// Subscription required error
+function subscriptionRequiredResponse(feature) {
+  return NextResponse.json({
+    ok: false,
+    error: 'Subscription required',
+    code: 'SUBSCRIPTION_REQUIRED',
+    feature: feature,
+    message: `An active subscription is required to access ${feature} features. Please subscribe at /pricing`
+  }, { status: 402 })
+}
 
 async function connect() {
   if (!client) {
@@ -29,16 +41,18 @@ async function connect() {
   return db
 }
 
-async function verifyAuth(request) {
+async function verifyAuth(request, database) {
   const auth = request.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
-  if (!token) return null
+  if (!token) return { payload: null, user: null }
   
   const jwt = (await import('jsonwebtoken')).default
   try {
-    return jwt.verify(token, env.JWT_SECRET)
+    const payload = jwt.verify(token, env.JWT_SECRET)
+    const user = database ? await database.collection('users').findOne({ id: payload.sub }) : null
+    return { payload, user }
   } catch {
-    return null
+    return { payload: null, user: null }
   }
 }
 
