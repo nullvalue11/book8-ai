@@ -59,6 +59,7 @@ import { bookingConfirmationEmail } from '@/lib/email/templates'
 import { buildICS } from '@/lib/ics'
 import { calculateReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
+import { isSubscribed } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -72,6 +73,14 @@ async function connect() {
     db = client.db(env.DB_NAME)
   }
   return db
+}
+
+// Subscription required error for agent routes
+const SUBSCRIPTION_REQUIRED_ERROR = {
+  ok: false,
+  code: 'SUBSCRIPTION_REQUIRED',
+  message: 'The business owner\'s subscription is not active.',
+  hint: 'The business needs an active subscription to use AI phone agent features.'
 }
 
 export async function OPTIONS() {
