@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Header from "@/components/Header";
-import { Check, Zap, Building2, Rocket, ArrowRight } from "lucide-react";
+import { Check, Zap, Building2, Rocket, ArrowRight, AlertCircle } from "lucide-react";
 
 const plans = [
   {
@@ -67,10 +67,13 @@ const plans = [
   }
 ];
 
-export default function PricingPage() {
+function PricingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState({});
+  const [isPaywall, setIsPaywall] = useState(false);
+  const [feature, setFeature] = useState(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -78,6 +81,18 @@ export default function PricingPage() {
       if (t) setToken(t);
     }
   }, []);
+
+  useEffect(() => {
+    // Check for paywall mode
+    if (searchParams.get("paywall") === "1") {
+      setIsPaywall(true);
+    }
+    // Check for specific feature being blocked
+    const blockedFeature = searchParams.get("feature");
+    if (blockedFeature) {
+      setFeature(blockedFeature);
+    }
+  }, [searchParams]);
 
   async function handleSelectPlan(planId) {
     if (!token) {
