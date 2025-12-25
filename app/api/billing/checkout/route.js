@@ -65,6 +65,8 @@ export async function OPTIONS() {
 }
 
 export async function POST(request) {
+  let requestPriceId = null // Track for error handling
+  
   try {
     const stripe = await getStripe()
     if (!stripe) {
@@ -86,6 +88,7 @@ export async function POST(request) {
     const user = auth.user
     const body = await request.json()
     const { priceId } = body
+    requestPriceId = priceId // Store for error handling
     
     if (!priceId) {
       return NextResponse.json(
