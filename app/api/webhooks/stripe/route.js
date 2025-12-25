@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
 import { env } from '@/lib/env'
 import { getCallMinutesItemId, extractSubscriptionBillingFields } from '@/lib/stripeSubscription'
+import { updateSubscriptionFields, updateSubscriptionByCustomerId } from '@/lib/subscriptionUpdate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -108,22 +109,17 @@ async function handleSubscriptionEvent(event, stripe, database) {
       // Extract billing fields including call minutes item ID
       const billingFields = extractSubscriptionBillingFields(subscription)
       
-      // Update user's subscription record
-      await database.collection('users').updateOne(
-        { id: userId },
-        {
-          $set: {
-            'subscription.stripeCustomerId': customerId,
-            'subscription.stripeSubscriptionId': subscriptionId,
-            'subscription.stripeCallMinutesItemId': billingFields.stripeCallMinutesItemId,
-            'subscription.stripePriceId': billingFields.stripePriceId,
-            'subscription.status': subscription.status,
-            'subscription.currentPeriodStart': billingFields.currentPeriodStart,
-            'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
-            'subscription.updatedAt': new Date().toISOString()
-          }
-        }
-      )
+      // Update user's subscription record (using atomic update to handle subscription: null)
+      await updateSubscriptionFields(database.collection('users'), userId, {
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId,
+        stripeCallMinutesItemId: billingFields.stripeCallMinutesItemId,
+        stripePriceId: billingFields.stripePriceId,
+        status: subscription.status,
+        currentPeriodStart: billingFields.currentPeriodStart,
+        currentPeriodEnd: billingFields.currentPeriodEnd,
+        updatedAt: new Date().toISOString()
+      })
       
       console.log(`[webhooks/stripe] checkout.session.completed: Updated user ${userId} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
       return
@@ -155,21 +151,16 @@ async function handleSubscriptionEvent(event, stripe, database) {
       // Extract billing fields
       const billingFields = extractSubscriptionBillingFields(subscription)
       
-      // Update user's subscription record
-      await database.collection('users').updateOne(
-        { id: user.id },
-        {
-          $set: {
-            'subscription.stripeSubscriptionId': subscriptionId,
-            'subscription.stripeCallMinutesItemId': billingFields.stripeCallMinutesItemId,
-            'subscription.stripePriceId': billingFields.stripePriceId,
-            'subscription.status': subscription.status,
-            'subscription.currentPeriodStart': billingFields.currentPeriodStart,
-            'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
-            'subscription.updatedAt': new Date().toISOString()
-          }
-        }
-      )
+      // Update user's subscription record (using atomic update)
+      await updateSubscriptionFields(database.collection('users'), user.id, {
+        stripeSubscriptionId: subscriptionId,
+        stripeCallMinutesItemId: billingFields.stripeCallMinutesItemId,
+        stripePriceId: billingFields.stripePriceId,
+        status: subscription.status,
+        currentPeriodStart: billingFields.currentPeriodStart,
+        currentPeriodEnd: billingFields.currentPeriodEnd,
+        updatedAt: new Date().toISOString()
+      })
       
       console.log(`[webhooks/stripe] ${type}: Updated user ${user.id} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
       return

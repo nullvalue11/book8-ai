@@ -30,6 +30,7 @@ import {
   buildSubscriptionLineItems,
   generateIdempotencyKey
 } from '@/lib/stripeSubscription'
+import { updateSubscriptionFields } from '@/lib/subscriptionUpdate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -124,16 +125,11 @@ export async function POST(request) {
       })
       customerId = customer.id
       
-      // Store customer ID
-      await database.collection('users').updateOne(
-        { id: user.id },
-        { 
-          $set: { 
-            'subscription.stripeCustomerId': customerId,
-            'subscription.updatedAt': new Date().toISOString()
-          } 
-        }
-      )
+      // Store customer ID (using atomic update to handle subscription: null)
+      await updateSubscriptionFields(database.collection('users'), user.id, {
+        stripeCustomerId: customerId,
+        updatedAt: new Date().toISOString()
+      })
     }
     
     // Build line items (base plan + metered minutes)
