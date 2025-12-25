@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { DEFAULT_REMINDER_SETTINGS, normalizeReminderSettings } from '@/lib/reminders'
+import { isSubscribed } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,6 +10,18 @@ export const revalidate = 0
 export const fetchCache = 'force-no-store'
 
 let client, db, indexed = false
+
+// Subscription required error
+function subscriptionRequiredResponse(feature) {
+  return NextResponse.json({
+    ok: false,
+    error: 'Subscription required',
+    code: 'SUBSCRIPTION_REQUIRED',
+    feature: feature,
+    message: `An active subscription is required to access ${feature} features. Please subscribe at /pricing`
+  }, { status: 402 })
+}
+
 async function connect() {
   if (!client) { client = new MongoClient(env.MONGO_URL); await client.connect(); db = client.db(env.DB_NAME) }
   if (!indexed) {
@@ -36,6 +49,11 @@ export async function GET(request) {
     try { payload = jwt.verify(token, env.JWT_SECRET) } catch { return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }) }
     const u = await database.collection('users').findOne({ id: payload.sub })
     
+    // Check subscription
+    if (!isSubscribed(u)) {
+      return subscriptionRequiredResponse('scheduling')
+    }
+    
     // Normalize reminders to new format if exists
     let scheduling = u?.scheduling || null
     if (scheduling?.reminders) {
@@ -58,6 +76,13 @@ export async function POST(request) {
     const jwt = (await import('jsonwebtoken')).default
     let payload
     try { payload = jwt.verify(token, env.JWT_SECRET) } catch { return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }) }
+    
+    const u = await database.collection('users').findOne({ id: payload.sub })
+    
+    // Check subscription
+    if (!isSubscribed(u)) {
+      return subscriptionRequiredResponse('scheduling')
+    }
 
     const body = await request.json()
     let { handle, timeZone, workingHours, defaultDurationMin, bufferMin, minNoticeMin, selectedCalendarIds, reminders } = body || {}
