@@ -85,6 +85,11 @@ export async function GET(request) {
     const auth = await requireAuth(request, database)
     if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
 
+    // Check subscription
+    if (!isSubscribed(auth.user)) {
+      return subscriptionRequiredResponse('calendar')
+    }
+
     const user = await database.collection('users').findOne({ id: auth.user.id })
     const selectedIds = user?.google?.selectedCalendarIds || (user?.google?.selectedCalendars) || []
     const calendar = await getCalendarClientForUser(user)
@@ -107,6 +112,11 @@ export async function POST(request) {
     const database = await connectToMongo()
     const auth = await requireAuth(request, database)
     if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+
+    // Check subscription
+    if (!isSubscribed(auth.user)) {
+      return subscriptionRequiredResponse('calendar')
+    }
 
     const body = await request.json().catch(() => ({}))
     let ids = body?.selectedCalendarIds || body?.selectedCalendars || []
