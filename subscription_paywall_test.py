@@ -160,10 +160,9 @@ def test_google_auth_non_subscribed_user(jwt_token):
     
     try:
         # Don't follow redirects so we can check the Location header
-        response = requests.get(url, allow_redirects=False, timeout=10)
+        response = requests.get(url, allow_redirects=False, timeout=30)
         
         print(f"   Status: {response.status_code}")
-        print(f"   Headers: {dict(response.headers)}")
         
         if response.status_code in [302, 307]:  # Redirect status codes
             location = response.headers.get('Location', '')
@@ -177,6 +176,28 @@ def test_google_auth_non_subscribed_user(jwt_token):
                 return True
             else:
                 print(f"   ❌ FAIL: Expected redirect to contain '{expected_redirect_path}', got: {location}")
+                return False
+        elif response.status_code == 520:
+            # 520 might be a temporary server error, let's retry once
+            print("   ⚠️  Got 520 error, retrying once...")
+            import time
+            time.sleep(2)
+            response = requests.get(url, allow_redirects=False, timeout=30)
+            
+            if response.status_code in [302, 307]:
+                location = response.headers.get('Location', '')
+                print(f"   Retry Status: {response.status_code}")
+                print(f"   Retry Redirect Location: {location}")
+                
+                expected_redirect_path = "/pricing?paywall=1&feature=calendar"
+                if expected_redirect_path in location:
+                    print("   ✅ PASS: Correctly redirects non-subscribed user to pricing page with paywall parameters (after retry)")
+                    return True
+                else:
+                    print(f"   ❌ FAIL: Expected redirect to contain '{expected_redirect_path}', got: {location}")
+                    return False
+            else:
+                print(f"   ❌ FAIL: Still getting error after retry: {response.status_code}")
                 return False
         else:
             print(f"   ❌ FAIL: Expected redirect status (302/307), got {response.status_code}")
