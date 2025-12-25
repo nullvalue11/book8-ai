@@ -149,18 +149,18 @@ function PricingContent() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0A0F14] text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <Header />
 
       {/* Paywall Banner */}
       {isPaywall && token && (
-        <div className="bg-gradient-to-r from-brand-500/20 to-purple-500/20 border-b border-brand-500/30">
+        <div className="bg-brand-500/10 border-b border-brand-500/30">
           <div className="max-w-4xl mx-auto px-6 py-4">
             <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-brand-400 shrink-0" />
+              <AlertCircle className="w-5 h-5 text-brand-500 shrink-0" />
               <div>
-                <p className="font-medium text-brand-300">Subscription Required</p>
-                <p className="text-sm text-white/70">
+                <p className="font-medium text-brand-600 dark:text-brand-400">Subscription Required</p>
+                <p className="text-sm text-muted-foreground">
                   {feature && featureMessages[feature] 
                     ? featureMessages[feature] 
                     : "Choose a plan below to unlock all features and start using Book8 AI."}
@@ -174,10 +174,10 @@ function PricingContent() {
       {/* Hero Section */}
       <section className="pt-20 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 text-foreground">
             {isPaywall && token ? "Choose Your Plan" : "Simple, transparent pricing"}
           </h1>
-          <p className="text-xl text-white/60 max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             {isPaywall && token 
               ? "Subscribe to unlock calendar sync, AI phone agents, and all premium features."
               : "Choose the plan that's right for you. All plans include our core scheduling features with metered billing for AI call minutes."}
