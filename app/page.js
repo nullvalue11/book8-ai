@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Input } from "./components/ui/input";
@@ -12,12 +13,13 @@ import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
 import HomeHero from "./(home)/HomeHero";
 import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 
 export default function Home(props) {
+  const router = useRouter();
   const forceDashboard = !!props?.forceDashboard;
   const { theme, setTheme, systemTheme } = useTheme();
   const resolved = theme === "system" ? systemTheme : theme;
@@ -25,6 +27,10 @@ export default function Home(props) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [appReady, setAppReady] = useState(false);
+  
+  // Subscription state
+  const [subscriptionChecked, setSubscriptionChecked] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   const [title, setTitle] = useState("Intro call");
   const [customerName, setCustomerName] = useState("");
@@ -74,7 +80,24 @@ export default function Home(props) {
   }, [appReady, token]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchArchivedCount(); } }, [token]);
+  useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchArchivedCount(); checkSubscription(); } }, [token]);
+
+  // Check subscription status
+  async function checkSubscription() {
+    try {
+      const res = await fetch('/api/billing/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setIsSubscribed(data.subscribed);
+      }
+    } catch (err) {
+      console.error('Subscription check failed:', err);
+    } finally {
+      setSubscriptionChecked(true);
+    }
+  }
 
   async function api(path, opts = {}) {
     const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {}, token ? { Authorization: `Bearer ${token}` } : {});
@@ -105,7 +128,14 @@ export default function Home(props) {
   async function createBooking(e) { e.preventDefault(); try { const payload = { title, customerName, startTime: startTime ? new Date(startTime).toISOString() : null, endTime: endTime ? new Date(endTime).toISOString() : null, notes, timeZone, }; const created = await api(`/bookings`, { method: "POST", headers: { "x-client-timezone": timeZone }, body: JSON.stringify(payload), }); setTitle("Intro call"); setCustomerName(""); setStartTime(""); setEndTime(""); setNotes(""); await fetchBookings(); alert(`Booking created: ${created?.title || created?.id}`); } catch (err) { alert(err.message); } }
 
   async function fetchGoogleStatus() { try { const status = await api(`/integrations/google/sync`, { method: "GET" }); setGoogleStatus(status || { connected: false, lastSyncedAt: null }); } catch { setGoogleStatus({ connected: false, lastSyncedAt: null }); } }
-  async function connectGoogle() { if (!token) return alert("Please login first"); window.location.href = `/api/integrations/google/auth?jwt=${token}`; }
+  async function connectGoogle() { 
+    if (!token) return alert("Please login first"); 
+    if (!isSubscribed) {
+      router.push('/pricing?paywall=1&feature=calendar');
+      return;
+    }
+    window.location.href = `/api/integrations/google/auth?jwt=${token}`; 
+  }
   async function openCalendars() { try { const res = await api(`/integrations/google/calendars`, { method: "GET" }); setCalendars(res?.calendars || []); setCalendarDialogOpen(true); } catch (err) { alert(err.message || "Failed to load calendars"); } }
   async function saveCalendars() { try { setSavingCalendars(true); const selected = calendars.filter((c) => c.selected).map((c) => c.id); await api(`/integrations/google/calendars`, { method: "POST", body: JSON.stringify({ selectedCalendarIds: selected }), }); setCalendarDialogOpen(false); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Failed to save selections"); } finally { setSavingCalendars(false); } }
   async function syncGoogle() { try { const res = await api(`/integrations/google/sync`, { method: "POST" }); alert(`Synced: created=${res.created}, updated=${res.updated}, deleted=${res.deleted}`); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Sync failed"); } }
@@ -403,15 +433,55 @@ export default function Home(props) {
           <Card className="bg-card">
             <CardHeader><CardTitle>Integrations</CardTitle></CardHeader>
             <CardContent className="space-y-3">
+              {/* Subscription Banner - show if not subscribed */}
+              {subscriptionChecked && !isSubscribed && (
+                <div className="p-4 rounded-lg bg-gradient-to-r from-brand-500/10 to-purple-500/10 border border-brand-500/20 mb-4">
+                  <div className="flex items-start gap-3">
+                    <CreditCard className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium text-brand-500">Subscription Required</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Subscribe to unlock calendar sync, phone agent features, and more.
+                      </p>
+                      <Button 
+                        size="sm" 
+                        className="mt-3 bg-brand-500 hover:bg-brand-600"
+                        onClick={() => router.push('/pricing?paywall=1')}
+                      >
+                        View Plans
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-md border p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium">Google Calendar</p>
-                    <p className="text-xs text-muted-foreground break-words">{googleStatus?.connected ? `Connected • Last synced ${googleStatus?.lastSyncedAt ? formatDT(googleStatus.lastSyncedAt) : "never"}` : "Not connected"}</p>
+                    <p className="font-medium flex items-center gap-2">
+                      Google Calendar
+                      {!isSubscribed && <Lock className="w-3 h-3 text-muted-foreground" />}
+                    </p>
+                    <p className="text-xs text-muted-foreground break-words">
+                      {!isSubscribed 
+                        ? "Subscribe to activate calendar sync" 
+                        : googleStatus?.connected 
+                          ? `Connected • Last synced ${googleStatus?.lastSyncedAt ? formatDT(googleStatus.lastSyncedAt) : "never"}` 
+                          : "Not connected"
+                      }
+                    </p>
                   </div>
-                  <Button size="sm" variant={googleStatus?.connected ? "secondary" : "default"} onClick={connectGoogle} className="shrink-0">{googleStatus?.connected ? "Reconnect" : "Connect"}</Button>
+                  <Button 
+                    size="sm" 
+                    variant={googleStatus?.connected ? "secondary" : "default"} 
+                    onClick={connectGoogle} 
+                    className="shrink-0"
+                    disabled={!isSubscribed}
+                  >
+                    {!isSubscribed ? "Locked" : googleStatus?.connected ? "Reconnect" : "Connect"}
+                  </Button>
                 </div>
-                {googleStatus?.connected && (
+                {googleStatus?.connected && isSubscribed && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     <Button size="sm" variant="secondary" onClick={openCalendars}>Choose calendars</Button>
                     <Button size="sm" onClick={syncGoogle}>Sync now</Button>
