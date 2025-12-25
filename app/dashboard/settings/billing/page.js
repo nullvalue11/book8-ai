@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,7 +23,7 @@ const planDetails = {
   enterprise: { name: "Enterprise", price: "$299", icon: Building2, color: "from-orange-500 to-red-500" }
 };
 
-export default function BillingSettingsPage() {
+function BillingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [token, setToken] = useState(null);
@@ -58,6 +58,7 @@ export default function BillingSettingsPage() {
     }
   }, [searchParams]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (token) {
       fetchUserAndPlans();
@@ -138,21 +139,210 @@ export default function BillingSettingsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-background">
-        <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-black/40 backdrop-blur">
-          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6">
-            <HeaderLogo width={152} height={28} />
-          </div>
-        </header>
-        <div className="container mx-auto max-w-4xl p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 w-48 bg-muted rounded" />
-            <div className="h-64 bg-muted rounded-lg" />
-          </div>
+      <div className="container mx-auto max-w-4xl p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-48 bg-muted rounded" />
+          <div className="h-64 bg-muted rounded-lg" />
         </div>
-      </main>
+      </div>
     );
   }
+
+  return (
+    <div className="container mx-auto max-w-4xl p-6 space-y-6">
+      {/* Success/Canceled Messages */}
+      {showSuccess && (
+        <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
+          <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-green-500">Subscription activated!</p>
+            <p className="text-sm text-green-500/70">Your subscription is now active. Thank you for subscribing!</p>
+          </div>
+          <button onClick={() => setShowSuccess(false)} className="ml-auto text-green-500/50 hover:text-green-500">
+            ×
+          </button>
+        </div>
+      )}
+
+      {showCanceled && (
+        <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-yellow-500">Checkout canceled</p>
+            <p className="text-sm text-yellow-500/70">No charges were made. You can try again anytime.</p>
+          </div>
+          <button onClick={() => setShowCanceled(false)} className="ml-auto text-yellow-500/50 hover:text-yellow-500">
+            ×
+          </button>
+        </div>
+      )}
+
+      <h1 className="text-2xl font-bold">Billing & Subscription</h1>
+
+      {/* Current Plan */}
+      <Card className="bg-card/50 backdrop-blur border-white/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5" /> Current Plan
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isActive && currentPlanId ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                {(() => {
+                  const plan = planDetails[currentPlanId];
+                  const Icon = plan?.icon || Zap;
+                  return (
+                    <>
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan?.color || 'from-gray-500 to-gray-600'} flex items-center justify-center`}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold">{plan?.name || 'Unknown'} Plan</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {plan?.price}/month • Status: <span className="text-green-500 capitalize">{subscription.status}</span>
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+              
+              {subscription.currentPeriodEnd && (
+                <p className="text-sm text-muted-foreground">
+                  Current period ends: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <CreditCard className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No active subscription</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Choose a plan below to get started with Book8 AI
+              </p>
+              <Button onClick={() => router.push("/pricing")}>
+                View Plans
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Usage - Call Minutes */}
+      <Card className="bg-card/50 backdrop-blur border-white/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Phone className="w-5 h-5" /> Call Minutes Usage
+          </CardTitle>
+          <CardDescription>
+            AI phone agent minutes are billed at $0.10 CAD per minute
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
+            <div>
+              <p className="text-sm text-muted-foreground">Metered billing</p>
+              <p className="text-2xl font-bold">$0.10 <span className="text-sm font-normal text-muted-foreground">/ minute</span></p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Billed monthly</p>
+              <p className="text-sm">Usage appears on your invoice</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Available Plans */}
+      {isActive && (
+        <Card className="bg-card/50 backdrop-blur border-white/10">
+          <CardHeader>
+            <CardTitle>Change Plan</CardTitle>
+            <CardDescription>Upgrade or change your subscription</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {Object.entries(planDetails).map(([planId, plan]) => {
+                const Icon = plan.icon;
+                const isCurrent = planId === currentPlanId;
+                const priceAvailable = plans?.[planId];
+
+                return (
+                  <div
+                    key={planId}
+                    className={`p-4 rounded-lg border transition-all ${
+                      isCurrent 
+                        ? "border-brand-500/50 bg-brand-500/5" 
+                        : "border-white/10 hover:border-white/20"
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${plan.color} flex items-center justify-center mb-3`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <h4 className="font-medium">{plan.name}</h4>
+                    <p className="text-2xl font-bold mb-3">{plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+                    
+                    {isCurrent ? (
+                      <div className="flex items-center gap-2 text-sm text-brand-500">
+                        <Check className="w-4 h-4" /> Current plan
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => handleUpgrade(planId)}
+                        disabled={!priceAvailable || upgradeLoading[planId]}
+                      >
+                        {upgradeLoading[planId] ? "Processing..." : "Switch to " + plan.name}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Manage in Stripe */}
+      {isActive && (
+        <Card className="bg-card/50 backdrop-blur border-white/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">Manage Subscription</h3>
+                <p className="text-sm text-muted-foreground">
+                  Update payment method, view invoices, or cancel
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => window.open("https://billing.stripe.com/p/login/test", "_blank")}>
+                <ExternalLink className="w-4 h-4 mr-2" /> Stripe Portal
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="container mx-auto max-w-4xl p-6">
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 w-48 bg-muted rounded" />
+        <div className="h-64 bg-muted rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+export default function BillingSettingsPage() {
+  const router = useRouter();
 
   return (
     <main className="min-h-screen bg-background">
@@ -169,184 +359,9 @@ export default function BillingSettingsPage() {
         </div>
       </header>
 
-      <div className="container mx-auto max-w-4xl p-6 space-y-6">
-        {/* Success/Canceled Messages */}
-        {showSuccess && (
-          <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
-            <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-green-500">Subscription activated!</p>
-              <p className="text-sm text-green-500/70">Your subscription is now active. Thank you for subscribing!</p>
-            </div>
-            <button onClick={() => setShowSuccess(false)} className="ml-auto text-green-500/50 hover:text-green-500">
-              ×
-            </button>
-          </div>
-        )}
-
-        {showCanceled && (
-          <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-yellow-500">Checkout canceled</p>
-              <p className="text-sm text-yellow-500/70">No charges were made. You can try again anytime.</p>
-            </div>
-            <button onClick={() => setShowCanceled(false)} className="ml-auto text-yellow-500/50 hover:text-yellow-500">
-              ×
-            </button>
-          </div>
-        )}
-
-        <h1 className="text-2xl font-bold">Billing & Subscription</h1>
-
-        {/* Current Plan */}
-        <Card className="bg-card/50 backdrop-blur border-white/10">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" /> Current Plan
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isActive && currentPlanId ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  {(() => {
-                    const plan = planDetails[currentPlanId];
-                    const Icon = plan?.icon || Zap;
-                    return (
-                      <>
-                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan?.color || 'from-gray-500 to-gray-600'} flex items-center justify-center`}>
-                          <Icon className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold">{plan?.name || 'Unknown'} Plan</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {plan?.price}/month • Status: <span className="text-green-500 capitalize">{subscription.status}</span>
-                          </p>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-                
-                {subscription.currentPeriodEnd && (
-                  <p className="text-sm text-muted-foreground">
-                    Current period ends: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                  <CreditCard className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No active subscription</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Choose a plan below to get started with Book8 AI
-                </p>
-                <Button onClick={() => router.push("/pricing")}>
-                  View Plans
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Usage - Call Minutes */}
-        <Card className="bg-card/50 backdrop-blur border-white/10">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Phone className="w-5 h-5" /> Call Minutes Usage
-            </CardTitle>
-            <CardDescription>
-              AI phone agent minutes are billed at $0.10 CAD per minute
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
-              <div>
-                <p className="text-sm text-muted-foreground">Metered billing</p>
-                <p className="text-2xl font-bold">$0.10 <span className="text-sm font-normal text-muted-foreground">/ minute</span></p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Billed monthly</p>
-                <p className="text-sm">Usage appears on your invoice</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Available Plans */}
-        {isActive && (
-          <Card className="bg-card/50 backdrop-blur border-white/10">
-            <CardHeader>
-              <CardTitle>Change Plan</CardTitle>
-              <CardDescription>Upgrade or change your subscription</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {Object.entries(planDetails).map(([planId, plan]) => {
-                  const Icon = plan.icon;
-                  const isCurrent = planId === currentPlanId;
-                  const priceAvailable = plans?.[planId];
-
-                  return (
-                    <div
-                      key={planId}
-                      className={`p-4 rounded-lg border transition-all ${
-                        isCurrent 
-                          ? "border-brand-500/50 bg-brand-500/5" 
-                          : "border-white/10 hover:border-white/20"
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${plan.color} flex items-center justify-center mb-3`}>
-                        <Icon className="w-5 h-5 text-white" />
-                      </div>
-                      <h4 className="font-medium">{plan.name}</h4>
-                      <p className="text-2xl font-bold mb-3">{plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
-                      
-                      {isCurrent ? (
-                        <div className="flex items-center gap-2 text-sm text-brand-500">
-                          <Check className="w-4 h-4" /> Current plan
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => handleUpgrade(planId)}
-                          disabled={!priceAvailable || upgradeLoading[planId]}
-                        >
-                          {upgradeLoading[planId] ? "Processing..." : "Switch to " + plan.name}
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Manage in Stripe */}
-        {isActive && (
-          <Card className="bg-card/50 backdrop-blur border-white/10">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium">Manage Subscription</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Update payment method, view invoices, or cancel
-                  </p>
-                </div>
-                <Button variant="outline" onClick={() => window.open("https://billing.stripe.com/p/login/test", "_blank")}>
-                  <ExternalLink className="w-4 h-4 mr-2" /> Stripe Portal
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      <Suspense fallback={<LoadingFallback />}>
+        <BillingContent />
+      </Suspense>
     </main>
   );
 }
