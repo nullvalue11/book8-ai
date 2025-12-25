@@ -433,15 +433,55 @@ export default function Home(props) {
           <Card className="bg-card">
             <CardHeader><CardTitle>Integrations</CardTitle></CardHeader>
             <CardContent className="space-y-3">
+              {/* Subscription Banner - show if not subscribed */}
+              {subscriptionChecked && !isSubscribed && (
+                <div className="p-4 rounded-lg bg-gradient-to-r from-brand-500/10 to-purple-500/10 border border-brand-500/20 mb-4">
+                  <div className="flex items-start gap-3">
+                    <CreditCard className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium text-brand-500">Subscription Required</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Subscribe to unlock calendar sync, phone agent features, and more.
+                      </p>
+                      <Button 
+                        size="sm" 
+                        className="mt-3 bg-brand-500 hover:bg-brand-600"
+                        onClick={() => router.push('/pricing?paywall=1')}
+                      >
+                        View Plans
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-md border p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium">Google Calendar</p>
-                    <p className="text-xs text-muted-foreground break-words">{googleStatus?.connected ? `Connected • Last synced ${googleStatus?.lastSyncedAt ? formatDT(googleStatus.lastSyncedAt) : "never"}` : "Not connected"}</p>
+                    <p className="font-medium flex items-center gap-2">
+                      Google Calendar
+                      {!isSubscribed && <Lock className="w-3 h-3 text-muted-foreground" />}
+                    </p>
+                    <p className="text-xs text-muted-foreground break-words">
+                      {!isSubscribed 
+                        ? "Subscribe to activate calendar sync" 
+                        : googleStatus?.connected 
+                          ? `Connected • Last synced ${googleStatus?.lastSyncedAt ? formatDT(googleStatus.lastSyncedAt) : "never"}` 
+                          : "Not connected"
+                      }
+                    </p>
                   </div>
-                  <Button size="sm" variant={googleStatus?.connected ? "secondary" : "default"} onClick={connectGoogle} className="shrink-0">{googleStatus?.connected ? "Reconnect" : "Connect"}</Button>
+                  <Button 
+                    size="sm" 
+                    variant={googleStatus?.connected ? "secondary" : "default"} 
+                    onClick={connectGoogle} 
+                    className="shrink-0"
+                    disabled={!isSubscribed}
+                  >
+                    {!isSubscribed ? "Locked" : googleStatus?.connected ? "Reconnect" : "Connect"}
+                  </Button>
                 </div>
-                {googleStatus?.connected && (
+                {googleStatus?.connected && isSubscribed && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     <Button size="sm" variant="secondary" onClick={openCalendars}>Choose calendars</Button>
                     <Button size="sm" onClick={syncGoogle}>Sync now</Button>
