@@ -109,6 +109,12 @@ export async function GET(request) {
     const database = await connectToMongo()
     const auth = await requireAuth(request, database)
     if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+    
+    // Check subscription for sync status
+    if (!isSubscribed(auth.user)) {
+      return subscriptionRequiredResponse('calendar')
+    }
+    
     const u = await database.collection('users').findOne({ id: auth.user.id })
     const connected = !!(u?.google?.refreshToken || u?.google?.connected)
     return NextResponse.json({ ok: true, connected, lastSyncedAt: u?.google?.lastSyncedAt || null })
@@ -120,6 +126,11 @@ export async function POST(request) {
     const database = await connectToMongo()
     const auth = await requireAuth(request, database)
     if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+    
+    // Check subscription for sync action
+    if (!isSubscribed(auth.user)) {
+      return subscriptionRequiredResponse('calendar')
+    }
     
     const user = await database.collection('users').findOne({ id: auth.user.id })
     const calendarResult = await getCalendarClientForUser(user, database)
