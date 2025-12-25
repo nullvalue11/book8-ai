@@ -87,6 +87,19 @@ export async function GET(request) {
     
     if (!isSubscribed(user)) {
       console.log(`[Google Auth] User ${userId} blocked - no active subscription`)
+      
+      // Return JSON for API/fetch requests, redirect for browser
+      const acceptHeader = request.headers.get('accept') || ''
+      if (acceptHeader.includes('application/json')) {
+        return NextResponse.json({
+          ok: false,
+          error: 'Subscription required',
+          code: 'SUBSCRIPTION_REQUIRED',
+          feature: 'calendar',
+          message: 'An active subscription is required to connect Google Calendar. Please subscribe at /pricing'
+        }, { status: 402 })
+      }
+      
       return NextResponse.redirect(`${base}/pricing?paywall=1&feature=calendar`)
     }
 
