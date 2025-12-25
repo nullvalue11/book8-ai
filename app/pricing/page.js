@@ -233,7 +233,7 @@ function PricingContent() {
                       className={`w-full ${
                         plan.popular
                           ? "bg-gradient-to-r from-brand-500 to-purple-500 hover:from-brand-600 hover:to-purple-600 text-white"
-                          : "bg-secondary hover:bg-secondary/80"
+                          : "bg-muted hover:bg-muted/80 text-foreground border border-border"
                       }`}
                       onClick={() => handleSelectPlan(plan.id)}
                       disabled={isLoading[plan.id]}
