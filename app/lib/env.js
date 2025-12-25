@@ -210,7 +210,10 @@ function loadConfig() {
       },
       
       // Debug
-      DEBUG_LOGS
+      DEBUG_LOGS,
+      
+      // Vercel Build Info
+      VERCEL_GIT_COMMIT_SHA
     }
     
     console.log('[env] ✅ Environment validation successful')
