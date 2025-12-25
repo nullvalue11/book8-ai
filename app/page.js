@@ -224,11 +224,60 @@ export default function Home(props) {
         <HomeHero />
 
         <section id="auth" className="container mx-auto max-w-md px-6 py-16">
-          <Card>
-            <CardHeader>
-              <CardTitle>Get Started</CardTitle>
+          <Card className="bg-card/50 backdrop-blur border-white/10">
+            <CardHeader className="space-y-1 pb-4">
+              <CardTitle className="text-2xl font-bold text-center">
+                {authMode === "login" ? "Welcome Back" : "Create Account"}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground text-center">
+                {authMode === "login" 
+                  ? "Sign in to manage your bookings" 
+                  : "Get started with Book8 AI today"}
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Auth Mode Tabs */}
+              <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
+                <button
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                    authMode === "login" 
+                      ? "bg-background text-foreground shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => { setAuthMode("login"); setFormError(""); }}
+                >
+                  Sign In
+                </button>
+                <button
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                    authMode === "register" 
+                      ? "bg-background text-foreground shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => { setAuthMode("register"); setFormError(""); }}
+                >
+                  Register
+                </button>
+              </div>
+
+              {/* Name field (only for register) */}
+              {authMode === "register" && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="John Doe"
+                    value={formData.name}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      setFormError("");
+                    }}
+                    className="bg-background/50"
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -236,9 +285,15 @@ export default function Home(props) {
                   type="email"
                   placeholder="you@example.com"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    setFormError("");
+                  }}
+                  className="bg-background/50"
+                  autoComplete="email"
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -246,13 +301,64 @@ export default function Home(props) {
                   type="password"
                   placeholder="••••••••"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, password: e.target.value });
+                    setFormError("");
+                  }}
+                  className="bg-background/50"
+                  autoComplete={authMode === "login" ? "current-password" : "new-password"}
                 />
+                {authMode === "register" && (
+                  <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
+                )}
               </div>
-              {formError && <p className="text-sm text-destructive">{formError}</p>}
-              <div className="flex gap-2">
-                <Button className="flex-1 bg-brand-500 hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand-500" onClick={handleLogin}>Sign In</Button>
-                <Button className="flex-1 border-white/12 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-brand-500" variant="outline" onClick={handleRegister}>Register</Button>
+
+              {formError && (
+                <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                  <p className="text-sm text-destructive">{formError}</p>
+                </div>
+              )}
+
+              <Button 
+                className="w-full bg-brand-500 hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand-500" 
+                onClick={authMode === "login" ? handleLogin : handleRegister}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    {authMode === "login" ? "Signing in..." : "Creating account..."}
+                  </span>
+                ) : (
+                  authMode === "login" ? "Sign In" : "Create Account"
+                )}
+              </Button>
+
+              <div className="text-center text-sm text-muted-foreground">
+                {authMode === "login" ? (
+                  <p>
+                    Don&apos;t have an account?{" "}
+                    <button 
+                      className="text-brand-500 hover:text-brand-400 font-medium"
+                      onClick={() => { setAuthMode("register"); setFormError(""); }}
+                    >
+                      Register
+                    </button>
+                  </p>
+                ) : (
+                  <p>
+                    Already have an account?{" "}
+                    <button 
+                      className="text-brand-500 hover:text-brand-400 font-medium"
+                      onClick={() => { setAuthMode("login"); setFormError(""); }}
+                    >
+                      Sign In
+                    </button>
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
