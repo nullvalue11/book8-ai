@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Input } from "./components/ui/input";
@@ -12,12 +13,13 @@ import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
 import HomeHero from "./(home)/HomeHero";
 import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 
 export default function Home(props) {
+  const router = useRouter();
   const forceDashboard = !!props?.forceDashboard;
   const { theme, setTheme, systemTheme } = useTheme();
   const resolved = theme === "system" ? systemTheme : theme;
@@ -25,6 +27,10 @@ export default function Home(props) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [appReady, setAppReady] = useState(false);
+  
+  // Subscription state
+  const [subscriptionChecked, setSubscriptionChecked] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   const [title, setTitle] = useState("Intro call");
   const [customerName, setCustomerName] = useState("");
