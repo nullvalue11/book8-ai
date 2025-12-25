@@ -65,6 +65,8 @@ export async function OPTIONS() {
 }
 
 export async function POST(request) {
+  let requestPriceId = null // Track for error handling
+  
   try {
     const stripe = await getStripe()
     if (!stripe) {
@@ -86,6 +88,7 @@ export async function POST(request) {
     const user = auth.user
     const body = await request.json()
     const { priceId } = body
+    requestPriceId = priceId // Store for error handling
     
     if (!priceId) {
       return NextResponse.json(
@@ -169,6 +172,37 @@ export async function POST(request) {
     
   } catch (error) {
     console.error('[billing/checkout] Error:', error)
+    
+    // Enhanced error handling for Stripe price errors
+    const errorMessage = error.message || ''
+    
+    // Check for "No such price" error
+    if (errorMessage.includes('No such price') || error.code === 'resource_missing') {
+      // Determine Stripe mode
+      let stripeMode = 'unknown'
+      const secretKey = env.STRIPE?.SECRET_KEY || ''
+      if (secretKey.startsWith('sk_test_')) {
+        stripeMode = 'test'
+      } else if (secretKey.startsWith('sk_live_')) {
+        stripeMode = 'live'
+      }
+      
+      return NextResponse.json({
+        ok: false,
+        error: errorMessage,
+        code: 'STRIPE_PRICE_INVALID',
+        sentPriceId: requestPriceId,
+        envPriceIdsSnapshot: {
+          starter: env.STRIPE?.PRICE_STARTER || null,
+          growth: env.STRIPE?.PRICE_GROWTH || null,
+          enterprise: env.STRIPE?.PRICE_ENTERPRISE || null,
+          metered: env.STRIPE?.PRICE_CALL_MINUTE_METERED || null
+        },
+        stripeMode,
+        hint: 'The price ID does not exist in the current Stripe account/mode. Check that env vars match Stripe dashboard.'
+      }, { status: 400 })
+    }
+    
     return NextResponse.json(
       { ok: false, error: error.message },
       { status: 500 }
