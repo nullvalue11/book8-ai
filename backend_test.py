@@ -1,164 +1,306 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Book8 Stripe Backfill Endpoint
-
-This test suite validates the Stripe backfill endpoint:
-- POST /api/admin/stripe/backfill-call-minutes - Backfill call minutes for existing subscriptions
-
-Focus on authentication and response structure validation.
+Backend Test Suite for Book8 AI - Subscription Paywall Implementation
+Tests all protected API routes to ensure proper subscription enforcement.
 """
 
 import requests
 import json
-import sys
-from datetime import datetime, timedelta
-import os
+import uuid
+import time
+from datetime import datetime
 
-# Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://meter-inspect.preview.emergentagent.com')
+# Configuration
+BASE_URL = "https://meter-inspect.preview.emergentagent.com"
+API_BASE = f"{BASE_URL}/api"
 
-# Get admin token from environment (placeholder value expected in test environment)
-ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', 'your_admin_token_here')
-
-def test_stripe_backfill_endpoint():
-    """Test POST /api/admin/stripe/backfill-call-minutes endpoint"""
-    print("\n=== Testing POST /api/admin/stripe/backfill-call-minutes ===")
+class TestResults:
+    def __init__(self):
+        self.passed = 0
+        self.failed = 0
+        self.results = []
     
-    url = f"{BASE_URL}/api/admin/stripe/backfill-call-minutes"
-    
-    # Test 1: Missing x-admin-token header
-    print("\n1. Testing without x-admin-token header (should return 401)")
-    try:
-        response = requests.post(url, json={}, timeout=10)
-        
-        print(f"   Status: {response.status_code}")
-        print(f"   Response: {response.text}")
-        
-        if response.status_code == 401:
-            data = response.json()
-            if 'Missing x-admin-token header' in data.get('error', ''):
-                print("   ✅ PASS: Correctly returns 401 with missing token error")
-            else:
-                print(f"   ❌ FAIL: Expected 'Missing x-admin-token header' error, got: {data.get('error')}")
+    def add_result(self, test_name, passed, details=""):
+        self.results.append({
+            "test": test_name,
+            "passed": passed,
+            "details": details
+        })
+        if passed:
+            self.passed += 1
         else:
-            print(f"   ❌ FAIL: Expected 401 status, got {response.status_code}")
-    except Exception as e:
-        print(f"   ❌ ERROR: {e}")
+            self.failed += 1
+        
+        status = "✅ PASS" if passed else "❌ FAIL"
+        print(f"{status}: {test_name}")
+        if details:
+            print(f"   Details: {details}")
     
-    # Test 2: Invalid x-admin-token
-    print("\n2. Testing with invalid x-admin-token (should return 401)")
-    try:
-        headers = {'x-admin-token': 'invalid-token-123'}
-        response = requests.post(url, json={}, headers=headers, timeout=10)
-        
-        print(f"   Status: {response.status_code}")
-        print(f"   Response: {response.text}")
-        
-        if response.status_code == 401:
-            data = response.json()
-            if 'Invalid admin token' in data.get('error', ''):
-                print("   ✅ PASS: Correctly returns 401 with invalid token error")
-            else:
-                print(f"   ❌ FAIL: Expected 'Invalid admin token' error, got: {data.get('error')}")
-        else:
-            print(f"   ❌ FAIL: Expected 401 status, got {response.status_code}")
-    except Exception as e:
-        print(f"   ❌ ERROR: {e}")
+    def summary(self):
+        total = self.passed + self.failed
+        print(f"\n=== TEST SUMMARY ===")
+        print(f"Total Tests: {total}")
+        print(f"Passed: {self.passed}")
+        print(f"Failed: {self.failed}")
+        print(f"Success Rate: {(self.passed/total*100):.1f}%" if total > 0 else "No tests run")
+
+def test_subscription_paywall():
+    """Test subscription paywall implementation across all protected routes"""
+    results = TestResults()
     
-    # Test 3: Valid x-admin-token (using environment value)
-    print(f"\n3. Testing with valid x-admin-token ('{ADMIN_TOKEN}') (should return 200)")
+    print("🔒 Testing Subscription Paywall Implementation")
+    print("=" * 60)
+    
+    # Step 1: Register a new test user
+    print("\n📝 Step 1: Register new test user")
+    test_email = f"test-{uuid.uuid4().hex[:8]}@example.com"
+    test_password = "TestPassword123!"
+    
+    register_data = {
+        "email": test_email,
+        "password": test_password,
+        "name": "Test User"
+    }
+    
     try:
-        headers = {'x-admin-token': ADMIN_TOKEN}
-        response = requests.post(url, json={}, headers=headers, timeout=10)
-        
-        print(f"   Status: {response.status_code}")
-        print(f"   Response: {response.text}")
-        
+        response = requests.post(f"{API_BASE}/auth/register", json=register_data, timeout=10)
         if response.status_code == 200:
             data = response.json()
-            
-            # Check required response fields
-            required_fields = ['ok', 'total', 'updated', 'skipped', 'failed', 'failedIds', 'debug']
-            missing_fields = [field for field in required_fields if field not in data]
-            
-            if not missing_fields:
-                print("   ✅ PASS: Response has all required fields")
-                
-                # Check debug object structure
-                debug = data.get('debug', {})
-                debug_fields = ['hasSubId', 'activeOrTrialingOrPastDue', 'hasMinutesItemId', 'missingMinutesItemId', 'selected']
-                missing_debug_fields = [field for field in debug_fields if field not in debug]
-                
-                if not missing_debug_fields:
-                    print("   ✅ PASS: Debug object has all required fields")
-                    print(f"   Debug counts: {debug}")
-                    
-                    # Verify all debug values are numbers
-                    all_numbers = all(isinstance(debug[field], int) for field in debug_fields)
-                    if all_numbers:
-                        print("   ✅ PASS: All debug counts are numbers")
-                    else:
-                        print("   ❌ FAIL: Some debug counts are not numbers")
-                        
-                    # Check main response structure
-                    print(f"   Total: {data.get('total')}")
-                    print(f"   Updated: {data.get('updated')}")
-                    print(f"   Skipped: {data.get('skipped')}")
-                    print(f"   Failed: {data.get('failed')}")
-                    print(f"   Failed IDs: {data.get('failedIds')}")
-                    
-                    # Verify response consistency
-                    if data.get('ok') == True:
-                        print("   ✅ PASS: Response indicates success (ok: true)")
-                    else:
-                        print(f"   ❌ FAIL: Expected ok: true, got ok: {data.get('ok')}")
-                        
-                else:
-                    print(f"   ❌ FAIL: Debug object missing fields: {missing_debug_fields}")
+            if data.get("ok") and data.get("token"):
+                jwt_token = data["token"]
+                results.add_result("User Registration", True, f"Registered {test_email}")
+                print(f"   JWT Token: {jwt_token[:20]}...")
             else:
-                print(f"   ❌ FAIL: Response missing required fields: {missing_fields}")
-                
-        elif response.status_code == 400:
-            # Might be Stripe configuration issue
-            data = response.json()
-            error = data.get('error', '')
-            if 'Stripe not configured' in error or 'STRIPE_PRICE_CALL_MINUTE_METERED not configured' in error:
-                print(f"   ⚠️  EXPECTED: Stripe not configured in test environment - {error}")
-            else:
-                print(f"   ❌ FAIL: Unexpected 400 error: {error}")
+                results.add_result("User Registration", False, f"No token in response: {data}")
+                return results
         else:
-            print(f"   ❌ FAIL: Expected 200 status, got {response.status_code}")
+            results.add_result("User Registration", False, f"Status {response.status_code}: {response.text}")
+            return results
     except Exception as e:
-        print(f"   ❌ ERROR: {e}")
+        results.add_result("User Registration", False, f"Exception: {str(e)}")
+        return results
     
-    # Test 4: OPTIONS request (CORS support)
-    print("\n4. Testing OPTIONS request (CORS support)")
+    # Headers for authenticated requests
+    auth_headers = {"Authorization": f"Bearer {jwt_token}"}
+    
+    # Step 2: Verify user has no subscription
+    print("\n🔍 Step 2: Verify user subscription status")
     try:
-        response = requests.options(url, timeout=10)
-        
-        print(f"   Status: {response.status_code}")
-        
-        if response.status_code == 204:
-            print("   ✅ PASS: OPTIONS request handled correctly")
+        response = requests.get(f"{API_BASE}/billing/me", headers=auth_headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("ok") and data.get("subscribed") == False:
+                results.add_result("User Not Subscribed", True, f"subscribed: {data.get('subscribed')}")
+            else:
+                results.add_result("User Not Subscribed", False, f"Unexpected subscription status: {data}")
         else:
-            print(f"   ❌ FAIL: Expected 204 status for OPTIONS, got {response.status_code}")
+            results.add_result("User Not Subscribed", False, f"Status {response.status_code}: {response.text}")
     except Exception as e:
-        print(f"   ❌ ERROR: {e}")
-
-def main():
-    """Run all tests"""
-    print("🔧 Book8 Stripe Backfill Endpoint Test Suite")
-    print("=" * 50)
-    print(f"Testing against: {BASE_URL}")
-    print(f"Using ADMIN_TOKEN: {ADMIN_TOKEN}")
+        results.add_result("User Not Subscribed", False, f"Exception: {str(e)}")
     
-    # Test Stripe backfill endpoint
-    test_stripe_backfill_endpoint()
+    # Step 3: Test protected routes that should return 402 SUBSCRIPTION_REQUIRED
+    print("\n🚫 Step 3: Test protected routes (should return 402)")
     
-    print("\n" + "=" * 50)
-    print("🏁 Test Suite Complete")
-    print("\nNote: This test focuses on authentication and response structure validation.")
-    print("The endpoint may return Stripe configuration errors in test environment, which is expected.")
+    protected_routes = [
+        {
+            "name": "Google Calendar Sync Status",
+            "method": "GET",
+            "url": f"{API_BASE}/integrations/google/sync",
+            "feature": "calendar"
+        },
+        {
+            "name": "Google Calendar Sync Trigger",
+            "method": "POST", 
+            "url": f"{API_BASE}/integrations/google/sync",
+            "feature": "calendar"
+        },
+        {
+            "name": "Google Calendar List",
+            "method": "GET",
+            "url": f"{API_BASE}/integrations/google/calendars",
+            "feature": "calendar"
+        },
+        {
+            "name": "Event Types List",
+            "method": "GET",
+            "url": f"{API_BASE}/event-types",
+            "feature": "event-types"
+        },
+        {
+            "name": "Event Types Create",
+            "method": "POST",
+            "url": f"{API_BASE}/event-types",
+            "feature": "event-types",
+            "data": {"name": "Test Event", "durationMinutes": 30}
+        },
+        {
+            "name": "Scheduling Settings",
+            "method": "GET",
+            "url": f"{API_BASE}/settings/scheduling",
+            "feature": "scheduling"
+        },
+        {
+            "name": "Analytics Summary",
+            "method": "GET",
+            "url": f"{API_BASE}/analytics/summary",
+            "feature": "analytics"
+        }
+    ]
+    
+    for route in protected_routes:
+        try:
+            if route["method"] == "GET":
+                response = requests.get(route["url"], headers=auth_headers, timeout=10)
+            elif route["method"] == "POST":
+                data = route.get("data", {})
+                response = requests.post(route["url"], headers=auth_headers, json=data, timeout=10)
+            
+            if response.status_code == 402:
+                try:
+                    data = response.json()
+                    expected_structure = {
+                        "ok": False,
+                        "error": "Subscription required",
+                        "code": "SUBSCRIPTION_REQUIRED",
+                        "feature": route["feature"]
+                    }
+                    
+                    # Check response structure
+                    valid_structure = True
+                    missing_fields = []
+                    
+                    for key, expected_value in expected_structure.items():
+                        if key not in data:
+                            missing_fields.append(key)
+                            valid_structure = False
+                        elif key == "feature" and data[key] != expected_value:
+                            missing_fields.append(f"{key} (expected '{expected_value}', got '{data[key]}')")
+                            valid_structure = False
+                        elif key in ["ok", "error", "code"] and data[key] != expected_value:
+                            missing_fields.append(f"{key} (expected '{expected_value}', got '{data[key]}')")
+                            valid_structure = False
+                    
+                    if valid_structure:
+                        results.add_result(f"Protected Route: {route['name']}", True, 
+                                         f"402 with correct structure, feature: {data.get('feature')}")
+                    else:
+                        results.add_result(f"Protected Route: {route['name']}", False, 
+                                         f"402 but invalid structure. Missing/wrong: {missing_fields}")
+                except json.JSONDecodeError:
+                    results.add_result(f"Protected Route: {route['name']}", False, 
+                                     f"402 but invalid JSON response")
+            else:
+                results.add_result(f"Protected Route: {route['name']}", False, 
+                                 f"Expected 402, got {response.status_code}: {response.text[:200]}")
+        except Exception as e:
+            results.add_result(f"Protected Route: {route['name']}", False, f"Exception: {str(e)}")
+    
+    # Step 4: Test routes that should NOT be protected
+    print("\n✅ Step 4: Test unprotected routes (should work normally)")
+    
+    unprotected_routes = [
+        {
+            "name": "Billing Status Check",
+            "method": "GET",
+            "url": f"{API_BASE}/billing/me",
+            "expected_status": 200
+        },
+        {
+            "name": "User Info",
+            "method": "GET", 
+            "url": f"{API_BASE}/user",
+            "expected_status": 200
+        },
+        {
+            "name": "Billing Plans",
+            "method": "GET",
+            "url": f"{API_BASE}/billing/plans", 
+            "expected_status": 200
+        }
+    ]
+    
+    for route in unprotected_routes:
+        try:
+            if route["method"] == "GET":
+                response = requests.get(route["url"], headers=auth_headers, timeout=10)
+            elif route["method"] == "POST":
+                data = route.get("data", {})
+                response = requests.post(route["url"], headers=auth_headers, json=data, timeout=10)
+            
+            if response.status_code == route["expected_status"]:
+                try:
+                    data = response.json()
+                    if route["name"] == "Billing Status Check":
+                        # Verify subscription status is false
+                        if data.get("ok") and data.get("subscribed") == False:
+                            results.add_result(f"Unprotected Route: {route['name']}", True, 
+                                             f"Status {response.status_code}, subscribed: {data.get('subscribed')}")
+                        else:
+                            results.add_result(f"Unprotected Route: {route['name']}", False, 
+                                             f"Unexpected response structure: {data}")
+                    elif route["name"] == "Billing Plans":
+                        # Verify plans structure
+                        if data.get("ok") and "plans" in data:
+                            results.add_result(f"Unprotected Route: {route['name']}", True, 
+                                             f"Status {response.status_code}, plans available")
+                        else:
+                            results.add_result(f"Unprotected Route: {route['name']}", False, 
+                                             f"Missing plans in response: {data}")
+                    else:
+                        results.add_result(f"Unprotected Route: {route['name']}", True, 
+                                         f"Status {response.status_code}")
+                except json.JSONDecodeError:
+                    results.add_result(f"Unprotected Route: {route['name']}", False, 
+                                     f"Status {response.status_code} but invalid JSON")
+            else:
+                results.add_result(f"Unprotected Route: {route['name']}", False, 
+                                 f"Expected {route['expected_status']}, got {response.status_code}: {response.text[:200]}")
+        except Exception as e:
+            results.add_result(f"Unprotected Route: {route['name']}", False, f"Exception: {str(e)}")
+    
+    # Step 5: Test authentication requirements
+    print("\n🔐 Step 5: Test authentication requirements")
+    
+    # Test without auth header
+    try:
+        response = requests.get(f"{API_BASE}/billing/me", timeout=10)
+        if response.status_code == 401:
+            data = response.json()
+            if "Missing Authorization header" in data.get("error", ""):
+                results.add_result("No Auth Header", True, "401 with correct error message")
+            else:
+                results.add_result("No Auth Header", False, f"401 but wrong error: {data}")
+        else:
+            results.add_result("No Auth Header", False, f"Expected 401, got {response.status_code}")
+    except Exception as e:
+        results.add_result("No Auth Header", False, f"Exception: {str(e)}")
+    
+    # Test with invalid token
+    try:
+        invalid_headers = {"Authorization": "Bearer invalid-token-123"}
+        response = requests.get(f"{API_BASE}/billing/me", headers=invalid_headers, timeout=10)
+        if response.status_code == 401:
+            data = response.json()
+            if "Invalid or expired token" in data.get("error", ""):
+                results.add_result("Invalid Token", True, "401 with correct error message")
+            else:
+                results.add_result("Invalid Token", False, f"401 but wrong error: {data}")
+        else:
+            results.add_result("Invalid Token", False, f"Expected 401, got {response.status_code}")
+    except Exception as e:
+        results.add_result("Invalid Token", False, f"Exception: {str(e)}")
+    
+    return results
 
 if __name__ == "__main__":
-    main()
+    print("🚀 Starting Book8 AI Subscription Paywall Tests")
+    print(f"🌐 Base URL: {BASE_URL}")
+    print(f"⏰ Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    results = test_subscription_paywall()
+    results.summary()
+    
+    print(f"\n⏰ Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Exit with appropriate code
+    exit(0 if results.failed == 0 else 1)
