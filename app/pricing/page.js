@@ -261,24 +261,24 @@ function PricingContent() {
       </section>
 
       {/* Call Minutes Info */}
-      <section className="py-16 px-6 border-t border-white/5">
+      <section className="py-16 px-6 border-t border-border">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl font-bold mb-4">AI Call Minutes</h2>
-          <p className="text-white/60 mb-6">
+          <h2 className="text-2xl font-bold mb-4 text-foreground">AI Call Minutes</h2>
+          <p className="text-muted-foreground mb-6">
             All plans include metered billing for AI phone agent calls at
-            <span className="text-white font-semibold"> $0.10 CAD per minute</span>.
+            <span className="text-foreground font-semibold"> $0.10 CAD per minute</span>.
             Only pay for what you use.
           </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted border border-border">
             <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-sm text-white/70">Usage tracked automatically</span>
+            <span className="text-sm text-muted-foreground">Usage tracked automatically</span>
           </div>
         </div>
       </section>
 
       {/* FAQ or Footer */}
-      <footer className="py-8 px-6 border-t border-white/5">
-        <div className="max-w-6xl mx-auto text-center text-white/40 text-sm">
+      <footer className="py-8 px-6 border-t border-border">
+        <div className="max-w-6xl mx-auto text-center text-muted-foreground text-sm">
           <p>Questions? Contact us at support@book8.ai</p>
         </div>
       </footer>
@@ -288,12 +288,12 @@ function PricingContent() {
 
 function LoadingFallback() {
   return (
-    <main className="min-h-screen bg-[#0A0F14] text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <Header />
       <div className="pt-20 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="h-12 w-64 bg-white/10 rounded mx-auto mb-6 animate-pulse" />
-          <div className="h-6 w-96 bg-white/10 rounded mx-auto animate-pulse" />
+          <div className="h-12 w-64 bg-muted rounded mx-auto mb-6 animate-pulse" />
+          <div className="h-6 w-96 bg-muted rounded mx-auto animate-pulse" />
         </div>
       </div>
     </main>
