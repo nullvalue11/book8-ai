@@ -178,8 +178,6 @@ export async function POST(request) {
     
     // Check for "No such price" error
     if (errorMessage.includes('No such price') || error.code === 'resource_missing') {
-      const sentPriceId = body?.priceId || null
-      
       // Determine Stripe mode
       let stripeMode = 'unknown'
       const secretKey = env.STRIPE?.SECRET_KEY || ''
@@ -193,7 +191,7 @@ export async function POST(request) {
         ok: false,
         error: errorMessage,
         code: 'STRIPE_PRICE_INVALID',
-        sentPriceId,
+        sentPriceId: requestPriceId,
         envPriceIdsSnapshot: {
           starter: env.STRIPE?.PRICE_STARTER || null,
           growth: env.STRIPE?.PRICE_GROWTH || null,
