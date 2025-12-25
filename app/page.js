@@ -46,8 +46,10 @@ export default function Home(props) {
   const [archivedCount, setArchivedCount] = useState(0);
   const [copied, setCopied] = useState(false);
 
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({ email: "", password: "", name: "" });
   const [formError, setFormError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [authMode, setAuthMode] = useState("login"); // "login" or "register"
 
   const fetchAbort = useRef(null);
 
