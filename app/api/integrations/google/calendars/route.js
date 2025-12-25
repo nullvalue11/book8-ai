@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env } from '@/lib/env'
+import { isSubscribed } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,6 +11,17 @@ export const fetchCache = 'force-no-store'
 
 let client
 let db
+
+// Subscription required error
+function subscriptionRequiredResponse(feature) {
+  return NextResponse.json({
+    ok: false,
+    error: 'Subscription required',
+    code: 'SUBSCRIPTION_REQUIRED',
+    feature: feature,
+    message: `An active subscription is required to access ${feature} features. Please subscribe at /pricing`
+  }, { status: 402 })
+}
 
 async function connectToMongo() {
   if (!client) {
@@ -73,6 +85,11 @@ export async function GET(request) {
     const auth = await requireAuth(request, database)
     if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
 
+    // Check subscription
+    if (!isSubscribed(auth.user)) {
+      return subscriptionRequiredResponse('calendar')
+    }
+
     const user = await database.collection('users').findOne({ id: auth.user.id })
     const selectedIds = user?.google?.selectedCalendarIds || (user?.google?.selectedCalendars) || []
     const calendar = await getCalendarClientForUser(user)
@@ -95,6 +112,11 @@ export async function POST(request) {
     const database = await connectToMongo()
     const auth = await requireAuth(request, database)
     if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+
+    // Check subscription
+    if (!isSubscribed(auth.user)) {
+      return subscriptionRequiredResponse('calendar')
+    }
 
     const body = await request.json().catch(() => ({}))
     let ids = body?.selectedCalendarIds || body?.selectedCalendars || []

@@ -46,6 +46,7 @@ import {
   logAgentCall 
 } from '@/lib/phoneAgent'
 import { env } from '@/lib/env'
+import { isSubscribed } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -59,6 +60,14 @@ async function connect() {
     db = client.db(env.DB_NAME)
   }
   return db
+}
+
+// Subscription required error for agent routes
+const SUBSCRIPTION_REQUIRED_ERROR = {
+  ok: false,
+  code: 'SUBSCRIPTION_REQUIRED',
+  message: 'The business owner\'s subscription is not active.',
+  hint: 'The business needs an active subscription to use AI phone agent features.'
 }
 
 // Helper: Get Google FreeBusy
@@ -151,6 +160,17 @@ export async function POST(request) {
 
     const { owner, agent } = agentResult
     agentLabel = agent.label || 'unnamed'
+    
+    // Check owner's subscription status
+    if (!isSubscribed(owner)) {
+      logAgentCall('availability', { 
+        handle: resolvedHandle, 
+        agentLabel, 
+        success: false, 
+        error: 'Owner subscription not active' 
+      })
+      return NextResponse.json(SUBSCRIPTION_REQUIRED_ERROR, { status: 402 })
+    }
     
     // 2. Resolve handle (provided or from owner)
     resolvedHandle = handle || agentResult.handle

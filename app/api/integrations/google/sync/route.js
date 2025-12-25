@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { buildGoogleEventFromBooking } from '../../../../../lib/googleSync'
 import { env } from '@/lib/env'
+import { isSubscribed } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -12,6 +13,17 @@ export const fetchCache = 'force-no-store'
 let client
 let db
 let indexesEnsured = false
+
+// Subscription required error
+function subscriptionRequiredResponse(feature) {
+  return NextResponse.json({
+    ok: false,
+    error: 'Subscription required',
+    code: 'SUBSCRIPTION_REQUIRED',
+    feature: feature,
+    message: `An active subscription is required to access ${feature} features. Please subscribe at /pricing`
+  }, { status: 402 })
+}
 
 async function connectToMongo() {
   if (!client) {
@@ -97,6 +109,12 @@ export async function GET(request) {
     const database = await connectToMongo()
     const auth = await requireAuth(request, database)
     if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+    
+    // Check subscription for sync status
+    if (!isSubscribed(auth.user)) {
+      return subscriptionRequiredResponse('calendar')
+    }
+    
     const u = await database.collection('users').findOne({ id: auth.user.id })
     const connected = !!(u?.google?.refreshToken || u?.google?.connected)
     return NextResponse.json({ ok: true, connected, lastSyncedAt: u?.google?.lastSyncedAt || null })
@@ -108,6 +126,11 @@ export async function POST(request) {
     const database = await connectToMongo()
     const auth = await requireAuth(request, database)
     if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+    
+    // Check subscription for sync action
+    if (!isSubscribed(auth.user)) {
+      return subscriptionRequiredResponse('calendar')
+    }
     
     const user = await database.collection('users').findOne({ id: auth.user.id })
     const calendarResult = await getCalendarClientForUser(user, database)
