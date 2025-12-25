@@ -30,6 +30,7 @@ import {
   buildSubscriptionLineItems,
   generateIdempotencyKey
 } from '@/lib/stripeSubscription'
+import { updateSubscriptionFields } from '@/lib/subscriptionUpdate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
