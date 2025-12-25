@@ -166,6 +166,8 @@ export async function POST(request) {
     // ===== RESPONSE STRUCTURE =====
     const response = {
       ok: true,
+      version: 'backfill-v2',
+      commit: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
       total: usersToBackfill.length,
       updated: 0,
       skipped: 0,
