@@ -143,19 +143,44 @@ function PricingContent() {
     }
   }
 
+  const featureMessages = {
+    calendar: "You need a subscription to connect Google Calendar.",
+    phone: "You need a subscription to use AI phone agent features."
+  };
+
   return (
     <main className="min-h-screen bg-[#0A0F14] text-white">
       <Header />
+
+      {/* Paywall Banner */}
+      {isPaywall && token && (
+        <div className="bg-gradient-to-r from-brand-500/20 to-purple-500/20 border-b border-brand-500/30">
+          <div className="max-w-4xl mx-auto px-6 py-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-brand-400 shrink-0" />
+              <div>
+                <p className="font-medium text-brand-300">Subscription Required</p>
+                <p className="text-sm text-white/70">
+                  {feature && featureMessages[feature] 
+                    ? featureMessages[feature] 
+                    : "Choose a plan below to unlock all features and start using Book8 AI."}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero Section */}
       <section className="pt-20 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
-            Simple, transparent pricing
+            {isPaywall && token ? "Choose Your Plan" : "Simple, transparent pricing"}
           </h1>
           <p className="text-xl text-white/60 max-w-2xl mx-auto">
-            Choose the plan that&apos;s right for you. All plans include our core
-            scheduling features with metered billing for AI call minutes.
+            {isPaywall && token 
+              ? "Subscribe to unlock calendar sync, AI phone agents, and all premium features."
+              : "Choose the plan that's right for you. All plans include our core scheduling features with metered billing for AI call minutes."}
           </p>
         </div>
       </section>
@@ -196,10 +221,10 @@ function PricingContent() {
                     </div>
 
                     <ul className="space-y-3">
-                      {plan.features.map((feature, i) => (
+                      {plan.features.map((feat, i) => (
                         <li key={i} className="flex items-start gap-3">
                           <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                          <span className="text-sm text-white/70">{feature}</span>
+                          <span className="text-sm text-white/70">{feat}</span>
                         </li>
                       ))}
                     </ul>
@@ -223,7 +248,7 @@ function PricingContent() {
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
-                          Get Started <ArrowRight className="w-4 h-4" />
+                          {isPaywall && token ? `Subscribe to ${plan.name}` : "Get Started"} <ArrowRight className="w-4 h-4" />
                         </span>
                       )}
                     </Button>
@@ -258,5 +283,27 @@ function PricingContent() {
         </div>
       </footer>
     </main>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <main className="min-h-screen bg-[#0A0F14] text-white">
+      <Header />
+      <div className="pt-20 pb-16 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="h-12 w-64 bg-white/10 rounded mx-auto mb-6 animate-pulse" />
+          <div className="h-6 w-96 bg-white/10 rounded mx-auto animate-pulse" />
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <PricingContent />
+    </Suspense>
   );
 }
