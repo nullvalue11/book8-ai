@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env } from '@/lib/env'
+import { isSubscribed } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,6 +11,17 @@ export const fetchCache = 'force-no-store'
 
 let client
 let db
+
+// Subscription required error
+function subscriptionRequiredResponse(feature) {
+  return NextResponse.json({
+    ok: false,
+    error: 'Subscription required',
+    code: 'SUBSCRIPTION_REQUIRED',
+    feature: feature,
+    message: `An active subscription is required to access ${feature} features. Please subscribe at /pricing`
+  }, { status: 402 })
+}
 
 async function connectToMongo() {
   if (!client) {
