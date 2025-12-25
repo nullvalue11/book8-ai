@@ -139,6 +139,9 @@ function loadConfig() {
     // Debug & Development
     const DEBUG_LOGS = getEnvVar('DEBUG_LOGS', false, 'false') === 'true'
     
+    // Vercel Build Info (for deployment tracking)
+    const VERCEL_GIT_COMMIT_SHA = getEnvVar('VERCEL_GIT_COMMIT_SHA', false, 'local')
+    
     if (DEBUG_LOGS && NODE_ENV === 'production') {
       console.warn('[env] WARNING: DEBUG_LOGS is enabled in production. This may expose sensitive data.')
     }
@@ -207,7 +210,10 @@ function loadConfig() {
       },
       
       // Debug
-      DEBUG_LOGS
+      DEBUG_LOGS,
+      
+      // Vercel Build Info
+      VERCEL_GIT_COMMIT_SHA
     }
     
     console.log('[env] ✅ Environment validation successful')
