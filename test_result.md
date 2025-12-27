@@ -826,3 +826,14 @@
 
   - agent: "testing"
     message: "💳 STRIPE DIAGNOSTIC AND CHECKOUT ERROR HANDLING TESTING COMPLETE: Successfully tested the Stripe diagnostic and checkout error handling endpoints as requested in review! All 8 test scenarios passed (100% success rate): ✅ GET /api/admin/stripe/diagnose-prices with valid x-admin-token header - Returns 200 with correct JSON structure containing stripeMode (unknown), stripeConfigured (true), envSnapshot object with hasSecretKey/hasPublishableKey/priceStarter/etc., and priceValidation object with validation results for all plans (starter, growth, enterprise, callMinuteMetered) ✅ GET /api/admin/stripe/diagnose-prices without token - Returns 401 with error 'Invalid admin token' ✅ POST /api/billing/checkout error format verification - Returns proper error structures: 400 'Missing priceId' for missing fields, 400 'Invalid price ID' for invalid prices, 401 'Missing Authorization header' for missing JWT tokens ✅ CORS Support - Both endpoints return 204 for OPTIONS requests ✅ Response Structure Validation - All responses match expected JSON format exactly as specified in review request ✅ Authentication Flow - x-admin-token validation working correctly for diagnostic endpoint, JWT Bearer token validation working for checkout endpoint ✅ Error Handling - Proper HTTP status codes and error message formats for all failure scenarios. IMPORTANT NOTES: Local environment has placeholder Stripe keys so prices don't validate against Stripe (expected behavior), focus was on verifying response structure correctness, ADMIN_TOKEN uses placeholder value from .env file. The Stripe diagnostic and checkout error handling endpoints are production-ready with robust authentication, comprehensive validation, and proper error handling!"
+  - task: "Ops Control Plane V1 - Internal Operations API"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/internal/ops/execute/route.js, /app/app/lib/ops/*.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: Created complete Ops Control Plane V1 with secure, internal-only API endpoint for executing predefined operational tasks. Features: 1) POST /api/internal/ops/execute - executes ops tools with idempotency and audit logging, 2) GET /api/internal/ops/execute - lists available tools. Authentication: x-book8-internal-secret header matching OPS_INTERNAL_SECRET env var. Tools implemented: tenant.ensure (create/verify business), billing.validateStripeConfig (validate Stripe env vars and prices), voice.smokeTest (health check voice services), tenant.provisioningSummary (get tenant provisioning state). Full audit logging to ops_audit_logs collection, idempotency via ops_executions collection, dryRun mode support, Zod schema validation for all tool arguments. Ready for backend testing."
