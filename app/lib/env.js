@@ -194,6 +194,9 @@ function loadConfig() {
       // Admin
       ADMIN_TOKEN,
       
+      // Ops Control Plane
+      OPS_INTERNAL_SECRET,
+      
       // Billing/Usage Reporting
       CORE_API_BASE_URL,
       CORE_API_INTERNAL_SECRET,
