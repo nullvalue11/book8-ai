@@ -115,6 +115,9 @@ function loadConfig() {
     // Admin Token for protected endpoints
     const ADMIN_TOKEN = getEnvVar('ADMIN_TOKEN', false)
     
+    // Ops Control Plane Internal Secret
+    const OPS_INTERNAL_SECRET = getEnvVar('OPS_INTERNAL_SECRET', false)
+    
     // Billing/Usage Reporting (uses existing CRON_SECRET for auth)
     const CORE_API_BASE_URL = getEnvVar('CORE_API_BASE_URL', false)
     const CORE_API_INTERNAL_SECRET = getEnvVar('CORE_API_INTERNAL_SECRET', false)
