@@ -113,22 +113,22 @@ export default function IPhoneMockup({ showHeroContent = false }) {
               /* Mobile hero content inside phone */
               <div className="h-full flex flex-col justify-center text-center px-1">
                 <div className="mb-2">
-                  <span className="inline-flex items-center rounded-full border border-brand-500/30 bg-brand-500/10 px-1.5 py-0.5 text-[7px] text-brand-500 font-medium">
+                  <span className="inline-flex items-center rounded-full border border-[#7C4DFF]/30 bg-[#7C4DFF]/10 px-1.5 py-0.5 text-[7px] text-[#7C4DFF] font-medium">
                     AI-Powered
                   </span>
                 </div>
-                <h3 className="text-[10px] font-bold text-foreground leading-tight mb-1">
+                <h3 className="text-[10px] font-bold text-white leading-tight mb-1">
                   Intelligent Booking
-                  <span className="block bg-brand-gradient bg-clip-text text-transparent">& Automation</span>
+                  <span className="block text-[#7C4DFF]">& Automation</span>
                 </h3>
-                <p className="text-[6px] text-muted-foreground leading-snug mb-2.5 px-0.5">
+                <p className="text-[6px] text-gray-400 leading-snug mb-2.5 px-0.5">
                   Connect calendars, enable voice/AI bookings, and leverage real-time web search.
                 </p>
                 <div className="flex flex-col gap-1 px-1">
-                  <div className="h-5 rounded-md bg-brand-500 text-white text-[6px] font-medium flex items-center justify-center shadow-lg">
+                  <div className="h-5 rounded-md bg-[#7C4DFF] text-white text-[6px] font-medium flex items-center justify-center shadow-lg">
                     Start Free Trial
                   </div>
-                  <div className="h-4 rounded-md border border-border text-[6px] text-muted-foreground flex items-center justify-center">
+                  <div className="h-4 rounded-md border border-gray-600 text-[6px] text-gray-400 flex items-center justify-center">
                     Watch Demo →
                   </div>
                 </div>
@@ -139,73 +139,73 @@ export default function IPhoneMockup({ showHeroContent = false }) {
                 {/* Mini header */}
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1">
-                    <div className="w-4 h-4 rounded-md bg-brand-500 flex items-center justify-center">
+                    <div className="w-4 h-4 rounded-md bg-[#7C4DFF] flex items-center justify-center">
                       <span className="text-white text-[5px] font-bold">B8</span>
                     </div>
-                    <span className="text-[7px] font-semibold text-foreground">Book8 AI</span>
+                    <span className="text-[7px] font-semibold text-white">Book8 AI</span>
                   </div>
-                  <div className="w-4 h-4 rounded-full bg-muted" />
+                  <div className="w-4 h-4 rounded-full bg-gray-700" />
                 </div>
                 
                 {/* Dashboard content */}
                 <div className="space-y-1.5 flex-1 overflow-hidden">
                   {/* Stats row */}
                   <div className="grid grid-cols-2 gap-1">
-                    <div className="bg-card rounded-md p-1.5 border border-border/50">
-                      <div className="text-[5px] text-muted-foreground">Today</div>
-                      <div className="text-[8px] font-semibold text-foreground">5 Bookings</div>
+                    <div className="bg-gray-800/50 rounded-md p-1.5 border border-gray-700/50">
+                      <div className="text-[5px] text-gray-400">Today</div>
+                      <div className="text-[8px] font-semibold text-white">5 Bookings</div>
                     </div>
-                    <div className="bg-card rounded-md p-1.5 border border-border/50">
-                      <div className="text-[5px] text-muted-foreground">This Week</div>
-                      <div className="text-[8px] font-semibold text-foreground">23 Calls</div>
+                    <div className="bg-gray-800/50 rounded-md p-1.5 border border-gray-700/50">
+                      <div className="text-[5px] text-gray-400">This Week</div>
+                      <div className="text-[8px] font-semibold text-white">23 Calls</div>
                     </div>
                   </div>
                   
                   {/* Upcoming booking */}
-                  <div className="bg-card rounded-md p-1.5 border border-border/50">
-                    <div className="text-[5px] text-muted-foreground mb-0.5">Next Meeting</div>
+                  <div className="bg-gray-800/50 rounded-md p-1.5 border border-gray-700/50">
+                    <div className="text-[5px] text-gray-400 mb-0.5">Next Meeting</div>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-5 h-5 rounded-full bg-brand-500/20 flex items-center justify-center flex-shrink-0">
-                        <span className="text-[6px] text-brand-500 font-medium">JD</span>
+                      <div className="w-5 h-5 rounded-full bg-[#7C4DFF]/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[6px] text-[#7C4DFF] font-medium">JD</span>
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[7px] font-medium text-foreground truncate">John Doe</div>
-                        <div className="text-[5px] text-muted-foreground truncate">2:00 PM - Strategy</div>
+                        <div className="text-[7px] font-medium text-white truncate">John Doe</div>
+                        <div className="text-[5px] text-gray-400 truncate">2:00 PM - Strategy</div>
                       </div>
                     </div>
                   </div>
                   
                   {/* AI Assistant */}
-                  <div className="bg-gradient-to-r from-brand-500/10 to-accent/10 rounded-md p-1.5 border border-brand-500/20">
+                  <div className="bg-gradient-to-r from-[#7C4DFF]/10 to-[#9867FF]/10 rounded-md p-1.5 border border-[#7C4DFF]/20">
                     <div className="flex items-center gap-1 mb-0.5">
-                      <div className="w-3 h-3 rounded-full bg-brand-500 flex items-center justify-center">
+                      <div className="w-3 h-3 rounded-full bg-[#7C4DFF] flex items-center justify-center">
                         <span className="text-[4px] text-white font-bold">AI</span>
                       </div>
-                      <span className="text-[6px] font-medium text-foreground">Voice Agent</span>
+                      <span className="text-[6px] font-medium text-white">Voice Agent</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <div className="flex-1 h-1 bg-brand-500/20 rounded-full overflow-hidden">
-                        <div className="h-full w-3/5 bg-brand-500 rounded-full animate-pulse" />
+                      <div className="flex-1 h-1 bg-[#7C4DFF]/20 rounded-full overflow-hidden">
+                        <div className="h-full w-3/5 bg-[#7C4DFF] rounded-full animate-pulse" />
                       </div>
-                      <span className="text-[4px] text-brand-500">Active</span>
+                      <span className="text-[4px] text-[#7C4DFF]">Active</span>
                     </div>
                   </div>
                   
                   {/* Calendar sync */}
-                  <div className="bg-card rounded-md p-1.5 border border-border/50">
+                  <div className="bg-gray-800/50 rounded-md p-1.5 border border-gray-700/50">
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 rounded bg-green-500/20 flex items-center justify-center">
-                        <span className="text-[5px] text-green-500">✓</span>
+                        <span className="text-[5px] text-green-400">✓</span>
                       </div>
-                      <span className="text-[6px] text-foreground">Google Calendar</span>
+                      <span className="text-[6px] text-white">Google Calendar</span>
                     </div>
                   </div>
                 </div>
                 
                 {/* Bottom nav */}
-                <div className="flex justify-around pt-1.5 border-t border-border/30 mt-1">
+                <div className="flex justify-around pt-1.5 border-t border-gray-700/30 mt-1">
                   {['🏠', '📅', '🤖', '⚙️'].map((icon, i) => (
-                    <div key={i} className={`w-5 h-5 rounded-md flex items-center justify-center text-[8px] ${i === 0 ? 'bg-brand-500/20' : ''}`}>
+                    <div key={i} className={`w-5 h-5 rounded-md flex items-center justify-center text-[8px] ${i === 0 ? 'bg-[#7C4DFF]/20' : ''}`}>
                       {icon}
                     </div>
                   ))}
