@@ -112,29 +112,29 @@ export default function DeviceMockup() {
           />
         </div>
         
-        {/* Laptop screen - positioned precisely within the screen bezel */}
+        {/* Laptop screen - with rounded corners matching the bezel */}
         <div 
           className="absolute overflow-hidden"
           style={{
-            top: '26%',
-            left: '9.5%',
-            width: '60%',
-            height: '47%',
-            borderRadius: '2px',
+            top: '27%',
+            left: '10%',
+            width: '58.5%',
+            height: '45%',
+            borderRadius: '8px', /* Rounded to match laptop bezel */
           }}
         >
           <ScreenContent isPhone={false} />
         </div>
         
-        {/* iPhone screen - positioned precisely within the device frame */}
+        {/* iPhone screen - with rounded corners matching the device */}
         <div 
           className="absolute overflow-hidden"
           style={{
-            top: '47%',
-            left: '79.5%',
-            width: '12.5%',
-            height: '32%',
-            borderRadius: '5px',
+            top: '48%',
+            left: '80%',
+            width: '12%',
+            height: '30%',
+            borderRadius: '12px', /* More rounded for iPhone */
           }}
         >
           <ScreenContent isPhone={true} />
