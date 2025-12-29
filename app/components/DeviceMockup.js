@@ -116,11 +116,11 @@ export default function DeviceMockup() {
         <div 
           className="absolute overflow-hidden"
           style={{
-            top: '27%',
-            left: '10%',
-            width: '58.5%',
-            height: '45%',
-            borderRadius: '8px', /* Rounded to match laptop bezel */
+            top: '28%',
+            left: '10.5%',
+            width: '57%',
+            height: '42%',
+            borderRadius: '6px', /* Rounded to match laptop bezel */
           }}
         >
           <ScreenContent isPhone={false} />
@@ -130,11 +130,11 @@ export default function DeviceMockup() {
         <div 
           className="absolute overflow-hidden"
           style={{
-            top: '48%',
-            left: '80%',
-            width: '12%',
-            height: '30%',
-            borderRadius: '12px', /* More rounded for iPhone */
+            top: '50%',
+            left: '80.5%',
+            width: '11%',
+            height: '26%',
+            borderRadius: '10px', /* More rounded for iPhone */
           }}
         >
           <ScreenContent isPhone={true} />
