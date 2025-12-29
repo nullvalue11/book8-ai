@@ -127,11 +127,11 @@ export default function DeviceMockup() {
         <div 
           className="absolute overflow-hidden"
           style={{
-            top: '45%',
-            left: '78%',
-            width: '14%',
-            height: '36%',
-            borderRadius: '18px',
+            top: '43.5%',
+            left: '77.5%',
+            width: '15%',
+            height: '39%',
+            borderRadius: '20px',
           }}
         >
           <ScreenContent isPhone={true} />
