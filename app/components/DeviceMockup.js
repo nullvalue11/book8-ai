@@ -5,7 +5,7 @@ import React from "react";
 export default function DeviceMockup() {
   // Screen content that will be displayed on both laptop and iPhone
   const ScreenContent = ({ isPhone = false }) => (
-    <div className={`w-full h-full flex flex-col ${isPhone ? 'p-1' : 'p-2 md:p-3'} overflow-hidden`}
+    <div className={`w-full h-full flex flex-col ${isPhone ? 'p-1' : 'p-2 md:p-3'}`}
       style={{
         background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)',
       }}
@@ -99,8 +99,34 @@ export default function DeviceMockup() {
           }}
         />
         
+        {/* Screen blockers - solid backgrounds to hide original mockup content */}
+        {/* Laptop screen blocker */}
+        <div 
+          className="absolute z-10"
+          style={{
+            top: '26%',
+            left: '9%',
+            width: '60%',
+            height: '47%',
+            background: '#0f0f23',
+            borderRadius: '4px',
+          }}
+        />
+        {/* iPhone screen blocker */}
+        <div 
+          className="absolute z-10"
+          style={{
+            top: '40%',
+            left: '77%',
+            width: '16%',
+            height: '42%',
+            background: '#0f0f23',
+            borderRadius: '16px',
+          }}
+        />
+        
         {/* Mockup image with background removed via CSS */}
-        <div className="relative">
+        <div className="relative z-20">
           <img
             src="https://customer-assets.emergentagent.com/job_ops-api/artifacts/f3ldfcl8_iphone%20%2B%20laptop%20mockup_demo.jpg"
             alt="book8-ai on laptop and mobile"
@@ -112,29 +138,29 @@ export default function DeviceMockup() {
           />
         </div>
         
-        {/* Laptop screen - with rounded corners matching the bezel */}
+        {/* Laptop screen content - positioned on top */}
         <div 
-          className="absolute overflow-hidden"
+          className="absolute z-30 overflow-hidden"
           style={{
             top: '28%',
             left: '10.5%',
             width: '57%',
             height: '42%',
-            borderRadius: '6px', /* Rounded to match laptop bezel */
+            borderRadius: '4px',
           }}
         >
           <ScreenContent isPhone={false} />
         </div>
         
-        {/* iPhone screen - with rounded corners matching the device */}
+        {/* iPhone screen content - positioned on top */}
         <div 
-          className="absolute overflow-hidden"
+          className="absolute z-30 overflow-hidden"
           style={{
             top: '48%',
             left: '80%',
             width: '12%',
             height: '30%',
-            borderRadius: '14px', /* More rounded for iPhone */
+            borderRadius: '14px',
           }}
         >
           <ScreenContent isPhone={true} />
@@ -142,7 +168,7 @@ export default function DeviceMockup() {
       </div>
       
       {/* "Try our Beta" annotation */}
-      <div className="absolute -bottom-4 right-4 md:right-20 flex flex-col items-center">
+      <div className="absolute -bottom-4 right-4 md:right-20 flex flex-col items-center z-40">
         <span className="text-[#7C4DFF] font-handwriting text-lg md:text-xl italic transform rotate-[-8deg] whitespace-nowrap">
           Try our Beta!
         </span>
