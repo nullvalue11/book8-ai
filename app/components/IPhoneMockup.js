@@ -98,12 +98,13 @@ export default function IPhoneMockup({ showHeroContent = false }) {
         
         {/* Screen content - positioned over the SVG */}
         <div 
-          className="absolute rounded-[26px] overflow-hidden bg-gradient-to-b from-background to-muted/20"
+          className="absolute rounded-[26px] overflow-hidden"
           style={{
             top: '7.5%',
             left: '29.5%',
             width: '41%',
             height: '66%',
+            background: 'linear-gradient(to bottom, hsl(222, 47%, 8%), hsl(222, 47%, 6%))',
           }}
         >
           {/* Screen inner content */}
