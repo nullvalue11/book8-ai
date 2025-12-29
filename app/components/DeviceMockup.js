@@ -130,10 +130,10 @@ export default function DeviceMockup() {
         <div 
           className="absolute overflow-hidden"
           style={{
-            top: '45%',
-            left: '78.5%',
-            width: '14%',
-            height: '36%',
+            top: '46%',
+            left: '79%',
+            width: '13%',
+            height: '34%',
             borderRadius: '6px',
           }}
         >
