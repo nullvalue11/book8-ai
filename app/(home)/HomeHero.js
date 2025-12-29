@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import DeviceMockup from "../components/DeviceMockup";
+import IPhoneMockup from "../components/IPhoneMockup";
 
 export default function HomeHero() {
   return (
@@ -17,70 +17,36 @@ export default function HomeHero() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(124,77,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(124,77,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,black_40%,transparent_100%)]" />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 md:px-6 py-8 md:py-16">
-        {/* Mobile: Text first, then mockup */}
-        <div className="lg:hidden text-center mb-8">
-          <span className="inline-flex items-center rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-500">
-            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
-            AI-Powered Scheduling
-          </span>
+      <div className="mx-auto max-w-7xl px-4 md:px-6 py-12 md:py-20">
+        {/* Main hero grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
           
-          <h1 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-[1.1]">
-            Intelligent Booking{" "}
-            <span className="bg-brand-gradient bg-clip-text text-transparent">&amp; Automation</span>
-          </h1>
-          
-          <p className="mt-4 text-base text-muted-foreground leading-relaxed max-w-md mx-auto">
-            Connect calendars, enable voice/AI bookings, and leverage real-time web search—all in one platform.
-          </p>
-          
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <Link 
-              href="/pricing" 
-              className="inline-flex h-11 items-center justify-center rounded-xl px-6 font-medium bg-brand-500 text-white hover:bg-brand-600 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_8px_30px_-12px_rgba(124,77,255,.5)]"
-            >
-              Start Free Trial
-            </Link>
-            <a 
-              href="#demo" 
-              className="inline-flex h-11 items-center justify-center rounded-xl px-6 font-medium border border-border bg-background/50 backdrop-blur-sm text-foreground hover:bg-muted/50 transition-all"
-            >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-              Watch Demo
-            </a>
-          </div>
-        </div>
-
-        {/* Desktop: Side by side layout */}
-        <div className="hidden lg:grid lg:grid-cols-5 lg:gap-8 lg:items-center">
-          {/* Left: Text content (2 columns) */}
-          <div className="lg:col-span-2 text-left">
+          {/* Left: Text content */}
+          <div className="order-2 lg:order-1 text-center lg:text-left">
             <span className="inline-flex items-center rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-500">
               <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
               AI-Powered Scheduling
             </span>
             
-            <h1 className="mt-6 text-4xl xl:text-5xl font-bold tracking-tight text-foreground leading-[1.1]">
+            <h1 className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1]">
               Intelligent Booking{" "}
               <span className="bg-brand-gradient bg-clip-text text-transparent">&amp; Automation</span>
             </h1>
             
-            <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
+            <p className="mt-6 text-lg md:text-xl text-muted-foreground leading-relaxed max-w-xl mx-auto lg:mx-0">
               Connect calendars, enable voice/AI bookings, and leverage real-time web search—all in one platform.
             </p>
             
-            <div className="mt-8 flex flex-col sm:flex-row gap-4">
+            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link 
                 href="/pricing" 
-                className="inline-flex h-12 items-center justify-center rounded-xl px-6 font-medium bg-brand-500 text-white hover:bg-brand-600 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_8px_30px_-12px_rgba(124,77,255,.5)]"
+                className="inline-flex h-12 items-center justify-center rounded-xl px-6 font-medium bg-brand-500 text-white hover:bg-brand-600 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_8px_30px_-12px_rgba(124,77,255,.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Start Free Trial
               </Link>
               <a 
                 href="#demo" 
-                className="inline-flex h-12 items-center justify-center rounded-xl px-6 font-medium border border-border bg-background/50 backdrop-blur-sm text-foreground hover:bg-muted/50 transition-all"
+                className="inline-flex h-12 items-center justify-center rounded-xl px-6 font-medium border border-border bg-background/50 backdrop-blur-sm text-foreground hover:bg-muted/50 hover:border-foreground/20 active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all"
               >
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M8 5v14l11-7z"/>
@@ -90,21 +56,21 @@ export default function HomeHero() {
             </div>
             
             {/* Trust indicators */}
-            <div className="mt-8 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+            <div className="mt-10 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>No credit card</span>
+                <span>No credit card required</span>
               </div>
               <div className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>14-day trial</span>
+                <span>14-day free trial</span>
               </div>
               <div className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
                 <span>Cancel anytime</span>
@@ -112,41 +78,14 @@ export default function HomeHero() {
             </div>
           </div>
 
-          {/* Right: Device mockup (3 columns) */}
-          <div className="lg:col-span-3">
-            <DeviceMockup />
-          </div>
-        </div>
-
-        {/* Mobile mockup */}
-        <div className="lg:hidden">
-          <DeviceMockup />
-        </div>
-
-        {/* Trust indicators - mobile */}
-        <div className="lg:hidden mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            <span>No credit card</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            <span>14-day trial</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            <span>Cancel anytime</span>
+          {/* Right: iPhone mockup */}
+          <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
+            <IPhoneMockup />
           </div>
         </div>
 
         {/* Divider */}
-        <div className="mx-auto my-12 h-px w-full max-w-4xl bg-gradient-to-r from-transparent via-brand-500/20 to-transparent" />
+        <div className="mx-auto my-16 h-px w-full max-w-4xl bg-gradient-to-r from-transparent via-brand-500/20 to-transparent" />
 
         {/* Feature highlights row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 max-w-4xl mx-auto">
