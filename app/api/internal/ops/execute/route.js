@@ -1,5 +1,6 @@
 /**
  * POST /api/internal/ops/execute
+ * GET  /api/internal/ops/execute (list tools & health check)
  * 
  * Ops Control Plane Executor Endpoint
  * 
@@ -9,13 +10,30 @@
  * Authentication:
  * Requires x-book8-internal-secret header matching OPS_INTERNAL_SECRET env var.
  * 
- * Request:
+ * Request Formats Supported:
+ * 
+ * 1. Nested args:
  * {
- *   "requestId": "uuid/string (required)",
- *   "dryRun": boolean (default false),
- *   "tool": "string (required, must be allowlisted)",
- *   "args": { ... } (required, tool-specific),
- *   "actor": { "type": "system|user", "id": "string" } (optional)
+ *   "requestId": "uuid",
+ *   "tool": "tenant.ensure",
+ *   "dryRun": false,
+ *   "args": { "businessId": "..." }
+ * }
+ * 
+ * 2. Nested input (n8n style):
+ * {
+ *   "requestId": "uuid",
+ *   "tool": "tenant.ensure",
+ *   "dryRun": false,
+ *   "input": { "businessId": "..." }
+ * }
+ * 
+ * 3. Flat top-level args:
+ * {
+ *   "requestId": "uuid",
+ *   "tool": "tenant.ensure",
+ *   "dryRun": false,
+ *   "businessId": "..."
  * }
  * 
  * Response:
@@ -25,7 +43,10 @@
  *   "tool": "...",
  *   "dryRun": true/false,
  *   "result": { ... },
- *   "error": { "code": "...", "message": "...", "details": any }?
+ *   "error": { "code": "...", "message": "...", "details": any, "help": "..." }?,
+ *   "executedAt": "ISO timestamp",
+ *   "durationMs": number,
+ *   "_meta": { "cached": boolean, "source": "..." }
  * }
  */
 
@@ -41,7 +62,6 @@ import {
   getToolNames,
   createAuditEntry,
   saveAuditLog,
-  getAuditLog,
   getCachedResult,
   storeResult,
   acquireLock,
@@ -50,6 +70,17 @@ import {
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const LOG_PREFIX = '[ops]'
+const VERSION = 'v1.1.0'
+
+// ============================================================================
+// Database Connection
+// ============================================================================
 
 let client, db
 
@@ -62,16 +93,53 @@ async function connect() {
   return db
 }
 
-// Request schema - supports both nested args and flat top-level args
+// ============================================================================
+// Logging Utilities
+// ============================================================================
+
+function log(requestId, level, message, data = {}) {
+  const timestamp = new Date().toISOString()
+  const prefix = requestId ? `${LOG_PREFIX}:${requestId}` : LOG_PREFIX
+  const dataStr = Object.keys(data).length > 0 ? ` ${JSON.stringify(data)}` : ''
+  
+  const logFn = level === 'error' ? console.error : console.log
+  logFn(`${timestamp} ${prefix} [${level.toUpperCase()}] ${message}${dataStr}`)
+}
+
+function logRequest(requestId, tool, dryRun, args, source) {
+  log(requestId, 'info', `Request received`, {
+    tool,
+    dryRun,
+    argsFormat: source,
+    argKeys: Object.keys(args)
+  })
+}
+
+function logSuccess(requestId, tool, durationMs, resultSummary) {
+  log(requestId, 'info', `Execution successful`, {
+    tool,
+    durationMs,
+    summary: resultSummary
+  })
+}
+
+function logError(requestId, code, message, details) {
+  log(requestId, 'error', `Execution failed: ${code}`, {
+    message,
+    details: typeof details === 'object' ? JSON.stringify(details) : details
+  })
+}
+
+// ============================================================================
+// Request Schema & Parsing
+// ============================================================================
+
 const RequestSchema = z.object({
   requestId: z.string().min(1, 'requestId is required'),
   dryRun: z.boolean().optional().default(false),
   tool: z.string().min(1, 'tool is required'),
-  // Support nested args object
   args: z.record(z.any()).optional(),
-  // Also support input object (alternative nested format)
   input: z.record(z.any()).optional(),
-  // Support flat args at top level
   businessId: z.string().optional(),
   name: z.string().optional(),
   actor: z.object({
@@ -82,23 +150,20 @@ const RequestSchema = z.object({
 
 /**
  * Extract tool arguments from request body
- * Supports multiple formats:
- * 1. { args: { businessId, name } } - nested args object
- * 2. { input: { businessId, name } } - nested input object  
- * 3. { businessId, name } - flat top-level args
+ * Returns { args, source } where source indicates which format was used
  */
 function extractToolArgs(body) {
   // Priority 1: nested args object
   if (body.args && Object.keys(body.args).length > 0) {
-    return body.args
+    return { args: body.args, source: 'args' }
   }
   
-  // Priority 2: nested input object
+  // Priority 2: nested input object (n8n style)
   if (body.input && Object.keys(body.input).length > 0) {
-    return body.input
+    return { args: body.input, source: 'input' }
   }
   
-  // Priority 3: extract flat args from top level (excluding envelope fields)
+  // Priority 3: flat args from top level
   const envelopeFields = ['requestId', 'dryRun', 'tool', 'args', 'input', 'actor']
   const flatArgs = {}
   
@@ -108,63 +173,110 @@ function extractToolArgs(body) {
     }
   }
   
-  return flatArgs
+  return { args: flatArgs, source: 'flat' }
 }
 
-/**
- * Verify internal secret authentication
- */
+// ============================================================================
+// Authentication
+// ============================================================================
+
 function verifyAuth(request) {
   const opsSecret = env.OPS_INTERNAL_SECRET || env.ADMIN_TOKEN
   
   if (!opsSecret) {
-    return { valid: false, error: 'OPS_INTERNAL_SECRET not configured' }
+    return { 
+      valid: false, 
+      error: 'OPS_INTERNAL_SECRET not configured',
+      help: 'Set OPS_INTERNAL_SECRET environment variable in Vercel'
+    }
   }
   
   const providedSecret = request.headers.get('x-book8-internal-secret')
   
   if (!providedSecret) {
-    return { valid: false, error: 'Missing x-book8-internal-secret header' }
+    return { 
+      valid: false, 
+      error: 'Missing x-book8-internal-secret header',
+      help: 'Add header: x-book8-internal-secret: <your-secret>'
+    }
   }
   
   if (providedSecret !== opsSecret) {
-    return { valid: false, error: 'Invalid internal secret' }
+    return { 
+      valid: false, 
+      error: 'Invalid internal secret',
+      help: 'Verify the secret matches OPS_INTERNAL_SECRET in Vercel'
+    }
   }
   
   return { valid: true }
 }
 
-/**
- * Build error response
- */
-function errorResponse(requestId, tool, dryRun, code, message, details = null, status = 400) {
+// ============================================================================
+// Response Builders
+// ============================================================================
+
+function errorResponse(requestId, tool, dryRun, code, message, details = null, help = null, status = 400) {
+  const error = { code, message }
+  if (details) error.details = details
+  if (help) error.help = help
+  
+  logError(requestId, code, message, details)
+  
   return NextResponse.json({
     ok: false,
-    requestId,
-    tool,
+    requestId: requestId || 'unknown',
+    tool: tool || 'unknown',
     dryRun,
     result: null,
-    error: { code, message, details }
+    error,
+    _meta: {
+      version: VERSION,
+      timestamp: new Date().toISOString()
+    }
   }, { status })
 }
 
-/**
- * Build success response
- */
-function successResponse(requestId, tool, dryRun, result) {
+function successResponse(requestId, tool, dryRun, result, startedAt, cached = false) {
+  const completedAt = new Date()
+  const durationMs = completedAt.getTime() - startedAt.getTime()
+  
+  logSuccess(requestId, tool, durationMs, result.summary || 'completed')
+  
   return NextResponse.json({
-    ok: true,
+    ok: result.ok !== false,
     requestId,
     tool,
     dryRun,
     result,
-    error: null
+    error: result.error || null,
+    executedAt: completedAt.toISOString(),
+    durationMs,
+    _meta: {
+      version: VERSION,
+      cached,
+      timestamp: completedAt.toISOString()
+    }
   })
 }
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204 })
+// ============================================================================
+// Error Help Messages
+// ============================================================================
+
+const ERROR_HELP = {
+  AUTH_FAILED: 'Verify x-book8-internal-secret header matches OPS_INTERNAL_SECRET env var',
+  INVALID_JSON: 'Check JSON syntax - ensure proper quoting and structure',
+  VALIDATION_ERROR: 'Required fields: requestId (string), tool (string). Optional: dryRun (boolean)',
+  TOOL_NOT_ALLOWED: 'Use GET /api/internal/ops/execute to list available tools',
+  ARGS_VALIDATION_ERROR: 'Check tool documentation for required arguments. Most tools require businessId.',
+  REQUEST_IN_PROGRESS: 'This requestId is being processed. Use a unique requestId for new requests.',
+  INTERNAL_ERROR: 'Check Vercel logs for details. If persistent, contact support.'
 }
+
+// ============================================================================
+// POST Handler - Execute Tool
+// ============================================================================
 
 export async function POST(request) {
   const startedAt = new Date()
@@ -173,6 +285,7 @@ export async function POST(request) {
   let dryRun = false
   let actor = null
   let database = null
+  let argsSource = 'unknown'
   
   try {
     // Initialize ops tools
@@ -181,33 +294,48 @@ export async function POST(request) {
     // 1. Verify authentication
     const auth = verifyAuth(request)
     if (!auth.valid) {
-      console.log(`[ops] Auth failed: ${auth.error}`)
-      return NextResponse.json(
-        { ok: false, error: { code: 'AUTH_FAILED', message: auth.error } },
-        { status: 401 }
-      )
+      log(null, 'warn', `Auth failed: ${auth.error}`)
+      return NextResponse.json({
+        ok: false,
+        error: { 
+          code: 'AUTH_FAILED', 
+          message: auth.error,
+          help: auth.help || ERROR_HELP.AUTH_FAILED
+        },
+        _meta: { version: VERSION }
+      }, { status: 401 })
     }
     
-    // 2. Parse and validate request body
+    // 2. Parse request body
     let body
     try {
       body = await request.json()
     } catch (e) {
-      return NextResponse.json(
-        { ok: false, error: { code: 'INVALID_JSON', message: 'Invalid JSON body' } },
-        { status: 400 }
+      return errorResponse(
+        null, null, false,
+        'INVALID_JSON',
+        'Invalid JSON body',
+        { parseError: e.message },
+        ERROR_HELP.INVALID_JSON
       )
     }
     
+    // 3. Validate request envelope
     const parseResult = RequestSchema.safeParse(body)
     if (!parseResult.success) {
       const errors = parseResult.error.errors.map(e => ({
         path: e.path.join('.'),
-        message: e.message
+        message: e.message,
+        code: e.code
       }))
-      return NextResponse.json(
-        { ok: false, error: { code: 'VALIDATION_ERROR', message: 'Request validation failed', details: errors } },
-        { status: 400 }
+      return errorResponse(
+        body.requestId || null,
+        body.tool || null,
+        false,
+        'VALIDATION_ERROR',
+        'Request validation failed',
+        errors,
+        ERROR_HELP.VALIDATION_ERROR
       )
     }
     
@@ -215,81 +343,91 @@ export async function POST(request) {
     requestId = validatedRequest.requestId
     tool = validatedRequest.tool
     dryRun = validatedRequest.dryRun
-    actor = validatedRequest.actor || { type: 'system', id: 'ops-executor' }
+    actor = validatedRequest.actor || { type: 'system', id: 'n8n-workflow' }
     
-    // Extract args from multiple possible formats
-    const args = extractToolArgs(body)
+    // 4. Extract args from multiple possible formats
+    const { args, source } = extractToolArgs(body)
+    argsSource = source
     
-    console.log(`[ops:${requestId}] Received request: tool=${tool}, dryRun=${dryRun}, args=${JSON.stringify(args)}`)
+    logRequest(requestId, tool, dryRun, args, source)
     
-    // 3. Connect to database
+    // 5. Connect to database
     database = await connect()
     
-    // 4. Check idempotency - return cached result if exists
+    // 6. Check idempotency - return cached result if exists
     const cachedResult = await getCachedResult(database, requestId)
     if (cachedResult) {
-      console.log(`[ops:${requestId}] Returning cached result (idempotent)`)
+      log(requestId, 'info', 'Returning cached result (idempotent)')
+      // Add meta to cached response
+      cachedResult._meta = {
+        ...cachedResult._meta,
+        cached: true,
+        originalExecutedAt: cachedResult.executedAt
+      }
       return NextResponse.json(cachedResult)
     }
     
-    // 5. Acquire lock to prevent concurrent execution
+    // 7. Acquire lock to prevent concurrent execution
     const lockAcquired = await acquireLock(database, requestId)
     if (!lockAcquired) {
-      console.log(`[ops:${requestId}] Request already in progress`)
       return errorResponse(
         requestId, tool, dryRun,
         'REQUEST_IN_PROGRESS',
         'This request is already being processed',
-        null, 409
+        { requestId },
+        ERROR_HELP.REQUEST_IN_PROGRESS,
+        409
       )
     }
     
     try {
-      // 6. Validate tool is allowlisted
+      // 8. Validate tool is allowlisted
       if (!isToolAllowed(tool)) {
-        console.log(`[ops:${requestId}] Tool not allowed: ${tool}`)
+        const availableTools = getToolNames()
         
-        const auditEntry = createAuditEntry({
+        await saveAuditLog(database, createAuditEntry({
           requestId, tool, args, actor, dryRun,
           status: 'failed',
           error: { code: 'TOOL_NOT_ALLOWED', message: `Tool '${tool}' is not in the allowlist` },
           startedAt,
           completedAt: new Date()
-        })
-        await saveAuditLog(database, auditEntry)
+        }))
         
         return errorResponse(
           requestId, tool, dryRun,
           'TOOL_NOT_ALLOWED',
-          `Tool '${tool}' is not in the allowlist. Available tools: ${getToolNames().join(', ')}`,
-          { availableTools: getToolNames() }
+          `Tool '${tool}' is not in the allowlist`,
+          { availableTools, requestedTool: tool },
+          ERROR_HELP.TOOL_NOT_ALLOWED
         )
       }
       
-      // 7. Validate tool arguments against schema
+      // 9. Validate tool arguments
       const argsValidation = validateToolArgs(tool, args)
       if (!argsValidation.valid) {
-        console.log(`[ops:${requestId}] Args validation failed:`, argsValidation.errors)
-        
-        const auditEntry = createAuditEntry({
+        await saveAuditLog(database, createAuditEntry({
           requestId, tool, args, actor, dryRun,
           status: 'failed',
           error: { code: 'ARGS_VALIDATION_ERROR', message: 'Arguments validation failed' },
           startedAt,
           completedAt: new Date()
-        })
-        await saveAuditLog(database, auditEntry)
+        }))
         
         return errorResponse(
           requestId, tool, dryRun,
           'ARGS_VALIDATION_ERROR',
           'Tool arguments validation failed',
-          argsValidation.errors
+          {
+            errors: argsValidation.errors,
+            receivedArgs: Object.keys(args),
+            argsFormat: argsSource
+          },
+          ERROR_HELP.ARGS_VALIDATION_ERROR
         )
       }
       
-      // 8. Execute tool
-      console.log(`[ops:${requestId}] Executing tool: ${tool}`)
+      // 10. Execute tool
+      log(requestId, 'info', `Executing tool: ${tool}`, { dryRun })
       
       const ctx = {
         db: database,
@@ -302,19 +440,20 @@ export async function POST(request) {
       const result = await executeTool(tool, argsValidation.data, ctx)
       const completedAt = new Date()
       
-      console.log(`[ops:${requestId}] Tool execution complete. ok=${result.ok}`)
-      
-      // 9. Create audit log
-      const auditEntry = createAuditEntry({
-        requestId, tool, args: argsValidation.data, actor, dryRun,
-        status: 'succeeded',
+      // 11. Save audit log
+      await saveAuditLog(database, createAuditEntry({
+        requestId, 
+        tool, 
+        args: argsValidation.data, 
+        actor, 
+        dryRun,
+        status: result.ok !== false ? 'succeeded' : 'failed',
         result,
         startedAt,
         completedAt
-      })
-      await saveAuditLog(database, auditEntry)
+      }))
       
-      // 10. Build and cache response
+      // 12. Build and cache response
       const response = {
         ok: result.ok !== false,
         requestId,
@@ -323,64 +462,119 @@ export async function POST(request) {
         result,
         error: result.error || null,
         executedAt: completedAt.toISOString(),
-        durationMs: completedAt.getTime() - startedAt.getTime()
+        durationMs: completedAt.getTime() - startedAt.getTime(),
+        _meta: {
+          version: VERSION,
+          cached: false,
+          argsFormat: argsSource
+        }
       }
       
       await storeResult(database, requestId, response)
       
+      logSuccess(requestId, tool, response.durationMs, result.summary || 'completed')
+      
       return NextResponse.json(response)
       
     } finally {
-      // Release lock
       await releaseLock(database, requestId)
     }
     
   } catch (error) {
-    console.error(`[ops:${requestId || 'unknown'}] Unhandled error:`, error)
+    log(requestId, 'error', `Unhandled error: ${error.message}`, { 
+      stack: error.stack?.split('\n').slice(0, 3).join(' | ')
+    })
     
-    // Try to save audit log for failed execution
+    // Try to save audit log
     if (database && requestId) {
       try {
-        const auditEntry = createAuditEntry({
+        await saveAuditLog(database, createAuditEntry({
           requestId, tool, args: {}, actor, dryRun,
           status: 'failed',
           error: { code: 'INTERNAL_ERROR', message: error.message },
           startedAt,
           completedAt: new Date()
-        })
-        await saveAuditLog(database, auditEntry)
+        }))
       } catch (auditError) {
-        console.error(`[ops:${requestId}] Failed to save audit log:`, auditError)
+        log(requestId, 'error', `Failed to save audit log: ${auditError.message}`)
       }
     }
     
     return errorResponse(
-      requestId || 'unknown',
-      tool || 'unknown',
+      requestId,
+      tool,
       dryRun,
       'INTERNAL_ERROR',
       'An internal error occurred',
-      { message: error.message },
+      { 
+        message: error.message,
+        type: error.constructor.name
+      },
+      ERROR_HELP.INTERNAL_ERROR,
       500
     )
   }
 }
 
-// GET endpoint to list available tools
+// ============================================================================
+// OPTIONS Handler - CORS
+// ============================================================================
+
+export async function OPTIONS() {
+  return new Response(null, { 
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, x-book8-internal-secret'
+    }
+  })
+}
+
+// ============================================================================
+// GET Handler - List Tools & Health Check
+// ============================================================================
+
 export async function GET(request) {
   const auth = verifyAuth(request)
   if (!auth.valid) {
-    return NextResponse.json(
-      { ok: false, error: { code: 'AUTH_FAILED', message: auth.error } },
-      { status: 401 }
-    )
+    return NextResponse.json({
+      ok: false,
+      error: { 
+        code: 'AUTH_FAILED', 
+        message: auth.error,
+        help: auth.help
+      }
+    }, { status: 401 })
   }
   
   initializeOps()
   
+  const tools = getToolNames()
+  
+  // Build tool info with descriptions
+  const toolInfo = tools.map(name => ({
+    name,
+    requiredArgs: name.includes('tenant') || name.includes('billing') || name.includes('voice') 
+      ? ['businessId'] 
+      : []
+  }))
+  
   return NextResponse.json({
     ok: true,
-    tools: getToolNames(),
-    documentation: '/docs/ops-control-plane-v1.md'
+    version: VERSION,
+    tools: toolInfo,
+    requestFormats: [
+      { format: 'args', example: '{ "tool": "...", "args": { "businessId": "..." } }' },
+      { format: 'input', example: '{ "tool": "...", "input": { "businessId": "..." } }' },
+      { format: 'flat', example: '{ "tool": "...", "businessId": "..." }' }
+    ],
+    documentation: {
+      api: '/docs/ops-control-plane-v1.md',
+      n8n: '/docs/n8n-integration-guide.md'
+    },
+    health: {
+      status: 'ok',
+      timestamp: new Date().toISOString()
+    }
   })
 }
