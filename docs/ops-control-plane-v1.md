@@ -4,20 +4,42 @@
 
 The Ops Control Plane provides a secure, internal-only API endpoint for executing predefined operational tasks (tools) in a structured, auditable, and idempotent manner.
 
+**Version:** v1.1.0
+
+---
+
+## Table of Contents
+
+1. [Endpoint](#endpoint)
+2. [Authentication](#authentication)
+3. [Request Formats](#request-formats)
+4. [Response Format](#response-format)
+5. [Available Tools](#available-tools)
+6. [Error Handling](#error-handling)
+7. [Idempotency](#idempotency)
+8. [Audit Logging](#audit-logging)
+9. [n8n Integration](#n8n-integration)
+10. [Examples](#examples)
+
+---
+
 ## Endpoint
 
 ```
-POST /api/internal/ops/execute
-GET  /api/internal/ops/execute  (list available tools)
+POST /api/internal/ops/execute  - Execute a tool
+GET  /api/internal/ops/execute  - List available tools & health check
 ```
+
+**Production URL:** `https://ops.book8.io/api/internal/ops/execute`
+
+---
 
 ## Authentication
 
 All requests must include the `x-book8-internal-secret` header with a value matching the `OPS_INTERNAL_SECRET` environment variable.
 
 ```bash
-# Example request
-curl -X POST https://your-domain.com/api/internal/ops/execute \
+curl -X POST https://ops.book8.io/api/internal/ops/execute \
   -H "Content-Type: application/json" \
   -H "x-book8-internal-secret: YOUR_SECRET_HERE" \
   -d '{ ... }'
@@ -25,41 +47,64 @@ curl -X POST https://your-domain.com/api/internal/ops/execute \
 
 If `OPS_INTERNAL_SECRET` is not set, the endpoint falls back to `ADMIN_TOKEN`.
 
-## Environment Setup
+---
 
-Add to your `.env` file:
+## Request Formats
 
-```bash
-# Ops Control Plane Secret (recommended: generate a strong random string)
-OPS_INTERNAL_SECRET=your-secure-secret-here
-```
+The API supports **three request formats** for flexibility with different clients (n8n, scripts, etc.):
 
-## Request Format
+### Format 1: Nested `args` Object (Recommended)
 
 ```json
 {
   "requestId": "unique-request-id-123",
-  "dryRun": false,
   "tool": "tenant.ensure",
+  "dryRun": false,
   "args": {
-    "businessId": "user-uuid-here"
+    "businessId": "user-uuid-here",
+    "name": "Business Name"
   },
   "actor": {
     "type": "system",
-    "id": "ops-script"
+    "id": "my-script"
   }
 }
 ```
 
-### Fields
+### Format 2: Nested `input` Object (n8n Style)
+
+```json
+{
+  "requestId": "unique-request-id-123",
+  "tool": "tenant.ensure",
+  "dryRun": false,
+  "input": {
+    "businessId": "user-uuid-here",
+    "name": "Business Name"
+  }
+}
+```
+
+### Format 3: Flat Top-Level Args
+
+```json
+{
+  "requestId": "unique-request-id-123",
+  "tool": "tenant.ensure",
+  "dryRun": false,
+  "businessId": "user-uuid-here",
+  "name": "Business Name"
+}
+```
+
+### Field Reference
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `requestId` | string | Yes | Unique identifier for idempotency |
-| `dryRun` | boolean | No (default: false) | If true, tools describe their plan without making changes |
 | `tool` | string | Yes | Tool name from the allowlist |
-| `args` | object | No (default: {}) | Tool-specific arguments |
-| `actor` | object | No | Who initiated the request |
+| `dryRun` | boolean | No (default: false) | If true, describes plan without executing |
+| `args` / `input` | object | Depends on tool | Tool-specific arguments |
 | `actor.type` | string | No | Either "system" or "user" |
 | `actor.id` | string | No | Identifier for the actor |
 
