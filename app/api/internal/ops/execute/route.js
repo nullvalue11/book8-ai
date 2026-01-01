@@ -62,17 +62,54 @@ async function connect() {
   return db
 }
 
-// Request schema
+// Request schema - supports both nested args and flat top-level args
 const RequestSchema = z.object({
   requestId: z.string().min(1, 'requestId is required'),
   dryRun: z.boolean().optional().default(false),
   tool: z.string().min(1, 'tool is required'),
-  args: z.record(z.any()).optional().default({}),
+  // Support nested args object
+  args: z.record(z.any()).optional(),
+  // Also support input object (alternative nested format)
+  input: z.record(z.any()).optional(),
+  // Support flat args at top level
+  businessId: z.string().optional(),
+  name: z.string().optional(),
   actor: z.object({
     type: z.enum(['system', 'user']),
     id: z.string()
   }).optional()
 })
+
+/**
+ * Extract tool arguments from request body
+ * Supports multiple formats:
+ * 1. { args: { businessId, name } } - nested args object
+ * 2. { input: { businessId, name } } - nested input object  
+ * 3. { businessId, name } - flat top-level args
+ */
+function extractToolArgs(body) {
+  // Priority 1: nested args object
+  if (body.args && Object.keys(body.args).length > 0) {
+    return body.args
+  }
+  
+  // Priority 2: nested input object
+  if (body.input && Object.keys(body.input).length > 0) {
+    return body.input
+  }
+  
+  // Priority 3: extract flat args from top level (excluding envelope fields)
+  const envelopeFields = ['requestId', 'dryRun', 'tool', 'args', 'input', 'actor']
+  const flatArgs = {}
+  
+  for (const [key, value] of Object.entries(body)) {
+    if (!envelopeFields.includes(key) && value !== undefined) {
+      flatArgs[key] = value
+    }
+  }
+  
+  return flatArgs
+}
 
 /**
  * Verify internal secret authentication
@@ -179,9 +216,11 @@ export async function POST(request) {
     tool = validatedRequest.tool
     dryRun = validatedRequest.dryRun
     actor = validatedRequest.actor || { type: 'system', id: 'ops-executor' }
-    const args = validatedRequest.args
     
-    console.log(`[ops:${requestId}] Received request: tool=${tool}, dryRun=${dryRun}`)
+    // Extract args from multiple possible formats
+    const args = extractToolArgs(body)
+    
+    console.log(`[ops:${requestId}] Received request: tool=${tool}, dryRun=${dryRun}, args=${JSON.stringify(args)}`)
     
     // 3. Connect to database
     database = await connect()
