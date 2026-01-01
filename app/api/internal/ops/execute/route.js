@@ -216,9 +216,11 @@ export async function POST(request) {
     tool = validatedRequest.tool
     dryRun = validatedRequest.dryRun
     actor = validatedRequest.actor || { type: 'system', id: 'ops-executor' }
-    const args = validatedRequest.args
     
-    console.log(`[ops:${requestId}] Received request: tool=${tool}, dryRun=${dryRun}`)
+    // Extract args from multiple possible formats
+    const args = extractToolArgs(body)
+    
+    console.log(`[ops:${requestId}] Received request: tool=${tool}, dryRun=${dryRun}, args=${JSON.stringify(args)}`)
     
     // 3. Connect to database
     database = await connect()
