@@ -611,7 +611,7 @@ export async function POST(request) {
     keyId = auth.keyId
     
     // 1. Rate limiting based on API key (serverless-friendly)
-    const rateLimit = checkRateLimit(keyId)
+    const rateLimit = checkRateLimit(keyId, keyId)
     if (!rateLimit.allowed) {
       log(null, 'warn', `Rate limit exceeded for key: ${keyId}`)
       return NextResponse.json({
@@ -627,7 +627,7 @@ export async function POST(request) {
         status: 429,
         headers: {
           'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000)),
-          'X-RateLimit-Limit': String(RATE_LIMIT.maxRequests),
+          'X-RateLimit-Limit': String(rateLimit.limit),
           'X-RateLimit-Remaining': '0',
           'X-RateLimit-Reset': String(Math.ceil((Date.now() + rateLimit.resetIn) / 1000))
         }
