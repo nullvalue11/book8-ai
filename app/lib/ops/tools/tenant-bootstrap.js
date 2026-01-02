@@ -231,6 +231,6 @@ export async function execute(args, ctx) {
 export default {
   name: 'tenant.bootstrap',
   description: 'Orchestrate complete tenant onboarding (ensure + voice test + provisioning summary)',
-  argsSchema,
+  schema,
   execute
 }
