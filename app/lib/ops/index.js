@@ -8,6 +8,7 @@ import { registerTool } from './registry.js'
 
 // Import tools
 import * as tenantEnsure from './tools/tenant-ensure.js'
+import * as tenantBootstrap from './tools/tenant-bootstrap.js'
 import * as billingValidateStripe from './tools/billing-validate-stripe.js'
 import * as voiceSmokeTest from './tools/voice-smoke-test.js'
 import * as tenantProvisioningSummary from './tools/tenant-provisioning-summary.js'
@@ -15,6 +16,7 @@ import * as tenantProvisioningSummary from './tools/tenant-provisioning-summary.
 // Register all tools
 const tools = [
   tenantEnsure,
+  tenantBootstrap,
   billingValidateStripe,
   voiceSmokeTest,
   tenantProvisioningSummary
@@ -27,7 +29,7 @@ export function initializeOps() {
   
   for (const tool of tools) {
     registerTool(tool.name, {
-      schema: tool.schema,
+      schema: tool.argsSchema || tool.schema,
       execute: tool.execute,
       description: tool.description
     })
