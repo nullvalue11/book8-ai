@@ -373,7 +373,35 @@ export async function POST(request) {
     // Initialize ops tools
     initializeOps()
     
-    // 1. Verify authentication
+    // 0. Rate limiting check
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
+      || request.headers.get('x-real-ip') 
+      || 'unknown'
+    
+    const rateLimit = checkRateLimit(clientIp)
+    if (!rateLimit.allowed) {
+      log(null, 'warn', `Rate limit exceeded for IP: ${clientIp}`)
+      return NextResponse.json({
+        ok: false,
+        error: {
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: 'Too many requests. Please try again later.',
+          help: ERROR_HELP.RATE_LIMIT_EXCEEDED,
+          retryAfter: Math.ceil(rateLimit.resetIn / 1000)
+        },
+        _meta: { version: VERSION }
+      }, { 
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000)),
+          'X-RateLimit-Limit': String(RATE_LIMIT.maxRequests),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil((Date.now() + rateLimit.resetIn) / 1000))
+        }
+      })
+    }
+    
+    // 1. Verify authentication (uses constant-time comparison)
     const auth = verifyAuth(request)
     if (!auth.valid) {
       log(null, 'warn', `Auth failed: ${auth.error}`)
