@@ -887,23 +887,8 @@ export async function GET(request) {
     }, { status: 401 })
   }
   
-  // Rate limiting for GET requests
-  const rateLimit = checkRateLimit(auth.keyId)
-  if (!rateLimit.allowed) {
-    return NextResponse.json({
-      ok: false,
-      error: {
-        code: 'RATE_LIMIT_EXCEEDED',
-        message: 'Too many requests. Please try again later.',
-        help: ERROR_HELP.RATE_LIMIT_EXCEEDED
-      }
-    }, { 
-      status: 429,
-      headers: {
-        'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000))
-      }
-    })
-  }
+  // No rate limiting for authenticated GET requests - this is just a health check / tool listing endpoint
+  // Rate limiting is only applied to POST requests that actually execute tools
 
   initializeOps()
   
@@ -942,15 +927,10 @@ export async function GET(request) {
       api: '/docs/ops-control-plane-v1.md',
       n8n: '/docs/n8n-integration-guide.md'
     },
-    rateLimit: {
-      limit: rateLimit.limit,
-      remaining: rateLimit.remaining,
-      windowMs: RATE_LIMITS.default.windowMs
-    },
     security: {
       scopedKeys: true,
       timingSafeAuth: true,
-      rateLimited: true
+      rateLimited: 'POST only'
     },
     health: {
       status: 'ok',
