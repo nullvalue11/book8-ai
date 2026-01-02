@@ -14,8 +14,12 @@
 
 import { z } from 'zod'
 
+export const name = 'tenant.bootstrap'
+
+export const description = 'Orchestrate complete tenant onboarding (ensure + voice test + provisioning summary)'
+
 // Schema for tenant.bootstrap arguments
-export const argsSchema = z.object({
+export const schema = z.object({
   businessId: z.string().min(1, 'businessId is required'),
   name: z.string().optional(),
   skipVoiceTest: z.boolean().optional().default(false),
