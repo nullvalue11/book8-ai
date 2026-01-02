@@ -6,23 +6,30 @@
  * 
  * Steps:
  * 1. Ensure tenant exists (tenant.ensure)
- * 2. Run voice smoke test (voice.smokeTest)
- * 3. Get provisioning summary (tenant.provisioningSummary)
+ * 2. Validate Stripe configuration (billing.validateStripeConfig)
+ * 3. Run voice smoke test (voice.smokeTest)
+ * 4. Get provisioning summary (tenant.provisioningSummary)
  * 
- * Returns comprehensive readiness status.
+ * Returns comprehensive readiness status with consolidated response:
+ * {
+ *   "ready": true/false,
+ *   "checklist": [...],
+ *   "details": {...}
+ * }
  */
 
 import { z } from 'zod'
 
 export const name = 'tenant.bootstrap'
 
-export const description = 'Orchestrate complete tenant onboarding (ensure + voice test + provisioning summary)'
+export const description = 'Orchestrate complete tenant onboarding (ensure + billing check + voice test + provisioning summary)'
 
 // Schema for tenant.bootstrap arguments
 export const schema = z.object({
   businessId: z.string().min(1, 'businessId is required'),
   name: z.string().optional(),
   skipVoiceTest: z.boolean().optional().default(false),
+  skipBillingCheck: z.boolean().optional().default(false),
 })
 
 /**
@@ -32,7 +39,7 @@ export const schema = z.object({
  */
 export async function execute(args, ctx) {
   const { db, dryRun, requestId } = ctx
-  const { businessId, name, skipVoiceTest } = args
+  const { businessId, name, skipVoiceTest, skipBillingCheck } = args
   
   const startTime = Date.now()
   const checklist = []
@@ -41,6 +48,7 @@ export async function execute(args, ctx) {
   
   // Import sibling tools
   const tenantEnsure = await import('./tenant-ensure.js')
+  const billingValidateStripe = await import('./billing-validate-stripe.js')
   const voiceSmokeTest = await import('./voice-smoke-test.js')
   const tenantProvisioningSummary = await import('./tenant-provisioning-summary.js')
   
@@ -48,6 +56,7 @@ export async function execute(args, ctx) {
     // =========================================================================
     // Step 1: Ensure tenant exists
     // =========================================================================
+    const step1Start = Date.now()
     const ensureArgs = { businessId }
     if (name) ensureArgs.name = name
     
@@ -59,7 +68,7 @@ export async function execute(args, ctx) {
       tool: 'tenant.ensure',
       status: ensureResult.ok !== false ? 'done' : 'failed',
       details: ensureResult.existed ? 'Already exists' : (ensureResult.created ? 'Created' : 'Checked'),
-      durationMs: Date.now() - startTime
+      durationMs: Date.now() - step1Start
     })
     
     details.tenant = {
@@ -73,21 +82,63 @@ export async function execute(args, ctx) {
     }
     
     // =========================================================================
-    // Step 2: Voice smoke test (optional)
+    // Step 2: Validate Stripe configuration
+    // =========================================================================
+    if (!skipBillingCheck) {
+      const step2Start = Date.now()
+      const billingResult = await billingValidateStripe.execute({ businessId }, ctx)
+      
+      const billingOk = billingResult.ok !== false && billingResult.stripeConfigured
+      
+      checklist.push({
+        step: 2,
+        item: 'Billing Configuration',
+        tool: 'billing.validateStripeConfig',
+        status: billingOk ? 'done' : 'warning',
+        details: billingResult.stripeConfigured 
+          ? `Stripe ${billingResult.stripeMode || 'configured'}` 
+          : 'Stripe not configured',
+        durationMs: Date.now() - step2Start
+      })
+      
+      details.billing = {
+        stripeConfigured: billingResult.stripeConfigured,
+        stripeMode: billingResult.stripeMode,
+        checks: billingResult.checks,
+      }
+      
+      // Billing not configured is a warning, not a blocker
+      if (!billingOk) {
+        details.billing.warning = 'Stripe is not fully configured - billing features may be limited'
+      }
+    } else {
+      checklist.push({
+        step: 2,
+        item: 'Billing Configuration',
+        tool: 'billing.validateStripeConfig',
+        status: 'skipped',
+        details: 'Skipped by request',
+        durationMs: 0
+      })
+      details.billing = { skipped: true }
+    }
+    
+    // =========================================================================
+    // Step 3: Voice smoke test (optional)
     // =========================================================================
     if (!skipVoiceTest) {
-      const voiceStartTime = Date.now()
+      const step3Start = Date.now()
       const voiceResult = await voiceSmokeTest.execute({ businessId }, ctx)
       
       const voicePassed = voiceResult.ok !== false && voiceResult.passed === voiceResult.total
       
       checklist.push({
-        step: 2,
+        step: 3,
         item: 'Voice Services',
         tool: 'voice.smokeTest',
         status: voicePassed ? 'done' : 'warning',
         details: `${voiceResult.passed || 0}/${voiceResult.total || 0} checks passed`,
-        durationMs: Date.now() - voiceStartTime
+        durationMs: Date.now() - step3Start
       })
       
       details.voice = {
@@ -98,12 +149,11 @@ export async function execute(args, ctx) {
       
       // Voice failures are warnings, not blockers
       if (!voicePassed) {
-        // Don't set ready = false, just note it
         details.voice.warning = 'Some voice checks failed - this may affect AI calling features'
       }
     } else {
       checklist.push({
-        step: 2,
+        step: 3,
         item: 'Voice Services',
         tool: 'voice.smokeTest',
         status: 'skipped',
@@ -114,9 +164,9 @@ export async function execute(args, ctx) {
     }
     
     // =========================================================================
-    // Step 3: Get provisioning summary
+    // Step 4: Get provisioning summary
     // =========================================================================
-    const provisioningStartTime = Date.now()
+    const step4Start = Date.now()
     const provisioningResult = await tenantProvisioningSummary.execute({ businessId }, ctx)
     
     // Determine provisioning status
@@ -129,14 +179,14 @@ export async function execute(args, ctx) {
     }
     
     checklist.push({
-      step: 3,
-      item: 'Provisioning',
+      step: 4,
+      item: 'Provisioning Status',
       tool: 'tenant.provisioningSummary',
       status: provisioningStatus,
       details: provisioningResult.exists 
         ? `${provisioningResult.provisioningScore}% complete` 
         : 'Tenant not found',
-      durationMs: Date.now() - provisioningStartTime
+      durationMs: Date.now() - step4Start
     })
     
     details.provisioning = {
@@ -156,10 +206,14 @@ export async function execute(args, ctx) {
     const totalDurationMs = Date.now() - startTime
     
     // Determine overall readiness
-    const allStepsDone = checklist.every(c => c.status === 'done' || c.status === 'skipped' || c.status === 'warning')
-    ready = ready && allStepsDone
+    // ready = all critical steps passed (tenant exists, provisioning found)
+    // warnings (billing, voice) don't block readiness
+    const criticalStepsPassed = checklist.every(c => 
+      c.status === 'done' || c.status === 'skipped' || c.status === 'warning' || c.status === 'in_progress'
+    )
+    ready = ready && criticalStepsPassed
     
-    // Add recommendations
+    // Add recommendations based on findings
     const recommendations = []
     
     if (!details.provisioning?.subscription?.active) {
@@ -167,6 +221,14 @@ export async function execute(args, ctx) {
         priority: 'high',
         item: 'subscription',
         message: 'Activate subscription to unlock all features'
+      })
+    }
+    
+    if (details.billing?.warning) {
+      recommendations.push({
+        priority: 'high',
+        item: 'billing',
+        message: details.billing.warning
       })
     }
     
@@ -194,6 +256,15 @@ export async function execute(args, ctx) {
       })
     }
     
+    // Calculate summary stats
+    const stats = {
+      totalSteps: checklist.length,
+      completed: checklist.filter(c => c.status === 'done').length,
+      warnings: checklist.filter(c => c.status === 'warning').length,
+      skipped: checklist.filter(c => c.status === 'skipped').length,
+      failed: checklist.filter(c => c.status === 'failed').length,
+    }
+    
     return {
       ok: true,
       businessId,
@@ -204,11 +275,12 @@ export async function execute(args, ctx) {
       checklist,
       recommendations,
       details,
+      stats,
       dryRun,
       durationMs: totalDurationMs,
       summary: dryRun
         ? `[DRY RUN] Would bootstrap tenant ${businessId}`
-        : `Bootstrapped tenant ${businessId} - ${ready ? 'Ready' : 'Needs attention'}`
+        : `Bootstrapped tenant ${businessId} - ${ready ? 'Ready' : 'Needs attention'} (${stats.completed}/${stats.totalSteps} complete)`
     }
     
   } catch (error) {
@@ -230,7 +302,7 @@ export async function execute(args, ctx) {
 
 export default {
   name: 'tenant.bootstrap',
-  description: 'Orchestrate complete tenant onboarding (ensure + voice test + provisioning summary)',
+  description: 'Orchestrate complete tenant onboarding (ensure + billing check + voice test + provisioning summary)',
   schema,
   execute
 }
