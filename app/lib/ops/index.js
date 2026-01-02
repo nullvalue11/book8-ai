@@ -29,7 +29,7 @@ export function initializeOps() {
   
   for (const tool of tools) {
     registerTool(tool.name, {
-      schema: tool.argsSchema || tool.schema,
+      schema: tool.schema,
       execute: tool.execute,
       description: tool.description
     })
