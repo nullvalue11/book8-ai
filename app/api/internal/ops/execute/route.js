@@ -2,13 +2,17 @@
  * POST /api/internal/ops/execute
  * GET  /api/internal/ops/execute (list tools & health check)
  * 
- * Ops Control Plane Executor Endpoint
+ * Ops Control Plane Executor Endpoint v1.3.0
  * 
- * Purpose:
- * Execute ops tools with schema validation, idempotency, and audit logging.
+ * Features:
+ * - Scoped API keys (OPS_KEY_N8N, OPS_KEY_ADMIN, or legacy OPS_INTERNAL_SECRET)
+ * - RequestId-based rate limiting (serverless-friendly)
+ * - Timing-safe authentication
+ * - Idempotency via MongoDB
+ * - Full audit logging
  * 
  * Authentication:
- * Requires x-book8-internal-secret header matching OPS_INTERNAL_SECRET env var.
+ * Requires x-book8-internal-secret header with a valid scoped API key.
  * 
  * Request Formats Supported:
  * 
@@ -34,19 +38,6 @@
  *   "tool": "tenant.ensure",
  *   "dryRun": false,
  *   "businessId": "..."
- * }
- * 
- * Response:
- * {
- *   "ok": true/false,
- *   "requestId": "...",
- *   "tool": "...",
- *   "dryRun": true/false,
- *   "result": { ... },
- *   "error": { "code": "...", "message": "...", "details": any, "help": "..." }?,
- *   "executedAt": "ISO timestamp",
- *   "durationMs": number,
- *   "_meta": { "cached": boolean, "source": "..." }
  * }
  */
 
@@ -77,29 +68,100 @@ export const dynamic = 'force-dynamic'
 // ============================================================================
 
 const LOG_PREFIX = '[ops]'
-const VERSION = 'v1.2.0'
+const VERSION = 'v1.3.0'
 
 // ============================================================================
-// Rate Limiting
+// Scoped API Keys Configuration
+// ============================================================================
+
+/**
+ * Tool scope requirements
+ * Each tool declares what scope is needed to execute it
+ */
+const TOOL_SCOPES = {
+  'tenant.ensure': 'tenant.write',
+  'tenant.provisioningSummary': 'tenant.read',
+  'tenant.bootstrap': 'tenant.write',
+  'billing.validateStripeConfig': 'billing.read',
+  'voice.smokeTest': 'voice.test',
+}
+
+/**
+ * Get API key scopes from environment
+ * Supports multiple keys with different permission levels
+ */
+function getApiKeyScopes() {
+  const keys = {}
+  
+  // n8n automation key - limited to ops tasks
+  if (env.OPS_KEY_N8N) {
+    keys[env.OPS_KEY_N8N] = ['ops.execute', 'tenant.*', 'voice.*', 'billing.read']
+  }
+  
+  // Admin key - full access
+  if (env.OPS_KEY_ADMIN) {
+    keys[env.OPS_KEY_ADMIN] = ['*']
+  }
+  
+  // Legacy single key - full access for backwards compatibility
+  if (env.OPS_INTERNAL_SECRET) {
+    keys[env.OPS_INTERNAL_SECRET] = ['*']
+  }
+  
+  // Fallback to ADMIN_TOKEN if nothing else configured
+  if (env.ADMIN_TOKEN && Object.keys(keys).length === 0) {
+    keys[env.ADMIN_TOKEN] = ['*']
+  }
+  
+  return keys
+}
+
+/**
+ * Check if a scope matches the required scope
+ * Supports wildcards: '*' matches everything, 'tenant.*' matches 'tenant.read', 'tenant.write'
+ */
+function scopeMatches(allowedScope, requiredScope) {
+  if (allowedScope === '*') return true
+  if (allowedScope === requiredScope) return true
+  
+  // Check wildcard patterns like 'tenant.*'
+  if (allowedScope.endsWith('.*')) {
+    const prefix = allowedScope.slice(0, -2)
+    return requiredScope.startsWith(prefix + '.')
+  }
+  
+  return false
+}
+
+/**
+ * Check if any of the allowed scopes permit the required scope
+ */
+function hasScope(allowedScopes, requiredScope) {
+  return allowedScopes.some(scope => scopeMatches(scope, requiredScope))
+}
+
+// ============================================================================
+// Rate Limiting (RequestId-based for serverless compatibility)
 // ============================================================================
 
 const rateLimitMap = new Map()
 const RATE_LIMIT = {
   windowMs: 60000,  // 1 minute window
-  maxRequests: 30,  // 30 requests per minute per IP
+  maxRequests: 30,  // 30 requests per minute per key
 }
 
 /**
  * Check if request is within rate limit
- * @param {string} identifier - IP address or other identifier
- * @returns {boolean} - true if allowed, false if rate limited
+ * Uses API key prefix as identifier for serverless-friendly rate limiting
+ * @param {string} identifier - API key prefix or requestId prefix
+ * @returns {object} - { allowed, remaining, resetIn }
  */
 function checkRateLimit(identifier) {
   const now = Date.now()
-  const userRequests = rateLimitMap.get(identifier) || []
+  const requests = rateLimitMap.get(identifier) || []
   
   // Remove requests outside the current window
-  const validRequests = userRequests.filter(
+  const validRequests = requests.filter(
     timestamp => now - timestamp < RATE_LIMIT.windowMs
   )
   
@@ -129,19 +191,25 @@ function checkRateLimit(identifier) {
   }
 }
 
+/**
+ * Get rate limit identifier from API key
+ * Uses first 8 chars of key hash for privacy
+ */
+function getRateLimitIdentifier(apiKey) {
+  if (!apiKey) return 'unknown'
+  const hash = crypto.createHash('sha256').update(apiKey).digest('hex')
+  return `key_${hash.substring(0, 8)}`
+}
+
 // ============================================================================
 // Security: Constant-Time Secret Comparison
 // ============================================================================
 
 /**
  * Constant-time secret comparison to prevent timing attacks
- * @param {string} provided - The secret provided in the request
- * @param {string} expected - The expected secret from environment
- * @returns {boolean} - true if secrets match
  */
 function verifySecret(provided, expected) {
   if (!provided || !expected) {
-    // Still do a dummy comparison to maintain constant time
     crypto.timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32))
     return false
   }
@@ -149,7 +217,6 @@ function verifySecret(provided, expected) {
   const providedBuffer = Buffer.from(provided, 'utf8')
   const expectedBuffer = Buffer.from(expected, 'utf8')
   
-  // If lengths differ, do a dummy comparison to maintain constant time
   if (providedBuffer.length !== expectedBuffer.length) {
     crypto.timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32))
     return false
@@ -186,12 +253,13 @@ function log(requestId, level, message, data = {}) {
   logFn(`${timestamp} ${prefix} [${level.toUpperCase()}] ${message}${dataStr}`)
 }
 
-function logRequest(requestId, tool, dryRun, args, source) {
+function logRequest(requestId, tool, dryRun, args, source, keyId) {
   log(requestId, 'info', `Request received`, {
     tool,
     dryRun,
     argsFormat: source,
-    argKeys: Object.keys(args)
+    argKeys: Object.keys(args),
+    keyId
   })
 }
 
@@ -214,7 +282,24 @@ function logError(requestId, code, message, details) {
 // Request Schema & Parsing
 // ============================================================================
 
-const RequestSchema = z.object({
+// New format schema: { tool, payload, meta }
+const MetaSchema = z.object({
+  requestId: z.string().min(1, 'meta.requestId is required'),
+  dryRun: z.boolean().optional().default(false),
+  actor: z.object({
+    type: z.enum(['system', 'user']),
+    id: z.string()
+  }).optional()
+})
+
+const NewRequestSchema = z.object({
+  tool: z.string().min(1, 'tool is required'),
+  payload: z.record(z.any()).default({}),
+  meta: MetaSchema
+})
+
+// Legacy format schema (for backwards compatibility)
+const LegacyRequestSchema = z.object({
   requestId: z.string().min(1, 'requestId is required'),
   dryRun: z.boolean().optional().default(false),
   tool: z.string().min(1, 'tool is required'),
@@ -229,22 +314,82 @@ const RequestSchema = z.object({
 })
 
 /**
- * Extract tool arguments from request body
- * Returns { args, source } where source indicates which format was used
+ * Detect and parse request format
+ * Supports both new format { tool, payload, meta } and legacy formats
+ * @returns { tool, args, requestId, dryRun, actor, format }
  */
-function extractToolArgs(body) {
-  // Priority 1: nested args object
+function parseRequest(body) {
+  // Try new format first: { tool, payload, meta }
+  if (body.meta && body.payload !== undefined) {
+    const result = NewRequestSchema.safeParse(body)
+    if (result.success) {
+      return {
+        valid: true,
+        tool: result.data.tool,
+        args: result.data.payload,
+        requestId: result.data.meta.requestId,
+        dryRun: result.data.meta.dryRun,
+        actor: result.data.meta.actor || { type: 'system', id: 'n8n-workflow' },
+        format: 'new'
+      }
+    }
+    // Return validation errors for new format
+    return {
+      valid: false,
+      errors: result.error.errors.map(e => ({
+        path: e.path.join('.'),
+        message: e.message,
+        code: e.code
+      })),
+      format: 'new'
+    }
+  }
+  
+  // Try legacy format
+  const legacyResult = LegacyRequestSchema.safeParse(body)
+  if (legacyResult.success) {
+    const data = legacyResult.data
+    // Extract args from legacy formats
+    const { args, source } = extractLegacyArgs(body)
+    return {
+      valid: true,
+      tool: data.tool,
+      args,
+      requestId: data.requestId,
+      dryRun: data.dryRun,
+      actor: data.actor || { type: 'system', id: 'n8n-workflow' },
+      format: `legacy-${source}`
+    }
+  }
+  
+  // Neither format matched
+  return {
+    valid: false,
+    errors: legacyResult.error.errors.map(e => ({
+      path: e.path.join('.'),
+      message: e.message,
+      code: e.code
+    })),
+    format: 'unknown'
+  }
+}
+
+/**
+ * Extract tool arguments from legacy request body formats
+ */
+function extractLegacyArgs(body) {
+  // Nested args object
   if (body.args && Object.keys(body.args).length > 0) {
     return { args: body.args, source: 'args' }
   }
   
-  // Priority 2: nested input object (n8n style)
+  // Nested input object (n8n style)
   if (body.input && Object.keys(body.input).length > 0) {
     return { args: body.input, source: 'input' }
   }
   
-  // Priority 3: flat args from top level
-  const envelopeFields = ['requestId', 'dryRun', 'tool', 'args', 'input', 'actor']
+  // Flat args at top level
+  const envelopeFields = ['requestId', 'dryRun', 'tool', 'args', 'input', 'actor', 'meta', 'payload']
   const flatArgs = {}
   
   for (const [key, value] of Object.entries(body)) {
@@ -257,40 +402,81 @@ function extractToolArgs(body) {
 }
 
 // ============================================================================
-// Authentication
+// Authentication with Scoped Keys
 // ============================================================================
 
+/**
+ * Verify authentication and return key info with scopes
+ */
 function verifyAuth(request) {
-  const opsSecret = env.OPS_INTERNAL_SECRET || env.ADMIN_TOKEN
+  const apiKeys = getApiKeyScopes()
   
-  if (!opsSecret) {
+  if (Object.keys(apiKeys).length === 0) {
     return { 
       valid: false, 
-      error: 'OPS_INTERNAL_SECRET not configured',
-      help: 'Set OPS_INTERNAL_SECRET environment variable in Vercel'
+      error: 'No API keys configured',
+      help: 'Set OPS_KEY_N8N, OPS_KEY_ADMIN, or OPS_INTERNAL_SECRET in environment'
     }
   }
   
-  const providedSecret = request.headers.get('x-book8-internal-secret')
+  const providedKey = request.headers.get('x-book8-internal-secret')
   
-  if (!providedSecret) {
+  if (!providedKey) {
     return { 
       valid: false, 
       error: 'Missing x-book8-internal-secret header',
-      help: 'Add header: x-book8-internal-secret: <your-secret>'
+      help: 'Add header: x-book8-internal-secret: <your-api-key>'
     }
   }
   
-  // Use constant-time comparison to prevent timing attacks
-  if (!verifySecret(providedSecret, opsSecret)) {
+  // Find matching key using constant-time comparison
+  let matchedScopes = null
+  let keyId = null
+  
+  for (const [key, scopes] of Object.entries(apiKeys)) {
+    if (verifySecret(providedKey, key)) {
+      matchedScopes = scopes
+      // Generate safe key identifier for logging
+      keyId = getRateLimitIdentifier(key)
+      break
+    }
+  }
+  
+  if (!matchedScopes) {
     return { 
       valid: false, 
-      error: 'Invalid internal secret',
-      help: 'Verify the secret matches OPS_INTERNAL_SECRET in Vercel'
+      error: 'Invalid API key',
+      help: 'Verify your API key is correct'
     }
   }
   
-  return { valid: true }
+  return { 
+    valid: true, 
+    scopes: matchedScopes,
+    keyId 
+  }
+}
+
+/**
+ * Check if the authenticated key has permission for a tool
+ */
+function checkToolPermission(scopes, tool) {
+  const requiredScope = TOOL_SCOPES[tool] || 'ops.execute'
+  
+  if (hasScope(scopes, requiredScope)) {
+    return { allowed: true }
+  }
+  
+  // Also check for the generic ops.execute scope
+  if (hasScope(scopes, 'ops.execute')) {
+    return { allowed: true }
+  }
+  
+  return { 
+    allowed: false, 
+    requiredScope,
+    availableScopes: scopes
+  }
 }
 
 // ============================================================================
@@ -346,9 +532,10 @@ function successResponse(requestId, tool, dryRun, result, startedAt, cached = fa
 // ============================================================================
 
 const ERROR_HELP = {
-  AUTH_FAILED: 'Verify x-book8-internal-secret header matches OPS_INTERNAL_SECRET env var',
+  AUTH_FAILED: 'Verify x-book8-internal-secret header with valid API key',
+  FORBIDDEN: 'Your API key does not have permission for this tool. Contact admin for access.',
   INVALID_JSON: 'Check JSON syntax - ensure proper quoting and structure',
-  VALIDATION_ERROR: 'Required fields: requestId (string), tool (string). Optional: dryRun (boolean)',
+  VALIDATION_ERROR: 'New format: { tool, payload: {...}, meta: { requestId, dryRun? } }. Legacy format: { tool, requestId, args/input/payload }',
   TOOL_NOT_ALLOWED: 'Use GET /api/internal/ops/execute to list available tools',
   ARGS_VALIDATION_ERROR: 'Check tool documentation for required arguments. Most tools require businessId.',
   REQUEST_IN_PROGRESS: 'This requestId is being processed. Use a unique requestId for new requests.',
@@ -368,19 +555,33 @@ export async function POST(request) {
   let actor = null
   let database = null
   let argsSource = 'unknown'
+  let keyId = 'unknown'
   
   try {
     // Initialize ops tools
     initializeOps()
     
-    // 0. Rate limiting check
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
-      || request.headers.get('x-real-ip') 
-      || 'unknown'
+    // 0. Verify authentication first (to get key identifier for rate limiting)
+    const auth = verifyAuth(request)
+    if (!auth.valid) {
+      log(null, 'warn', `Auth failed: ${auth.error}`)
+      return NextResponse.json({
+        ok: false,
+        error: { 
+          code: 'AUTH_FAILED', 
+          message: auth.error,
+          help: auth.help || ERROR_HELP.AUTH_FAILED
+        },
+        _meta: { version: VERSION }
+      }, { status: 401 })
+    }
     
-    const rateLimit = checkRateLimit(clientIp)
+    keyId = auth.keyId
+    
+    // 1. Rate limiting based on API key (serverless-friendly)
+    const rateLimit = checkRateLimit(keyId)
     if (!rateLimit.allowed) {
-      log(null, 'warn', `Rate limit exceeded for IP: ${clientIp}`)
+      log(null, 'warn', `Rate limit exceeded for key: ${keyId}`)
       return NextResponse.json({
         ok: false,
         error: {
@@ -401,21 +602,6 @@ export async function POST(request) {
       })
     }
     
-    // 1. Verify authentication (uses constant-time comparison)
-    const auth = verifyAuth(request)
-    if (!auth.valid) {
-      log(null, 'warn', `Auth failed: ${auth.error}`)
-      return NextResponse.json({
-        ok: false,
-        error: { 
-          code: 'AUTH_FAILED', 
-          message: auth.error,
-          help: auth.help || ERROR_HELP.AUTH_FAILED
-        },
-        _meta: { version: VERSION }
-      }, { status: 401 })
-    }
-    
     // 2. Parse request body
     let body
     try {
@@ -430,45 +616,56 @@ export async function POST(request) {
       )
     }
     
-    // 3. Validate request envelope
-    const parseResult = RequestSchema.safeParse(body)
-    if (!parseResult.success) {
-      const errors = parseResult.error.errors.map(e => ({
-        path: e.path.join('.'),
-        message: e.message,
-        code: e.code
-      }))
+    // 3. Parse and validate request (supports both new and legacy formats)
+    const parseResult = parseRequest(body)
+    if (!parseResult.valid) {
       return errorResponse(
-        body.requestId || null,
+        body.meta?.requestId || body.requestId || null,
         body.tool || null,
         false,
         'VALIDATION_ERROR',
         'Request validation failed',
-        errors,
+        { errors: parseResult.errors, detectedFormat: parseResult.format },
         ERROR_HELP.VALIDATION_ERROR
       )
     }
     
-    const validatedRequest = parseResult.data
-    requestId = validatedRequest.requestId
-    tool = validatedRequest.tool
-    dryRun = validatedRequest.dryRun
-    actor = validatedRequest.actor || { type: 'system', id: 'n8n-workflow' }
+    requestId = parseResult.requestId
+    tool = parseResult.tool
+    dryRun = parseResult.dryRun
+    actor = parseResult.actor
+    const args = parseResult.args
+    argsSource = parseResult.format
     
-    // 4. Extract args from multiple possible formats
-    const { args, source } = extractToolArgs(body)
-    argsSource = source
+    logRequest(requestId, tool, dryRun, args, argsSource, keyId)
     
-    logRequest(requestId, tool, dryRun, args, source)
+    // 5. Check tool permission based on API key scopes
+    const permission = checkToolPermission(auth.scopes, tool)
+    if (!permission.allowed) {
+      log(requestId, 'warn', `Permission denied for tool: ${tool}`, {
+        requiredScope: permission.requiredScope,
+        keyId
+      })
+      return errorResponse(
+        requestId, tool, dryRun,
+        'FORBIDDEN',
+        `API key does not have permission for tool '${tool}'`,
+        { 
+          requiredScope: permission.requiredScope,
+          hint: 'Use an API key with appropriate scopes'
+        },
+        ERROR_HELP.FORBIDDEN,
+        403
+      )
+    }
     
-    // 5. Connect to database
+    // 6. Connect to database
     database = await connect()
     
-    // 6. Check idempotency - return cached result if exists
+    // 7. Check idempotency - return cached result if exists
     const cachedResult = await getCachedResult(database, requestId)
     if (cachedResult) {
       log(requestId, 'info', 'Returning cached result (idempotent)')
-      // Add meta to cached response
       cachedResult._meta = {
         ...cachedResult._meta,
         cached: true,
@@ -477,7 +674,7 @@ export async function POST(request) {
       return NextResponse.json(cachedResult)
     }
     
-    // 7. Acquire lock to prevent concurrent execution
+    // 8. Acquire lock to prevent concurrent execution
     const lockAcquired = await acquireLock(database, requestId)
     if (!lockAcquired) {
       return errorResponse(
@@ -491,7 +688,7 @@ export async function POST(request) {
     }
     
     try {
-      // 8. Validate tool is allowlisted
+      // 9. Validate tool is allowlisted
       if (!isToolAllowed(tool)) {
         const availableTools = getToolNames()
         
@@ -512,7 +709,7 @@ export async function POST(request) {
         )
       }
       
-      // 9. Validate tool arguments
+      // 10. Validate tool arguments
       const argsValidation = validateToolArgs(tool, args)
       if (!argsValidation.valid) {
         await saveAuditLog(database, createAuditEntry({
@@ -536,8 +733,8 @@ export async function POST(request) {
         )
       }
       
-      // 10. Execute tool
-      log(requestId, 'info', `Executing tool: ${tool}`, { dryRun })
+      // 11. Execute tool
+      log(requestId, 'info', `Executing tool: ${tool}`, { dryRun, keyId })
       
       const ctx = {
         db: database,
@@ -550,7 +747,7 @@ export async function POST(request) {
       const result = await executeTool(tool, argsValidation.data, ctx)
       const completedAt = new Date()
       
-      // 11. Save audit log
+      // 12. Save audit log
       await saveAuditLog(database, createAuditEntry({
         requestId, 
         tool, 
@@ -560,10 +757,11 @@ export async function POST(request) {
         status: result.ok !== false ? 'succeeded' : 'failed',
         result,
         startedAt,
-        completedAt
+        completedAt,
+        keyId
       }))
       
-      // 12. Build and cache response
+      // 13. Build and cache response
       const response = {
         ok: result.ok !== false,
         requestId,
@@ -595,7 +793,6 @@ export async function POST(request) {
       stack: error.stack?.split('\n').slice(0, 3).join(' | ')
     })
     
-    // Try to save audit log
     if (database && requestId) {
       try {
         await saveAuditLog(database, createAuditEntry({
@@ -603,7 +800,8 @@ export async function POST(request) {
           status: 'failed',
           error: { code: 'INTERNAL_ERROR', message: error.message },
           startedAt,
-          completedAt: new Date()
+          completedAt: new Date(),
+          keyId
         }))
       } catch (auditError) {
         log(requestId, 'error', `Failed to save audit log: ${auditError.message}`)
@@ -645,12 +843,20 @@ export async function OPTIONS() {
 // ============================================================================
 
 export async function GET(request) {
-  // Rate limiting for GET requests too
-  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
-    || request.headers.get('x-real-ip') 
-    || 'unknown'
+  const auth = verifyAuth(request)
+  if (!auth.valid) {
+    return NextResponse.json({
+      ok: false,
+      error: { 
+        code: 'AUTH_FAILED', 
+        message: auth.error,
+        help: auth.help
+      }
+    }, { status: 401 })
+  }
   
-  const rateLimit = checkRateLimit(clientIp)
+  // Rate limiting for GET requests
+  const rateLimit = checkRateLimit(auth.keyId)
   if (!rateLimit.allowed) {
     return NextResponse.json({
       ok: false,
@@ -667,39 +873,39 @@ export async function GET(request) {
     })
   }
 
-  const auth = verifyAuth(request)
-  if (!auth.valid) {
-    return NextResponse.json({
-      ok: false,
-      error: { 
-        code: 'AUTH_FAILED', 
-        message: auth.error,
-        help: auth.help
-      }
-    }, { status: 401 })
-  }
-  
   initializeOps()
   
   const tools = getToolNames()
   
-  // Build tool info with descriptions
+  // Build tool info with scopes
   const toolInfo = tools.map(name => ({
     name,
+    requiredScope: TOOL_SCOPES[name] || 'ops.execute',
     requiredArgs: name.includes('tenant') || name.includes('billing') || name.includes('voice') 
       ? ['businessId'] 
-      : []
+      : [],
+    accessible: checkToolPermission(auth.scopes, name).allowed
   }))
   
   return NextResponse.json({
     ok: true,
     version: VERSION,
     tools: toolInfo,
-    requestFormats: [
-      { format: 'args', example: '{ "tool": "...", "args": { "businessId": "..." } }' },
-      { format: 'input', example: '{ "tool": "...", "input": { "businessId": "..." } }' },
-      { format: 'flat', example: '{ "tool": "...", "businessId": "..." }' }
-    ],
+    keyInfo: {
+      id: auth.keyId,
+      scopes: auth.scopes
+    },
+    requestFormats: {
+      recommended: {
+        format: 'new',
+        example: '{ "tool": "tenant.ensure", "payload": { "businessId": "..." }, "meta": { "requestId": "...", "dryRun": false } }'
+      },
+      legacy: [
+        { format: 'args', example: '{ "tool": "...", "requestId": "...", "args": { "businessId": "..." } }' },
+        { format: 'input', example: '{ "tool": "...", "requestId": "...", "input": { "businessId": "..." } }' },
+        { format: 'flat', example: '{ "tool": "...", "requestId": "...", "businessId": "..." }' }
+      ]
+    },
     documentation: {
       api: '/docs/ops-control-plane-v1.md',
       n8n: '/docs/n8n-integration-guide.md'
@@ -710,6 +916,7 @@ export async function GET(request) {
       windowMs: RATE_LIMIT.windowMs
     },
     security: {
+      scopedKeys: true,
       timingSafeAuth: true,
       rateLimited: true
     },
