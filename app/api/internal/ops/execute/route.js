@@ -222,18 +222,6 @@ function checkRateLimit(identifier, keyType = 'default') {
     limit: config.maxRequests
   }
 }
-      } else {
-        rateLimitMap.set(key, valid)
-      }
-    }
-  }
-  
-  return { 
-    allowed: true, 
-    remaining: RATE_LIMIT.maxRequests - validRequests.length,
-    resetIn: RATE_LIMIT.windowMs 
-  }
-}
 
 /**
  * Get rate limit identifier from API key
