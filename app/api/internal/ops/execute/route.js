@@ -281,7 +281,8 @@ function verifyAuth(request) {
     }
   }
   
-  if (providedSecret !== opsSecret) {
+  // Use constant-time comparison to prevent timing attacks
+  if (!verifySecret(providedSecret, opsSecret)) {
     return { 
       valid: false, 
       error: 'Invalid internal secret',
