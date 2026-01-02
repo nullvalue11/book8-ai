@@ -895,11 +895,17 @@ export async function GET(request) {
       id: auth.keyId,
       scopes: auth.scopes
     },
-    requestFormats: [
-      { format: 'args', example: '{ "tool": "...", "args": { "businessId": "..." } }' },
-      { format: 'input', example: '{ "tool": "...", "input": { "businessId": "..." } }' },
-      { format: 'flat', example: '{ "tool": "...", "businessId": "..." }' }
-    ],
+    requestFormats: {
+      recommended: {
+        format: 'new',
+        example: '{ "tool": "tenant.ensure", "payload": { "businessId": "..." }, "meta": { "requestId": "...", "dryRun": false } }'
+      },
+      legacy: [
+        { format: 'args', example: '{ "tool": "...", "requestId": "...", "args": { "businessId": "..." } }' },
+        { format: 'input', example: '{ "tool": "...", "requestId": "...", "input": { "businessId": "..." } }' },
+        { format: 'flat', example: '{ "tool": "...", "requestId": "...", "businessId": "..." }' }
+      ]
+    },
     documentation: {
       api: '/docs/ops-control-plane-v1.md',
       n8n: '/docs/n8n-integration-guide.md'
