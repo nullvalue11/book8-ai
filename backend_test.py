@@ -267,10 +267,15 @@ def test_4_rate_limit_response_on_429():
                 log_test("Rate Limit 429", "FAIL", f"Wrong error code: {error.get('code')}")
                 return False
             
-            # Check for Retry-After header
-            retry_after = response['headers'].get('Retry-After')
+            # Check for Retry-After header (case-insensitive)
+            retry_after = None
+            for header_name, header_value in response['headers'].items():
+                if header_name.lower() == 'retry-after':
+                    retry_after = header_value
+                    break
+            
             if not retry_after:
-                log_test("Rate Limit 429", "FAIL", "Missing Retry-After header")
+                log_test("Rate Limit 429", "FAIL", f"Missing Retry-After header. Available headers: {list(response['headers'].keys())}")
                 return False
             
             log_test("Rate Limit 429", "PASS", f"Rate limit triggered after {i+1} requests, Retry-After: {retry_after}s")
