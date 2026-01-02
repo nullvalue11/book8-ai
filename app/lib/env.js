@@ -200,6 +200,8 @@ function loadConfig() {
       
       // Ops Control Plane
       OPS_INTERNAL_SECRET,
+      OPS_KEY_N8N,
+      OPS_KEY_ADMIN,
       
       // Billing/Usage Reporting
       CORE_API_BASE_URL,
