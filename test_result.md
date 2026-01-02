@@ -832,7 +832,7 @@
     file: "/app/app/api/internal/ops/execute/route.js, /app/app/lib/ops/*.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
@@ -840,6 +840,12 @@
       - working: true
         agent: "testing"
         comment: "✅ OPS CONTROL PLANE V1 API FULLY TESTED AND WORKING: Comprehensive testing of Book8's Ops Control Plane V1 completed successfully! Perfect 15/15 tests passed (100% success rate): ✅ AUTHENTICATION TESTS (3/3): 1) Missing x-book8-internal-secret header → 401 AUTH_FAILED ✅ 2) Invalid x-book8-internal-secret header → 401 AUTH_FAILED ✅ 3) Valid header → proceeds to request processing ✅ ✅ LIST TOOLS TEST (1/1): GET /api/internal/ops/execute → 200 with all 4 expected tools (tenant.ensure, billing.validateStripeConfig, voice.smokeTest, tenant.provisioningSummary) ✅ ✅ REQUEST VALIDATION TESTS (3/3): 1) Missing requestId → 400 VALIDATION_ERROR ✅ 2) Missing tool → 400 VALIDATION_ERROR ✅ 3) Invalid tool name → 400 TOOL_NOT_ALLOWED with available tools list ✅ ✅ TOOL EXECUTION TESTS (4/4): 1) tenant.ensure - Creates/verifies business, supports dryRun mode with dryRunPlan, validates businessId requirement ✅ 2) billing.validateStripeConfig - Returns Stripe validation results with stripeConfigured, stripeMode, checks array ✅ 3) voice.smokeTest - Returns health check results with 4 endpoint checks (core_api_health, agent_availability_endpoint, agent_book_endpoint, billing_usage_endpoint) ✅ 4) tenant.provisioningSummary - Returns complete provisioning state with subscription, calendar, scheduling, voice, eventTypes info and provisioning score ✅ ✅ IDEMPOTENCY TEST (1/1): Same requestId returns cached result with executedAt and durationMs fields ✅ ✅ DRY RUN MODE TEST (1/1): dryRun=true describes action without executing, returns dryRunPlan ✅ The Ops Control Plane V1 API is production-ready with robust authentication (x-book8-internal-secret header), comprehensive tool registry, proper error handling, idempotency support, audit logging, and dry run capabilities. All 4 operational tools are fully functional and ready for internal operations management!"
+      - working: false
+        agent: "user"
+        comment: "CRITICAL BUG: n8n workflows hitting rate limits on GET /api/internal/ops/execute endpoint. The rate-limiting code was left in a broken state mid-refactor with references to old RATE_LIMIT constant that doesn't exist."
+      - working: true
+        agent: "main"
+        comment: "✅ RATE-LIMITING FIX APPLIED: Fixed broken reference to RATE_LIMIT.maxRequests and RATE_LIMIT.windowMs in GET handler (lines 946-949). Changed to use rateLimit.limit and RATE_LIMITS.default.windowMs from the new key-type-based rate limit configuration. The rate-limiting system now supports different limits for admin (300/min), n8n (200/min), and default (100/min) keys. Ready for backend testing to verify the fix."
 
   - agent: "main"
     message: "🔧 OPS CONTROL PLANE V1 IMPLEMENTATION COMPLETE: Created secure, internal-only API endpoint for executing predefined operational tasks. ENDPOINT: POST /api/internal/ops/execute (auth: x-book8-internal-secret header, env: OPS_INTERNAL_SECRET or falls back to ADMIN_TOKEN). FEATURES: 1) Tool Registry - allowlist of executable tools with Zod schema validation, 2) Idempotency - requestId prevents duplicate execution (ops_executions collection, 7-day TTL), 3) Audit Logging - full audit trail with sensitive data redaction (ops_audit_logs collection), 4) Dry Run Mode - describe actions without executing. V1 TOOLS: tenant.ensure (ensure business exists), billing.validateStripeConfig (validate Stripe env/prices), voice.smokeTest (health check endpoints), tenant.provisioningSummary (get tenant provisioning state). FILES: /app/app/api/internal/ops/execute/route.js, /app/app/lib/ops/ (registry.js, audit.js, idempotency.js, index.js, tools/*.js). DOCS: /docs/ops-control-plane-v1.md. ENV: OPS_INTERNAL_SECRET=ops-dev-secret-change-me added to .env. Ready for backend testing with focus on: auth validation, tool execution, idempotency, and audit logging."
