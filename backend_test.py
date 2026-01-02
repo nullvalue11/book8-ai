@@ -1,398 +1,386 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Book8 AI - Ops Control Plane Rate-Limiting Fix
-Testing the rate-limiting fix at /api/internal/ops/execute
-
-Test Cases:
-1. GET Endpoint Health Check (CRITICAL) - Test that GET endpoint works and returns rate limit info
-2. Rate Limit Headers on GET - Verify that the GET response includes rate limit information
-3. POST Endpoint Still Works - Test that POST endpoint works with valid authentication
-4. Rate Limit Response on 429 - Make rapid requests to trigger rate limiting
-5. Auth Still Required - Test that auth is required
+Backend Test Suite for Book8 AI - Tenant Bootstrap Tool Testing
+Tests the updated tenant.bootstrap tool at /api/internal/ops/execute
 """
 
 import requests
 import json
-import time
-import os
-from datetime import datetime
 import uuid
+import time
+from typing import Dict, Any, Optional
 
 # Configuration
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://ops-api-internal.preview.emergentagent.com')
+BASE_URL = "https://ops-api-internal.preview.emergentagent.com"
 API_ENDPOINT = f"{BASE_URL}/api/internal/ops/execute"
 AUTH_HEADER = "x-book8-internal-secret"
-AUTH_SECRET = "ops-dev-secret-change-me"  # From .env file OPS_INTERNAL_SECRET
+AUTH_TOKEN = "ops-dev-secret-change-me"
 
-def log_test(test_name, status, details=""):
-    """Log test results with timestamp"""
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    status_emoji = "✅" if status == "PASS" else "❌" if status == "FAIL" else "⚠️"
-    print(f"[{timestamp}] {status_emoji} {test_name}: {status}")
-    if details:
-        print(f"    {details}")
-
-def make_request(method, url, headers=None, json_data=None, timeout=10):
-    """Make HTTP request with error handling"""
-    try:
-        if method.upper() == "GET":
-            response = requests.get(url, headers=headers, timeout=timeout)
-        elif method.upper() == "POST":
-            response = requests.post(url, headers=headers, json=json_data, timeout=timeout)
-        else:
-            raise ValueError(f"Unsupported method: {method}")
+class TenantBootstrapTester:
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({
+            AUTH_HEADER: AUTH_TOKEN,
+            "Content-Type": "application/json"
+        })
+        self.test_results = []
         
-        return {
-            'status_code': response.status_code,
-            'headers': dict(response.headers),
-            'json': response.json() if response.headers.get('content-type', '').startswith('application/json') else None,
-            'text': response.text
-        }
-    except requests.exceptions.RequestException as e:
-        return {
-            'error': str(e),
-            'status_code': None,
-            'headers': {},
-            'json': None,
-            'text': None
-        }
-
-def test_1_get_endpoint_health_check():
-    """Test Case 1: GET Endpoint Health Check (CRITICAL)"""
-    print("\n" + "="*60)
-    print("TEST 1: GET Endpoint Health Check (CRITICAL)")
-    print("="*60)
-    
-    headers = {AUTH_HEADER: AUTH_SECRET}
-    response = make_request("GET", API_ENDPOINT, headers=headers)
-    
-    if response.get('error'):
-        log_test("GET Health Check", "FAIL", f"Request error: {response['error']}")
-        return False
-    
-    if response['status_code'] != 200:
-        log_test("GET Health Check", "FAIL", f"Expected 200, got {response['status_code']}")
-        return False
-    
-    data = response['json']
-    if not data:
-        log_test("GET Health Check", "FAIL", "No JSON response")
-        return False
-    
-    # Check required fields
-    required_fields = ['ok', 'tools', 'rateLimit']
-    missing_fields = [field for field in required_fields if field not in data]
-    
-    if missing_fields:
-        log_test("GET Health Check", "FAIL", f"Missing fields: {missing_fields}")
-        return False
-    
-    if not data['ok']:
-        log_test("GET Health Check", "FAIL", f"ok: false - {data.get('error', 'Unknown error')}")
-        return False
-    
-    # Check rateLimit object structure
-    rate_limit = data['rateLimit']
-    rate_limit_fields = ['limit', 'remaining', 'windowMs']
-    missing_rate_fields = [field for field in rate_limit_fields if field not in rate_limit]
-    
-    if missing_rate_fields:
-        log_test("GET Health Check", "FAIL", f"Missing rateLimit fields: {missing_rate_fields}")
-        return False
-    
-    # Verify rate limit values are numbers
-    for field in rate_limit_fields:
-        if not isinstance(rate_limit[field], (int, float)):
-            log_test("GET Health Check", "FAIL", f"rateLimit.{field} is not a number: {rate_limit[field]}")
-            return False
-    
-    log_test("GET Health Check", "PASS", f"Response contains ok: {data['ok']}, tools: {len(data['tools'])}, rateLimit: {rate_limit}")
-    return True
-
-def test_2_rate_limit_headers_on_get():
-    """Test Case 2: Rate Limit Headers on GET"""
-    print("\n" + "="*60)
-    print("TEST 2: Rate Limit Headers on GET")
-    print("="*60)
-    
-    headers = {AUTH_HEADER: AUTH_SECRET}
-    response = make_request("GET", API_ENDPOINT, headers=headers)
-    
-    if response.get('error'):
-        log_test("Rate Limit Headers", "FAIL", f"Request error: {response['error']}")
-        return False
-    
-    if response['status_code'] != 200:
-        log_test("Rate Limit Headers", "FAIL", f"Expected 200, got {response['status_code']}")
-        return False
-    
-    data = response['json']
-    if not data or 'rateLimit' not in data:
-        log_test("Rate Limit Headers", "FAIL", "No rateLimit object in response")
-        return False
-    
-    rate_limit = data['rateLimit']
-    
-    # Verify rate limit metadata is present and valid
-    expected_fields = {
-        'limit': (int, float),
-        'remaining': (int, float), 
-        'windowMs': (int, float)
-    }
-    
-    for field, expected_type in expected_fields.items():
-        if field not in rate_limit:
-            log_test("Rate Limit Headers", "FAIL", f"Missing rateLimit.{field}")
-            return False
+    def log_test(self, test_name: str, success: bool, details: str = ""):
+        """Log test result"""
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name}")
+        if details:
+            print(f"   Details: {details}")
+        self.test_results.append({
+            "test": test_name,
+            "success": success,
+            "details": details
+        })
         
-        if not isinstance(rate_limit[field], expected_type):
-            log_test("Rate Limit Headers", "FAIL", f"rateLimit.{field} wrong type: {type(rate_limit[field])}")
-            return False
-    
-    # Verify reasonable values
-    if rate_limit['limit'] <= 0:
-        log_test("Rate Limit Headers", "FAIL", f"Invalid limit: {rate_limit['limit']}")
-        return False
-    
-    if rate_limit['remaining'] < 0 or rate_limit['remaining'] > rate_limit['limit']:
-        log_test("Rate Limit Headers", "FAIL", f"Invalid remaining: {rate_limit['remaining']}")
-        return False
-    
-    if rate_limit['windowMs'] <= 0:
-        log_test("Rate Limit Headers", "FAIL", f"Invalid windowMs: {rate_limit['windowMs']}")
-        return False
-    
-    log_test("Rate Limit Headers", "PASS", f"Valid rate limit info: limit={rate_limit['limit']}, remaining={rate_limit['remaining']}, windowMs={rate_limit['windowMs']}")
-    return True
-
-def test_3_post_endpoint_still_works():
-    """Test Case 3: POST Endpoint Still Works"""
-    print("\n" + "="*60)
-    print("TEST 3: POST Endpoint Still Works")
-    print("="*60)
-    
-    headers = {
-        AUTH_HEADER: AUTH_SECRET,
-        'Content-Type': 'application/json'
-    }
-    
-    # Test with billing.validateStripeConfig tool (requires businessId)
-    request_data = {
-        "requestId": f"test-rate-limit-{uuid.uuid4()}",
-        "tool": "billing.validateStripeConfig",
-        "args": {
-            "businessId": "test-business-123"
-        }
-    }
-    
-    response = make_request("POST", API_ENDPOINT, headers=headers, json_data=request_data)
-    
-    if response.get('error'):
-        log_test("POST Endpoint", "FAIL", f"Request error: {response['error']}")
-        return False
-    
-    if response['status_code'] != 200:
-        log_test("POST Endpoint", "FAIL", f"Expected 200, got {response['status_code']} - {response.get('text', '')}")
-        return False
-    
-    data = response['json']
-    if not data:
-        log_test("POST Endpoint", "FAIL", "No JSON response")
-        return False
-    
-    # Check response structure
-    required_fields = ['ok', 'requestId', 'tool', 'result']
-    missing_fields = [field for field in required_fields if field not in data]
-    
-    if missing_fields:
-        log_test("POST Endpoint", "FAIL", f"Missing fields: {missing_fields}")
-        return False
-    
-    if data['tool'] != request_data['tool']:
-        log_test("POST Endpoint", "FAIL", f"Tool mismatch: expected {request_data['tool']}, got {data['tool']}")
-        return False
-    
-    if data['requestId'] != request_data['requestId']:
-        log_test("POST Endpoint", "FAIL", f"RequestId mismatch: expected {request_data['requestId']}, got {data['requestId']}")
-        return False
-    
-    log_test("POST Endpoint", "PASS", f"Tool executed successfully: {data['tool']}, ok: {data['ok']}")
-    return True
-
-def test_4_rate_limit_response_on_429():
-    """Test Case 4: Rate Limit Response on 429"""
-    print("\n" + "="*60)
-    print("TEST 4: Rate Limit Response on 429")
-    print("="*60)
-    
-    headers = {AUTH_HEADER: AUTH_SECRET}
-    
-    # First, get current rate limit info
-    initial_response = make_request("GET", API_ENDPOINT, headers=headers)
-    if initial_response.get('error') or initial_response['status_code'] != 200:
-        log_test("Rate Limit 429", "FAIL", "Could not get initial rate limit info")
-        return False
-    
-    initial_data = initial_response['json']
-    rate_limit_info = initial_data.get('rateLimit', {})
-    limit = rate_limit_info.get('limit', 100)
-    
-    log_test("Rate Limit 429", "INFO", f"Current limit: {limit}, attempting to exceed it")
-    
-    # Make rapid requests to exceed the limit
-    # We'll make limit + 10 requests to ensure we hit the limit
-    requests_to_make = min(limit + 10, 150)  # Cap at 150 to avoid excessive requests
-    
-    print(f"    Making {requests_to_make} rapid requests to trigger rate limiting...")
-    
-    hit_rate_limit = False
-    for i in range(requests_to_make):
-        response = make_request("GET", API_ENDPOINT, headers=headers, timeout=5)
-        
-        if response.get('error'):
-            log_test("Rate Limit 429", "WARN", f"Request {i+1} failed: {response['error']}")
-            continue
-        
-        if response['status_code'] == 429:
-            hit_rate_limit = True
-            data = response['json']
-            
-            # Verify 429 response structure
-            if not data or not data.get('error'):
-                log_test("Rate Limit 429", "FAIL", "429 response missing error object")
-                return False
-            
-            error = data['error']
-            if error.get('code') != 'RATE_LIMIT_EXCEEDED':
-                log_test("Rate Limit 429", "FAIL", f"Wrong error code: {error.get('code')}")
-                return False
-            
-            # Check for Retry-After header (case-insensitive)
-            retry_after = None
-            for header_name, header_value in response['headers'].items():
-                if header_name.lower() == 'retry-after':
-                    retry_after = header_value
-                    break
-            
-            if not retry_after:
-                log_test("Rate Limit 429", "FAIL", f"Missing Retry-After header. Available headers: {list(response['headers'].keys())}")
-                return False
-            
-            log_test("Rate Limit 429", "PASS", f"Rate limit triggered after {i+1} requests, Retry-After: {retry_after}s")
-            return True
-        
-        elif response['status_code'] != 200:
-            log_test("Rate Limit 429", "WARN", f"Request {i+1} unexpected status: {response['status_code']}")
-    
-    if not hit_rate_limit:
-        log_test("Rate Limit 429", "WARN", f"Did not hit rate limit after {requests_to_make} requests (limit may be higher than expected)")
-        return True  # This is not necessarily a failure - the rate limit might be working but set higher
-    
-    return False
-
-def test_5_auth_still_required():
-    """Test Case 5: Auth Still Required"""
-    print("\n" + "="*60)
-    print("TEST 5: Auth Still Required")
-    print("="*60)
-    
-    # Test GET without auth header
-    response = make_request("GET", API_ENDPOINT)
-    
-    if response.get('error'):
-        log_test("Auth Required GET", "FAIL", f"Request error: {response['error']}")
-        return False
-    
-    if response['status_code'] != 401:
-        log_test("Auth Required GET", "FAIL", f"Expected 401, got {response['status_code']}")
-        return False
-    
-    data = response['json']
-    if not data or not data.get('error'):
-        log_test("Auth Required GET", "FAIL", "Missing error in 401 response")
-        return False
-    
-    if data['error'].get('code') != 'AUTH_FAILED':
-        log_test("Auth Required GET", "FAIL", f"Wrong error code: {data['error'].get('code')}")
-        return False
-    
-    log_test("Auth Required GET", "PASS", "GET endpoint correctly requires authentication")
-    
-    # Test POST without auth header
-    request_data = {
-        "requestId": f"test-auth-{uuid.uuid4()}",
-        "tool": "billing.validateStripeConfig",
-        "args": {}
-    }
-    
-    response = make_request("POST", API_ENDPOINT, json_data=request_data)
-    
-    if response.get('error'):
-        log_test("Auth Required POST", "FAIL", f"Request error: {response['error']}")
-        return False
-    
-    if response['status_code'] != 401:
-        log_test("Auth Required POST", "FAIL", f"Expected 401, got {response['status_code']}")
-        return False
-    
-    data = response['json']
-    if not data or not data.get('error'):
-        log_test("Auth Required POST", "FAIL", "Missing error in 401 response")
-        return False
-    
-    if data['error'].get('code') != 'AUTH_FAILED':
-        log_test("Auth Required POST", "FAIL", f"Wrong error code: {data['error'].get('code')}")
-        return False
-    
-    log_test("Auth Required POST", "PASS", "POST endpoint correctly requires authentication")
-    return True
-
-def main():
-    """Run all tests"""
-    print("🔧 TESTING: Ops Control Plane Rate-Limiting Fix")
-    print(f"Endpoint: {API_ENDPOINT}")
-    print(f"Auth Secret: {AUTH_SECRET}")
-    print("="*80)
-    
-    tests = [
-        ("GET Endpoint Health Check (CRITICAL)", test_1_get_endpoint_health_check),
-        ("Rate Limit Headers on GET", test_2_rate_limit_headers_on_get),
-        ("POST Endpoint Still Works", test_3_post_endpoint_still_works),
-        ("Rate Limit Response on 429", test_4_rate_limit_response_on_429),
-        ("Auth Still Required", test_5_auth_still_required),
-    ]
-    
-    results = []
-    
-    for test_name, test_func in tests:
+    def make_request(self, method: str, data: Optional[Dict[Any, Any]] = None) -> requests.Response:
+        """Make HTTP request to the API"""
         try:
-            result = test_func()
-            results.append((test_name, result))
+            if method.upper() == "GET":
+                return self.session.get(API_ENDPOINT)
+            elif method.upper() == "POST":
+                return self.session.post(API_ENDPOINT, json=data)
+            else:
+                raise ValueError(f"Unsupported method: {method}")
         except Exception as e:
-            log_test(test_name, "FAIL", f"Exception: {str(e)}")
-            results.append((test_name, False))
-    
-    # Summary
-    print("\n" + "="*80)
-    print("TEST SUMMARY")
-    print("="*80)
-    
-    passed = sum(1 for _, result in results if result)
-    total = len(results)
-    
-    for test_name, result in results:
-        status = "✅ PASS" if result else "❌ FAIL"
-        print(f"{status} {test_name}")
-    
-    print(f"\nResults: {passed}/{total} tests passed")
-    
-    if passed == total:
-        print("🎉 ALL TESTS PASSED - Rate-limiting fix is working correctly!")
-        return True
-    else:
-        print("❌ SOME TESTS FAILED - Rate-limiting fix needs attention")
-        return False
+            print(f"Request failed: {e}")
+            raise
+            
+    def test_basic_bootstrap_execution(self):
+        """Test Case 1: Basic Bootstrap Execution"""
+        print("\n=== Test Case 1: Basic Bootstrap Execution ===")
+        
+        request_data = {
+            "requestId": str(uuid.uuid4()),
+            "tool": "tenant.bootstrap",
+            "args": {"businessId": "test-business-xyz"}
+        }
+        
+        try:
+            response = self.make_request("POST", request_data)
+            
+            if response.status_code != 200:
+                self.log_test("Basic Bootstrap - Status Code", False, f"Expected 200, got {response.status_code}")
+                return
+                
+            data = response.json()
+            
+            # Check response structure
+            required_fields = ["ok", "result"]
+            missing_fields = [field for field in required_fields if field not in data]
+            if missing_fields:
+                self.log_test("Basic Bootstrap - Response Structure", False, f"Missing fields: {missing_fields}")
+                return
+                
+            # Check result structure
+            result = data.get("result", {})
+            required_result_fields = ["ready", "checklist", "details", "recommendations", "stats"]
+            missing_result_fields = [field for field in required_result_fields if field not in result]
+            if missing_result_fields:
+                self.log_test("Basic Bootstrap - Result Structure", False, f"Missing result fields: {missing_result_fields}")
+                return
+                
+            # Check checklist has 4 items (one per tool)
+            checklist = result.get("checklist", [])
+            if len(checklist) != 4:
+                self.log_test("Basic Bootstrap - Checklist Length", False, f"Expected 4 items, got {len(checklist)}")
+                return
+                
+            # Check checklist tools
+            expected_tools = ["tenant.ensure", "billing.validateStripeConfig", "voice.smokeTest", "tenant.provisioningSummary"]
+            actual_tools = [item.get("tool") for item in checklist]
+            if actual_tools != expected_tools:
+                self.log_test("Basic Bootstrap - Checklist Tools", False, f"Expected {expected_tools}, got {actual_tools}")
+                return
+                
+            # Check details structure
+            details = result.get("details", {})
+            expected_detail_keys = ["tenant", "billing", "voice", "provisioning"]
+            missing_detail_keys = [key for key in expected_detail_keys if key not in details]
+            if missing_detail_keys:
+                self.log_test("Basic Bootstrap - Details Structure", False, f"Missing detail keys: {missing_detail_keys}")
+                return
+                
+            # Check stats structure
+            stats = result.get("stats", {})
+            expected_stat_keys = ["totalSteps", "completed", "warnings", "skipped", "failed"]
+            missing_stat_keys = [key for key in expected_stat_keys if key not in stats]
+            if missing_stat_keys:
+                self.log_test("Basic Bootstrap - Stats Structure", False, f"Missing stat keys: {missing_stat_keys}")
+                return
+                
+            self.log_test("Basic Bootstrap Execution", True, f"All 4 tools executed, ready: {result.get('ready')}")
+            
+        except Exception as e:
+            self.log_test("Basic Bootstrap Execution", False, f"Exception: {str(e)}")
+            
+    def test_skip_options(self):
+        """Test Case 2: Skip Options Test"""
+        print("\n=== Test Case 2: Skip Options Test ===")
+        
+        request_data = {
+            "requestId": str(uuid.uuid4()),
+            "tool": "tenant.bootstrap",
+            "args": {
+                "businessId": "test-business-xyz",
+                "skipVoiceTest": True,
+                "skipBillingCheck": True
+            }
+        }
+        
+        try:
+            response = self.make_request("POST", request_data)
+            
+            if response.status_code != 200:
+                self.log_test("Skip Options - Status Code", False, f"Expected 200, got {response.status_code}")
+                return
+                
+            data = response.json()
+            result = data.get("result", {})
+            checklist = result.get("checklist", [])
+            
+            # Check that steps 2 and 3 are skipped
+            if len(checklist) < 4:
+                self.log_test("Skip Options - Checklist Length", False, f"Expected 4 items, got {len(checklist)}")
+                return
+                
+            # Find billing and voice steps
+            billing_step = next((item for item in checklist if item.get("tool") == "billing.validateStripeConfig"), None)
+            voice_step = next((item for item in checklist if item.get("tool") == "voice.smokeTest"), None)
+            
+            if not billing_step or billing_step.get("status") != "skipped":
+                self.log_test("Skip Options - Billing Skipped", False, f"Billing step not skipped: {billing_step}")
+                return
+                
+            if not voice_step or voice_step.get("status") != "skipped":
+                self.log_test("Skip Options - Voice Skipped", False, f"Voice step not skipped: {voice_step}")
+                return
+                
+            self.log_test("Skip Options Test", True, "Both billing and voice steps correctly skipped")
+            
+        except Exception as e:
+            self.log_test("Skip Options Test", False, f"Exception: {str(e)}")
+            
+    def test_dry_run_mode(self):
+        """Test Case 3: Dry Run Mode"""
+        print("\n=== Test Case 3: Dry Run Mode ===")
+        
+        request_data = {
+            "requestId": str(uuid.uuid4()),
+            "tool": "tenant.bootstrap",
+            "dryRun": True,
+            "args": {"businessId": "test-business-xyz"}
+        }
+        
+        try:
+            response = self.make_request("POST", request_data)
+            
+            if response.status_code != 200:
+                self.log_test("Dry Run - Status Code", False, f"Expected 200, got {response.status_code}")
+                return
+                
+            data = response.json()
+            
+            # Check dryRun flag in response
+            if not data.get("dryRun"):
+                self.log_test("Dry Run - Response Flag", False, "dryRun flag not set in response")
+                return
+                
+            result = data.get("result", {})
+            
+            # Check dryRun flag in result
+            if not result.get("dryRun"):
+                self.log_test("Dry Run - Result Flag", False, "dryRun flag not set in result")
+                return
+                
+            # Check summary contains [DRY RUN]
+            summary = result.get("summary", "")
+            if "[DRY RUN]" not in summary:
+                self.log_test("Dry Run - Summary", False, f"Summary doesn't contain [DRY RUN]: {summary}")
+                return
+                
+            self.log_test("Dry Run Mode", True, "Dry run executed correctly with proper flags and summary")
+            
+        except Exception as e:
+            self.log_test("Dry Run Mode", False, f"Exception: {str(e)}")
+            
+    def test_missing_business_id(self):
+        """Test Case 4: Missing businessId"""
+        print("\n=== Test Case 4: Missing businessId ===")
+        
+        request_data = {
+            "requestId": str(uuid.uuid4()),
+            "tool": "tenant.bootstrap",
+            "args": {}
+        }
+        
+        try:
+            response = self.make_request("POST", request_data)
+            
+            if response.status_code != 400:
+                self.log_test("Missing businessId - Status Code", False, f"Expected 400, got {response.status_code}")
+                return
+                
+            data = response.json()
+            
+            # Check error structure
+            if not data.get("error"):
+                self.log_test("Missing businessId - Error Structure", False, "No error field in response")
+                return
+                
+            error = data.get("error", {})
+            error_code = error.get("code")
+            
+            if error_code != "ARGS_VALIDATION_ERROR":
+                self.log_test("Missing businessId - Error Code", False, f"Expected ARGS_VALIDATION_ERROR, got {error_code}")
+                return
+                
+            self.log_test("Missing businessId", True, "Correctly returned 400 ARGS_VALIDATION_ERROR")
+            
+        except Exception as e:
+            self.log_test("Missing businessId", False, f"Exception: {str(e)}")
+            
+    def test_response_format_validation(self):
+        """Test Case 5: Response Format Validation"""
+        print("\n=== Test Case 5: Response Format Validation ===")
+        
+        request_data = {
+            "requestId": str(uuid.uuid4()),
+            "tool": "tenant.bootstrap",
+            "args": {"businessId": "test-business-xyz"}
+        }
+        
+        try:
+            response = self.make_request("POST", request_data)
+            
+            if response.status_code != 200:
+                self.log_test("Response Format - Status Code", False, f"Expected 200, got {response.status_code}")
+                return
+                
+            data = response.json()
+            result = data.get("result", {})
+            
+            # Validate exact structure as specified in review request
+            expected_structure = {
+                "ready": bool,
+                "checklist": list,
+                "details": dict,
+                "recommendations": list,
+                "stats": dict
+            }
+            
+            validation_errors = []
+            
+            for field, expected_type in expected_structure.items():
+                if field not in result:
+                    validation_errors.append(f"Missing field: {field}")
+                elif not isinstance(result[field], expected_type):
+                    validation_errors.append(f"Field {field} should be {expected_type.__name__}, got {type(result[field]).__name__}")
+                    
+            if validation_errors:
+                self.log_test("Response Format Validation", False, f"Validation errors: {validation_errors}")
+                return
+                
+            # Check checklist items structure
+            checklist = result.get("checklist", [])
+            for i, item in enumerate(checklist):
+                required_item_fields = ["step", "item", "tool", "status", "details"]
+                missing_item_fields = [field for field in required_item_fields if field not in item]
+                if missing_item_fields:
+                    validation_errors.append(f"Checklist item {i} missing fields: {missing_item_fields}")
+                    
+            # Check stats structure
+            stats = result.get("stats", {})
+            required_stats = ["totalSteps", "completed", "warnings", "skipped", "failed"]
+            for stat in required_stats:
+                if stat not in stats or not isinstance(stats[stat], int):
+                    validation_errors.append(f"Stats field {stat} missing or not integer")
+                    
+            if validation_errors:
+                self.log_test("Response Format Validation", False, f"Structure validation errors: {validation_errors}")
+                return
+                
+            self.log_test("Response Format Validation", True, "Response structure matches specification exactly")
+            
+        except Exception as e:
+            self.log_test("Response Format Validation", False, f"Exception: {str(e)}")
+            
+    def test_authentication(self):
+        """Test authentication requirements"""
+        print("\n=== Authentication Test ===")
+        
+        # Test without auth header
+        session_no_auth = requests.Session()
+        session_no_auth.headers.update({"Content-Type": "application/json"})
+        
+        request_data = {
+            "requestId": str(uuid.uuid4()),
+            "tool": "tenant.bootstrap",
+            "args": {"businessId": "test-business-xyz"}
+        }
+        
+        try:
+            response = session_no_auth.post(API_ENDPOINT, json=request_data)
+            
+            if response.status_code != 401:
+                self.log_test("Authentication - No Header", False, f"Expected 401, got {response.status_code}")
+                return
+                
+            data = response.json()
+            error_code = data.get("error", {}).get("code")
+            
+            if error_code != "AUTH_FAILED":
+                self.log_test("Authentication - Error Code", False, f"Expected AUTH_FAILED, got {error_code}")
+                return
+                
+            self.log_test("Authentication Test", True, "Correctly requires x-book8-internal-secret header")
+            
+        except Exception as e:
+            self.log_test("Authentication Test", False, f"Exception: {str(e)}")
+            
+    def run_all_tests(self):
+        """Run all test cases"""
+        print("🧪 Starting Tenant Bootstrap Tool Testing")
+        print(f"📍 Testing endpoint: {API_ENDPOINT}")
+        print(f"🔑 Using auth header: {AUTH_HEADER}")
+        
+        # Run all test cases
+        self.test_authentication()
+        self.test_basic_bootstrap_execution()
+        self.test_skip_options()
+        self.test_dry_run_mode()
+        self.test_missing_business_id()
+        self.test_response_format_validation()
+        
+        # Print summary
+        print("\n" + "="*60)
+        print("📊 TEST SUMMARY")
+        print("="*60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = sum(1 for result in self.test_results if result["success"])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['details']}")
+        else:
+            print("\n🎉 ALL TESTS PASSED!")
+            
+        return failed_tests == 0
 
 if __name__ == "__main__":
-    success = main()
+    tester = TenantBootstrapTester()
+    success = tester.run_all_tests()
     exit(0 if success else 1)
