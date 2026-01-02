@@ -176,11 +176,13 @@ def test_3_post_endpoint_still_works():
         'Content-Type': 'application/json'
     }
     
-    # Test with billing.validateStripeConfig tool
+    # Test with billing.validateStripeConfig tool (requires businessId)
     request_data = {
         "requestId": f"test-rate-limit-{uuid.uuid4()}",
         "tool": "billing.validateStripeConfig",
-        "args": {}
+        "args": {
+            "businessId": "test-business-123"
+        }
     }
     
     response = make_request("POST", API_ENDPOINT, headers=headers, json_data=request_data)
