@@ -26,7 +26,7 @@ import os
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://ops-api.preview.emergentagent.com"
+BASE_URL = "https://ops-api-internal.preview.emergentagent.com"
 OPS_SECRET = "ops-dev-secret-change-me"  # From .env OPS_INTERNAL_SECRET
 INVALID_SECRET = "invalid-secret-123"
 

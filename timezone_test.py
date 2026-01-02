@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import pytz
 
 # Get base URL from environment
-BASE_URL = 'https://ops-api.preview.emergentagent.com'
+BASE_URL = 'https://ops-api-internal.preview.emergentagent.com'
 API_BASE = f"{BASE_URL}/api"
 
 class TimezoneTester:
