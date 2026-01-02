@@ -282,7 +282,24 @@ function logError(requestId, code, message, details) {
 // Request Schema & Parsing
 // ============================================================================
 
-const RequestSchema = z.object({
+// New format schema: { tool, payload, meta }
+const MetaSchema = z.object({
+  requestId: z.string().min(1, 'meta.requestId is required'),
+  dryRun: z.boolean().optional().default(false),
+  actor: z.object({
+    type: z.enum(['system', 'user']),
+    id: z.string()
+  }).optional()
+})
+
+const NewRequestSchema = z.object({
+  tool: z.string().min(1, 'tool is required'),
+  payload: z.record(z.any()).default({}),
+  meta: MetaSchema
+})
+
+// Legacy format schema (for backwards compatibility)
+const LegacyRequestSchema = z.object({
   requestId: z.string().min(1, 'requestId is required'),
   dryRun: z.boolean().optional().default(false),
   tool: z.string().min(1, 'tool is required'),
@@ -297,18 +314,82 @@ const RequestSchema = z.object({
 })
 
 /**
- * Extract tool arguments from request body
+ * Detect and parse request format
+ * Supports both new format { tool, payload, meta } and legacy formats
+ * @returns { tool, args, requestId, dryRun, actor, format }
  */
-function extractToolArgs(body) {
+function parseRequest(body) {
+  // Try new format first: { tool, payload, meta }
+  if (body.meta && body.payload !== undefined) {
+    const result = NewRequestSchema.safeParse(body)
+    if (result.success) {
+      return {
+        valid: true,
+        tool: result.data.tool,
+        args: result.data.payload,
+        requestId: result.data.meta.requestId,
+        dryRun: result.data.meta.dryRun,
+        actor: result.data.meta.actor || { type: 'system', id: 'n8n-workflow' },
+        format: 'new'
+      }
+    }
+    // Return validation errors for new format
+    return {
+      valid: false,
+      errors: result.error.errors.map(e => ({
+        path: e.path.join('.'),
+        message: e.message,
+        code: e.code
+      })),
+      format: 'new'
+    }
+  }
+  
+  // Try legacy format
+  const legacyResult = LegacyRequestSchema.safeParse(body)
+  if (legacyResult.success) {
+    const data = legacyResult.data
+    // Extract args from legacy formats
+    const { args, source } = extractLegacyArgs(body)
+    return {
+      valid: true,
+      tool: data.tool,
+      args,
+      requestId: data.requestId,
+      dryRun: data.dryRun,
+      actor: data.actor || { type: 'system', id: 'n8n-workflow' },
+      format: `legacy-${source}`
+    }
+  }
+  
+  // Neither format matched
+  return {
+    valid: false,
+    errors: legacyResult.error.errors.map(e => ({
+      path: e.path.join('.'),
+      message: e.message,
+      code: e.code
+    })),
+    format: 'unknown'
+  }
+}
+
+/**
+ * Extract tool arguments from legacy request body formats
+ */
+function extractLegacyArgs(body) {
+  // Nested args object
   if (body.args && Object.keys(body.args).length > 0) {
     return { args: body.args, source: 'args' }
   }
   
+  // Nested input object (n8n style)
   if (body.input && Object.keys(body.input).length > 0) {
     return { args: body.input, source: 'input' }
   }
   
-  const envelopeFields = ['requestId', 'dryRun', 'tool', 'args', 'input', 'actor']
+  // Flat args at top level
+  const envelopeFields = ['requestId', 'dryRun', 'tool', 'args', 'input', 'actor', 'meta', 'payload']
   const flatArgs = {}
   
   for (const [key, value] of Object.entries(body)) {
