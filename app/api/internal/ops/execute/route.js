@@ -616,36 +616,28 @@ export async function POST(request) {
       )
     }
     
-    // 3. Validate request envelope
-    const parseResult = RequestSchema.safeParse(body)
-    if (!parseResult.success) {
-      const errors = parseResult.error.errors.map(e => ({
-        path: e.path.join('.'),
-        message: e.message,
-        code: e.code
-      }))
+    // 3. Parse and validate request (supports both new and legacy formats)
+    const parseResult = parseRequest(body)
+    if (!parseResult.valid) {
       return errorResponse(
-        body.requestId || null,
+        body.meta?.requestId || body.requestId || null,
         body.tool || null,
         false,
         'VALIDATION_ERROR',
         'Request validation failed',
-        errors,
+        { errors: parseResult.errors, detectedFormat: parseResult.format },
         ERROR_HELP.VALIDATION_ERROR
       )
     }
     
-    const validatedRequest = parseResult.data
-    requestId = validatedRequest.requestId
-    tool = validatedRequest.tool
-    dryRun = validatedRequest.dryRun
-    actor = validatedRequest.actor || { type: 'system', id: 'n8n-workflow' }
+    requestId = parseResult.requestId
+    tool = parseResult.tool
+    dryRun = parseResult.dryRun
+    actor = parseResult.actor
+    const args = parseResult.args
+    argsSource = parseResult.format
     
-    // 4. Extract args from multiple possible formats
-    const { args, source } = extractToolArgs(body)
-    argsSource = source
-    
-    logRequest(requestId, tool, dryRun, args, source, keyId)
+    logRequest(requestId, tool, dryRun, args, argsSource, keyId)
     
     // 5. Check tool permission based on API key scopes
     const permission = checkToolPermission(auth.scopes, tool)
