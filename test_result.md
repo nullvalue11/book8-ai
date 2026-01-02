@@ -832,7 +832,7 @@
     file: "/app/app/api/internal/ops/execute/route.js, /app/app/lib/ops/*.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
