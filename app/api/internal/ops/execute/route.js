@@ -535,7 +535,7 @@ const ERROR_HELP = {
   AUTH_FAILED: 'Verify x-book8-internal-secret header with valid API key',
   FORBIDDEN: 'Your API key does not have permission for this tool. Contact admin for access.',
   INVALID_JSON: 'Check JSON syntax - ensure proper quoting and structure',
-  VALIDATION_ERROR: 'Required fields: requestId (string), tool (string). Optional: dryRun (boolean)',
+  VALIDATION_ERROR: 'New format: { tool, payload: {...}, meta: { requestId, dryRun? } }. Legacy format: { tool, requestId, args/input/payload }',
   TOOL_NOT_ALLOWED: 'Use GET /api/internal/ops/execute to list available tools',
   ARGS_VALIDATION_ERROR: 'Check tool documentation for required arguments. Most tools require businessId.',
   REQUEST_IN_PROGRESS: 'This requestId is being processed. Use a unique requestId for new requests.',
