@@ -645,6 +645,28 @@ export async function OPTIONS() {
 // ============================================================================
 
 export async function GET(request) {
+  // Rate limiting for GET requests too
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
+    || request.headers.get('x-real-ip') 
+    || 'unknown'
+  
+  const rateLimit = checkRateLimit(clientIp)
+  if (!rateLimit.allowed) {
+    return NextResponse.json({
+      ok: false,
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many requests. Please try again later.',
+        help: ERROR_HELP.RATE_LIMIT_EXCEEDED
+      }
+    }, { 
+      status: 429,
+      headers: {
+        'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000))
+      }
+    })
+  }
+
   const auth = verifyAuth(request)
   if (!auth.valid) {
     return NextResponse.json({
@@ -681,6 +703,15 @@ export async function GET(request) {
     documentation: {
       api: '/docs/ops-control-plane-v1.md',
       n8n: '/docs/n8n-integration-guide.md'
+    },
+    rateLimit: {
+      limit: RATE_LIMIT.maxRequests,
+      remaining: rateLimit.remaining,
+      windowMs: RATE_LIMIT.windowMs
+    },
+    security: {
+      timingSafeAuth: true,
+      rateLimited: true
     },
     health: {
       status: 'ok',
