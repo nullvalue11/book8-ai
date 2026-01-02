@@ -53,6 +53,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { z } from 'zod'
+import crypto from 'crypto'
 import { env } from '@/lib/env'
 import {
   initializeOps,
@@ -76,7 +77,86 @@ export const dynamic = 'force-dynamic'
 // ============================================================================
 
 const LOG_PREFIX = '[ops]'
-const VERSION = 'v1.1.0'
+const VERSION = 'v1.2.0'
+
+// ============================================================================
+// Rate Limiting
+// ============================================================================
+
+const rateLimitMap = new Map()
+const RATE_LIMIT = {
+  windowMs: 60000,  // 1 minute window
+  maxRequests: 30,  // 30 requests per minute per IP
+}
+
+/**
+ * Check if request is within rate limit
+ * @param {string} identifier - IP address or other identifier
+ * @returns {boolean} - true if allowed, false if rate limited
+ */
+function checkRateLimit(identifier) {
+  const now = Date.now()
+  const userRequests = rateLimitMap.get(identifier) || []
+  
+  // Remove requests outside the current window
+  const validRequests = userRequests.filter(
+    timestamp => now - timestamp < RATE_LIMIT.windowMs
+  )
+  
+  if (validRequests.length >= RATE_LIMIT.maxRequests) {
+    return { allowed: false, remaining: 0, resetIn: RATE_LIMIT.windowMs }
+  }
+  
+  validRequests.push(now)
+  rateLimitMap.set(identifier, validRequests)
+  
+  // Cleanup old entries periodically (1% chance per request)
+  if (Math.random() < 0.01) {
+    for (const [key, timestamps] of rateLimitMap.entries()) {
+      const valid = timestamps.filter(t => now - t < RATE_LIMIT.windowMs)
+      if (valid.length === 0) {
+        rateLimitMap.delete(key)
+      } else {
+        rateLimitMap.set(key, valid)
+      }
+    }
+  }
+  
+  return { 
+    allowed: true, 
+    remaining: RATE_LIMIT.maxRequests - validRequests.length,
+    resetIn: RATE_LIMIT.windowMs 
+  }
+}
+
+// ============================================================================
+// Security: Constant-Time Secret Comparison
+// ============================================================================
+
+/**
+ * Constant-time secret comparison to prevent timing attacks
+ * @param {string} provided - The secret provided in the request
+ * @param {string} expected - The expected secret from environment
+ * @returns {boolean} - true if secrets match
+ */
+function verifySecret(provided, expected) {
+  if (!provided || !expected) {
+    // Still do a dummy comparison to maintain constant time
+    crypto.timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32))
+    return false
+  }
+  
+  const providedBuffer = Buffer.from(provided, 'utf8')
+  const expectedBuffer = Buffer.from(expected, 'utf8')
+  
+  // If lengths differ, do a dummy comparison to maintain constant time
+  if (providedBuffer.length !== expectedBuffer.length) {
+    crypto.timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32))
+    return false
+  }
+  
+  return crypto.timingSafeEqual(providedBuffer, expectedBuffer)
+}
 
 // ============================================================================
 // Database Connection
@@ -201,7 +281,8 @@ function verifyAuth(request) {
     }
   }
   
-  if (providedSecret !== opsSecret) {
+  // Use constant-time comparison to prevent timing attacks
+  if (!verifySecret(providedSecret, opsSecret)) {
     return { 
       valid: false, 
       error: 'Invalid internal secret',
@@ -271,6 +352,7 @@ const ERROR_HELP = {
   TOOL_NOT_ALLOWED: 'Use GET /api/internal/ops/execute to list available tools',
   ARGS_VALIDATION_ERROR: 'Check tool documentation for required arguments. Most tools require businessId.',
   REQUEST_IN_PROGRESS: 'This requestId is being processed. Use a unique requestId for new requests.',
+  RATE_LIMIT_EXCEEDED: 'Too many requests. Wait 60 seconds before retrying.',
   INTERNAL_ERROR: 'Check Vercel logs for details. If persistent, contact support.'
 }
 
@@ -291,7 +373,35 @@ export async function POST(request) {
     // Initialize ops tools
     initializeOps()
     
-    // 1. Verify authentication
+    // 0. Rate limiting check
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
+      || request.headers.get('x-real-ip') 
+      || 'unknown'
+    
+    const rateLimit = checkRateLimit(clientIp)
+    if (!rateLimit.allowed) {
+      log(null, 'warn', `Rate limit exceeded for IP: ${clientIp}`)
+      return NextResponse.json({
+        ok: false,
+        error: {
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: 'Too many requests. Please try again later.',
+          help: ERROR_HELP.RATE_LIMIT_EXCEEDED,
+          retryAfter: Math.ceil(rateLimit.resetIn / 1000)
+        },
+        _meta: { version: VERSION }
+      }, { 
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000)),
+          'X-RateLimit-Limit': String(RATE_LIMIT.maxRequests),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil((Date.now() + rateLimit.resetIn) / 1000))
+        }
+      })
+    }
+    
+    // 1. Verify authentication (uses constant-time comparison)
     const auth = verifyAuth(request)
     if (!auth.valid) {
       log(null, 'warn', `Auth failed: ${auth.error}`)
@@ -535,6 +645,28 @@ export async function OPTIONS() {
 // ============================================================================
 
 export async function GET(request) {
+  // Rate limiting for GET requests too
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
+    || request.headers.get('x-real-ip') 
+    || 'unknown'
+  
+  const rateLimit = checkRateLimit(clientIp)
+  if (!rateLimit.allowed) {
+    return NextResponse.json({
+      ok: false,
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many requests. Please try again later.',
+        help: ERROR_HELP.RATE_LIMIT_EXCEEDED
+      }
+    }, { 
+      status: 429,
+      headers: {
+        'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000))
+      }
+    })
+  }
+
   const auth = verifyAuth(request)
   if (!auth.valid) {
     return NextResponse.json({
@@ -571,6 +703,15 @@ export async function GET(request) {
     documentation: {
       api: '/docs/ops-control-plane-v1.md',
       n8n: '/docs/n8n-integration-guide.md'
+    },
+    rateLimit: {
+      limit: RATE_LIMIT.maxRequests,
+      remaining: rateLimit.remaining,
+      windowMs: RATE_LIMIT.windowMs
+    },
+    security: {
+      timingSafeAuth: true,
+      rateLimited: true
     },
     health: {
       status: 'ok',
