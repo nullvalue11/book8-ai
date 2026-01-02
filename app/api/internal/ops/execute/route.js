@@ -943,9 +943,9 @@ export async function GET(request) {
       n8n: '/docs/n8n-integration-guide.md'
     },
     rateLimit: {
-      limit: RATE_LIMIT.maxRequests,
+      limit: rateLimit.limit,
       remaining: rateLimit.remaining,
-      windowMs: RATE_LIMIT.windowMs
+      windowMs: RATE_LIMITS.default.windowMs
     },
     security: {
       scopedKeys: true,
