@@ -53,6 +53,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { z } from 'zod'
+import crypto from 'crypto'
 import { env } from '@/lib/env'
 import {
   initializeOps,
@@ -76,7 +77,86 @@ export const dynamic = 'force-dynamic'
 // ============================================================================
 
 const LOG_PREFIX = '[ops]'
-const VERSION = 'v1.1.0'
+const VERSION = 'v1.2.0'
+
+// ============================================================================
+// Rate Limiting
+// ============================================================================
+
+const rateLimitMap = new Map()
+const RATE_LIMIT = {
+  windowMs: 60000,  // 1 minute window
+  maxRequests: 30,  // 30 requests per minute per IP
+}
+
+/**
+ * Check if request is within rate limit
+ * @param {string} identifier - IP address or other identifier
+ * @returns {boolean} - true if allowed, false if rate limited
+ */
+function checkRateLimit(identifier) {
+  const now = Date.now()
+  const userRequests = rateLimitMap.get(identifier) || []
+  
+  // Remove requests outside the current window
+  const validRequests = userRequests.filter(
+    timestamp => now - timestamp < RATE_LIMIT.windowMs
+  )
+  
+  if (validRequests.length >= RATE_LIMIT.maxRequests) {
+    return { allowed: false, remaining: 0, resetIn: RATE_LIMIT.windowMs }
+  }
+  
+  validRequests.push(now)
+  rateLimitMap.set(identifier, validRequests)
+  
+  // Cleanup old entries periodically (1% chance per request)
+  if (Math.random() < 0.01) {
+    for (const [key, timestamps] of rateLimitMap.entries()) {
+      const valid = timestamps.filter(t => now - t < RATE_LIMIT.windowMs)
+      if (valid.length === 0) {
+        rateLimitMap.delete(key)
+      } else {
+        rateLimitMap.set(key, valid)
+      }
+    }
+  }
+  
+  return { 
+    allowed: true, 
+    remaining: RATE_LIMIT.maxRequests - validRequests.length,
+    resetIn: RATE_LIMIT.windowMs 
+  }
+}
+
+// ============================================================================
+// Security: Constant-Time Secret Comparison
+// ============================================================================
+
+/**
+ * Constant-time secret comparison to prevent timing attacks
+ * @param {string} provided - The secret provided in the request
+ * @param {string} expected - The expected secret from environment
+ * @returns {boolean} - true if secrets match
+ */
+function verifySecret(provided, expected) {
+  if (!provided || !expected) {
+    // Still do a dummy comparison to maintain constant time
+    crypto.timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32))
+    return false
+  }
+  
+  const providedBuffer = Buffer.from(provided, 'utf8')
+  const expectedBuffer = Buffer.from(expected, 'utf8')
+  
+  // If lengths differ, do a dummy comparison to maintain constant time
+  if (providedBuffer.length !== expectedBuffer.length) {
+    crypto.timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32))
+    return false
+  }
+  
+  return crypto.timingSafeEqual(providedBuffer, expectedBuffer)
+}
 
 // ============================================================================
 // Database Connection
