@@ -9,7 +9,7 @@ Test Cases:
 3. Valid token but no Stripe - Should return 400 (Stripe not configured)
 4. Valid request with date override - Test body: { "date": "2025-01-15" }
 
-Backend URL: https://ops-api.preview.emergentagent.com
+Backend URL: https://ops-api-internal.preview.emergentagent.com
 """
 
 import requests
@@ -18,7 +18,7 @@ import sys
 from datetime import datetime, timedelta
 
 # Configuration
-BASE_URL = "https://ops-api.preview.emergentagent.com"
+BASE_URL = "https://ops-api-internal.preview.emergentagent.com"
 ENDPOINT = "/api/billing/usage/run-daily"
 
 def test_missing_cron_token():

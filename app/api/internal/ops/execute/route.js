@@ -141,32 +141,63 @@ function hasScope(allowedScopes, requiredScope) {
 }
 
 // ============================================================================
-// Rate Limiting (RequestId-based for serverless compatibility)
+// Rate Limiting (Key-based for serverless compatibility)
 // ============================================================================
 
 const rateLimitMap = new Map()
-const RATE_LIMIT = {
-  windowMs: 60000,  // 1 minute window
-  maxRequests: 30,  // 30 requests per minute per key
+
+// Different rate limits for different key types
+const RATE_LIMITS = {
+  // Admin keys get higher limits
+  admin: {
+    windowMs: 60000,   // 1 minute window
+    maxRequests: 300,  // 300 requests per minute
+  },
+  // n8n automation keys get generous limits
+  n8n: {
+    windowMs: 60000,   // 1 minute window
+    maxRequests: 200,  // 200 requests per minute
+  },
+  // Default/legacy keys
+  default: {
+    windowMs: 60000,   // 1 minute window
+    maxRequests: 100,  // 100 requests per minute (increased from 30)
+  }
+}
+
+/**
+ * Get rate limit config based on key type
+ */
+function getRateLimitConfig(keyId) {
+  if (keyId?.includes('admin')) return RATE_LIMITS.admin
+  if (keyId?.includes('n8n')) return RATE_LIMITS.n8n
+  return RATE_LIMITS.default
 }
 
 /**
  * Check if request is within rate limit
  * Uses API key prefix as identifier for serverless-friendly rate limiting
  * @param {string} identifier - API key prefix or requestId prefix
- * @returns {object} - { allowed, remaining, resetIn }
+ * @param {string} keyType - Type of key for determining limits
+ * @returns {object} - { allowed, remaining, resetIn, limit }
  */
-function checkRateLimit(identifier) {
+function checkRateLimit(identifier, keyType = 'default') {
+  const config = getRateLimitConfig(keyType)
   const now = Date.now()
   const requests = rateLimitMap.get(identifier) || []
   
   // Remove requests outside the current window
   const validRequests = requests.filter(
-    timestamp => now - timestamp < RATE_LIMIT.windowMs
+    timestamp => now - timestamp < config.windowMs
   )
   
-  if (validRequests.length >= RATE_LIMIT.maxRequests) {
-    return { allowed: false, remaining: 0, resetIn: RATE_LIMIT.windowMs }
+  if (validRequests.length >= config.maxRequests) {
+    return { 
+      allowed: false, 
+      remaining: 0, 
+      resetIn: config.windowMs,
+      limit: config.maxRequests
+    }
   }
   
   validRequests.push(now)
@@ -175,7 +206,7 @@ function checkRateLimit(identifier) {
   // Cleanup old entries periodically (1% chance per request)
   if (Math.random() < 0.01) {
     for (const [key, timestamps] of rateLimitMap.entries()) {
-      const valid = timestamps.filter(t => now - t < RATE_LIMIT.windowMs)
+      const valid = timestamps.filter(t => now - t < config.windowMs)
       if (valid.length === 0) {
         rateLimitMap.delete(key)
       } else {
@@ -186,8 +217,9 @@ function checkRateLimit(identifier) {
   
   return { 
     allowed: true, 
-    remaining: RATE_LIMIT.maxRequests - validRequests.length,
-    resetIn: RATE_LIMIT.windowMs 
+    remaining: config.maxRequests - validRequests.length,
+    resetIn: config.windowMs,
+    limit: config.maxRequests
   }
 }
 
@@ -579,7 +611,7 @@ export async function POST(request) {
     keyId = auth.keyId
     
     // 1. Rate limiting based on API key (serverless-friendly)
-    const rateLimit = checkRateLimit(keyId)
+    const rateLimit = checkRateLimit(keyId, keyId)
     if (!rateLimit.allowed) {
       log(null, 'warn', `Rate limit exceeded for key: ${keyId}`)
       return NextResponse.json({
@@ -595,7 +627,7 @@ export async function POST(request) {
         status: 429,
         headers: {
           'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000)),
-          'X-RateLimit-Limit': String(RATE_LIMIT.maxRequests),
+          'X-RateLimit-Limit': String(rateLimit.limit),
           'X-RateLimit-Remaining': '0',
           'X-RateLimit-Reset': String(Math.ceil((Date.now() + rateLimit.resetIn) / 1000))
         }
@@ -911,9 +943,9 @@ export async function GET(request) {
       n8n: '/docs/n8n-integration-guide.md'
     },
     rateLimit: {
-      limit: RATE_LIMIT.maxRequests,
+      limit: rateLimit.limit,
       remaining: rateLimit.remaining,
-      windowMs: RATE_LIMIT.windowMs
+      windowMs: RATE_LIMITS.default.windowMs
     },
     security: {
       scopedKeys: true,

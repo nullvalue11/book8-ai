@@ -9,7 +9,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 
-BASE_URL = 'https://ops-api.preview.emergentagent.com'
+BASE_URL = 'https://ops-api-internal.preview.emergentagent.com'
 API_BASE = f"{BASE_URL}/api"
 
 def log(message):

@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Get base URL from environment
-BASE_URL = 'https://ops-api.preview.emergentagent.com'
+BASE_URL = 'https://ops-api-internal.preview.emergentagent.com'
 API_BASE = f"{BASE_URL}/api"
 
 class TavilyTester:
