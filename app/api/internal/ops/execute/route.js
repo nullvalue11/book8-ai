@@ -352,6 +352,7 @@ const ERROR_HELP = {
   TOOL_NOT_ALLOWED: 'Use GET /api/internal/ops/execute to list available tools',
   ARGS_VALIDATION_ERROR: 'Check tool documentation for required arguments. Most tools require businessId.',
   REQUEST_IN_PROGRESS: 'This requestId is being processed. Use a unique requestId for new requests.',
+  RATE_LIMIT_EXCEEDED: 'Too many requests. Wait 60 seconds before retrying.',
   INTERNAL_ERROR: 'Check Vercel logs for details. If persistent, contact support.'
 }
 
