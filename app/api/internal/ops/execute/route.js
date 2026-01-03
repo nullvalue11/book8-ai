@@ -59,6 +59,12 @@ import {
   acquireLock,
   releaseLock
 } from '@/lib/ops'
+import {
+  saveOpsEventLog,
+  createOpsEventLog,
+  createFromBootstrapResult,
+  createFailedEvent
+} from '@/lib/schemas/opsEventLog'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -69,6 +75,42 @@ export const dynamic = 'force-dynamic'
 
 const LOG_PREFIX = '[ops]'
 const VERSION = 'v1.3.0'
+
+// ============================================================================
+// Event Logging (Fire-and-Forget)
+// ============================================================================
+
+/**
+ * Emit an ops event log asynchronously (fire-and-forget)
+ * Failures are logged but don't affect the main execution flow
+ * 
+ * @param {Object} db - MongoDB database instance
+ * @param {Object} eventData - Event data to log
+ */
+function emitOpsEvent(db, eventData) {
+  // Fire-and-forget: don't await, just catch errors
+  saveOpsEventLog(db, eventData)
+    .then(() => {
+      log(eventData.requestId, 'debug', 'Event logged to ops_event_logs')
+    })
+    .catch((err) => {
+      log(eventData.requestId, 'warn', `Failed to emit ops event: ${err.message}`)
+    })
+}
+
+/**
+ * Determine actor type from key identifier
+ * @param {string} keyId - Hashed key identifier
+ * @returns {'n8n' | 'human' | 'system' | 'api'}
+ */
+function determineActor(keyId) {
+  // n8n keys typically configured via OPS_KEY_N8N
+  if (keyId?.includes('n8n')) return 'n8n'
+  // Admin keys are typically human operators
+  if (keyId?.includes('admin')) return 'human'
+  // Default to system for automated processes
+  return 'system'
+}
 
 // ============================================================================
 // Scoped API Keys Configuration
@@ -778,6 +820,7 @@ export async function POST(request) {
       
       const result = await executeTool(tool, argsValidation.data, ctx)
       const completedAt = new Date()
+      const durationMs = completedAt.getTime() - startedAt.getTime()
       
       // 12. Save audit log
       await saveAuditLog(database, createAuditEntry({
@@ -793,6 +836,49 @@ export async function POST(request) {
         keyId
       }))
       
+      // 12b. Emit ops event log (fire-and-forget)
+      try {
+        // Determine status: success, failed, or partial (for bootstrap with ready=false)
+        let eventStatus = 'success'
+        if (result.ok === false) {
+          eventStatus = 'failed'
+        } else if (tool === 'tenant.bootstrap' && result.ready === false) {
+          eventStatus = 'partial'
+        }
+        
+        // Extract businessId from args if present
+        const businessId = argsValidation.data?.businessId || result?.businessId || null
+        
+        // Build event log entry
+        const eventLog = createOpsEventLog({
+          requestId,
+          tool,
+          businessId,
+          status: eventStatus,
+          durationMs,
+          executedAt: completedAt,
+          actor: determineActor(keyId),
+          metadata: {
+            dryRun,
+            ready: result.ready,
+            readyMessage: result.readyMessage,
+            checklist: result.checklist,
+            recommendations: result.recommendations,
+            stats: result.stats,
+            error: result.error,
+            keyId,
+            argsFormat: argsSource,
+            summary: result.summary
+          }
+        })
+        
+        // Fire-and-forget: emit event without blocking response
+        emitOpsEvent(database, eventLog)
+      } catch (eventError) {
+        // Never let event logging break the main flow
+        log(requestId, 'warn', `Event logging setup failed: ${eventError.message}`)
+      }
+      
       // 13. Build and cache response
       const response = {
         ok: result.ok !== false,
@@ -802,7 +888,7 @@ export async function POST(request) {
         result,
         error: result.error || null,
         executedAt: completedAt.toISOString(),
-        durationMs: completedAt.getTime() - startedAt.getTime(),
+        durationMs,
         _meta: {
           version: VERSION,
           cached: false,
@@ -825,6 +911,9 @@ export async function POST(request) {
       stack: error.stack?.split('\n').slice(0, 3).join(' | ')
     })
     
+    const completedAt = new Date()
+    const durationMs = startedAt ? completedAt.getTime() - startedAt.getTime() : 0
+    
     if (database && requestId) {
       try {
         await saveAuditLog(database, createAuditEntry({
@@ -832,11 +921,30 @@ export async function POST(request) {
           status: 'failed',
           error: { code: 'INTERNAL_ERROR', message: error.message },
           startedAt,
-          completedAt: new Date(),
+          completedAt,
           keyId
         }))
       } catch (auditError) {
         log(requestId, 'error', `Failed to save audit log: ${auditError.message}`)
+      }
+      
+      // Emit failed event log (fire-and-forget)
+      try {
+        const failedEventLog = createFailedEvent(
+          requestId,
+          tool || 'unknown',
+          { code: 'INTERNAL_ERROR', message: error.message, type: error.constructor?.name },
+          {
+            businessId: null,
+            durationMs,
+            actor: keyId ? determineActor(keyId) : 'system',
+            keyId,
+            argsFormat: argsSource
+          }
+        )
+        emitOpsEvent(database, failedEventLog)
+      } catch (eventError) {
+        log(requestId, 'warn', `Failed event logging setup failed: ${eventError.message}`)
       }
     }
     
