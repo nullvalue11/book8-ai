@@ -59,6 +59,12 @@ import {
   acquireLock,
   releaseLock
 } from '@/lib/ops'
+import {
+  saveOpsEventLog,
+  createOpsEventLog,
+  createFromBootstrapResult,
+  createFailedEvent
+} from '@/lib/schemas/opsEventLog'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
