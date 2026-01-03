@@ -377,7 +377,7 @@ def test_event_collection_indexes():
     print("\n🧪 Test 5: Event Collection Indexes")
     
     db, client = connect_to_mongodb()
-    if not db:
+    if db is None:
         return False, "Failed to connect to MongoDB"
     
     try:
