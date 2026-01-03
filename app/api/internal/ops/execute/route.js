@@ -820,6 +820,7 @@ export async function POST(request) {
       
       const result = await executeTool(tool, argsValidation.data, ctx)
       const completedAt = new Date()
+      const durationMs = completedAt.getTime() - startedAt.getTime()
       
       // 12. Save audit log
       await saveAuditLog(database, createAuditEntry({
@@ -835,6 +836,49 @@ export async function POST(request) {
         keyId
       }))
       
+      // 12b. Emit ops event log (fire-and-forget)
+      try {
+        // Determine status: success, failed, or partial (for bootstrap with ready=false)
+        let eventStatus = 'success'
+        if (result.ok === false) {
+          eventStatus = 'failed'
+        } else if (tool === 'tenant.bootstrap' && result.ready === false) {
+          eventStatus = 'partial'
+        }
+        
+        // Extract businessId from args if present
+        const businessId = argsValidation.data?.businessId || result?.businessId || null
+        
+        // Build event log entry
+        const eventLog = createOpsEventLog({
+          requestId,
+          tool,
+          businessId,
+          status: eventStatus,
+          durationMs,
+          executedAt: completedAt,
+          actor: determineActor(keyId),
+          metadata: {
+            dryRun,
+            ready: result.ready,
+            readyMessage: result.readyMessage,
+            checklist: result.checklist,
+            recommendations: result.recommendations,
+            stats: result.stats,
+            error: result.error,
+            keyId,
+            argsFormat: argsSource,
+            summary: result.summary
+          }
+        })
+        
+        // Fire-and-forget: emit event without blocking response
+        emitOpsEvent(database, eventLog)
+      } catch (eventError) {
+        // Never let event logging break the main flow
+        log(requestId, 'warn', `Event logging setup failed: ${eventError.message}`)
+      }
+      
       // 13. Build and cache response
       const response = {
         ok: result.ok !== false,
@@ -844,7 +888,7 @@ export async function POST(request) {
         result,
         error: result.error || null,
         executedAt: completedAt.toISOString(),
-        durationMs: completedAt.getTime() - startedAt.getTime(),
+        durationMs,
         _meta: {
           version: VERSION,
           cached: false,
