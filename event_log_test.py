@@ -81,7 +81,7 @@ def test_successful_bootstrap_event_logging():
     print("\n🧪 Test 1: Successful Bootstrap Event Logging")
     
     db, client = connect_to_mongodb()
-    if not db:
+    if db is None:
         return False, "Failed to connect to MongoDB"
     
     try:
