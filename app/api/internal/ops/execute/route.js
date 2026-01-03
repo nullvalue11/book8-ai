@@ -911,6 +911,9 @@ export async function POST(request) {
       stack: error.stack?.split('\n').slice(0, 3).join(' | ')
     })
     
+    const completedAt = new Date()
+    const durationMs = startedAt ? completedAt.getTime() - startedAt.getTime() : 0
+    
     if (database && requestId) {
       try {
         await saveAuditLog(database, createAuditEntry({
@@ -918,11 +921,30 @@ export async function POST(request) {
           status: 'failed',
           error: { code: 'INTERNAL_ERROR', message: error.message },
           startedAt,
-          completedAt: new Date(),
+          completedAt,
           keyId
         }))
       } catch (auditError) {
         log(requestId, 'error', `Failed to save audit log: ${auditError.message}`)
+      }
+      
+      // Emit failed event log (fire-and-forget)
+      try {
+        const failedEventLog = createFailedEvent(
+          requestId,
+          tool || 'unknown',
+          { code: 'INTERNAL_ERROR', message: error.message, type: error.constructor?.name },
+          {
+            businessId: null,
+            durationMs,
+            actor: keyId ? determineActor(keyId) : 'system',
+            keyId,
+            argsFormat: argsSource
+          }
+        )
+        emitOpsEvent(database, failedEventLog)
+      } catch (eventError) {
+        log(requestId, 'warn', `Failed event logging setup failed: ${eventError.message}`)
       }
     }
     
