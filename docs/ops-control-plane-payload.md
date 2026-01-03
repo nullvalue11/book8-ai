@@ -4,6 +4,215 @@
 > **Endpoint:** `POST /api/internal/ops/execute`  
 > **Authentication:** `x-book8-internal-secret` header
 
+---
+
+## ⚡ Canonical Onboarding Path
+
+> **Rule: "If you want a tenant, you call `tenant.bootstrap`. Period."**
+
+### The Only Supported Path
+
+`tenant.bootstrap` is the **ONLY** supported method for tenant onboarding in workflows and integrations. This single tool orchestrates the complete onboarding process atomically.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    tenant.bootstrap                          │
+│                                                              │
+│   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│   │tenant.ensure │→ │billing.check │→ │voice.smoke   │→ ... │
+│   └──────────────┘  └──────────────┘  └──────────────┘      │
+│                                                              │
+│   One call. One response. Complete visibility.               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### ⚠️ Deprecated Tools (Do Not Use Directly)
+
+The following tools are **DEPRECATED** for direct workflow use:
+
+| Tool | Status | Use Instead |
+|------|--------|-------------|
+| `tenant.ensure` | ⚠️ **DEPRECATED** | `tenant.bootstrap` |
+| `billing.validateStripeConfig` | ⚠️ **DEPRECATED** | `tenant.bootstrap` |
+| `voice.smokeTest` | ⚠️ **DEPRECATED** | `tenant.bootstrap` |
+| `tenant.provisioningSummary` | ⚠️ **DEPRECATED** | `tenant.bootstrap` |
+
+**Why these tools still exist:**
+- Internal building blocks for `tenant.bootstrap`
+- Debugging and diagnostics (admin use only)
+- Legacy support during migration period
+
+**Why you should NOT call them directly:**
+- Multiple API calls = rate limiting issues
+- No consolidated readiness status
+- Increased workflow complexity
+- No atomic operation guarantees
+- Harder to debug failures
+
+### Migration Path
+
+❌ **Old Way (Deprecated):**
+```
+[tenant.ensure] → [billing.validateStripeConfig] → [voice.smokeTest] → [tenant.provisioningSummary]
+     ↓                    ↓                              ↓                        ↓
+  4 API calls, 4 error handlers, complex branching logic
+```
+
+✅ **New Way (Required):**
+```
+[tenant.bootstrap]
+     ↓
+  1 API call, 1 response, complete status
+```
+
+---
+
+## 📋 Readiness Contract
+
+The `tenant.bootstrap` tool provides a **guaranteed response contract** that workflows can depend on.
+
+### Guaranteed Response Shape
+
+Every successful `tenant.bootstrap` call returns this exact structure:
+
+```typescript
+{
+  ok: true,
+  result: {
+    // Core readiness indicator
+    ready: boolean,           // THE key field - is tenant operational?
+    readyMessage: string,     // Human-readable status
+    
+    // Detailed breakdown
+    checklist: [              // Always exactly 4 items (or fewer if skipped)
+      {
+        step: number,         // 1-4
+        item: string,         // "Tenant Record", "Billing Configuration", etc.
+        tool: string,         // Internal tool name
+        status: "done" | "warning" | "in_progress" | "skipped" | "failed",
+        details: string,      // Human-readable details
+        durationMs: number    // Execution time
+      }
+    ],
+    
+    // Actionable guidance
+    recommendations: [
+      {
+        priority: "high" | "medium" | "low",
+        item: string,
+        message: string
+      }
+    ],
+    
+    // Full diagnostic data
+    details: {
+      tenant: { businessId, existed, created },
+      billing: { stripeConfigured, stripeMode, checks },
+      voice: { passed, total, checks },
+      provisioning: { exists, score, subscription, calendar, scheduling }
+    },
+    
+    // Aggregate stats
+    stats: {
+      totalSteps: number,
+      completed: number,
+      warnings: number,
+      skipped: number,
+      failed: number
+    }
+  }
+}
+```
+
+### What `ready: true` Means
+
+When `ready: true`, you have a **guarantee** that:
+
+| Guarantee | Description |
+|-----------|-------------|
+| ✅ Tenant exists | Business record is in the database |
+| ✅ No failures | All critical steps completed without `status: "failed"` |
+| ✅ Operational | Tenant can receive bookings and use core features |
+| ✅ Queryable | Tenant data is available for API queries |
+
+**Operational meaning:** The tenant is fully provisioned and operational. Workflows can proceed with confidence.
+
+```javascript
+// n8n decision logic
+if ($json.result.ready === true) {
+  // ✅ Proceed with onboarding flow
+  // Send welcome email, enable features, etc.
+} else {
+  // ⚠️ Tenant needs attention
+  // Route to manual review or retry logic
+}
+```
+
+### What `ready: false` Means
+
+When `ready: false`, the tenant **requires attention**:
+
+| Condition | Meaning | Action Required |
+|-----------|---------|-----------------|
+| `status: "failed"` in checklist | Critical step failed | Investigate error, retry, or escalate |
+| Tenant not found | Database issue | Check tenant.ensure step details |
+| Multiple warnings | Non-critical issues | Review recommendations array |
+
+**Operational meaning:** Do NOT proceed with normal onboarding. Use the checklist and recommendations to diagnose.
+
+### Using the Checklist for Debugging
+
+The `checklist` array provides step-by-step visibility:
+
+```javascript
+// Find the failing step
+const failedStep = $json.result.checklist.find(c => c.status === 'failed');
+if (failedStep) {
+  console.log(`Step ${failedStep.step} failed: ${failedStep.item}`);
+  console.log(`Details: ${failedStep.details}`);
+  console.log(`Tool: ${failedStep.tool}`);
+}
+
+// Get all warnings
+const warnings = $json.result.checklist.filter(c => c.status === 'warning');
+warnings.forEach(w => {
+  console.log(`Warning at step ${w.step}: ${w.details}`);
+});
+```
+
+### Using the Checklist for UI Flows
+
+Display onboarding progress to users:
+
+```javascript
+// Progress indicator
+const { stats } = $json.result;
+const progressPercent = (stats.completed / stats.totalSteps) * 100;
+
+// Step-by-step status for UI
+const steps = $json.result.checklist.map(c => ({
+  name: c.item,
+  complete: c.status === 'done',
+  warning: c.status === 'warning',
+  inProgress: c.status === 'in_progress',
+  skipped: c.status === 'skipped',
+  failed: c.status === 'failed',
+  message: c.details
+}));
+```
+
+### Recommendations Priority
+
+The `recommendations` array is sorted by priority:
+
+| Priority | Meaning | UI Treatment |
+|----------|---------|--------------|
+| `high` | Blocks key functionality | Show prominently, prompt immediate action |
+| `medium` | Degrades experience | Show in setup wizard |
+| `low` | Nice-to-have | Show in settings/tips |
+
+---
+
 ## Overview
 
 The Ops Control Plane is a secure, internal-only API for executing predefined operational tasks in the Book8-AI platform. It provides:
@@ -16,13 +225,15 @@ The Ops Control Plane is a secure, internal-only API for executing predefined op
 
 ### Available Tools
 
-| Tool | Description | Required Scope |
-|------|-------------|----------------|
-| `tenant.ensure` | Create or verify a business record exists | `tenant.write` |
-| `tenant.bootstrap` | **Orchestrator** - Run full tenant onboarding in one call | `tenant.write` |
-| `billing.validateStripeConfig` | Validate Stripe environment configuration | `billing.read` |
-| `voice.smokeTest` | Health check voice/AI calling services | `voice.test` |
-| `tenant.provisioningSummary` | Get complete tenant provisioning state | `tenant.read` |
+| Tool | Description | Required Scope | Status |
+|------|-------------|----------------|--------|
+| `tenant.bootstrap` | **Orchestrator** - Run full tenant onboarding in one call | `tenant.write` | ✅ **RECOMMENDED** |
+| `tenant.ensure` | Create or verify a business record exists | `tenant.write` | ⚠️ DEPRECATED |
+| `billing.validateStripeConfig` | Validate Stripe environment configuration | `billing.read` | ⚠️ DEPRECATED |
+| `voice.smokeTest` | Health check voice/AI calling services | `voice.test` | ⚠️ DEPRECATED |
+| `tenant.provisioningSummary` | Get complete tenant provisioning state | `tenant.read` | ⚠️ DEPRECATED |
+
+> ⚠️ **DEPRECATED tools** exist only as internal building blocks for `tenant.bootstrap` or for admin debugging. Do not use them directly in workflows.
 
 ---
 
@@ -90,12 +301,14 @@ The `tenant.bootstrap` tool is an **orchestrator** that executes multiple tools 
 
 ### What It Orchestrates
 
+> ⚠️ The tools listed below are **internal building blocks**. Do not call them directly.
+
 | Step | Tool | Purpose |
 |------|------|---------|
-| 1 | `tenant.ensure` | Create or verify the business record exists |
-| 2 | `billing.validateStripeConfig` | Check Stripe keys and price configuration |
-| 3 | `voice.smokeTest` | Verify AI phone agent endpoints are reachable |
-| 4 | `tenant.provisioningSummary` | Get complete provisioning state and score |
+| 1 | `tenant.ensure` ⚠️ | Create or verify the business record exists |
+| 2 | `billing.validateStripeConfig` ⚠️ | Check Stripe keys and price configuration |
+| 3 | `voice.smokeTest` ⚠️ | Verify AI phone agent endpoints are reachable |
+| 4 | `tenant.provisioningSummary` ⚠️ | Get complete provisioning state and score |
 
 ### Request Arguments
 
@@ -231,13 +444,13 @@ curl -X POST https://your-domain.com/api/internal/ops/execute \
 
 ### Checklist Status Values
 
-| Status | Meaning |
-|--------|---------|
-| `done` | Step completed successfully |
-| `warning` | Completed with non-blocking issues |
-| `in_progress` | Partially complete (e.g., provisioning at 60%) |
-| `skipped` | Step was skipped by request |
-| `failed` | Step failed (blocks `ready: true`) |
+| Status | Meaning | Blocks Ready? |
+|--------|---------|---------------|
+| `done` | Step completed successfully | No |
+| `warning` | Completed with non-blocking issues | No |
+| `in_progress` | Partially complete (e.g., provisioning at 60%) | No |
+| `skipped` | Step was skipped by request | No |
+| `failed` | Step failed | **Yes** |
 
 ### Ready Logic
 
@@ -293,6 +506,15 @@ Response includes:
 | Admin keys (`OPS_KEY_ADMIN`) | 300 |
 | n8n automation keys (`OPS_KEY_N8N`) | 200 |
 | Default/legacy keys (`OPS_INTERNAL_SECRET`) | 100 |
+
+### Why `tenant.bootstrap` Helps with Rate Limits
+
+Using `tenant.bootstrap` instead of individual tools dramatically reduces API calls:
+
+| Approach | API Calls per Tenant | 100 Tenants = |
+|----------|---------------------|---------------|
+| ⚠️ Individual tools (deprecated) | 4 calls | 400 calls |
+| ✅ `tenant.bootstrap` | 1 call | 100 calls |
 
 ### Handling 429 Responses
 
@@ -408,6 +630,8 @@ Configure these in your environment:
     → [ELSE] 
         → [Alert: Manual Setup Required]
 ```
+
+> ⚠️ **Do NOT** create workflows that call individual deprecated tools. Always use `tenant.bootstrap`.
 
 ### Processing the Response
 
@@ -540,14 +764,16 @@ curl -X GET https://your-domain.com/api/internal/ops/execute \
 ## Changelog
 
 ### v1.3.0 (Current)
-- Added `tenant.bootstrap` orchestrator tool
+- **Added `tenant.bootstrap` orchestrator tool** - the canonical path for tenant onboarding
+- Deprecated direct use of `tenant.ensure`, `billing.validateStripeConfig`, `voice.smokeTest`, `tenant.provisioningSummary`
 - Removed rate limiting from GET endpoint for authenticated requests
 - Added `skipVoiceTest` and `skipBillingCheck` options
 - Enhanced response with `stats` and `recommendations`
+- Added Readiness Contract documentation
 
 ### v1.2.0
 - Added scoped API keys support
-- Added `billing.validateStripeConfig` tool
+- Added `billing.validateStripeConfig` tool ⚠️ (now deprecated for direct use)
 
 ### v1.1.0
 - Added rate limiting with key-type-based limits
