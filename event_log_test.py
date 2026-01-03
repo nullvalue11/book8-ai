@@ -179,7 +179,7 @@ def test_partial_status_event_logging():
     print("\n🧪 Test 2: Partial Status Event Logging")
     
     db, client = connect_to_mongodb()
-    if not db:
+    if db is None:
         return False, "Failed to connect to MongoDB"
     
     try:
