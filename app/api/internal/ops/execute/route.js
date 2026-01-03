@@ -77,6 +77,42 @@ const LOG_PREFIX = '[ops]'
 const VERSION = 'v1.3.0'
 
 // ============================================================================
+// Event Logging (Fire-and-Forget)
+// ============================================================================
+
+/**
+ * Emit an ops event log asynchronously (fire-and-forget)
+ * Failures are logged but don't affect the main execution flow
+ * 
+ * @param {Object} db - MongoDB database instance
+ * @param {Object} eventData - Event data to log
+ */
+function emitOpsEvent(db, eventData) {
+  // Fire-and-forget: don't await, just catch errors
+  saveOpsEventLog(db, eventData)
+    .then(() => {
+      log(eventData.requestId, 'debug', 'Event logged to ops_event_logs')
+    })
+    .catch((err) => {
+      log(eventData.requestId, 'warn', `Failed to emit ops event: ${err.message}`)
+    })
+}
+
+/**
+ * Determine actor type from key identifier
+ * @param {string} keyId - Hashed key identifier
+ * @returns {'n8n' | 'human' | 'system' | 'api'}
+ */
+function determineActor(keyId) {
+  // n8n keys typically configured via OPS_KEY_N8N
+  if (keyId?.includes('n8n')) return 'n8n'
+  // Admin keys are typically human operators
+  if (keyId?.includes('admin')) return 'human'
+  // Default to system for automated processes
+  return 'system'
+}
+
+// ============================================================================
 // Scoped API Keys Configuration
 // ============================================================================
 
