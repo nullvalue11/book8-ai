@@ -238,7 +238,7 @@ def test_event_schema_validation():
     print("\n🧪 Test 3: Event Schema Validation")
     
     db, client = connect_to_mongodb()
-    if not db:
+    if db is None:
         return False, "Failed to connect to MongoDB"
     
     try:
