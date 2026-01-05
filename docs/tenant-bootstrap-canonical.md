@@ -1,12 +1,71 @@
-# tenant.bootstrap - Canonical Tenant Onboarding
+# 🚨 CANONICAL TENANT ONBOARDING: tenant.bootstrap
 
-> **Rule: "If you want a tenant, you call `tenant.bootstrap`. Period."**
+---
 
-## Overview
+## ⛔ STOP: READ THIS FIRST
 
-`tenant.bootstrap` is the **ONLY** supported method for tenant onboarding in the Book8-AI platform. This single orchestrator tool replaces multiple individual API calls with one atomic operation.
+> ### **"If you want a tenant, you call `tenant.bootstrap`. Period."**
 
-## Quick Start
+This is the **ONLY** supported method for tenant onboarding. There are no exceptions.
+
+---
+
+## 🔴 CRITICAL: Deprecated Direct Tool Calls
+
+**The following tools are DEPRECATED for direct workflow/API use:**
+
+| ❌ DEPRECATED Tool | Status | Required Action |
+|-------------------|--------|-----------------|
+| `tenant.ensure` | 🔴 **DO NOT USE** | Migrate to `tenant.bootstrap` |
+| `billing.validateStripeConfig` | 🔴 **DO NOT USE** | Migrate to `tenant.bootstrap` |
+| `voice.smokeTest` | 🔴 **DO NOT USE** | Migrate to `tenant.bootstrap` |
+| `tenant.provisioningSummary` | 🔴 **DO NOT USE** | Migrate to `tenant.bootstrap` |
+
+### Why These Are Deprecated
+
+| Problem | Impact |
+|---------|--------|
+| **Rate Limiting** | 4 separate calls consume 4x your rate limit quota |
+| **No Atomicity** | Partial failures leave tenants in broken states |
+| **No Readiness Signal** | Must manually aggregate results to determine status |
+| **Complex Error Handling** | Requires 4 different error handlers |
+| **Maintenance Nightmare** | Changes require updating multiple workflow nodes |
+
+### If You Are Currently Using Direct Tool Calls
+
+**You MUST migrate to `tenant.bootstrap` immediately.**
+
+See [Migration Guide](#migration-guide) below.
+
+---
+
+## ✅ The Canonical Path: tenant.bootstrap
+
+`tenant.bootstrap` is a single orchestrator that:
+
+1. ✅ Creates/verifies the tenant record (`tenant.ensure`)
+2. ✅ Validates billing configuration (`billing.validateStripeConfig`)
+3. ✅ Tests voice services (`voice.smokeTest`)
+4. ✅ Gets provisioning summary (`tenant.provisioningSummary`)
+
+**All in ONE atomic API call.**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│                      tenant.bootstrap                           │
+│                                                                 │
+│   ┌────────────┐   ┌────────────┐   ┌────────────┐   ┌────────┐│
+│   │  tenant    │ → │  billing   │ → │   voice    │ → │ summary││
+│   │  .ensure   │   │  .validate │   │  .smoke    │   │        ││
+│   └────────────┘   └────────────┘   └────────────┘   └────────┘│
+│                                                                 │
+│   ONE call. ONE response. COMPLETE visibility.                  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Quick Start
 
 ```bash
 curl -X POST https://your-domain.com/api/internal/ops/execute \
@@ -19,176 +78,265 @@ curl -X POST https://your-domain.com/api/internal/ops/execute \
   }'
 ```
 
-## Response
+---
+
+## 📋 THE READINESS CONTRACT
+
+Every `tenant.bootstrap` call returns a **guaranteed contract** you can depend on.
+
+### Core Response Structure
 
 ```json
 {
   "ok": true,
   "result": {
-    "ready": true,
+    "ready": true,                    // ← THE KEY FIELD
     "readyMessage": "Tenant is fully bootstrapped and ready",
-    "checklist": [
-      { "step": 1, "item": "Tenant Record", "status": "done" },
-      { "step": 2, "item": "Billing Configuration", "status": "done" },
-      { "step": 3, "item": "Voice Services", "status": "done" },
-      { "step": 4, "item": "Provisioning Status", "status": "done" }
-    ],
-    "recommendations": [],
-    "stats": { "totalSteps": 4, "completed": 4, "warnings": 0, "skipped": 0, "failed": 0 }
+    "checklist": [...],               // Step-by-step breakdown
+    "recommendations": [...],         // Actionable next steps
+    "stats": { ... }                  // Aggregate counts
+  }
+}
+```
+
+### The `ready` Field: Your Single Source of Truth
+
+| Value | Operational Meaning | What To Do |
+|-------|---------------------|------------|
+| `ready: true` | **Tenant is FULLY OPERATIONAL** | ✅ Proceed with onboarding flow |
+| `ready: false` | **Tenant REQUIRES ATTENTION** | ⚠️ Check checklist, review recommendations |
+
+---
+
+## ✅ What `ready: true` GUARANTEES
+
+When you receive `ready: true`, you have these **iron-clad guarantees**:
+
+| Guarantee | Description |
+|-----------|-------------|
+| ✅ **Tenant Exists** | Business record is persisted in the database |
+| ✅ **No Critical Failures** | All steps completed without `status: "failed"` |
+| ✅ **Fully Operational** | Tenant can receive bookings, use AI features, process payments |
+| ✅ **API Ready** | Tenant data is queryable via all Book8 APIs |
+
+### Code Pattern for `ready: true`
+
+```javascript
+// n8n or application code
+const response = await callTenantBootstrap(businessId);
+
+if (response.result.ready === true) {
+  // ✅ SAFE TO PROCEED
+  await sendWelcomeEmail(businessId);
+  await enableFeatureFlags(businessId);
+  await startOnboardingSequence(businessId);
+}
+```
+
+---
+
+## ⚠️ What `ready: false` MEANS OPERATIONALLY
+
+When you receive `ready: false`, the tenant **is NOT ready for production use**.
+
+### Possible Causes
+
+| Cause | How to Identify | Action |
+|-------|-----------------|--------|
+| **Step Failed** | `checklist` has item with `status: "failed"` | Fix the underlying issue, retry |
+| **Provisioning Incomplete** | `stats.completed < stats.totalSteps` | Wait and retry, or investigate |
+| **Warnings Present** | `recommendations` array has `priority: "high"` items | Address high-priority items |
+
+### Code Pattern for `ready: false`
+
+```javascript
+const response = await callTenantBootstrap(businessId);
+
+if (response.result.ready === false) {
+  // ⚠️ TENANT NEEDS ATTENTION
+  
+  // 1. Find failed steps
+  const failedSteps = response.result.checklist.filter(c => c.status === 'failed');
+  
+  // 2. Check high-priority recommendations
+  const urgentActions = response.result.recommendations.filter(r => r.priority === 'high');
+  
+  // 3. Decide: retry, alert, or manual intervention
+  if (failedSteps.length > 0) {
+    await alertOpsTeam({ businessId, failures: failedSteps });
+  } else {
+    await scheduleRetry({ businessId, delay: '1h' });
   }
 }
 ```
 
 ---
 
-## ⚠️ DEPRECATED: Direct Tool Calls
+## 📊 Understanding the Checklist
 
-**DO NOT** call these tools directly in workflows:
+The `checklist` array provides step-by-step visibility:
 
-| Deprecated Tool | Status | Migration |
-|-----------------|--------|-----------|
-| `tenant.ensure` | ⚠️ DEPRECATED | Use `tenant.bootstrap` |
-| `billing.validateStripeConfig` | ⚠️ DEPRECATED | Use `tenant.bootstrap` |
-| `voice.smokeTest` | ⚠️ DEPRECATED | Use `tenant.bootstrap` |
-| `tenant.provisioningSummary` | ⚠️ DEPRECATED | Use `tenant.bootstrap` |
-
-### Why Direct Calls Are Deprecated
-
-1. **Rate Limiting**: 4 separate calls = 4x rate limit consumption
-2. **No Atomicity**: Partial failures leave tenant in inconsistent state
-3. **No Consolidated Status**: Must aggregate results manually
-4. **Complex Error Handling**: 4 different error handlers needed
-5. **Maintenance Burden**: Changes require updating multiple workflow nodes
-
-### Migration Example
-
-❌ **Before (Deprecated):**
+```json
+{
+  "checklist": [
+    { "step": 1, "item": "Tenant Record", "tool": "tenant.ensure", "status": "done", "details": "Created", "durationMs": 5 },
+    { "step": 2, "item": "Billing Configuration", "tool": "billing.validateStripeConfig", "status": "warning", "details": "Stripe not configured", "durationMs": 12 },
+    { "step": 3, "item": "Voice Services", "tool": "voice.smokeTest", "status": "done", "details": "4/4 checks passed", "durationMs": 203 },
+    { "step": 4, "item": "Provisioning Status", "tool": "tenant.provisioningSummary", "status": "in_progress", "details": "60% complete", "durationMs": 8 }
+  ]
+}
 ```
-n8n Workflow:
-[tenant.ensure] → [billing.validateStripeConfig] → [voice.smokeTest] → [tenant.provisioningSummary]
-     ↓                    ↓                              ↓                        ↓
-  Handle error      Handle error                   Handle error              Handle error
-     ↓                    ↓                              ↓                        ↓
-  4 API calls, 4 HTTP nodes, complex branching logic
-```
-
-✅ **After (Required):**
-```
-n8n Workflow:
-[tenant.bootstrap] → [Check ready field] → [Continue or Alert]
-     ↓
-  1 API call, 1 HTTP node, simple branching
-```
-
----
-
-## Readiness Contract
-
-### The `ready` Field
-
-The `ready` boolean is the **single source of truth** for tenant status:
-
-| Value | Meaning | Action |
-|-------|---------|--------|
-| `ready: true` | Tenant is fully bootstrapped and operational | Proceed with onboarding flow |
-| `ready: false` | Tenant requires attention | Check `checklist` for failures, review `recommendations` |
-
-### What `ready: true` Guarantees
-
-When `ready: true`, you have these guarantees:
-
-- ✅ **Tenant Record Exists**: Business is in the database
-- ✅ **No Critical Failures**: All steps completed without `status: "failed"`
-- ✅ **Operational**: Tenant can receive bookings and use features
-- ✅ **Queryable**: Tenant data is available for API queries
-
-### What `ready: false` Means
-
-When `ready: false`, the tenant needs attention:
-
-1. **Check `checklist`**: Find steps with `status: "failed"`
-2. **Review `recommendations`**: Prioritized list of actions needed
-3. **Examine `details`**: Full diagnostic data for each subsystem
 
 ### Checklist Status Values
 
-| Status | Meaning | Blocks Ready? |
-|--------|---------|---------------|
-| `done` | Step completed successfully | No |
-| `warning` | Completed with non-blocking issues | No |
-| `in_progress` | Partially complete | No |
-| `skipped` | Skipped by request | No |
-| `failed` | Step failed | **Yes** |
+| Status | Meaning | Blocks `ready`? |
+|--------|---------|-----------------|
+| `done` | ✅ Step completed successfully | No |
+| `warning` | ⚠️ Completed with non-blocking issues | No |
+| `in_progress` | 🔄 Partially complete (e.g., 60% provisioned) | No |
+| `skipped` | ⏭️ Skipped by request (`skipVoiceTest`, etc.) | No |
+| `failed` | ❌ Step failed critically | **YES** |
+
+### Finding Problems
+
+```javascript
+// Find the failing step
+const failedStep = checklist.find(c => c.status === 'failed');
+if (failedStep) {
+  console.error(`FAILURE at step ${failedStep.step}: ${failedStep.item}`);
+  console.error(`Details: ${failedStep.details}`);
+  console.error(`Tool: ${failedStep.tool}`);
+}
+
+// Get all warnings
+const warnings = checklist.filter(c => c.status === 'warning');
+warnings.forEach(w => console.warn(`Warning: ${w.item} - ${w.details}`));
+```
 
 ---
 
-## Use Cases
+## 🔄 MIGRATION GUIDE
+
+### If You're Using Direct Tool Calls
+
+**Step 1: Identify your current workflow**
+
+```
+❌ OLD (DEPRECATED):
+[HTTP: tenant.ensure] → [HTTP: billing.validateStripeConfig] → [HTTP: voice.smokeTest] → [HTTP: tenant.provisioningSummary]
+```
+
+**Step 2: Replace with single tenant.bootstrap call**
+
+```
+✅ NEW (REQUIRED):
+[HTTP: tenant.bootstrap] → [IF: ready === true] → [Continue]
+                                    ↓
+                              [ELSE: Handle not-ready]
+```
+
+**Step 3: Update your request body**
+
+```json
+// ❌ OLD: Multiple separate calls
+// Call 1: POST /api/internal/ops/execute
+{ "tool": "tenant.ensure", "requestId": "...", "args": { "businessId": "..." } }
+// Call 2: POST /api/internal/ops/execute  
+{ "tool": "billing.validateStripeConfig", "requestId": "...", "args": { "businessId": "..." } }
+// ... etc
+
+// ✅ NEW: Single call
+{
+  "tool": "tenant.bootstrap",
+  "payload": { "businessId": "biz_abc123" },
+  "meta": { "requestId": "unique-id" }
+}
+```
+
+**Step 4: Update your response handling**
+
+```javascript
+// ❌ OLD: Aggregate multiple responses
+const ensureOk = response1.ok;
+const billingOk = response2.result.stripeConfigured;
+const voiceOk = response3.result.passed === response3.result.total;
+const ready = ensureOk && billingOk && voiceOk; // Manual aggregation!
+
+// ✅ NEW: Single ready check
+const ready = response.result.ready; // That's it!
+```
+
+---
+
+## 🎯 Use Cases
 
 ### 1. UI Onboarding Flow
 
 ```javascript
-const response = await bootstrap(businessId);
+const { result } = await bootstrap(businessId);
 
-if (response.result.ready) {
-  // Show success screen
+if (result.ready) {
   showWelcomeScreen();
+  redirectToDashboard();
 } else {
-  // Show setup wizard with remaining steps
-  showSetupWizard(response.result.checklist);
+  // Show setup wizard with checklist
+  showSetupWizard({
+    steps: result.checklist,
+    progress: (result.stats.completed / result.stats.totalSteps) * 100
+  });
 }
 ```
 
-### 2. Dashboard Status
+### 2. Monitoring Dashboard
 
 ```javascript
-const { stats, recommendations } = response.result;
+const { result } = await bootstrap(businessId);
 
-// Progress bar
-const progress = (stats.completed / stats.totalSteps) * 100;
+// Progress indicator
+const progressPercent = (result.stats.completed / result.stats.totalSteps) * 100;
 
-// Action items
-const urgentItems = recommendations.filter(r => r.priority === 'high');
+// Action items count
+const actionItemsCount = result.recommendations.filter(r => r.priority === 'high').length;
+
+// Status badge
+const statusBadge = result.ready ? '🟢 Ready' : '🟡 Setup Required';
 ```
 
-### 3. Automated Follow-ups
+### 3. Automated n8n Workflow
 
-```javascript
-// n8n workflow
-if (!response.result.ready) {
-  // Schedule retry
-  scheduleRetry(businessId, { delay: '1h' });
-  
-  // Alert if critical
-  if (response.result.checklist.some(c => c.status === 'failed')) {
-    alertOpsTeam(businessId, response.result);
-  }
-}
+```
+[Webhook: New Signup]
+    ↓
+[HTTP: tenant.bootstrap]
+    ↓
+[IF: result.ready === true]
+    ├── YES → [Send Welcome Email] → [Enable Features] → [End]
+    └── NO  → [Schedule Retry (1hr)] → [Alert if failed steps] → [End]
 ```
 
 ### 4. Debugging
 
 ```javascript
-// Find failing step
-const failedStep = response.result.checklist.find(c => c.status === 'failed');
-console.log(`Step ${failedStep.step} failed: ${failedStep.item}`);
-console.log(`Details: ${failedStep.details}`);
-
-// Check raw metadata for full diagnostics
-console.log(response.result.details);
+// Full diagnostic dump
+console.log('=== TENANT BOOTSTRAP DIAGNOSTICS ===');
+console.log('Ready:', result.ready);
+console.log('Message:', result.readyMessage);
+console.log('Stats:', JSON.stringify(result.stats, null, 2));
+console.log('Checklist:');
+result.checklist.forEach(c => {
+  const icon = c.status === 'done' ? '✅' : c.status === 'failed' ? '❌' : '⚠️';
+  console.log(`  ${icon} Step ${c.step}: ${c.item} - ${c.status} (${c.details})`);
+});
+console.log('Recommendations:', result.recommendations);
 ```
 
 ---
 
-## Request Options
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `businessId` | string | **Yes** | Unique business identifier |
-| `name` | string | No | Business display name |
-| `skipVoiceTest` | boolean | No | Skip voice smoke test (faster) |
-| `skipBillingCheck` | boolean | No | Skip Stripe validation |
+## ⚡ Performance Options
 
 ### Fast Bootstrap (Skip Optional Checks)
+
+For faster execution when you only need the tenant created:
 
 ```json
 {
@@ -202,24 +350,27 @@ console.log(response.result.details);
 }
 ```
 
-Execution time: ~15ms vs ~400ms with all checks.
+| Mode | Execution Time | Checks Run |
+|------|----------------|------------|
+| Full bootstrap | ~400ms | All 4 steps |
+| Fast bootstrap | ~15ms | Only tenant + provisioning |
 
 ---
 
-## Full Documentation
+## 📚 Full API Documentation
 
-For complete API documentation including:
-- Request/response formats
-- Authentication
+For complete API reference including:
+- All request/response formats
+- Authentication details
 - Rate limiting
+- Error codes
 - n8n integration examples
-- Error handling
 
-See: [/docs/ops-control-plane-payload.md](./ops-control-plane-payload.md)
+**See:** [/docs/ops-control-plane-payload.md](./ops-control-plane-payload.md)
 
 ---
 
-## Summary
+## 📋 Summary
 
 | Aspect | Value |
 |--------|-------|
@@ -227,4 +378,4 @@ See: [/docs/ops-control-plane-payload.md](./ops-control-plane-payload.md)
 | **Deprecated Tools** | `tenant.ensure`, `billing.validateStripeConfig`, `voice.smokeTest`, `tenant.provisioningSummary` |
 | **Key Response Field** | `ready: true/false` |
 | **API Calls Saved** | 3 per tenant (4 → 1) |
-| **Rule** | "If you want a tenant, you call `tenant.bootstrap`. Period." |
+| **The Rule** | **"If you want a tenant, you call `tenant.bootstrap`. Period."** |
