@@ -360,6 +360,7 @@ function logError(requestId, code, message, details) {
 const MetaSchema = z.object({
   requestId: z.string().min(1, 'meta.requestId is required'),
   dryRun: z.boolean().optional().default(false),
+  mode: z.enum(['plan', 'execute']).optional().default('execute'),
   actor: z.object({
     type: z.enum(['system', 'user']),
     id: z.string()
