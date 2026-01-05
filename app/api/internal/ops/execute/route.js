@@ -391,7 +391,7 @@ const LegacyRequestSchema = z.object({
 /**
  * Detect and parse request format
  * Supports both new format { tool, payload, meta } and legacy formats
- * @returns { tool, args, requestId, dryRun, actor, format }
+ * @returns { tool, args, requestId, dryRun, mode, actor, format }
  */
 function parseRequest(body) {
   // Try new format first: { tool, payload, meta }
@@ -404,6 +404,7 @@ function parseRequest(body) {
         args: result.data.payload,
         requestId: result.data.meta.requestId,
         dryRun: result.data.meta.dryRun,
+        mode: result.data.meta.mode || 'execute',
         actor: result.data.meta.actor || { type: 'system', id: 'n8n-workflow' },
         format: 'new'
       }
@@ -426,12 +427,14 @@ function parseRequest(body) {
     const data = legacyResult.data
     // Extract args from legacy formats
     const { args, source } = extractLegacyArgs(body)
+    // Legacy format also supports mode via body.mode
     return {
       valid: true,
       tool: data.tool,
       args,
       requestId: data.requestId,
       dryRun: data.dryRun,
+      mode: body.mode || 'execute',
       actor: data.actor || { type: 'system', id: 'n8n-workflow' },
       format: `legacy-${source}`
     }
