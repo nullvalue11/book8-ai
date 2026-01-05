@@ -996,11 +996,13 @@ export async function POST(request) {
     requestId = parseResult.requestId
     tool = parseResult.tool
     dryRun = parseResult.dryRun
+    const mode = parseResult.mode || 'execute'
     actor = parseResult.actor
     const args = parseResult.args
     argsSource = parseResult.format
     
     logRequest(requestId, tool, dryRun, args, argsSource, keyId)
+    log(requestId, 'info', `Mode: ${mode}`, { dryRun })
     
     // 5. Check tool permission based on API key scopes
     const permission = checkToolPermission(auth.scopes, tool)
@@ -1022,7 +1024,61 @@ export async function POST(request) {
       )
     }
     
-    // 6. Connect to database
+    // 5b. PLAN MODE - Return execution plan without executing
+    if (mode === 'plan') {
+      log(requestId, 'info', `Generating execution plan for tool: ${tool}`)
+      
+      // Validate tool is allowlisted first
+      if (!isToolAllowed(tool)) {
+        const availableTools = getToolNames()
+        return errorResponse(
+          requestId, tool, dryRun,
+          'TOOL_NOT_ALLOWED',
+          `Tool '${tool}' is not in the allowlist`,
+          { availableTools, requestedTool: tool },
+          ERROR_HELP.TOOL_NOT_ALLOWED
+        )
+      }
+      
+      // Validate args for plan mode too
+      const argsValidation = validateToolArgs(tool, args)
+      if (!argsValidation.valid) {
+        return errorResponse(
+          requestId, tool, dryRun,
+          'ARGS_VALIDATION_ERROR',
+          'Tool arguments validation failed',
+          {
+            errors: argsValidation.errors,
+            receivedArgs: Object.keys(args),
+            argsFormat: argsSource
+          },
+          ERROR_HELP.ARGS_VALIDATION_ERROR
+        )
+      }
+      
+      // Generate execution plan
+      const plan = generateExecutionPlan(tool, argsValidation.data, { dryRun, requestId })
+      
+      const durationMs = Date.now() - startedAt.getTime()
+      
+      return NextResponse.json({
+        ok: plan.ok,
+        requestId,
+        tool,
+        mode: 'plan',
+        dryRun,
+        result: plan,
+        error: plan.error || null,
+        generatedAt: new Date().toISOString(),
+        durationMs,
+        _meta: {
+          version: VERSION,
+          timestamp: new Date().toISOString()
+        }
+      })
+    }
+    
+    // 6. Connect to database (only for execute mode)
     database = await connect()
     
     // 7. Check idempotency - return cached result if exists
