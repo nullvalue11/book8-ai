@@ -377,6 +377,7 @@ const NewRequestSchema = z.object({
 const LegacyRequestSchema = z.object({
   requestId: z.string().min(1, 'requestId is required'),
   dryRun: z.boolean().optional().default(false),
+  mode: z.enum(['plan', 'execute']).optional().default('execute'),
   tool: z.string().min(1, 'tool is required'),
   args: z.record(z.any()).optional(),
   input: z.record(z.any()).optional(),
