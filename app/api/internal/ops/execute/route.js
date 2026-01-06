@@ -1013,12 +1013,14 @@ export async function POST(request) {
     tool = parseResult.tool
     dryRun = parseResult.dryRun
     const mode = parseResult.mode || 'execute'
+    const approved = parseResult.approved || false
+    const approvalToken = parseResult.approvalToken || null
     actor = parseResult.actor
     const args = parseResult.args
     argsSource = parseResult.format
     
     logRequest(requestId, tool, dryRun, args, argsSource, keyId)
-    log(requestId, 'info', `Mode: ${mode}`, { dryRun })
+    log(requestId, 'info', `Mode: ${mode}`, { dryRun, approved })
     
     // 5. Check tool permission based on API key scopes
     const permission = checkToolPermission(auth.scopes, tool)
@@ -1038,6 +1040,85 @@ export async function POST(request) {
         ERROR_HELP.FORBIDDEN,
         403
       )
+    }
+    
+    // 5a. APPROVAL GATE - Check if tool requires approval
+    // This runs before plan mode to ensure approval status is checked early
+    const toolFromRegistryForApproval = getToolFromRegistry(tool)
+    if (toolFromRegistryForApproval) {
+      const requiresApproval = toolFromRegistryForApproval.risk === 'high' || 
+                               toolFromRegistryForApproval.requiresApproval === true
+      
+      if (requiresApproval && !approved) {
+        log(requestId, 'info', `Tool requires approval: ${tool}`, {
+          risk: toolFromRegistryForApproval.risk,
+          requiresApproval: toolFromRegistryForApproval.requiresApproval
+        })
+        
+        // Create pending approval event log
+        try {
+          const database = await connect()
+          const pendingEventLog = createOpsEventLog({
+            requestId,
+            tool,
+            businessId: args?.businessId || null,
+            status: 'pending',
+            durationMs: 0,
+            executedAt: new Date(),
+            actor: determineActor(keyId),
+            metadata: {
+              pendingApproval: true,
+              approvalReason: toolFromRegistryForApproval.risk === 'high' ? 'risk=high' : 'requiresApproval=true',
+              payload: args,
+              dryRun,
+              keyId,
+              argsFormat: argsSource
+            }
+          })
+          emitOpsEvent(database, pendingEventLog)
+        } catch (eventError) {
+          log(requestId, 'warn', `Failed to log pending approval event: ${eventError.message}`)
+        }
+        
+        return NextResponse.json({
+          ok: false,
+          status: 'approval_required',
+          requestId,
+          tool,
+          dryRun,
+          approval: {
+            type: 'human',
+            reason: toolFromRegistryForApproval.risk === 'high' ? 'risk=high' : 'requiresApproval=true',
+            tool: tool,
+            toolDescription: toolFromRegistryForApproval.description,
+            risk: toolFromRegistryForApproval.risk,
+            payload: args,
+            howToApprove: 'Re-submit the request with meta.approved=true after human review',
+            approvalEndpoint: '/api/internal/ops/execute',
+            approvalPayloadExample: {
+              tool,
+              payload: args,
+              meta: {
+                requestId: `${requestId}-approved`,
+                approved: true,
+                approvalToken: '<optional-audit-token>'
+              }
+            }
+          },
+          _meta: {
+            version: VERSION,
+            timestamp: new Date().toISOString()
+          }
+        }, { status: 403 })
+      }
+      
+      // If approved flag is set, log that execution was pre-approved
+      if (requiresApproval && approved) {
+        log(requestId, 'info', `Execution pre-approved for high-risk tool: ${tool}`, {
+          approvalToken,
+          risk: toolFromRegistryForApproval.risk
+        })
+      }
     }
     
     // 5b. PLAN MODE - Return execution plan without executing
