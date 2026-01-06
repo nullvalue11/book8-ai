@@ -1,371 +1,239 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Registry-Driven Tool Execution
-Tests POST /api/internal/ops/execute with registry validation
+Backend Test Suite for Book8 AI - Approval Gates Feature Testing
+Simplified and focused test for the Approval Gates feature
 """
 
 import requests
 import json
-import time
 import sys
-from typing import Dict, Any, Optional
+from datetime import datetime
 
 # Configuration
 BASE_URL = "https://ops-api-internal.preview.emergentagent.com"
+API_ENDPOINT = f"{BASE_URL}/api/internal/ops/execute"
 AUTH_HEADER = "ops-dev-secret-change-me"
 
-class RegistryToolExecutionTester:
-    def __init__(self):
-        self.base_url = BASE_URL
-        self.headers = {
-            "Content-Type": "application/json",
-            "x-book8-internal-secret": AUTH_HEADER
+def test_approval_gates():
+    """Test all approval gates scenarios"""
+    
+    headers = {
+        "Content-Type": "application/json",
+        "x-book8-internal-secret": AUTH_HEADER
+    }
+    
+    print("🔒 APPROVAL GATES FEATURE TESTING")
+    print("=" * 50)
+    print(f"Testing endpoint: {API_ENDPOINT}")
+    print()
+    
+    test_results = []
+    
+    # Test 1: Medium-Risk Tool Executes Normally
+    print("=== Test 1: Medium-Risk Tool Executes Normally ===")
+    payload1 = {
+        "tool": "tenant.bootstrap",
+        "payload": {
+            "businessId": "test-biz",
+            "skipVoiceTest": True,
+            "skipBillingCheck": True
+        },
+        "meta": {
+            "requestId": f"test-medium-{int(datetime.now().timestamp())}"
         }
-        self.test_results = []
-        
-    def log_test(self, test_name: str, success: bool, details: str = ""):
-        """Log test result"""
-        status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status}: {test_name}")
-        if details:
-            print(f"   Details: {details}")
-        
-        self.test_results.append({
-            "test": test_name,
-            "success": success,
-            "details": details
-        })
-    
-    def make_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict[str, Any]:
-        """Make HTTP request and return response"""
-        url = f"{self.base_url}{endpoint}"
-        
-        try:
-            if method == "GET":
-                response = requests.get(url, headers=self.headers, timeout=30)
-            elif method == "POST":
-                response = requests.post(url, headers=self.headers, json=data, timeout=30)
-            else:
-                raise ValueError(f"Unsupported method: {method}")
-            
-            return {
-                "status_code": response.status_code,
-                "json": response.json() if response.headers.get('content-type', '').startswith('application/json') else None,
-                "text": response.text,
-                "headers": dict(response.headers)
-            }
-        except requests.exceptions.RequestException as e:
-            return {
-                "status_code": 0,
-                "error": str(e),
-                "json": None,
-                "text": "",
-                "headers": {}
-            }
-    
-    def test_1_valid_tool_from_registry(self):
-        """Test Case 1: Valid Tool from Registry"""
-        print("\n=== Test Case 1: Valid Tool from Registry ===")
-        
-        payload = {
-            "tool": "tenant.bootstrap",
-            "payload": {
-                "businessId": "test-biz",
-                "skipVoiceTest": True,
-                "skipBillingCheck": True
-            },
-            "meta": {
-                "requestId": f"registry-test-1-{int(time.time())}"
-            }
-        }
-        
-        response = self.make_request("POST", "/api/internal/ops/execute", payload)
-        
-        if response["status_code"] == 200 and response["json"]:
-            data = response["json"]
-            success = (
-                data.get("ok") == True and
-                "result" in data and
-                data.get("tool") == "tenant.bootstrap"
-            )
-            details = f"Response: ok={data.get('ok')}, tool={data.get('tool')}, durationMs={data.get('durationMs')}"
-        else:
-            success = False
-            details = f"Status: {response['status_code']}, Response: {response.get('text', 'No response')[:200]}"
-        
-        self.log_test("Valid Tool from Registry", success, details)
-        return success
-    
-    def test_2_tool_not_in_registry(self):
-        """Test Case 2: Tool NOT in Registry"""
-        print("\n=== Test Case 2: Tool NOT in Registry ===")
-        
-        payload = {
-            "tool": "fake.nonexistent.tool",
-            "payload": {
-                "businessId": "test"
-            },
-            "meta": {
-                "requestId": f"registry-test-2-{int(time.time())}"
-            }
-        }
-        
-        response = self.make_request("POST", "/api/internal/ops/execute", payload)
-        
-        if response["status_code"] == 400 and response["json"]:
-            data = response["json"]
-            error = data.get("error", {})
-            success = (
-                data.get("ok") == False and
-                error.get("code") == "TOOL_NOT_IN_REGISTRY" and
-                "availableTools" in error.get("details", {}) and
-                error.get("details", {}).get("registryEndpoint") == "/api/internal/ops/tools"
-            )
-            details = f"Error code: {error.get('code')}, Available tools: {len(error.get('details', {}).get('availableTools', []))}"
-        else:
-            success = False
-            details = f"Status: {response['status_code']}, Response: {response.get('text', 'No response')[:200]}"
-        
-        self.log_test("Tool NOT in Registry", success, details)
-        return success
-    
-    def test_3_registry_validation_missing_field(self):
-        """Test Case 3: Registry Input Validation - Missing Required Field"""
-        print("\n=== Test Case 3: Registry Input Validation - Missing Required Field ===")
-        
-        payload = {
-            "tool": "tenant.bootstrap",
-            "payload": {},  # Missing businessId
-            "meta": {
-                "requestId": f"registry-test-3-{int(time.time())}"
-            }
-        }
-        
-        response = self.make_request("POST", "/api/internal/ops/execute", payload)
-        
-        if response["status_code"] == 400 and response["json"]:
-            data = response["json"]
-            error = data.get("error", {})
-            success = (
-                data.get("ok") == False and
-                error.get("code") == "REGISTRY_VALIDATION_ERROR" and
-                "errors" in error.get("details", {}) and
-                "inputSchema" in error.get("details", {})
-            )
-            
-            # Check if error mentions missing businessId
-            error_details = error.get("details", {})
-            errors = error_details.get("errors", [])
-            has_business_id_error = any("businessId" in str(err) for err in errors)
-            
-            details = f"Error code: {error.get('code')}, Has businessId error: {has_business_id_error}, Errors: {len(errors)}"
-        else:
-            success = False
-            details = f"Status: {response['status_code']}, Response: {response.get('text', 'No response')[:200]}"
-        
-        self.log_test("Registry Validation - Missing Required Field", success, details)
-        return success
-    
-    def test_4_registry_validation_wrong_type(self):
-        """Test Case 4: Registry Input Validation - Wrong Type"""
-        print("\n=== Test Case 4: Registry Input Validation - Wrong Type ===")
-        
-        payload = {
-            "tool": "tenant.bootstrap",
-            "payload": {
-                "businessId": 12345  # Should be string, not number
-            },
-            "meta": {
-                "requestId": f"registry-test-4-{int(time.time())}"
-            }
-        }
-        
-        response = self.make_request("POST", "/api/internal/ops/execute", payload)
-        
-        if response["status_code"] == 400 and response["json"]:
-            data = response["json"]
-            error = data.get("error", {})
-            success = (
-                data.get("ok") == False and
-                (error.get("code") == "REGISTRY_VALIDATION_ERROR" or error.get("code") == "ARGS_VALIDATION_ERROR") and
-                "errors" in error.get("details", {})
-            )
-            details = f"Error code: {error.get('code')}, Validation failed for type mismatch"
-        else:
-            success = False
-            details = f"Status: {response['status_code']}, Response: {response.get('text', 'No response')[:200]}"
-        
-        self.log_test("Registry Validation - Wrong Type", success, details)
-        return success
-    
-    def test_5_deprecated_tool_warning(self):
-        """Test Case 5: Deprecated Tool Warning (Still Works)"""
-        print("\n=== Test Case 5: Deprecated Tool Warning (Still Works) ===")
-        
-        payload = {
-            "tool": "tenant.ensure",
-            "payload": {
-                "businessId": "test-biz"
-            },
-            "meta": {
-                "requestId": f"registry-test-5-{int(time.time())}"
-            }
-        }
-        
-        response = self.make_request("POST", "/api/internal/ops/execute", payload)
-        
-        if response["status_code"] == 200 and response["json"]:
-            data = response["json"]
-            success = (
-                data.get("ok") == True and
-                "result" in data and
-                data.get("tool") == "tenant.ensure"
-            )
-            details = f"Deprecated tool executed successfully: ok={data.get('ok')}, tool={data.get('tool')}"
-        else:
-            success = False
-            details = f"Status: {response['status_code']}, Response: {response.get('text', 'No response')[:200]}"
-        
-        self.log_test("Deprecated Tool Warning (Still Works)", success, details)
-        return success
-    
-    def test_6_tools_endpoint_shared_registry(self):
-        """Test Case 6: Tools Endpoint Uses Shared Registry"""
-        print("\n=== Test Case 6: Tools Endpoint Uses Shared Registry ===")
-        
-        # First get tools from registry endpoint
-        registry_response = self.make_request("GET", "/api/internal/ops/tools")
-        
-        if registry_response["status_code"] != 200 or not registry_response["json"]:
-            self.log_test("Tools Endpoint Uses Shared Registry", False, "Failed to get tools from registry")
-            return False
-        
-        registry_data = registry_response["json"]
-        registry_tools = [tool["name"] for tool in registry_data.get("tools", [])]
-        
-        # Get tools with deprecated included
-        registry_response_with_deprecated = self.make_request("GET", "/api/internal/ops/tools?includeDeprecated=true")
-        
-        if registry_response_with_deprecated["status_code"] == 200 and registry_response_with_deprecated["json"]:
-            all_tools = registry_response_with_deprecated["json"].get("tools", [])
-            total_tools = len(all_tools)
-            canonical_tools = len([t for t in all_tools if not t.get("deprecated", False)])
-        else:
-            total_tools = len(registry_tools)
-            canonical_tools = len(registry_tools)
-        
-        # Check if we have expected number of tools
-        success = (
-            registry_data.get("ok") == True and
-            len(registry_tools) >= 1 and  # At least 1 canonical tool
-            total_tools >= canonical_tools  # Total should be >= canonical
-        )
-        
-        details = f"Canonical tools: {canonical_tools}, Total tools (with deprecated): {total_tools}, Registry working: {registry_data.get('ok')}"
-        
-        self.log_test("Tools Endpoint Uses Shared Registry", success, details)
-        return success
-    
-    def test_7_plan_mode_with_registry(self):
-        """Test Case 7: Plan Mode with Registry"""
-        print("\n=== Test Case 7: Plan Mode with Registry ===")
-        
-        payload = {
-            "tool": "tenant.bootstrap",
-            "payload": {
-                "businessId": "test-biz"
-            },
-            "meta": {
-                "requestId": f"registry-test-7-{int(time.time())}",
-                "mode": "plan"
-            }
-        }
-        
-        response = self.make_request("POST", "/api/internal/ops/execute", payload)
-        
-        if response["status_code"] == 200 and response["json"]:
-            data = response["json"]
-            result = data.get("result", {})
-            success = (
-                data.get("ok") == True and
-                data.get("mode") == "plan" and
-                "plan" in result and
-                "steps" in result.get("plan", {}) and
-                "sideEffects" in result and
-                "requiredSecrets" in result and
-                "risk" in result
-            )
-            details = f"Plan mode working: mode={data.get('mode')}, steps={len(result.get('plan', {}).get('steps', []))}"
-        else:
-            success = False
-            details = f"Status: {response['status_code']}, Response: {response.get('text', 'No response')[:200]}"
-        
-        self.log_test("Plan Mode with Registry", success, details)
-        return success
-    
-    def run_all_tests(self):
-        """Run all registry-driven tool execution tests"""
-        print("🧪 REGISTRY-DRIVEN TOOL EXECUTION TESTING")
-        print("=" * 60)
-        print(f"Testing endpoint: {self.base_url}/api/internal/ops/execute")
-        print(f"Auth header: x-book8-internal-secret: {AUTH_HEADER}")
-        print()
-        
-        # Run all test cases
-        test_methods = [
-            self.test_1_valid_tool_from_registry,
-            self.test_2_tool_not_in_registry,
-            self.test_3_registry_validation_missing_field,
-            self.test_4_registry_validation_wrong_type,
-            self.test_5_deprecated_tool_warning,
-            self.test_6_tools_endpoint_shared_registry,
-            self.test_7_plan_mode_with_registry
-        ]
-        
-        passed = 0
-        total = len(test_methods)
-        
-        for test_method in test_methods:
-            try:
-                if test_method():
-                    passed += 1
-                time.sleep(1)  # Brief pause between tests
-            except Exception as e:
-                print(f"❌ FAIL: {test_method.__name__} - Exception: {str(e)}")
-        
-        # Summary
-        print("\n" + "=" * 60)
-        print("🏁 REGISTRY-DRIVEN TOOL EXECUTION TEST SUMMARY")
-        print("=" * 60)
-        print(f"✅ Passed: {passed}/{total} tests")
-        print(f"❌ Failed: {total - passed}/{total} tests")
-        
-        if passed == total:
-            print("\n🎉 ALL REGISTRY-DRIVEN TOOL EXECUTION TESTS PASSED!")
-            print("✅ Registry validation working correctly")
-            print("✅ Tool discovery working correctly") 
-            print("✅ Input/output validation working correctly")
-            print("✅ Plan mode working with registry")
-            print("✅ Deprecated tools still functional")
-            print("✅ Error handling working correctly")
-        else:
-            print(f"\n⚠️  {total - passed} test(s) failed. Check details above.")
-        
-        return passed == total
-
-def main():
-    """Main test execution"""
-    tester = RegistryToolExecutionTester()
+    }
     
     try:
-        success = tester.run_all_tests()
-        sys.exit(0 if success else 1)
-    except KeyboardInterrupt:
-        print("\n\n⚠️ Tests interrupted by user")
-        sys.exit(1)
+        response1 = requests.post(API_ENDPOINT, json=payload1, headers=headers, timeout=30)
+        data1 = response1.json()
+        
+        if response1.status_code == 200 and data1.get("ok") == True:
+            print("✅ PASS: Medium-risk tool executed without approval")
+            test_results.append(True)
+        else:
+            print(f"❌ FAIL: Expected 200/ok=true, got {response1.status_code}/ok={data1.get('ok')}")
+            test_results.append(False)
     except Exception as e:
-        print(f"\n\n❌ Test suite failed with exception: {str(e)}")
-        sys.exit(1)
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
+    
+    # Test 2: High-Risk Tool Requires Approval
+    print("\n=== Test 2: High-Risk Tool Requires Approval ===")
+    payload2 = {
+        "tool": "tenant.delete",
+        "payload": {
+            "businessId": "test-biz",
+            "confirmationCode": "DELETE-123"
+        },
+        "meta": {
+            "requestId": f"test-high-{int(datetime.now().timestamp())}"
+        }
+    }
+    
+    try:
+        response2 = requests.post(API_ENDPOINT, json=payload2, headers=headers, timeout=30)
+        data2 = response2.json()
+        
+        if response2.status_code == 403 and data2.get("status") == "approval_required":
+            print("✅ PASS: High-risk tool requires approval (403 + approval_required)")
+            
+            # Validate approval structure
+            approval = data2.get("approval", {})
+            required_fields = ["type", "reason", "tool", "payload", "howToApprove", "approvalPayloadExample"]
+            missing_fields = [field for field in required_fields if field not in approval]
+            
+            if not missing_fields and approval.get("type") == "human" and "risk=high" in approval.get("reason", ""):
+                print("✅ PASS: Approval response structure valid")
+                test_results.append(True)
+            else:
+                print(f"❌ FAIL: Invalid approval structure - missing: {missing_fields}")
+                test_results.append(False)
+        else:
+            print(f"❌ FAIL: Expected 403/approval_required, got {response2.status_code}/{data2.get('status')}")
+            test_results.append(False)
+    except Exception as e:
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
+    
+    # Test 3: High-Risk Tool with Pre-Approval
+    print("\n=== Test 3: High-Risk Tool with Pre-Approval ===")
+    payload3 = {
+        "tool": "tenant.delete",
+        "payload": {
+            "businessId": "test-biz",
+            "confirmationCode": "DELETE-123"
+        },
+        "meta": {
+            "requestId": f"test-approved-{int(datetime.now().timestamp())}",
+            "approved": True,
+            "approvalToken": "manual-review-token"
+        }
+    }
+    
+    try:
+        response3 = requests.post(API_ENDPOINT, json=payload3, headers=headers, timeout=30)
+        data3 = response3.json()
+        
+        # Should NOT return approval_required (approval gate bypassed)
+        if data3.get("status") == "approval_required":
+            print("❌ FAIL: Still requiring approval despite approved=true")
+            test_results.append(False)
+        elif response3.status_code == 400 and data3.get("error", {}).get("code") == "TOOL_NOT_ALLOWED":
+            print("✅ PASS: Approval gate bypassed, failed at tool allowlist (expected)")
+            test_results.append(True)
+        else:
+            print(f"❌ FAIL: Unexpected response - {response3.status_code}/{data3.get('error', {}).get('code')}")
+            test_results.append(False)
+    except Exception as e:
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
+    
+    # Test 4: Low-Risk Tool No Approval Needed
+    print("\n=== Test 4: Low-Risk Tool No Approval Needed ===")
+    payload4 = {
+        "tool": "tenant.ensure",
+        "payload": {
+            "businessId": "test-biz"
+        },
+        "meta": {
+            "requestId": f"test-low-{int(datetime.now().timestamp())}"
+        }
+    }
+    
+    try:
+        response4 = requests.post(API_ENDPOINT, json=payload4, headers=headers, timeout=30)
+        data4 = response4.json()
+        
+        if response4.status_code != 403 and data4.get("status") != "approval_required":
+            print("✅ PASS: Low-risk tool executed without approval")
+            test_results.append(True)
+        else:
+            print(f"❌ FAIL: Unexpected approval requirement for low-risk tool")
+            test_results.append(False)
+    except Exception as e:
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
+    
+    # Test 5: Legacy Format with Approval
+    print("\n=== Test 5: Legacy Format with Approval ===")
+    payload5 = {
+        "requestId": f"test-legacy-{int(datetime.now().timestamp())}",
+        "tool": "tenant.delete",
+        "args": {
+            "businessId": "test-biz",
+            "confirmationCode": "DELETE-123"
+        }
+    }
+    
+    try:
+        response5 = requests.post(API_ENDPOINT, json=payload5, headers=headers, timeout=30)
+        data5 = response5.json()
+        
+        if response5.status_code == 403 and data5.get("status") == "approval_required":
+            print("✅ PASS: Legacy format correctly requires approval")
+            test_results.append(True)
+        else:
+            print(f"❌ FAIL: Legacy format approval failed - {response5.status_code}/{data5.get('status')}")
+            test_results.append(False)
+    except Exception as e:
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
+    
+    # Test 6: Legacy Format with Pre-Approval
+    print("\n=== Test 6: Legacy Format with Pre-Approval ===")
+    payload6 = {
+        "requestId": f"test-legacy-approved-{int(datetime.now().timestamp())}",
+        "tool": "tenant.delete",
+        "approved": True,
+        "args": {
+            "businessId": "test-biz",
+            "confirmationCode": "DELETE-123"
+        }
+    }
+    
+    try:
+        response6 = requests.post(API_ENDPOINT, json=payload6, headers=headers, timeout=30)
+        data6 = response6.json()
+        
+        if data6.get("status") == "approval_required":
+            print("❌ FAIL: Legacy format still requiring approval")
+            test_results.append(False)
+        elif response6.status_code == 400 and data6.get("error", {}).get("code") == "TOOL_NOT_ALLOWED":
+            print("✅ PASS: Legacy format bypasses approval gate")
+            test_results.append(True)
+        else:
+            print(f"❌ FAIL: Unexpected legacy pre-approval response - {response6.status_code}")
+            test_results.append(False)
+    except Exception as e:
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
+    
+    # Summary
+    print("\n" + "=" * 50)
+    print("📊 TEST SUMMARY")
+    print("=" * 50)
+    
+    passed = sum(test_results)
+    total = len(test_results)
+    
+    print(f"✅ Passed: {passed}/{total}")
+    print(f"❌ Failed: {total - passed}/{total}")
+    
+    if passed == total:
+        print("\n🎉 ALL APPROVAL GATES TESTS PASSED!")
+        print("The Approval Gates feature is working correctly.")
+        print()
+        print("KEY FINDINGS:")
+        print("✅ Medium-risk tools execute without approval")
+        print("✅ High-risk tools require approval (403 + approval_required)")
+        print("✅ Pre-approved requests bypass approval gates")
+        print("✅ Both new and legacy formats support approval gates")
+        print("✅ Approval response structure is complete and valid")
+        return 0
+    else:
+        print(f"\n⚠️  {total - passed} TEST(S) FAILED")
+        print("The Approval Gates feature needs attention.")
+        return 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(test_approval_gates())

@@ -103,6 +103,38 @@ export const TOOL_REGISTRY = [
   },
 
   // =========================================================================
+  // HIGH-RISK TOOLS (Require approval)
+  // =========================================================================
+  {
+    name: 'tenant.delete',
+    description: '🔴 HIGH-RISK: Permanently delete a tenant and all associated data. Requires approval.',
+    category: 'tenant',
+    mutates: true,
+    risk: 'high',
+    dryRunSupported: true,
+    allowedCallers: ['human', 'api'], // No n8n - manual only
+    requiresApproval: true,
+    deprecated: false,
+    inputSchema: {
+      type: 'object',
+      required: ['businessId', 'confirmationCode'],
+      properties: {
+        businessId: { type: 'string', description: 'Business to delete' },
+        confirmationCode: { type: 'string', description: 'Confirmation code for deletion' },
+        reason: { type: 'string', description: 'Reason for deletion' }
+      }
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        deleted: { type: 'boolean' },
+        deletedAt: { type: 'string' },
+        affectedRecords: { type: 'number' }
+      }
+    }
+  },
+
+  // =========================================================================
   // DEPRECATED TOOLS (Do not use directly)
   // =========================================================================
   {
