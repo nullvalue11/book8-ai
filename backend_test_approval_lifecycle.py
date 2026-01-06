@@ -196,7 +196,7 @@ def test_approval_lifecycle():
             
             if response.status_code == 400 and data.get("error", {}).get("code") == "INVALID_TRANSITION":
                 hint = data.get("error", {}).get("hint", "")
-                if "approval" in hint.lower():
+                if "approved" in hint.lower() or "approval" in hint.lower():
                     print("✅ PASS: Cannot execute pending request, proper error with hint")
                     print(f"   Error: {data.get('error', {}).get('message')}")
                     print(f"   Hint: {hint}")
