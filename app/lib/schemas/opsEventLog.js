@@ -89,7 +89,7 @@ export const COLLECTION_NAME = 'ops_event_logs'
 /**
  * Valid status values
  */
-export const STATUS_VALUES = ['success', 'failed', 'partial']
+export const STATUS_VALUES = ['success', 'failed', 'partial', 'pending']
 
 /**
  * Valid actor values
