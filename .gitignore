@@ -810,3 +810,7 @@ node_modules/@next/swc-linux-arm64-musl/next-swc.linux-arm64-musl.node
 *.env
 *.env.*
 .next/cache/webpack/server-production/4.pack
+-e 
+# Environment files
+*.env
+*.env.*
