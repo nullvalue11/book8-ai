@@ -1,100 +1,117 @@
 <analysis>
-<original_problem_statement>
-The user wants to implement V1 of an Ops Control Plane for the  application. This feature should provide a secure, internal-only API endpoint to execute predefined operational tasks.
 
-Subsequent user requests expanded on this:
-- **UI Mockup:** Add a mobile phone mockup to the landing page, which went through several iterations (iPhone -> Laptop+iPhone -> Revert to a cleaner iPhone).
-- **Critical Bug Fix:** Correct a request validation schema that was causing all ops requests to fail.
-- **Backend Hardening:** Improve logging, error responses, and create a health check endpoint.
-- **Security:** Implement constant-time comparison for auth secrets and add rate limiting.
-- **Sustainability:** Evolve the rate-limiting to be more robust, add scoped API keys for better security, and create an orchestrator  tool.
-- **Schema Fix:** Update the validation schema to support both legacy and new request formats.
-- **Rate Limit Fix:** Adjust rate limits for internal n8n workflow calls to prevent them from being blocked.
+<original_problem_statement>
+The user's overall goal is to build out a sophisticated V1 Ops Control Plane for the  application. This internal API () is designed to provide a secure, observable, and AI-agent-drivable way to execute predefined operational tasks.
+
+Initial work focused on creating the core  endpoint, adding tools, hardening the backend, and fixing bugs.
+
+The work in this session significantly expanded the control plane's capabilities based on a series of user requests:
+- **Fix Rate-Limiting:** Corrected an issue where internal  requests were being rate-limited.
+- **Orchestration:** Enhanced the  tool to be a single, comprehensive onboarding primitive.
+- **Documentation:** Created and refined extensive documentation to establish  as the canonical onboarding path and document the entire API.
+- **Observability:**
+    - Implemented a detailed  schema and integrated fire-and-forget logging into every tool execution.
+    - Created query endpoints to retrieve logs () and individual executions ().
+    - Added a metrics endpoint () for high-level monitoring.
+- **AI-Agent Readiness:**
+    - Created a Tool Registry () to allow agents to discover tools and their capabilities (schemas, risk, etc.).
+    - Implemented a Plan Mode in the  endpoint, allowing agents to see the intended effects of a tool without mutation.
+    - Refactored the  endpoint to be strictly registry-driven, enhancing security and predictability.
+- **Governance:**
+    - Implemented Approval Gates for high-risk tools, requiring explicit approval before execution.
+    - Started building a full approval lifecycle management system with dedicated endpoints to create, approve, and execute requests that require human-in-the-loop oversight.
 </original_problem_statement>
 
 **User's preferred language**: English
 
 **what currently exists?**
-The Ops Control Plane is a feature-rich internal API at . It supports:
-- Idempotent requests via .
-- Audit logging to a MongoDB  collection.
-- Scoped API keys for granular permissions (, , etc.).
-- A  mode.
-- A set of tools including , , , and an orchestrator tool .
-- Backward compatibility for multiple request formats (flat-level args and nested / objects).
-- The homepage features a hero section with a prominent image of a hand holding an iPhone displaying the app UI.
+A feature-rich Ops Control Plane with a suite of API endpoints.
+- ****: The core execution engine. It is now registry-driven and supports , a  mode for pre-flight checks, and approval gates for high-risk operations.
+- ****: A tool registry for service discovery by AI agents, providing metadata like schemas, risk levels, and descriptions.
+- ****: An endpoint to query detailed event logs with filtering and pagination.
+- ****: An endpoint to retrieve a single execution event log by its ID.
+- ****: An observability endpoint providing aggregated metrics on tool executions, failures, and performance with caching.
+- **Approval Workflow (In Progress)**:
+    - : Creates an approval request for a high-risk operation.
+    - : Marks a pending request as approved.
+- All endpoints are secured via an  header and a scoped API key system.
+- The system logs every execution to a  collection in MongoDB.
 
 **Last working item**:
-- Last item agent was working: Fixing a rate-limiting issue where n8n workflows were being blocked by the  endpoint. The agent's approach was to introduce two separate rate-limiting configurations: a generous one for authenticated internal requests () and a stricter one for public requests (). However, the agent got stuck mid-refactor, leaving the code in an inconsistent state with references to both old and new rate-limiting constants.
+- Last item agent was working: Implementing the final step of the approval lifecycle workflow. The user requested three endpoints (, , ). The agent has already created the schema and the first two endpoints. It was about to create the third and final endpoint, , which would run the tool associated with an approved request.
 - Status: IN PROGRESS
 - Agent Testing Done: N
 - Which testing method agent to use? backend testing agent
 - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-- Issue 1: Finish the rate-limiting refactor (P0)
-- Issue 2: The rate-limiting mechanism is not scalable for a serverless environment (P1)
+- Issue 1: Complete the Approval Lifecycle Endpoints (P0)
+- Issue 2: Rate-limiting mechanism is not scalable for a serverless environment (P1)
 
   Issues Detail:
   - Issue 1: 
-     - Attempted fixes: The agent introduced  and  constants and started updating the  function. It then tried to replace all references to the old  constant but left the code in a non-working state.
+     - Attempted fixes: The agent has created the MongoDB schema (), the request creation endpoint (), and the request approval endpoint ().
      - Next debug checklist:
-        1. Review .
-        2. Remove the old, duplicated rate-limiting code block.
-        3. Ensure the  function correctly uses  for authenticated requests and  for unauthenticated ones.
-        4. Find all remaining references to the old  constant (e.g., in the response headers of the  and  handlers) and replace them with the correct new constants ( or  variables from the  function's return value).
-     - Why fix this issue and what will be achieved with the fix? This will resolve the immediate problem of n8n workflows being rate-limited and make the API usable for internal automation. It will also fix the broken state of the code.
+        1. Create the new route file: .
+        2. Implement the  handler in this file. It should:
+           - Authenticate the request.
+           - Find the approved request in the  collection.
+           - Verify the request status is .
+           - Re-validate the payload against the stored hash to prevent tampering.
+           - Execute the tool using the existing  logic.
+           - Update the request status to  and store the result.
+        3. Thoroughly test all three approval lifecycle endpoints together.
+     - Why fix this issue and what will be achieved with the fix? This will complete the human-in-the-loop governance feature, allowing high-risk operations to be safely requested, reviewed, approved, and executed.
      - Status:  IN PROGRESS
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? backend
      - Blocked on other issue: None
 
   - Issue 2: 
-     - Attempted fixes: The user initially pointed out that an in-memory  for rate limiting is not suitable for a serverless environment like Vercel. The agent's subsequent changes did not address this underlying architectural flaw.
+     - Attempted fixes: None in this session. The agent fixed immediate rate-limiting bugs but did not address the underlying architectural issue noted in the previous handover.
      - Next debug checklist:
-        1. Propose a new architecture for rate limiting that uses a persistent store.
-        2. Good candidates are Redis (if available) or a dedicated collection in the existing MongoDB database.
-        3. The new implementation would involve reading/writing request timestamps from the database instead of the in-memory .
-     - Why fix this issue and what will be achieved with the fix? This will make the rate-limiting feature robust and reliable, ensuring it works correctly even when the application scales across multiple serverless instances.
+        1. Propose and implement a persistent rate-limiting store (e.g., using a dedicated MongoDB collection or Redis if available).
+        2. Refactor the  function in  to use this new persistent store instead of the in-memory .
+     - Why fix this issue and what will be achieved with the fix? This will make the rate-limiting feature robust and reliable in a stateless, serverless environment like Vercel, preventing inconsistent behavior when the app scales.
      - Status:  NOT STARTED
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? backend
-     - Blocked on other issue: Issue 1
+     - Blocked on other issue: None
 
 **In progress Task List**:
-None. The current work is classified as an issue fix.
+- Task 1:  Complete the Approval Lifecycle Endpoints
+   - Where to resume: Create the file  and implement its  handler.
+   - What will be achieved with this? A complete, testable workflow for requesting, approving, and executing high-risk operations.
+   - Status:  IN PROGRESS
+   - Should Test frontend/backend/both after fix? backend
+   - Blocked on something: None
 
 **Upcoming and Future Tasks**
-- Implement a video placeholder in the device mockups on the landing page once the user provides the video file.
+- There are no other explicit upcoming tasks mentioned by the user. The next logical step after completing the current feature would be to address the P1 issue regarding serverless-safe rate limiting.
 
 **Completed work in this session**
-- **Ops Control Plane V1.0-V1.3**:
-  - Implemented the core endpoint  with idempotency, audit logging, and  mode.
-  - Implemented tools: , , , .
-  - Added backend hardening: structured logging, improved error responses, and a  health check endpoint.
-  - Fixed security vulnerabilities: Added constant-time auth comparison and IP-based rate limiting ().
-  - Implemented scoped API keys and a new  orchestrator tool (, ).
-- **Critical Bug Fixes**:
-  - Fixed a validation bug by refactoring the API to accept both flat and nested request argument formats for backward compatibility ().
-- **UI/UX Mockup Implementation**:
-  - Iteratively designed the homepage hero section, starting with an iPhone mockup, changing to a laptop+iPhone mockup, and finally reverting to a cleaner, larger, hand-held iPhone mockup.
-  - Created and modified , , and .
-  - Used CSS techniques to crop a source image to remove unwanted background and text elements.
-- **Documentation**:
-  - Created .
-  - Created  with detailed instructions for configuring n8n workflows to use the ops endpoint.
-
-- Recently completed:
-  - Validation schema refactor to support both new  and legacy  formats. (DONE)
-  - Implementation of scoped API keys and the  tool. (DONE)
+- **Rate Limiting Fixes**: Fixed broken rate-limit logic and removed rate limiting for authenticated  requests in .
+- **Tool Enhancement & Documentation**: Updated the  tool and created extensive documentation (, ) to establish it as the canonical onboarding path.
+- **Observability Suite**:
+    - Implemented  schema () and integrated it into the  endpoint.
+    - Created the metrics endpoint: .
+    - Created log query endpoints:  and .
+- **AI-Agent Enablement**:
+    - Created the Tool Registry () and refactored logic into a shared module ().
+    - Made the  endpoint registry-driven for enhanced security.
+    - Implemented Plan Mode in the  endpoint.
+- **Governance**:
+    - Implemented Approval Gates for high-risk tools within the  endpoint.
+    - Began implementation of a full approval lifecycle system.
+- **Code Quality**: Fixed several ESLint errors and ensured the build passes.
 
 **Earlier issues found/mentioned but not fixed**
-None.
+- The core architectural issue of using an in-memory  for rate limiting in a serverless environment remains unresolved. It was acknowledged in the previous handover but deferred in favor of new feature development requested by the user.
 
 **Known issue recurrence from previous fork**
-- Issue recurrence in previous fork: None
-- Recurrence count: 0
-- Status: RESOLVED
+  - Issue recurrence in previous fork: None
+  - Recurrence count: 0
+  - Status: RESOLVED
 
 **Code Architecture**
 
@@ -102,61 +119,67 @@ None.
 **Key Technical Concepts**
 - **Backend**: Next.js API Routes, Node.js
 - **Database**: MongoDB
-- **API Design**: Idempotency, Audit Logging, Scoped API Keys, Rate Limiting, Backward Compatibility for request schemas.
+- **API Design**: Idempotency, Audit Logging, Scoped API Keys, Rate Limiting, Service Discovery (Tool Registry), Plan vs. Execute Modes, Approval Gates, Fire-and-Forget Eventing.
 - **Schema Validation**: Zod
-- **Security**: Constant-time comparison for secrets ().
-- **Frontend**: React, Next.js, Tailwind CSS, shadcn/ui.
+- **Security**: Constant-time comparison for secrets, registry-driven execution.
 
 **key DB schema**
-- : 
-- : 
+- : (Legacy) 
+- : (Legacy) 
+- : (New) 
+- : (New) 
 
 **changes in tech stack**
 None.
 
 **All files of reference**
-- : The central file for this entire feature. It's currently in a broken state due to a half-finished refactor.
-- : Directory containing all logic for the Ops Control Plane.
-- : The new orchestrator tool.
-- : Defines environment variables and now also the API key scopes.
-- : The hero component for the landing page.
-- : The component displaying the hand-held phone mockup.
-- : Documentation for the n8n integration.
+- : The most critical and most modified file, containing logic for execution, planning, and approval gates.
+- : New shared module defining all available tools and their metadata.
+- : New endpoint that serves the tool registry.
+- : New schema for detailed event logging.
+- : New endpoint for querying event logs.
+- : New endpoint for observability metrics.
+- : New schema for the approval workflow.
+- : Directory for the new approval workflow endpoints.
 
 **Areas that need refactoring**:
-- The rate-limiting logic in  needs to be moved from an in-memory  to a persistent data store (like MongoDB or Redis) to be effective in a serverless environment.
+- The rate-limiting logic in  still uses an in-memory  and should be refactored to use a persistent store (like MongoDB) to be reliable in a serverless environment.
 
 **key api endpoints**
-- : Health check and tool listing endpoint.
-- : The main endpoint for executing operational tools.
-- : A simple health check endpoint.
+- : Execute a tool (or generate a plan).
+- : Discover available tools.
+- : Query execution event logs.
+- : Get a single execution log.
+- : Get aggregated observability metrics.
+- : Create a request for a high-risk operation.
+- : Approve a pending request.
+- : (To be created) Execute an approved request.
 
 **Critical Info for New Agent**
-Your immediate priority (P0) is to fix the broken rate-limiting implementation in . The code was left in a non-working state mid-refactor. You need to complete the transition to using  and  and ensure all old references are removed.
+Your immediate P0 task is to complete the approval lifecycle feature. You need to create the  endpoint. This involves creating the file  and implementing the logic to find an approved request, validate it, execute the associated tool, and update its status. Once this is done, you should use the backend testing agent to verify the entire create-approve-execute workflow.
 
-After fixing the immediate bug, be aware of the more significant architectural flaw (P1): the rate-limiter uses an in-memory  and is not suitable for a stateless, serverless environment like Vercel. You should plan to replace this with a database-backed solution (e.g., using MongoDB).
-
-The API has evolved to support multiple request formats for backward compatibility; the  function in the  route handles this normalization.
+Also, be aware of the P1 architectural issue: the current rate-limiter is not suitable for a serverless environment and should be replaced with a database-backed solution in the future.
 
 **documents created in this job**
 - 
 - 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Msg 399):** Reported that the n8n workflow is hitting rate limits on the  ops endpoint and asked for a fix. (IN PROGRESS)
-2.  **User (Msg 368):** Reported a validation schema bug where the API was checking for an old request format. (COMPLETED)
-3.  **User (Msg 307):** Requested major sustainability improvements: smarter rate-limiting, scoped API keys, and a new  tool. (COMPLETED)
-4.  **User (Msg 276):** Requested security fixes: a constant-time comparison for auth and rate-limiting. (COMPLETED)
-5.  **User (Msg 259):** Asked the agent to create documentation for n8n configuration and harden the backend with better logging and error responses since it couldn't edit n8n directly. (COMPLETED)
-6.  **User (Msg 257):** Asked for help implementing changes in an n8n workflow. (COMPLETED - Agent provided guidance)
-7.  **User (Msg 242):** Reported a critical validation bug blocking all ops tool executions and provided detailed instructions for the fix. (COMPLETED)
-8.  **User (Msg 221):** Requested to clean up the iPhone mockup image, removing the background and making the phone/hand larger. (COMPLETED)
-9.  **User (Msg 212):** Scrapped the laptop+phone mockup and asked to revert to the previous iPhone-only design, providing a new image. (COMPLETED)
-10. **User (Msg 199):** Expressed dissatisfaction with the laptop+phone mockup, pointing out white parts that needed to be removed. (COMPLETED)
+1. **User (Msg 359):** Requested implementation of the approval lifecycle endpoints (POST /requests, POST /requests/:id/approve, POST /requests/:id/execute) using a Supabase schema. (IN PROGRESS - Agent is using MongoDB instead).
+2. **User (Msg 342):** Requested a metrics & monitoring endpoint (). (COMPLETED)
+3. **User (Msg 303):** Requested implementation of approval gates for high-risk tools in the  endpoint. (COMPLETED)
+4. **User (Msg 264):** Requested to lock down the  endpoint to be strictly registry-driven. (COMPLETED)
+5. **User (Msg 243):** Pointed out ESLint errors in two files that needed fixing. (COMPLETED)
+6. **User (Msg 200):** Requested Plan Mode support in the  endpoint. (COMPLETED)
+7. **User (Msg 198):** Asked the agent to save changes to GitHub with a specific PR title. (COMPLETED - Agent correctly responded it cannot do this and provided a summary).
+8. **User (Msg 178):** Requested the Ops Tool Registry endpoint (). (COMPLETED)
+9. **User (Msg 173):** Asked to enhance the new documentation with specific sections about the canonical path and deprecation warnings. (COMPLETED)
+10. **User (Msg 166):** Requested documentation for  as the canonical onboarding path. (COMPLETED)
 
 **Project Health Check:**
-- Broken:  is currently non-functional due to a half-completed refactor of the rate-limiting logic.
+- Broken: None. The application is functional.
 - Mocked: None.
+- In-Progress: The approval lifecycle feature is partially built.
 
 **3rd Party Integrations**
 - **Stripe:** For billing.
@@ -166,14 +189,14 @@ The API has evolved to support multiple request formats for backward compatibili
 **Testing status**
 - Testing agent used after significant changes: YES
 - Troubleshoot agent used after agent stuck in loop: NO
-- Test files created: None are persisted in the repo.
-- Known regressions: The  endpoint is likely broken or has incorrect rate-limit headers due to the unfinished refactor.
+- Test files created: None are persisted.
+- Known regressions: None.
 
 **Credentials to test flow:**
-- Ops endpoint requires an API key in the  header.
-- The system is configured for two keys,  and , which should be set in the  file. A fallback to  also exists.
+- All internal API endpoints require an API key in the  header.
+- The  file is configured with  and other keys (, ).
 
 **What agent forgot to execute**
-The agent did not fully address the user's concern about the rate-limiting implementation being unsuitable for a serverless environment. While it attempted a fix by changing the rate limit identifier, it did not replace the non-scalable in-memory . The current task of fixing the rate-limit constants was also left unfinished.
+The agent has not forgotten any direct requests. It is currently in the middle of implementing the multi-step approval lifecycle feature as requested. The longer-term architectural task of refactoring the rate limiter has been deferred, but not forgotten, as it was not prioritized by the user in this session.
 
 </analysis>

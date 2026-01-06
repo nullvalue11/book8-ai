@@ -20,7 +20,7 @@ import os
 from datetime import datetime
 
 # Configuration
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://ops-api-internal.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://ops-command-9.preview.emergentagent.com')
 API_ENDPOINT = f"{BASE_URL}/api/internal/ops/tools"
 AUTH_HEADER = "x-book8-internal-secret"
 AUTH_SECRET = "ops-dev-secret-change-me"  # From .env file

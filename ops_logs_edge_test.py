@@ -7,7 +7,7 @@ import requests
 import json
 
 # Configuration
-BASE_URL = "https://ops-api-internal.preview.emergentagent.com"
+BASE_URL = "https://ops-command-9.preview.emergentagent.com"
 API_ENDPOINT = f"{BASE_URL}/api/internal/ops/logs"
 AUTH_HEADER = "x-book8-internal-secret"
 AUTH_SECRET = "ops-dev-secret-change-me"
