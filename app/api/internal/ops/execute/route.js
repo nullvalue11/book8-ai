@@ -653,6 +653,8 @@ const MetaSchema = z.object({
   requestId: z.string().min(1, 'meta.requestId is required'),
   dryRun: z.boolean().optional().default(false),
   mode: z.enum(['plan', 'execute']).optional().default('execute'),
+  approved: z.boolean().optional().default(false), // Pre-approval flag for high-risk tools
+  approvalToken: z.string().optional(), // Optional approval token for audit trail
   actor: z.object({
     type: z.enum(['system', 'user']),
     id: z.string()
