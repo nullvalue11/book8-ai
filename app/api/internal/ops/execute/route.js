@@ -128,6 +128,291 @@ const TOOL_SCOPES = {
   'voice.smokeTest': 'voice.test',
 }
 
+// ============================================================================
+// Plan Mode - Execution Plan Metadata
+// ============================================================================
+
+/**
+ * Tool execution plan metadata
+ * Defines what each tool will do without actually executing
+ */
+const TOOL_PLANS = {
+  'tenant.bootstrap': {
+    description: 'Complete tenant onboarding orchestration',
+    steps: [
+      { 
+        order: 1, 
+        name: 'tenant.ensure', 
+        description: 'Create or verify tenant record exists',
+        mutates: true,
+        reversible: true,
+        estimatedMs: 50
+      },
+      { 
+        order: 2, 
+        name: 'billing.validateStripeConfig', 
+        description: 'Validate Stripe configuration',
+        mutates: false,
+        reversible: true,
+        estimatedMs: 200,
+        skippable: true
+      },
+      { 
+        order: 3, 
+        name: 'voice.smokeTest', 
+        description: 'Test voice service endpoints',
+        mutates: false,
+        reversible: true,
+        estimatedMs: 200,
+        skippable: true
+      },
+      { 
+        order: 4, 
+        name: 'tenant.provisioningSummary', 
+        description: 'Get provisioning state summary',
+        mutates: false,
+        reversible: true,
+        estimatedMs: 20
+      }
+    ],
+    sideEffects: [
+      { type: 'database', operation: 'upsert', collection: 'businesses', description: 'Creates or updates business record' },
+      { type: 'database', operation: 'insert', collection: 'ops_audit_logs', description: 'Logs execution audit trail' },
+      { type: 'database', operation: 'insert', collection: 'ops_event_logs', description: 'Logs execution event' }
+    ],
+    requiredSecrets: [
+      { name: 'MONGO_URL', description: 'Database connection', required: true },
+      { name: 'STRIPE_SECRET_KEY', description: 'Stripe API access', required: false, skippableWith: 'skipBillingCheck' },
+      { name: 'CORE_API_URL', description: 'Voice service endpoint', required: false, skippableWith: 'skipVoiceTest' }
+    ],
+    estimatedRisk: 'medium',
+    estimatedDurationMs: 400,
+    idempotent: true,
+    dryRunSupported: true
+  },
+  'tenant.ensure': {
+    description: 'Create or verify tenant record',
+    steps: [
+      { order: 1, name: 'checkExists', description: 'Check if business exists in database', mutates: false, estimatedMs: 10 },
+      { order: 2, name: 'createOrUpdate', description: 'Create business if not exists', mutates: true, estimatedMs: 30 }
+    ],
+    sideEffects: [
+      { type: 'database', operation: 'upsert', collection: 'businesses', description: 'Creates or updates business record' }
+    ],
+    requiredSecrets: [
+      { name: 'MONGO_URL', description: 'Database connection', required: true }
+    ],
+    estimatedRisk: 'low',
+    estimatedDurationMs: 50,
+    idempotent: true,
+    dryRunSupported: true
+  },
+  'billing.validateStripeConfig': {
+    description: 'Validate Stripe environment configuration',
+    steps: [
+      { order: 1, name: 'checkKeys', description: 'Verify Stripe API keys are configured', mutates: false, estimatedMs: 5 },
+      { order: 2, name: 'checkMode', description: 'Determine test vs live mode', mutates: false, estimatedMs: 5 },
+      { order: 3, name: 'validatePrices', description: 'Verify price IDs exist in Stripe', mutates: false, estimatedMs: 150 }
+    ],
+    sideEffects: [],
+    requiredSecrets: [
+      { name: 'STRIPE_SECRET_KEY', description: 'Stripe API access', required: true },
+      { name: 'STRIPE_PRICE_MONTHLY', description: 'Monthly price ID', required: false },
+      { name: 'STRIPE_PRICE_YEARLY', description: 'Yearly price ID', required: false }
+    ],
+    estimatedRisk: 'low',
+    estimatedDurationMs: 200,
+    idempotent: true,
+    dryRunSupported: false
+  },
+  'voice.smokeTest': {
+    description: 'Health check voice/AI calling services',
+    steps: [
+      { order: 1, name: 'checkCoreApi', description: 'Test core API health endpoint', mutates: false, estimatedMs: 50 },
+      { order: 2, name: 'checkAgentAvailability', description: 'Test agent availability endpoint', mutates: false, estimatedMs: 50 },
+      { order: 3, name: 'checkAgentBook', description: 'Test agent booking endpoint', mutates: false, estimatedMs: 50 },
+      { order: 4, name: 'checkBillingUsage', description: 'Test billing usage endpoint', mutates: false, estimatedMs: 50 }
+    ],
+    sideEffects: [],
+    requiredSecrets: [
+      { name: 'CORE_API_URL', description: 'Core API base URL', required: true },
+      { name: 'CORE_API_INTERNAL_SECRET', description: 'Internal API auth', required: true }
+    ],
+    estimatedRisk: 'low',
+    estimatedDurationMs: 200,
+    idempotent: true,
+    dryRunSupported: false
+  },
+  'tenant.provisioningSummary': {
+    description: 'Get complete tenant provisioning state',
+    steps: [
+      { order: 1, name: 'fetchBusiness', description: 'Load business record', mutates: false, estimatedMs: 10 },
+      { order: 2, name: 'checkSubscription', description: 'Check subscription status', mutates: false, estimatedMs: 5 },
+      { order: 3, name: 'checkCalendar', description: 'Check calendar connection', mutates: false, estimatedMs: 5 },
+      { order: 4, name: 'checkScheduling', description: 'Check scheduling configuration', mutates: false, estimatedMs: 5 },
+      { order: 5, name: 'calculateScore', description: 'Calculate provisioning score', mutates: false, estimatedMs: 5 }
+    ],
+    sideEffects: [],
+    requiredSecrets: [
+      { name: 'MONGO_URL', description: 'Database connection', required: true }
+    ],
+    estimatedRisk: 'low',
+    estimatedDurationMs: 30,
+    idempotent: true,
+    dryRunSupported: false
+  }
+}
+
+/**
+ * Generate execution plan for a tool without executing
+ * @param {string} tool - Tool name
+ * @param {object} args - Tool arguments
+ * @param {object} ctx - Context (dryRun, requestId, etc.)
+ * @returns {object} Execution plan
+ */
+function generateExecutionPlan(tool, args, ctx) {
+  const plan = TOOL_PLANS[tool]
+  
+  if (!plan) {
+    return {
+      ok: false,
+      error: {
+        code: 'NO_PLAN_AVAILABLE',
+        message: `No execution plan available for tool '${tool}'`
+      }
+    }
+  }
+  
+  // Build deterministic execution plan
+  const steps = plan.steps.map(step => {
+    // Check if step can be skipped based on args
+    let willSkip = false
+    let skipReason = null
+    
+    if (step.skippable) {
+      if (step.name === 'billing.validateStripeConfig' && args.skipBillingCheck) {
+        willSkip = true
+        skipReason = 'skipBillingCheck=true'
+      }
+      if (step.name === 'voice.smokeTest' && args.skipVoiceTest) {
+        willSkip = true
+        skipReason = 'skipVoiceTest=true'
+      }
+    }
+    
+    return {
+      ...step,
+      willExecute: !willSkip,
+      skipReason
+    }
+  })
+  
+  // Filter side effects based on what will actually run
+  const sideEffects = plan.sideEffects.filter(effect => {
+    // All database operations for audit/event logs always happen
+    if (effect.collection === 'ops_audit_logs' || effect.collection === 'ops_event_logs') {
+      return true
+    }
+    return true // Include all by default
+  })
+  
+  // Check which secrets are actually required based on args
+  const requiredSecrets = plan.requiredSecrets.map(secret => {
+    let actuallyRequired = secret.required
+    
+    // Check if secret can be skipped
+    if (secret.skippableWith) {
+      if (secret.skippableWith === 'skipBillingCheck' && args.skipBillingCheck) {
+        actuallyRequired = false
+      }
+      if (secret.skippableWith === 'skipVoiceTest' && args.skipVoiceTest) {
+        actuallyRequired = false
+      }
+    }
+    
+    // Check if secret is configured (without revealing value)
+    const isConfigured = checkSecretConfigured(secret.name)
+    
+    return {
+      ...secret,
+      actuallyRequired,
+      isConfigured,
+      status: !actuallyRequired ? 'skipped' : (isConfigured ? 'ready' : 'missing')
+    }
+  })
+  
+  // Calculate estimated duration
+  const estimatedDurationMs = steps
+    .filter(s => s.willExecute)
+    .reduce((sum, s) => sum + (s.estimatedMs || 0), 0)
+  
+  // Determine if plan can execute
+  const missingSecrets = requiredSecrets.filter(s => s.status === 'missing')
+  const canExecute = missingSecrets.length === 0
+  
+  return {
+    ok: true,
+    mode: 'plan',
+    tool,
+    description: plan.description,
+    args: {
+      provided: args,
+      validated: true
+    },
+    plan: {
+      steps,
+      stepCount: steps.length,
+      stepsToExecute: steps.filter(s => s.willExecute).length,
+      stepsToSkip: steps.filter(s => !s.willExecute).length
+    },
+    sideEffects,
+    requiredSecrets,
+    risk: {
+      level: plan.estimatedRisk,
+      mutates: steps.some(s => s.willExecute && s.mutates),
+      reversible: steps.every(s => !s.willExecute || s.reversible !== false)
+    },
+    timing: {
+      estimatedDurationMs,
+      idempotent: plan.idempotent,
+      dryRunSupported: plan.dryRunSupported
+    },
+    readiness: {
+      canExecute,
+      missingSecrets: missingSecrets.map(s => s.name),
+      warnings: missingSecrets.length > 0 
+        ? [`Missing required secrets: ${missingSecrets.map(s => s.name).join(', ')}`]
+        : []
+    },
+    nextStep: canExecute 
+      ? 'Call with mode="execute" to run this plan'
+      : `Configure missing secrets first: ${missingSecrets.map(s => s.name).join(', ')}`
+  }
+}
+
+/**
+ * Check if a secret/env var is configured (without revealing value)
+ */
+function checkSecretConfigured(name) {
+  switch (name) {
+    case 'MONGO_URL':
+      return !!env.MONGO_URL
+    case 'STRIPE_SECRET_KEY':
+      return !!env.STRIPE_SECRET_KEY
+    case 'STRIPE_PRICE_MONTHLY':
+      return !!env.STRIPE_PRICE_MONTHLY
+    case 'STRIPE_PRICE_YEARLY':
+      return !!env.STRIPE_PRICE_YEARLY
+    case 'CORE_API_URL':
+      return !!env.CORE_API_URL
+    case 'CORE_API_INTERNAL_SECRET':
+      return !!env.CORE_API_INTERNAL_SECRET
+    default:
+      // For unknown secrets, check if they exist in env object
+      return env[name] !== undefined
+  }
+}
+
 /**
  * Get API key scopes from environment
  * Supports multiple keys with different permission levels
@@ -360,6 +645,7 @@ function logError(requestId, code, message, details) {
 const MetaSchema = z.object({
   requestId: z.string().min(1, 'meta.requestId is required'),
   dryRun: z.boolean().optional().default(false),
+  mode: z.enum(['plan', 'execute']).optional().default('execute'),
   actor: z.object({
     type: z.enum(['system', 'user']),
     id: z.string()
@@ -376,6 +662,7 @@ const NewRequestSchema = z.object({
 const LegacyRequestSchema = z.object({
   requestId: z.string().min(1, 'requestId is required'),
   dryRun: z.boolean().optional().default(false),
+  mode: z.enum(['plan', 'execute']).optional().default('execute'),
   tool: z.string().min(1, 'tool is required'),
   args: z.record(z.any()).optional(),
   input: z.record(z.any()).optional(),
@@ -390,7 +677,7 @@ const LegacyRequestSchema = z.object({
 /**
  * Detect and parse request format
  * Supports both new format { tool, payload, meta } and legacy formats
- * @returns { tool, args, requestId, dryRun, actor, format }
+ * @returns { tool, args, requestId, dryRun, mode, actor, format }
  */
 function parseRequest(body) {
   // Try new format first: { tool, payload, meta }
@@ -403,6 +690,7 @@ function parseRequest(body) {
         args: result.data.payload,
         requestId: result.data.meta.requestId,
         dryRun: result.data.meta.dryRun,
+        mode: result.data.meta.mode || 'execute',
         actor: result.data.meta.actor || { type: 'system', id: 'n8n-workflow' },
         format: 'new'
       }
@@ -425,12 +713,14 @@ function parseRequest(body) {
     const data = legacyResult.data
     // Extract args from legacy formats
     const { args, source } = extractLegacyArgs(body)
+    // Legacy format also supports mode via body.mode
     return {
       valid: true,
       tool: data.tool,
       args,
       requestId: data.requestId,
       dryRun: data.dryRun,
+      mode: body.mode || 'execute',
       actor: data.actor || { type: 'system', id: 'n8n-workflow' },
       format: `legacy-${source}`
     }
@@ -707,11 +997,13 @@ export async function POST(request) {
     requestId = parseResult.requestId
     tool = parseResult.tool
     dryRun = parseResult.dryRun
+    const mode = parseResult.mode || 'execute'
     actor = parseResult.actor
     const args = parseResult.args
     argsSource = parseResult.format
     
     logRequest(requestId, tool, dryRun, args, argsSource, keyId)
+    log(requestId, 'info', `Mode: ${mode}`, { dryRun })
     
     // 5. Check tool permission based on API key scopes
     const permission = checkToolPermission(auth.scopes, tool)
@@ -733,7 +1025,61 @@ export async function POST(request) {
       )
     }
     
-    // 6. Connect to database
+    // 5b. PLAN MODE - Return execution plan without executing
+    if (mode === 'plan') {
+      log(requestId, 'info', `Generating execution plan for tool: ${tool}`)
+      
+      // Validate tool is allowlisted first
+      if (!isToolAllowed(tool)) {
+        const availableTools = getToolNames()
+        return errorResponse(
+          requestId, tool, dryRun,
+          'TOOL_NOT_ALLOWED',
+          `Tool '${tool}' is not in the allowlist`,
+          { availableTools, requestedTool: tool },
+          ERROR_HELP.TOOL_NOT_ALLOWED
+        )
+      }
+      
+      // Validate args for plan mode too
+      const argsValidation = validateToolArgs(tool, args)
+      if (!argsValidation.valid) {
+        return errorResponse(
+          requestId, tool, dryRun,
+          'ARGS_VALIDATION_ERROR',
+          'Tool arguments validation failed',
+          {
+            errors: argsValidation.errors,
+            receivedArgs: Object.keys(args),
+            argsFormat: argsSource
+          },
+          ERROR_HELP.ARGS_VALIDATION_ERROR
+        )
+      }
+      
+      // Generate execution plan
+      const plan = generateExecutionPlan(tool, argsValidation.data, { dryRun, requestId })
+      
+      const durationMs = Date.now() - startedAt.getTime()
+      
+      return NextResponse.json({
+        ok: plan.ok,
+        requestId,
+        tool,
+        mode: 'plan',
+        dryRun,
+        result: plan,
+        error: plan.error || null,
+        generatedAt: new Date().toISOString(),
+        durationMs,
+        _meta: {
+          version: VERSION,
+          timestamp: new Date().toISOString()
+        }
+      })
+    }
+    
+    // 6. Connect to database (only for execute mode)
     database = await connect()
     
     // 7. Check idempotency - return cached result if exists

@@ -508,7 +508,7 @@ export async function getEventStats(db, options = {}) {
 // Default Export
 // =============================================================================
 
-export default {
+const opsEventLog = {
   COLLECTION_NAME,
   STATUS_VALUES,
   ACTOR_VALUES,
@@ -524,3 +524,5 @@ export default {
   getEventByRequestId,
   getEventStats
 }
+
+export default opsEventLog
