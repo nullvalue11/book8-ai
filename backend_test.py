@@ -3,10 +3,7 @@
 Backend Test Suite for Book8 AI - Approval Gates Feature Testing
 Tests the Approval Gates feature in POST /api/internal/ops/execute
 
-This test correctly interprets the approval gates behavior:
-- High-risk tools require approval (403 with approval_required)
-- Pre-approved requests bypass approval gates (proceed to next validation stage)
-- Tool allowlist validation happens after approval gates
+Final comprehensive test with proper error handling and return values.
 """
 
 import requests
@@ -39,7 +36,7 @@ def make_request(payload, test_name):
         response = requests.post(API_ENDPOINT, json=payload, headers=headers, timeout=30)
         return response
     except Exception as e:
-        log_test(f"{test_name} - Request", "FAIL", f"Error: {str(e)}")
+        log_test(f"{test_name} - Request Error", "FAIL", f"Error: {str(e)}")
         return None
 
 def test_medium_risk_tool_executes_normally():
@@ -290,14 +287,23 @@ def main():
     print()
     
     # Run all test cases
-    test_results = []
+    test_functions = [
+        test_medium_risk_tool_executes_normally,
+        test_high_risk_tool_requires_approval,
+        test_high_risk_tool_with_pre_approval,
+        test_low_risk_tool_no_approval,
+        test_legacy_format_with_approval,
+        test_legacy_format_with_pre_approval
+    ]
     
-    test_results.append(test_medium_risk_tool_executes_normally())
-    test_results.append(test_high_risk_tool_requires_approval())
-    test_results.append(test_high_risk_tool_with_pre_approval())
-    test_results.append(test_low_risk_tool_no_approval())
-    test_results.append(test_legacy_format_with_approval())
-    test_results.append(test_legacy_format_with_pre_approval())
+    test_results = []
+    for test_func in test_functions:
+        try:
+            result = test_func()
+            test_results.append(result if result is not None else False)
+        except Exception as e:
+            print(f"❌ Test function {test_func.__name__} failed with exception: {str(e)}")
+            test_results.append(False)
     
     # Summary
     print("\n" + "=" * 50)
