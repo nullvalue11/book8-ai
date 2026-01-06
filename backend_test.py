@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://ops-api-internal.preview.emergentagent.com"
+BASE_URL = "https://ops-command-9.preview.emergentagent.com"
 API_ENDPOINT = f"{BASE_URL}/api/internal/ops/execute"
 AUTH_HEADER = "ops-dev-secret-change-me"
 
