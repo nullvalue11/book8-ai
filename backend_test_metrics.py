@@ -396,10 +396,13 @@ def test_invalid_time_parameters():
     headers = {AUTH_HEADER: AUTH_TOKEN}
     params = {"since": "invalid-date"}
     
-    response = make_request("GET", "/api/internal/ops/metrics", headers=headers, params=params)
+    # Use requests directly to handle error responses
+    url = f"{BASE_URL}/api/internal/ops/metrics"
     
-    if not response:
-        log_test("Invalid Time Parameters", "FAIL", "Request failed")
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+    except requests.exceptions.RequestException as e:
+        log_test("Invalid Time Parameters", "FAIL", f"Request failed: {e}")
         return False
     
     if response.status_code != 400:
