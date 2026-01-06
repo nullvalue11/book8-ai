@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 """
 Backend Test Suite for Book8 AI - Approval Gates Feature Testing
-Tests the Approval Gates feature in POST /api/internal/ops/execute
-
-Final comprehensive test with proper error handling and return values.
+Simplified and focused test for the Approval Gates feature
 """
 
 import requests
 import json
 import sys
-import uuid
 from datetime import datetime
 
 # Configuration
@@ -17,33 +14,24 @@ BASE_URL = "https://ops-api-internal.preview.emergentagent.com"
 API_ENDPOINT = f"{BASE_URL}/api/internal/ops/execute"
 AUTH_HEADER = "ops-dev-secret-change-me"
 
-def log_test(test_name, status, details=""):
-    """Log test results with timestamp"""
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    status_symbol = "✅" if status == "PASS" else "❌"
-    print(f"[{timestamp}] {status_symbol} {test_name}")
-    if details:
-        print(f"    {details}")
-
-def make_request(payload, test_name):
-    """Make API request with proper headers"""
+def test_approval_gates():
+    """Test all approval gates scenarios"""
+    
     headers = {
         "Content-Type": "application/json",
         "x-book8-internal-secret": AUTH_HEADER
     }
     
-    try:
-        response = requests.post(API_ENDPOINT, json=payload, headers=headers, timeout=30)
-        return response
-    except Exception as e:
-        log_test(f"{test_name} - Request Error", "FAIL", f"Error: {str(e)}")
-        return None
-
-def test_medium_risk_tool_executes_normally():
-    """Test Case 1: Medium-Risk Tool Executes Normally"""
-    print("\n=== Test Case 1: Medium-Risk Tool Executes Normally ===")
+    print("🔒 APPROVAL GATES FEATURE TESTING")
+    print("=" * 50)
+    print(f"Testing endpoint: {API_ENDPOINT}")
+    print()
     
-    payload = {
+    test_results = []
+    
+    # Test 1: Medium-Risk Tool Executes Normally
+    print("=== Test 1: Medium-Risk Tool Executes Normally ===")
+    payload1 = {
         "tool": "tenant.bootstrap",
         "payload": {
             "businessId": "test-biz",
@@ -51,164 +39,125 @@ def test_medium_risk_tool_executes_normally():
             "skipBillingCheck": True
         },
         "meta": {
-            "requestId": f"approval-test-medium-{int(datetime.now().timestamp())}"
+            "requestId": f"test-medium-{int(datetime.now().timestamp())}"
         }
     }
     
-    response = make_request(payload, "Medium-Risk Tool")
-    if not response:
-        return False
-    
     try:
-        data = response.json()
+        response1 = requests.post(API_ENDPOINT, json=payload1, headers=headers, timeout=30)
+        data1 = response1.json()
         
-        # Should execute normally without approval
-        if response.status_code == 200 and data.get("ok") == True:
-            log_test("Medium-Risk Tool Executes Normally", "PASS", "No approval required (risk=medium)")
-            return True
+        if response1.status_code == 200 and data1.get("ok") == True:
+            print("✅ PASS: Medium-risk tool executed without approval")
+            test_results.append(True)
         else:
-            log_test("Medium-Risk Tool Executes Normally", "FAIL", f"Status: {response.status_code}, ok: {data.get('ok')}")
-            return False
-            
+            print(f"❌ FAIL: Expected 200/ok=true, got {response1.status_code}/ok={data1.get('ok')}")
+            test_results.append(False)
     except Exception as e:
-        log_test("Medium-Risk Tool Executes Normally", "FAIL", f"JSON parse error: {str(e)}")
-        return False
-
-def test_high_risk_tool_requires_approval():
-    """Test Case 2: High-Risk Tool Requires Approval"""
-    print("\n=== Test Case 2: High-Risk Tool Requires Approval ===")
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
     
-    payload = {
+    # Test 2: High-Risk Tool Requires Approval
+    print("\n=== Test 2: High-Risk Tool Requires Approval ===")
+    payload2 = {
         "tool": "tenant.delete",
         "payload": {
             "businessId": "test-biz",
             "confirmationCode": "DELETE-123"
         },
         "meta": {
-            "requestId": f"approval-test-high-{int(datetime.now().timestamp())}"
+            "requestId": f"test-high-{int(datetime.now().timestamp())}"
         }
     }
     
-    response = make_request(payload, "High-Risk Tool")
-    if not response:
-        return False
-    
     try:
-        data = response.json()
+        response2 = requests.post(API_ENDPOINT, json=payload2, headers=headers, timeout=30)
+        data2 = response2.json()
         
-        # Should require approval (403 status with approval_required)
-        if response.status_code == 403 and data.get("status") == "approval_required":
-            log_test("High-Risk Tool Requires Approval", "PASS", "HTTP 403 with status='approval_required'")
+        if response2.status_code == 403 and data2.get("status") == "approval_required":
+            print("✅ PASS: High-risk tool requires approval (403 + approval_required)")
             
-            # Validate approval response structure
-            approval = data.get("approval", {})
+            # Validate approval structure
+            approval = data2.get("approval", {})
             required_fields = ["type", "reason", "tool", "payload", "howToApprove", "approvalPayloadExample"]
             missing_fields = [field for field in required_fields if field not in approval]
             
-            if missing_fields:
-                log_test("Approval Response Structure", "FAIL", f"Missing fields: {missing_fields}")
-                return False
-            
-            # Validate specific values
-            if approval.get("type") != "human":
-                log_test("Approval Type", "FAIL", f"Expected 'human', got {approval.get('type')}")
-                return False
-            
-            if "risk=high" not in approval.get("reason", ""):
-                log_test("Approval Reason", "FAIL", f"Expected 'risk=high' in reason")
-                return False
-            
-            log_test("Approval Response Structure", "PASS", "All required fields present and valid")
-            return True
+            if not missing_fields and approval.get("type") == "human" and "risk=high" in approval.get("reason", ""):
+                print("✅ PASS: Approval response structure valid")
+                test_results.append(True)
+            else:
+                print(f"❌ FAIL: Invalid approval structure - missing: {missing_fields}")
+                test_results.append(False)
         else:
-            log_test("High-Risk Tool Requires Approval", "FAIL", f"Status: {response.status_code}, status: {data.get('status')}")
-            return False
-            
+            print(f"❌ FAIL: Expected 403/approval_required, got {response2.status_code}/{data2.get('status')}")
+            test_results.append(False)
     except Exception as e:
-        log_test("High-Risk Tool Requires Approval", "FAIL", f"JSON parse error: {str(e)}")
-        return False
-
-def test_high_risk_tool_with_pre_approval():
-    """Test Case 3: High-Risk Tool with Pre-Approval (Bypasses Approval Gate)"""
-    print("\n=== Test Case 3: High-Risk Tool with Pre-Approval ===")
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
     
-    payload = {
+    # Test 3: High-Risk Tool with Pre-Approval
+    print("\n=== Test 3: High-Risk Tool with Pre-Approval ===")
+    payload3 = {
         "tool": "tenant.delete",
         "payload": {
             "businessId": "test-biz",
             "confirmationCode": "DELETE-123"
         },
         "meta": {
-            "requestId": f"approval-test-approved-{int(datetime.now().timestamp())}",
+            "requestId": f"test-approved-{int(datetime.now().timestamp())}",
             "approved": True,
             "approvalToken": "manual-review-token"
         }
     }
     
-    response = make_request(payload, "High-Risk Tool with Pre-Approval")
-    if not response:
-        return False
-    
     try:
-        data = response.json()
+        response3 = requests.post(API_ENDPOINT, json=payload3, headers=headers, timeout=30)
+        data3 = response3.json()
         
         # Should NOT return approval_required (approval gate bypassed)
-        if data.get("status") == "approval_required":
-            log_test("Pre-Approval Bypasses Approval Gate", "FAIL", "Still requiring approval despite approved=true")
-            return False
-        
-        # Should proceed to next validation stage (tool allowlist)
-        # Expected: 400 TOOL_NOT_ALLOWED (since tenant.delete is not in legacy allowlist)
-        if response.status_code == 400 and data.get("error", {}).get("code") == "TOOL_NOT_ALLOWED":
-            log_test("Pre-Approval Bypasses Approval Gate", "PASS", "Approval gate bypassed, failed at tool allowlist (expected)")
-            return True
+        if data3.get("status") == "approval_required":
+            print("❌ FAIL: Still requiring approval despite approved=true")
+            test_results.append(False)
+        elif response3.status_code == 400 and data3.get("error", {}).get("code") == "TOOL_NOT_ALLOWED":
+            print("✅ PASS: Approval gate bypassed, failed at tool allowlist (expected)")
+            test_results.append(True)
         else:
-            log_test("Pre-Approval Bypasses Approval Gate", "FAIL", f"Unexpected response: {response.status_code}, error: {data.get('error', {}).get('code')}")
-            return False
-            
+            print(f"❌ FAIL: Unexpected response - {response3.status_code}/{data3.get('error', {}).get('code')}")
+            test_results.append(False)
     except Exception as e:
-        log_test("Pre-Approval Bypasses Approval Gate", "FAIL", f"JSON parse error: {str(e)}")
-        return False
-
-def test_low_risk_tool_no_approval():
-    """Test Case 4: Low-Risk Tool No Approval Needed"""
-    print("\n=== Test Case 4: Low-Risk Tool No Approval Needed ===")
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
     
-    payload = {
+    # Test 4: Low-Risk Tool No Approval Needed
+    print("\n=== Test 4: Low-Risk Tool No Approval Needed ===")
+    payload4 = {
         "tool": "tenant.ensure",
         "payload": {
             "businessId": "test-biz"
         },
         "meta": {
-            "requestId": f"approval-test-low-{int(datetime.now().timestamp())}"
+            "requestId": f"test-low-{int(datetime.now().timestamp())}"
         }
     }
     
-    response = make_request(payload, "Low-Risk Tool")
-    if not response:
-        return False
-    
     try:
-        data = response.json()
+        response4 = requests.post(API_ENDPOINT, json=payload4, headers=headers, timeout=30)
+        data4 = response4.json()
         
-        # Should execute normally without approval
-        if response.status_code != 403 and data.get("status") != "approval_required":
-            log_test("Low-Risk Tool No Approval Needed", "PASS", "No approval required (risk=low)")
-            return True
+        if response4.status_code != 403 and data4.get("status") != "approval_required":
+            print("✅ PASS: Low-risk tool executed without approval")
+            test_results.append(True)
         else:
-            log_test("Low-Risk Tool No Approval Needed", "FAIL", f"Unexpected approval requirement")
-            return False
-            
+            print(f"❌ FAIL: Unexpected approval requirement for low-risk tool")
+            test_results.append(False)
     except Exception as e:
-        log_test("Low-Risk Tool No Approval Needed", "FAIL", f"JSON parse error: {str(e)}")
-        return False
-
-def test_legacy_format_with_approval():
-    """Test Case 6: Legacy Format with Approval"""
-    print("\n=== Test Case 6: Legacy Format with Approval ===")
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
     
-    payload = {
-        "requestId": f"approval-test-legacy-{int(datetime.now().timestamp())}",
+    # Test 5: Legacy Format with Approval
+    print("\n=== Test 5: Legacy Format with Approval ===")
+    payload5 = {
+        "requestId": f"test-legacy-{int(datetime.now().timestamp())}",
         "tool": "tenant.delete",
         "args": {
             "businessId": "test-biz",
@@ -216,31 +165,24 @@ def test_legacy_format_with_approval():
         }
     }
     
-    response = make_request(payload, "Legacy Format with Approval")
-    if not response:
-        return False
-    
     try:
-        data = response.json()
+        response5 = requests.post(API_ENDPOINT, json=payload5, headers=headers, timeout=30)
+        data5 = response5.json()
         
-        # Should still require approval with legacy format
-        if response.status_code == 403 and data.get("status") == "approval_required":
-            log_test("Legacy Format with Approval", "PASS", "Legacy format correctly requires approval")
-            return True
+        if response5.status_code == 403 and data5.get("status") == "approval_required":
+            print("✅ PASS: Legacy format correctly requires approval")
+            test_results.append(True)
         else:
-            log_test("Legacy Format with Approval", "FAIL", f"Status: {response.status_code}, status: {data.get('status')}")
-            return False
-            
+            print(f"❌ FAIL: Legacy format approval failed - {response5.status_code}/{data5.get('status')}")
+            test_results.append(False)
     except Exception as e:
-        log_test("Legacy Format with Approval", "FAIL", f"JSON parse error: {str(e)}")
-        return False
-
-def test_legacy_format_with_pre_approval():
-    """Test Case 7: Legacy Format with Pre-Approval"""
-    print("\n=== Test Case 7: Legacy Format with Pre-Approval ===")
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
     
-    payload = {
-        "requestId": f"approval-test-legacy-approved-{int(datetime.now().timestamp())}",
+    # Test 6: Legacy Format with Pre-Approval
+    print("\n=== Test 6: Legacy Format with Pre-Approval ===")
+    payload6 = {
+        "requestId": f"test-legacy-approved-{int(datetime.now().timestamp())}",
         "tool": "tenant.delete",
         "approved": True,
         "args": {
@@ -249,61 +191,22 @@ def test_legacy_format_with_pre_approval():
         }
     }
     
-    response = make_request(payload, "Legacy Format with Pre-Approval")
-    if not response:
-        return False
-    
     try:
-        data = response.json()
+        response6 = requests.post(API_ENDPOINT, json=payload6, headers=headers, timeout=30)
+        data6 = response6.json()
         
-        # Should bypass approval gate (same as new format)
-        if data.get("status") == "approval_required":
-            log_test("Legacy Format with Pre-Approval", "FAIL", "Legacy format still requiring approval")
-            return False
-        
-        # Should proceed to tool allowlist validation
-        if response.status_code == 400 and data.get("error", {}).get("code") == "TOOL_NOT_ALLOWED":
-            log_test("Legacy Format with Pre-Approval", "PASS", "Legacy format bypasses approval gate")
-            return True
-        else:
-            log_test("Legacy Format with Pre-Approval", "FAIL", f"Unexpected response: {response.status_code}")
-            return False
-            
-    except Exception as e:
-        log_test("Legacy Format with Pre-Approval", "FAIL", f"JSON parse error: {str(e)}")
-        return False
-
-def main():
-    """Run all approval gates tests"""
-    print("🔒 APPROVAL GATES FEATURE TESTING")
-    print("=" * 50)
-    print(f"Testing endpoint: {API_ENDPOINT}")
-    print(f"Auth header: x-book8-internal-secret: {AUTH_HEADER}")
-    print()
-    print("TESTING STRATEGY:")
-    print("- tenant.delete (risk=high) is in registry but not in legacy allowlist")
-    print("- This allows us to test approval gates without full tool execution")
-    print("- Expected flow: Approval Gate → Tool Allowlist → Tool Execution")
-    print()
-    
-    # Run all test cases
-    test_functions = [
-        test_medium_risk_tool_executes_normally,
-        test_high_risk_tool_requires_approval,
-        test_high_risk_tool_with_pre_approval,
-        test_low_risk_tool_no_approval,
-        test_legacy_format_with_approval,
-        test_legacy_format_with_pre_approval
-    ]
-    
-    test_results = []
-    for test_func in test_functions:
-        try:
-            result = test_func()
-            test_results.append(result if result is not None else False)
-        except Exception as e:
-            print(f"❌ Test function {test_func.__name__} failed with exception: {str(e)}")
+        if data6.get("status") == "approval_required":
+            print("❌ FAIL: Legacy format still requiring approval")
             test_results.append(False)
+        elif response6.status_code == 400 and data6.get("error", {}).get("code") == "TOOL_NOT_ALLOWED":
+            print("✅ PASS: Legacy format bypasses approval gate")
+            test_results.append(True)
+        else:
+            print(f"❌ FAIL: Unexpected legacy pre-approval response - {response6.status_code}")
+            test_results.append(False)
+    except Exception as e:
+        print(f"❌ FAIL: Exception - {str(e)}")
+        test_results.append(False)
     
     # Summary
     print("\n" + "=" * 50)
@@ -333,4 +236,4 @@ def main():
         return 1
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(test_approval_gates())
