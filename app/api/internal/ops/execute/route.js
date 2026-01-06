@@ -62,9 +62,16 @@ import {
 import {
   saveOpsEventLog,
   createOpsEventLog,
-  createFromBootstrapResult,
   createFailedEvent
 } from '@/lib/schemas/opsEventLog'
+import {
+  getToolFromRegistry,
+  isToolInRegistry,
+  getRegisteredToolNames,
+  validateToolInput,
+  validateToolOutput,
+  getCanonicalTools
+} from '@/lib/ops/tool-registry'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
