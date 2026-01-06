@@ -22,6 +22,11 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { env } from '@/lib/env'
+import {
+  TOOL_REGISTRY,
+  CATEGORIES,
+  RISK_LEVELS
+} from '@/lib/ops/tool-registry'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
