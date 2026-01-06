@@ -224,13 +224,22 @@ def test_time_range_filtering():
         log_test("Time Range Filtering", "FAIL", f"ok: false - {data.get('error', 'Unknown error')}")
         return False
     
-    # Verify timeRange.since matches provided value
+    # Verify timeRange.since matches provided value (allow for milliseconds difference)
     metrics = data.get('metrics', {})
     time_range = metrics.get('timeRange', {})
     returned_since = time_range.get('since')
     
-    if returned_since != since_date:
-        log_test("Time Range Filtering", "FAIL", f"Expected since: {since_date}, got: {returned_since}")
+    # Parse both dates to compare them properly (handle milliseconds)
+    try:
+        expected_dt = datetime.fromisoformat(since_date.replace('Z', '+00:00'))
+        returned_dt = datetime.fromisoformat(returned_since.replace('Z', '+00:00'))
+        
+        # Allow for small differences due to milliseconds formatting
+        if abs((expected_dt - returned_dt).total_seconds()) > 1:
+            log_test("Time Range Filtering", "FAIL", f"Expected since: {since_date}, got: {returned_since}")
+            return False
+    except ValueError as e:
+        log_test("Time Range Filtering", "FAIL", f"Date parsing error: {e}")
         return False
     
     log_test("Time Range Filtering", "PASS", f"Time range filtering working. Since: {returned_since}")
