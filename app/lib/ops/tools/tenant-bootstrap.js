@@ -300,9 +300,11 @@ export async function execute(args, ctx) {
   }
 }
 
-export default {
+const tenantBootstrap = {
   name: 'tenant.bootstrap',
   description: 'Orchestrate complete tenant onboarding (ensure + billing check + voice test + provisioning summary)',
   schema,
   execute
 }
+
+export default tenantBootstrap
