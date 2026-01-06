@@ -1115,7 +1115,49 @@ export async function POST(request) {
     }
     
     try {
-      // 9. Validate tool is allowlisted
+      // 9. REGISTRY-DRIVEN VALIDATION: Tool must exist in registry
+      // Rule: "If it's not in /ops/tools, it can't be executed"
+      const toolFromRegistry = getToolFromRegistry(tool)
+      
+      if (!toolFromRegistry) {
+        const availableTools = getRegisteredToolNames(false) // Only canonical tools
+        const allTools = getRegisteredToolNames(true) // Including deprecated
+        
+        await saveAuditLog(database, createAuditEntry({
+          requestId, tool, args, actor, dryRun,
+          status: 'failed',
+          error: { 
+            code: 'TOOL_NOT_IN_REGISTRY', 
+            message: `Tool '${tool}' not found in registry. Only registered tools can be executed.`
+          },
+          startedAt,
+          completedAt: new Date()
+        }))
+        
+        return errorResponse(
+          requestId, tool, dryRun,
+          'TOOL_NOT_IN_REGISTRY',
+          `Tool '${tool}' not found in registry`,
+          { 
+            requestedTool: tool,
+            availableTools: availableTools,
+            allRegisteredTools: allTools,
+            hint: 'Only tools defined in GET /api/internal/ops/tools can be executed',
+            registryEndpoint: '/api/internal/ops/tools'
+          },
+          'Check GET /api/internal/ops/tools for available tools. Rule: "If it\'s not in the registry, it can\'t be executed."'
+        )
+      }
+      
+      // 9b. Check if tool is deprecated and log warning
+      if (toolFromRegistry.deprecated) {
+        log(requestId, 'warn', `Using deprecated tool: ${tool}`, {
+          reason: toolFromRegistry.deprecatedReason,
+          replacedBy: toolFromRegistry.replacedBy
+        })
+      }
+      
+      // 9c. Also validate against legacy allowlist (belt and suspenders)
       if (!isToolAllowed(tool)) {
         const availableTools = getToolNames()
         
@@ -1136,7 +1178,38 @@ export async function POST(request) {
         )
       }
       
-      // 10. Validate tool arguments
+      // 10. REGISTRY-DRIVEN INPUT VALIDATION
+      // Validate against registry's inputSchema first
+      const registryValidation = validateToolInput(tool, args)
+      if (!registryValidation.valid) {
+        await saveAuditLog(database, createAuditEntry({
+          requestId, tool, args, actor, dryRun,
+          status: 'failed',
+          error: { 
+            code: 'REGISTRY_VALIDATION_ERROR', 
+            message: 'Input validation failed against registry schema',
+            schemaErrors: registryValidation.errors
+          },
+          startedAt,
+          completedAt: new Date()
+        }))
+        
+        return errorResponse(
+          requestId, tool, dryRun,
+          'REGISTRY_VALIDATION_ERROR',
+          'Input validation failed against tool registry schema',
+          {
+            errors: registryValidation.errors,
+            receivedArgs: Object.keys(args),
+            argsFormat: argsSource,
+            inputSchema: toolFromRegistry.inputSchema,
+            hint: 'Check GET /api/internal/ops/tools for the tool\'s inputSchema'
+          },
+          'Validate input against the tool\'s inputSchema from GET /api/internal/ops/tools'
+        )
+      }
+      
+      // 10b. Also run legacy Zod validation (for additional constraints)
       const argsValidation = validateToolArgs(tool, args)
       if (!argsValidation.valid) {
         await saveAuditLog(database, createAuditEntry({
@@ -1161,19 +1234,38 @@ export async function POST(request) {
       }
       
       // 11. Execute tool
-      log(requestId, 'info', `Executing tool: ${tool}`, { dryRun, keyId })
+      log(requestId, 'info', `Executing tool: ${tool}`, { 
+        dryRun, 
+        keyId,
+        toolMetadata: {
+          category: toolFromRegistry.category,
+          mutates: toolFromRegistry.mutates,
+          risk: toolFromRegistry.risk,
+          deprecated: toolFromRegistry.deprecated
+        }
+      })
       
       const ctx = {
         db: database,
         dryRun,
         requestId,
         actor,
-        startedAt
+        startedAt,
+        toolMetadata: toolFromRegistry // Pass registry metadata to tool
       }
       
       const result = await executeTool(tool, argsValidation.data, ctx)
       const completedAt = new Date()
       const durationMs = completedAt.getTime() - startedAt.getTime()
+      
+      // 11b. REGISTRY-DRIVEN OUTPUT VALIDATION (warning only, doesn't block)
+      const outputValidation = validateToolOutput(tool, result)
+      if (!outputValidation.valid) {
+        log(requestId, 'warn', 'Output schema validation warnings', {
+          tool,
+          warnings: outputValidation.warnings
+        })
+      }
       
       // 12. Save audit log
       await saveAuditLog(database, createAuditEntry({
@@ -1186,7 +1278,12 @@ export async function POST(request) {
         result,
         startedAt,
         completedAt,
-        keyId
+        keyId,
+        toolMetadata: {
+          category: toolFromRegistry.category,
+          deprecated: toolFromRegistry.deprecated,
+          outputSchemaValid: outputValidation.valid
+        }
       }))
       
       // 12b. Emit ops event log (fire-and-forget)
