@@ -672,6 +672,8 @@ const LegacyRequestSchema = z.object({
   requestId: z.string().min(1, 'requestId is required'),
   dryRun: z.boolean().optional().default(false),
   mode: z.enum(['plan', 'execute']).optional().default('execute'),
+  approved: z.boolean().optional().default(false), // Pre-approval flag
+  approvalToken: z.string().optional(), // Optional approval token
   tool: z.string().min(1, 'tool is required'),
   args: z.record(z.any()).optional(),
   input: z.record(z.any()).optional(),
