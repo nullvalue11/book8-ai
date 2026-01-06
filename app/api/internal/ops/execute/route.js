@@ -408,7 +408,8 @@ function checkSecretConfigured(name) {
     case 'CORE_API_INTERNAL_SECRET':
       return !!env.CORE_API_INTERNAL_SECRET
     default:
-      return process.env[name] !== undefined
+      // For unknown secrets, check if they exist in env object
+      return env[name] !== undefined
   }
 }
 
