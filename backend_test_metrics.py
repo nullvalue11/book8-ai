@@ -251,11 +251,13 @@ def test_auth_required():
     """Test Case 5: Auth Required"""
     print("🔍 Test Case 5: Auth Required")
     
-    # Request without auth header
-    response = make_request("GET", "/api/internal/ops/metrics")
+    # Request without auth header - use requests directly to handle error responses
+    url = f"{BASE_URL}/api/internal/ops/metrics"
     
-    if not response:
-        log_test("Auth Required", "FAIL", "Request failed")
+    try:
+        response = requests.get(url, timeout=30)
+    except requests.exceptions.RequestException as e:
+        log_test("Auth Required", "FAIL", f"Request failed: {e}")
         return False
     
     if response.status_code != 401:
