@@ -77,6 +77,9 @@
  * @property {number} durationMs
  * @property {Date} executedAt
  * @property {OpsEventActor} actor
+ * @property {Object} [input] - Full input payload
+ * @property {Object} [result] - Full result/output
+ * @property {string} [mode] - 'execute' or 'plan'
  * @property {OpsEventMetadata} [metadata]
  */
 
