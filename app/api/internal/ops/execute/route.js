@@ -476,12 +476,13 @@ function hasScope(allowedScopes, requiredScope) {
 }
 
 // ============================================================================
-// Rate Limiting (Key-based for serverless compatibility)
+// Rate Limiting (MongoDB-backed for serverless safety)
 // ============================================================================
 
-const rateLimitMap = new Map()
+// Import MongoDB-backed rate limiter
+import { checkRateLimit as checkRateLimitMongo, getRateLimitConfig } from './_lib/rateLimiter'
 
-// Different rate limits for different key types
+// Different rate limits for different key types (mirrored from rateLimiter.ts)
 const RATE_LIMITS = {
   // Admin keys get higher limits
   admin: {
@@ -501,60 +502,27 @@ const RATE_LIMITS = {
 }
 
 /**
- * Get rate limit config based on key type
- */
-function getRateLimitConfig(keyId) {
-  if (keyId?.includes('admin')) return RATE_LIMITS.admin
-  if (keyId?.includes('n8n')) return RATE_LIMITS.n8n
-  return RATE_LIMITS.default
-}
-
-/**
- * Check if request is within rate limit
- * Uses API key prefix as identifier for serverless-friendly rate limiting
+ * Check if request is within rate limit (MongoDB-backed)
+ * Uses atomic MongoDB operations for accuracy across serverless instances
  * @param {string} identifier - API key prefix or requestId prefix
  * @param {string} keyType - Type of key for determining limits
- * @returns {object} - { allowed, remaining, resetIn, limit }
+ * @param {string} tool - Optional tool name for per-tool limiting
+ * @returns {Promise<object>} - { allowed, remaining, resetIn, limit, retryAfter }
  */
-function checkRateLimit(identifier, keyType = 'default') {
-  const config = getRateLimitConfig(keyType)
-  const now = Date.now()
-  const requests = rateLimitMap.get(identifier) || []
-  
-  // Remove requests outside the current window
-  const validRequests = requests.filter(
-    timestamp => now - timestamp < config.windowMs
-  )
-  
-  if (validRequests.length >= config.maxRequests) {
-    return { 
-      allowed: false, 
-      remaining: 0, 
+async function checkRateLimit(identifier, keyType = 'default', tool = null) {
+  try {
+    // Use MongoDB-backed rate limiter
+    return await checkRateLimitMongo(identifier, keyType, tool)
+  } catch (error) {
+    // If MongoDB fails, allow request but log warning
+    console.warn(`[ops] Rate limiter MongoDB error: ${error.message}`)
+    const config = RATE_LIMITS[keyType] || RATE_LIMITS.default
+    return {
+      allowed: true,
+      remaining: config.maxRequests,
       resetIn: config.windowMs,
       limit: config.maxRequests
     }
-  }
-  
-  validRequests.push(now)
-  rateLimitMap.set(identifier, validRequests)
-  
-  // Cleanup old entries periodically (1% chance per request)
-  if (Math.random() < 0.01) {
-    for (const [key, timestamps] of rateLimitMap.entries()) {
-      const valid = timestamps.filter(t => now - t < config.windowMs)
-      if (valid.length === 0) {
-        rateLimitMap.delete(key)
-      } else {
-        rateLimitMap.set(key, valid)
-      }
-    }
-  }
-  
-  return { 
-    allowed: true, 
-    remaining: config.maxRequests - validRequests.length,
-    resetIn: config.windowMs,
-    limit: config.maxRequests
   }
 }
 
