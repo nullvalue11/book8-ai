@@ -1008,3 +1008,18 @@ agent_communication:
       - working: "NA"
         agent: "testing"
         comment: "TESTING REQUESTED: Test the comprehensive tool call logging system. API Endpoints: 1) GET /api/internal/ops/logs - List logs with filtering (requestId, businessId, tool, actor, status, since, until) and pagination (limit, skip). 2) GET /api/internal/ops/logs/:id - Get single log by requestId with full details. Auth Header: x-book8-internal-secret: ops-dev-secret-change-me. Test Cases: 1) Execute tool and verify log created - POST /api/internal/ops/execute with tenant.bootstrap, then GET /api/internal/ops/logs to find the log with matching requestId. 2) Plan mode logging - POST /api/internal/ops/execute with mode='plan', verify log created with mode='plan'. 3) Get log by ID - Use requestId from step 1, GET /api/internal/ops/logs/:id, verify response has all fields (id, tool, input, meta, result, status, error, duration, timestamp). 4) List logs with filtering - GET /api/internal/ops/logs?tool=tenant.bootstrap&status=success&limit=5. 5) Pagination test - GET /api/internal/ops/logs?limit=2&skip=0, then ?limit=2&skip=2. 6) Date range filtering - GET /api/internal/ops/logs?since=<1hr ago>. 7) Log not found - GET /api/internal/ops/logs/non-existent-id, expect 404. 8) Auth required - Try endpoints without header, expect 401. Focus on verifying full input/output capture in logs."
+
+  - task: "V1 Ops Tool Pack - 4 New Tools Implementation"
+    implemented: true
+    working: "NA"
+    file: "/app/app/lib/ops/tools/tenant-status.js, /app/app/lib/ops/tools/voice-diagnostics.js, /app/app/lib/ops/tools/billing-sync-prices.js, /app/app/lib/ops/tools/ops-replay-execution.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: 4 new ops tools - tenant.status (read-only status), voice.diagnostics (latency checks), billing.syncPrices (Stripe sync with plan mode), ops.replayExecution (replay with overrides). All registered in tool-registry.js and index.js. Quick manual tests passed."
+      - working: "NA"
+        agent: "testing"
+        comment: "TESTING REQUESTED: Test all 4 new ops tools. Auth Header: x-book8-internal-secret: ops-dev-secret-change-me. Test Cases: 1) GET /api/internal/ops/tools - verify 4 new tools (tenant.status, voice.diagnostics, billing.syncPrices, ops.replayExecution) appear. 2) tenant.status - POST /api/internal/ops/execute with {tool:'tenant.status', payload:{businessId:'test-biz'}, meta:{requestId:'xxx'}}, expect ok:true with checks array. 3) voice.diagnostics - POST /api/internal/ops/execute with {tool:'voice.diagnostics', payload:{timeoutMs:3000}, meta:{requestId:'xxx'}}, expect ok:true with results array and latency info. 4) billing.syncPrices plan mode - POST with {tool:'billing.syncPrices', payload:{businessId:'test',mode:'plan'}, meta:{requestId:'xxx', approved:true}}, expect plan array. 5) billing.syncPrices requires approval - POST without approved:true, expect approval_required status. 6) ops.replayExecution plan mode - POST with {tool:'ops.replayExecution', payload:{requestId:'xxx',mode:'plan'}, meta:{requestId:'xxx'}}, expect plan with original execution info. 7) ops.replayExecution execute mode - replay a previous execution with overrides. 8) Verify tool schemas are correct in registry response."
