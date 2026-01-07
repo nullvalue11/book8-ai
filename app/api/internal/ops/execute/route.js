@@ -1159,6 +1159,27 @@ export async function POST(request) {
       
       const durationMs = Date.now() - startedAt.getTime()
       
+      // Log plan mode execution (fire-and-forget)
+      try {
+        const planDatabase = await connect()
+        const planEventLog = createPlanEvent(
+          requestId,
+          tool,
+          argsValidation.data,
+          plan,
+          {
+            durationMs,
+            actor: determineActor(keyId),
+            keyId,
+            argsFormat: argsSource,
+            businessId: argsValidation.data?.businessId
+          }
+        )
+        emitOpsEvent(planDatabase, planEventLog)
+      } catch (planLogError) {
+        log(requestId, 'warn', `Failed to log plan mode execution: ${planLogError.message}`)
+      }
+      
       return NextResponse.json({
         ok: plan.ok,
         requestId,
