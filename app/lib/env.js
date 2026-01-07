@@ -207,6 +207,9 @@ function loadConfig() {
       OPS_INTERNAL_SECRET,
       OPS_KEY_N8N,
       OPS_KEY_ADMIN,
+      OPS_CONSOLE_USER,
+      OPS_CONSOLE_PASS,
+      OPS_INTERNAL_BASE_URL,
       
       // Billing/Usage Reporting
       CORE_API_BASE_URL,
