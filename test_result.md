@@ -1026,3 +1026,15 @@ agent_communication:
       - working: true
         agent: "testing"
         comment: "✅ V1 OPS TOOL PACK FULLY TESTED AND WORKING: Comprehensive testing of all 4 new ops tools completed successfully! Perfect 12/12 tests passed (100% success rate): ✅ Test Case 1: Tools Registry Check - All 4 tools (tenant.status, voice.diagnostics, billing.syncPrices, ops.replayExecution) found in GET /api/internal/ops/tools with correct properties (category, mutates, requiresApproval) ✅ Test Case 2: tenant.status - Read-only status check working correctly, returns ok:true with summary.ready boolean and checks array, no approval required ✅ Test Case 3: voice.diagnostics - Latency checks working correctly, returns ok:true with overallStatus, summary (total/healthy/unhealthy), and results array with latency info ✅ Test Case 4: billing.syncPrices Approval Gate - Correctly requires approval, returns 403 with status='approval_required' and complete approval object structure ✅ Test Case 5: billing.syncPrices with Approval - Approval gate bypassed with meta.approved=true, tool executes (fails at Stripe config as expected) ✅ Test Case 6: ops.replayExecution Plan Mode - Returns mode='plan', executed=false, summary.originalExecution with original tool info ✅ Test Case 7: ops.replayExecution Execute Mode - Returns mode='execute', executed=true, successfully replays with overridePayload ✅ Test Case 8: Validation Errors - Correctly returns 400 REGISTRY_VALIDATION_ERROR for missing required fields ✅ Test Case 9: Tool Schema Validation - All 4 tools have complete schemas with name, description, category, mutates, risk, inputSchema, outputSchema, examples. KEY FINDINGS: 1) All 4 tools properly registered and discoverable ✅ 2) Read-only tools (tenant.status, voice.diagnostics) work without approval ✅ 3) Mutating tool (billing.syncPrices) requires approval gate ✅ 4) Plan mode works for billing.syncPrices and ops.replayExecution ✅ 5) Replay can load and re-execute previous executions ✅ The V1 Ops Tool Pack is production-ready and all test cases from the review request passed successfully!"
+
+  - task: "Ops Console UI - Basic Auth + Proxy + UI Pages"
+    implemented: true
+    working: "NA"
+    file: "/app/middleware.ts, /app/app/api/ops/*, /app/app/ops/*"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: Ops Console UI with Basic Auth protection and server-side proxy architecture. Components: 1) middleware.ts - Basic Auth for /ops/* and /api/ops/* routes using OPS_CONSOLE_USER/OPS_CONSOLE_PASS env vars. 2) /api/ops/_lib/opsFetch.ts - Helper for server-side proxy calls with x-book8-internal-secret header. 3) Proxy routes: /api/ops/tools, /api/ops/logs, /api/ops/requests, /api/ops/requests/[id]/approve, /api/ops/requests/[id]/execute. 4) UI pages: /ops (home), /ops/tools (registry), /ops/logs (execution logs with filters), /ops/requests (pending approvals with approve/execute buttons). Auth tested: 401 without credentials, 200 with admin:book8ops2024. All proxy endpoints tested and working."
