@@ -6,7 +6,7 @@
  * 
  * Features:
  * - Scoped API keys (OPS_KEY_N8N, OPS_KEY_ADMIN, or legacy OPS_INTERNAL_SECRET)
- * - RequestId-based rate limiting (serverless-friendly)
+ * - MongoDB-backed rate limiting (serverless-safe)
  * - Timing-safe authentication
  * - Idempotency via MongoDB
  * - Full audit logging
