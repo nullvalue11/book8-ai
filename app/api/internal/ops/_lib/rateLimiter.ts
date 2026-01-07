@@ -277,7 +277,9 @@ export function checkRateLimitSync(
   
   // Cleanup old windows (1% chance)
   if (Math.random() < 0.01) {
-    for (const [k, v] of memoryFallback.entries()) {
+    const entries = Array.from(memoryFallback.entries())
+    for (const entry of entries) {
+      const [k, v] = entry
       if (v.windowStart < windowStart) {
         memoryFallback.delete(k)
       }
