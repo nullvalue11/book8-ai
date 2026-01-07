@@ -1043,3 +1043,18 @@ agent_communication:
       - working: true
         agent: "testing"
         comment: "✅ OPS CONSOLE PROXY API ENDPOINTS AND BASIC AUTH FULLY TESTED AND WORKING: Comprehensive testing of Book8's Ops Console proxy API completed successfully! Perfect 11/11 tests passed (100% success rate): ✅ BASIC AUTH PROTECTION (3/3): 1) No credentials - Returns 401 'Authentication required' ✅ 2) Wrong credentials - Returns 401 for invalid auth ✅ 3) Valid credentials (admin:book8ops2024) - Returns 200 with tools array (6 tools) ✅ ✅ PROXY API ENDPOINTS (6/6): 4) GET /api/ops/tools?format=full - Successfully retrieves 6 tools from internal ops endpoint ✅ 5) GET /api/ops/logs?limit=5 - Successfully retrieves logs array with 5 entries ✅ 6) GET /api/ops/logs with filters (tool=tenant.status&status=success&limit=3) - Successfully retrieves filtered logs with 2 entries ✅ 7) GET /api/ops/requests?status=pending - Successfully retrieves pending requests array with 3 entries ✅ 8) POST /api/ops/requests - Successfully creates approval request with status 'pending' and returns requestId ✅ 9) POST /api/ops/requests/:id/approve - Successfully approves request with status 'approved' ✅ ✅ UI PAGE ACCESS (2/2): 10) GET /ops with valid auth - Successfully accesses Ops Control Plane page ✅ 11) GET /ops without auth - Correctly returns 401 'Authentication required' ✅ KEY FINDINGS: Basic Auth middleware working correctly for both /api/ops/* and /ops/* routes, proxy endpoints successfully forward requests to internal ops API with proper authentication headers, all CRUD operations working (list tools/logs/requests, create requests, approve requests), UI pages properly protected and accessible with valid credentials. The Ops Console proxy API endpoints and Basic Auth protection are production-ready and fully functional!"
+
+  - task: "MongoDB-Backed Rate Limiter - Serverless Safe"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/internal/ops/_lib/rateLimiter.ts, /app/app/api/internal/ops/execute/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: MongoDB-backed rate limiter for serverless safety. Features: 1) Atomic findOneAndUpdate for accurate counting across instances. 2) TTL index for auto-cleanup (60s after window). 3) Key format: {caller}|{tool}|{windowId}. 4) Configurable limits per key type (admin: 300/min, n8n: 200/min, default: 100/min). 5) Graceful fallback if MongoDB fails. Replaced in-memory Map in execute route. Tested: 15 requests showing count=15 in MongoDB."
+      - working: "NA"
+        agent: "testing"
+        comment: "TESTING REQUESTED: Test MongoDB-backed rate limiter. Auth Header: x-book8-internal-secret: ops-dev-secret-change-me. Test Cases: 1) Multiple requests increment count - Make 10 requests quickly, verify MongoDB ops_rate_limits count increases. 2) Check rate limit collection - Verify documents have key, count, windowStart, expiresAt fields. 3) Retry-After header - Force rate limit exceeded (may need temp lower limit), verify 429 response with Retry-After header. 4) Cold start simulation - Delete all docs from ops_rate_limits, make requests, verify new count starts correctly. 5) TTL behavior - Verify expiresAt is set ~2 min from window start. 6) Key format - Verify key format is {caller}|{tool}|{windowId}. 7) Normal operation - Verify requests succeed when under limit."
