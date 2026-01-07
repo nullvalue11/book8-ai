@@ -6,20 +6,32 @@
 
 import { registerTool } from './registry.js'
 
-// Import tools
+// Import existing tools
 import * as tenantEnsure from './tools/tenant-ensure.js'
 import * as tenantBootstrap from './tools/tenant-bootstrap.js'
 import * as billingValidateStripe from './tools/billing-validate-stripe.js'
 import * as voiceSmokeTest from './tools/voice-smoke-test.js'
 import * as tenantProvisioningSummary from './tools/tenant-provisioning-summary.js'
 
+// Import V1 Tool Pack
+import * as tenantStatus from './tools/tenant-status.js'
+import * as voiceDiagnostics from './tools/voice-diagnostics.js'
+import * as billingSyncPrices from './tools/billing-sync-prices.js'
+import * as opsReplayExecution from './tools/ops-replay-execution.js'
+
 // Register all tools
 const tools = [
+  // Existing tools
   tenantEnsure,
   tenantBootstrap,
   billingValidateStripe,
   voiceSmokeTest,
-  tenantProvisioningSummary
+  tenantProvisioningSummary,
+  // V1 Tool Pack
+  tenantStatus,
+  voiceDiagnostics,
+  billingSyncPrices,
+  opsReplayExecution
 ]
 
 let initialized = false
