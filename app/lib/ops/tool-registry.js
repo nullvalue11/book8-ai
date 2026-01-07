@@ -135,6 +135,274 @@ export const TOOL_REGISTRY = [
   },
 
   // =========================================================================
+  // V1 TOOL PACK - Read-Only Tools
+  // =========================================================================
+  {
+    name: 'tenant.status',
+    description: 'Read-only tenant status check - returns comprehensive status without mutation',
+    category: 'tenant',
+    mutates: false,
+    risk: 'low',
+    dryRunSupported: false,
+    allowedCallers: ['n8n', 'human', 'api', 'mcp'],
+    requiresApproval: false,
+    deprecated: false,
+    inputSchema: {
+      type: 'object',
+      required: ['businessId'],
+      properties: {
+        businessId: { 
+          type: 'string', 
+          description: 'Unique business identifier',
+          minLength: 1
+        }
+      }
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['ok', 'businessId', 'summary', 'checks'],
+      properties: {
+        ok: { type: 'boolean', description: 'Did the check complete successfully?' },
+        businessId: { type: 'string' },
+        summary: {
+          type: 'object',
+          properties: {
+            ready: { type: 'boolean', description: 'Is tenant fully operational?' },
+            readyMessage: { type: 'string', description: 'Human-readable status' }
+          }
+        },
+        checks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              item: { type: 'string' },
+              status: { type: 'string', enum: ['passed', 'failed', 'warning', 'info'] },
+              details: { type: 'string' }
+            }
+          }
+        },
+        recommendations: { type: 'array', items: { type: 'string' } }
+      }
+    },
+    examples: [
+      {
+        name: 'Check tenant status',
+        input: { businessId: 'biz_abc123' },
+        description: 'Get comprehensive status check for a tenant'
+      }
+    ]
+  },
+  {
+    name: 'voice.diagnostics',
+    description: 'Voice service diagnostics - checks latency and connectivity to voice targets',
+    category: 'voice',
+    mutates: false,
+    risk: 'low',
+    dryRunSupported: false,
+    allowedCallers: ['n8n', 'human', 'api', 'mcp'],
+    requiresApproval: false,
+    deprecated: false,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        businessId: { type: 'string', description: 'Optional business context for logging' },
+        targets: {
+          type: 'array',
+          description: 'Custom targets to check (defaults to voice service endpoints)',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              url: { type: 'string' },
+              type: { type: 'string', enum: ['health', 'auth', 'ping'] },
+              requiresKey: { type: 'string' }
+            }
+          }
+        },
+        timeoutMs: { type: 'number', minimum: 100, maximum: 30000, default: 5000, description: 'Timeout per target in milliseconds' }
+      }
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['ok', 'overallStatus', 'results'],
+      properties: {
+        ok: { type: 'boolean' },
+        businessId: { type: 'string' },
+        overallStatus: { type: 'string', enum: ['healthy', 'degraded', 'critical', 'unknown'] },
+        statusReason: { type: 'string' },
+        summary: {
+          type: 'object',
+          properties: {
+            total: { type: 'number' },
+            healthy: { type: 'number' },
+            unhealthy: { type: 'number' },
+            skipped: { type: 'number' },
+            avgLatencyMs: { type: 'number' },
+            totalDurationMs: { type: 'number' }
+          }
+        },
+        results: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              target: { type: 'string' },
+              url: { type: 'string' },
+              status: { type: 'string' },
+              reason: { type: 'string' },
+              latencyMs: { type: 'number' }
+            }
+          }
+        }
+      }
+    },
+    examples: [
+      {
+        name: 'Basic voice diagnostics',
+        input: {},
+        description: 'Check all default voice service targets'
+      },
+      {
+        name: 'Quick diagnostics with timeout',
+        input: { timeoutMs: 2000 },
+        description: 'Fast check with 2 second timeout per target'
+      }
+    ]
+  },
+
+  // =========================================================================
+  // V1 TOOL PACK - Mutating Tools (Require Approval)
+  // =========================================================================
+  {
+    name: 'billing.syncPrices',
+    description: 'Sync Stripe prices for a tenant - supports plan mode for preview, requires approval for execution',
+    category: 'billing',
+    mutates: true,
+    risk: 'medium',
+    dryRunSupported: true,
+    allowedCallers: ['n8n', 'human', 'api'],
+    requiresApproval: true,
+    deprecated: false,
+    inputSchema: {
+      type: 'object',
+      required: ['businessId'],
+      properties: {
+        businessId: { type: 'string', description: 'Business identifier for context', minLength: 1 },
+        mode: { type: 'string', enum: ['plan', 'execute'], default: 'plan', description: 'plan = preview changes, execute = apply changes' },
+        currency: { type: 'string', minLength: 3, maxLength: 3, default: 'usd', description: 'Currency code (lowercase)' },
+        priceMap: {
+          type: 'object',
+          description: 'Map of price key to price config. If not provided, syncs from environment defaults.',
+          additionalProperties: {
+            type: 'object',
+            properties: {
+              unitAmount: { type: 'number', description: 'Amount in cents' },
+              nickname: { type: 'string' },
+              recurring: {
+                type: 'object',
+                properties: {
+                  interval: { type: 'string', enum: ['day', 'week', 'month', 'year'] },
+                  intervalCount: { type: 'number', default: 1 }
+                }
+              },
+              metadata: { type: 'object' }
+            }
+          }
+        }
+      }
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['ok', 'businessId', 'mode', 'executed'],
+      properties: {
+        ok: { type: 'boolean' },
+        businessId: { type: 'string' },
+        mode: { type: 'string', enum: ['plan', 'execute'] },
+        executed: { type: 'boolean' },
+        plan: { type: 'array' },
+        created: { type: 'array' },
+        updated: { type: 'array' },
+        noop: { type: 'array' },
+        summary: {
+          type: 'object',
+          properties: {
+            toCreate: { type: 'number' },
+            toUpdate: { type: 'number' },
+            noChange: { type: 'number' },
+            total: { type: 'number' }
+          }
+        }
+      }
+    },
+    examples: [
+      {
+        name: 'Plan price sync',
+        input: { businessId: 'biz_abc123', mode: 'plan' },
+        description: 'Preview price changes without applying'
+      },
+      {
+        name: 'Execute price sync',
+        input: { businessId: 'biz_abc123', mode: 'execute' },
+        description: 'Apply price changes (requires approval)'
+      }
+    ]
+  },
+  {
+    name: 'ops.replayExecution',
+    description: 'Replay a previous execution with optional overrides - supports plan mode',
+    category: 'ops',
+    mutates: true,
+    risk: 'medium',
+    dryRunSupported: true,
+    allowedCallers: ['n8n', 'human', 'api'],
+    requiresApproval: false,
+    deprecated: false,
+    inputSchema: {
+      type: 'object',
+      required: ['requestId'],
+      properties: {
+        requestId: { type: 'string', description: 'The requestId of the execution to replay', minLength: 1 },
+        mode: { type: 'string', enum: ['plan', 'execute'], default: 'plan', description: 'plan = preview replay, execute = run replay' },
+        overrideMeta: { type: 'object', description: 'Override meta values for the replay' },
+        overridePayload: { type: 'object', description: 'Override payload values for the replay' }
+      }
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['ok', 'mode', 'executed'],
+      properties: {
+        ok: { type: 'boolean' },
+        mode: { type: 'string', enum: ['plan', 'execute'] },
+        executed: { type: 'boolean' },
+        summary: {
+          type: 'object',
+          properties: {
+            originalExecution: { type: 'object' },
+            replay: { type: 'object' },
+            toolInfo: { type: 'object' }
+          }
+        },
+        result: { type: 'object' },
+        execution: { type: 'object' },
+        warnings: { type: 'array', items: { type: 'string' } }
+      }
+    },
+    examples: [
+      {
+        name: 'Plan replay',
+        input: { requestId: 'req_abc123', mode: 'plan' },
+        description: 'Preview what the replay would do'
+      },
+      {
+        name: 'Execute replay with overrides',
+        input: { requestId: 'req_abc123', mode: 'execute', overridePayload: { skipVoiceTest: true } },
+        description: 'Replay execution with modified payload'
+      }
+    ]
+  },
+
+  // =========================================================================
   // DEPRECATED TOOLS (Do not use directly)
   // =========================================================================
   {
@@ -271,6 +539,10 @@ export const CATEGORIES = {
   voice: {
     name: 'Voice & AI Calling',
     description: 'Tools for voice agent testing and configuration'
+  },
+  ops: {
+    name: 'Operations',
+    description: 'Tools for system operations, replay, and diagnostics'
   },
   system: {
     name: 'System Operations',
