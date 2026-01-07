@@ -540,6 +540,10 @@ export const CATEGORIES = {
     name: 'Voice & AI Calling',
     description: 'Tools for voice agent testing and configuration'
   },
+  ops: {
+    name: 'Operations',
+    description: 'Tools for system operations, replay, and diagnostics'
+  },
   system: {
     name: 'System Operations',
     description: 'Tools for system-level operations and diagnostics'
