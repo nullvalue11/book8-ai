@@ -1410,7 +1410,7 @@ export async function POST(request) {
         // Extract businessId from args if present
         const businessId = argsValidation.data?.businessId || result?.businessId || null
         
-        // Build event log entry
+        // Build event log entry with full input and result
         const eventLog = createOpsEventLog({
           requestId,
           tool,
@@ -1419,6 +1419,11 @@ export async function POST(request) {
           durationMs,
           executedAt: completedAt,
           actor: determineActor(keyId),
+          mode: 'execute',
+          // Store full input payload
+          input: argsValidation.data,
+          // Store full result output
+          result: result,
           metadata: {
             dryRun,
             ready: result.ready,
