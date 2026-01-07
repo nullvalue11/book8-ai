@@ -243,6 +243,9 @@ export function createOpsEventLog(input) {
     durationMs: input.durationMs,
     executedAt: input.executedAt || now,
     actor: input.actor,
+    mode: input.mode || 'execute',
+    input: input.input || null,
+    result: input.result || null,
     metadata: input.metadata || {},
     createdAt: now,
     updatedAt: now
