@@ -48,12 +48,9 @@ async function fetchTools(): Promise<{ ok: boolean; tools: Tool[]; error?: strin
 }
 
 export default async function ToolsPage() {
-  const result = await opsGet<{ ok: boolean; tools: Tool[] }>('/api/internal/ops/tools', {
-    format: 'full',
-    includeDeprecated: 'false'
-  })
+  const result = await fetchTools()
   
-  const tools = result.data?.tools || []
+  const tools = result.tools || []
   
   // Group by category
   const byCategory = tools.reduce((acc, tool) => {
