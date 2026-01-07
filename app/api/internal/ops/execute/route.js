@@ -1434,7 +1434,14 @@ export async function POST(request) {
       
       logSuccess(requestId, tool, response.durationMs, result.summary || 'completed')
       
-      return NextResponse.json(response)
+      // Add rate limit headers to successful responses for observability
+      return NextResponse.json(response, {
+        headers: {
+          'X-RateLimit-Limit': String(rateLimit.limit),
+          'X-RateLimit-Remaining': String(rateLimit.remaining),
+          'X-RateLimit-Reset': String(Math.ceil((Date.now() + rateLimit.resetIn) / 1000))
+        }
+      })
       
     } finally {
       await releaseLock(database, requestId)
