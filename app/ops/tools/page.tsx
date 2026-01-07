@@ -4,8 +4,6 @@
  * Lists all registered ops tools with their schemas and examples.
  */
 
-import { opsGet } from '@/app/api/ops/_lib/opsFetch'
-
 export const dynamic = 'force-dynamic'
 
 interface Tool {
@@ -22,6 +20,31 @@ interface Tool {
   inputSchema?: any
   outputSchema?: any
   examples?: Array<{ name: string; input: any; description: string }>
+}
+
+async function fetchTools(): Promise<{ ok: boolean; tools: Tool[]; error?: string }> {
+  try {
+    // Use internal URL for server-side fetch
+    const baseUrl = process.env.OPS_INTERNAL_BASE_URL || 'http://localhost:3000'
+    const secret = process.env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
+    
+    const response = await fetch(`${baseUrl}/api/internal/ops/tools?format=full&includeDeprecated=false`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-book8-internal-secret': secret
+      },
+      cache: 'no-store'
+    })
+    
+    if (!response.ok) {
+      return { ok: false, tools: [], error: `HTTP ${response.status}` }
+    }
+    
+    const data = await response.json()
+    return { ok: true, tools: data.tools || [] }
+  } catch (error: any) {
+    return { ok: false, tools: [], error: error.message }
+  }
 }
 
 export default async function ToolsPage() {
