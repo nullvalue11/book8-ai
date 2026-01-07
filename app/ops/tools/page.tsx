@@ -23,10 +23,13 @@ interface Tool {
 }
 
 async function fetchTools(): Promise<{ ok: boolean; tools: Tool[]; error?: string }> {
+  // Import env module dynamically for server component
+  const { env } = await import('@/lib/env')
+  
   try {
     // Use internal URL for server-side fetch
-    const baseUrl = process.env.OPS_INTERNAL_BASE_URL || 'http://localhost:3000'
-    const secret = process.env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
+    const baseUrl = env.OPS_INTERNAL_BASE_URL || 'http://localhost:3000'
+    const secret = env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
     
     const response = await fetch(`${baseUrl}/api/internal/ops/tools?format=full&includeDeprecated=false`, {
       headers: {
