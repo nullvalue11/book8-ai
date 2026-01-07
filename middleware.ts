@@ -6,6 +6,10 @@
  * - /api/ops/* (proxy API)
  * 
  * Credentials: OPS_CONSOLE_USER / OPS_CONSOLE_PASS env vars
+ * 
+ * NOTE: Middleware runs in Edge Runtime and cannot import the centralized
+ * env module. Environment variables are accessed via process.env which is
+ * allowed in middleware. This is the only exception to the "use env module" rule.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -24,12 +28,16 @@ function requiresBasicAuth(pathname: string): boolean {
 
 /**
  * Validate Basic Auth credentials
+ * 
+ * Note: We use process.env directly here because middleware runs in Edge Runtime
+ * and cannot import the server-side env module. This is an intentional exception.
  */
 function isValidAuth(authHeader: string | null): boolean {
   if (!authHeader || !authHeader.startsWith('Basic ')) {
     return false
   }
   
+  // Edge Runtime compatible env access
   const expectedUser = process.env.OPS_CONSOLE_USER || 'admin'
   const expectedPass = process.env.OPS_CONSOLE_PASS || 'changeme'
   
