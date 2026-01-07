@@ -397,12 +397,25 @@ def test_6_date_range_filtering():
         executed_at = log_entry.get('executedAt')
         if executed_at:
             try:
-                log_time = datetime.fromisoformat(executed_at.replace('Z', '+00:00'))
-                if log_time < one_hour_ago:
+                # Handle both timezone-aware and naive datetime strings
+                if executed_at.endswith('Z'):
+                    log_time = datetime.fromisoformat(executed_at.replace('Z', '+00:00'))
+                else:
+                    log_time = datetime.fromisoformat(executed_at)
+                    # If naive, assume UTC
+                    if log_time.tzinfo is None:
+                        from datetime import timezone
+                        log_time = log_time.replace(tzinfo=timezone.utc)
+                
+                # Make one_hour_ago timezone-aware for comparison
+                from datetime import timezone
+                one_hour_ago_aware = one_hour_ago.replace(tzinfo=timezone.utc)
+                
+                if log_time < one_hour_ago_aware:
                     log_test_result("Date Range Filtering", False, f"Log outside date range: {executed_at}")
                     return False
-            except ValueError:
-                print(f"  ⚠️  Warning: Could not parse date: {executed_at}")
+            except (ValueError, TypeError) as e:
+                print(f"  ⚠️  Warning: Could not parse date: {executed_at} - {e}")
     
     log_test_result("Date Range Filtering", True, f"Date filtering working: {len(date_data['logs'])} logs since {since_param}")
     return True
