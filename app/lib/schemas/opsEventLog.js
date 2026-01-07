@@ -560,6 +560,7 @@ const opsEventLog = {
   createOpsEventLog,
   createFromBootstrapResult,
   createFailedEvent,
+  createPlanEvent,
   validateOpsEventLog,
   ensureIndexes,
   saveOpsEventLog,
