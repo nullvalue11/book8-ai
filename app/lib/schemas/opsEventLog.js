@@ -60,6 +60,9 @@
  * @property {number} durationMs - Total execution time in milliseconds
  * @property {Date} executedAt - When the operation was executed
  * @property {OpsEventActor} actor - Who/what triggered the execution
+ * @property {Object} [input] - Full input payload for the tool execution
+ * @property {Object} [result] - Full result/output from the tool execution
+ * @property {string} [mode] - Execution mode: 'execute' or 'plan'
  * @property {OpsEventMetadata} metadata - Flexible tool-specific data
  * @property {Date} createdAt - Document creation timestamp
  * @property {Date} [updatedAt] - Document update timestamp
@@ -74,6 +77,9 @@
  * @property {number} durationMs
  * @property {Date} executedAt
  * @property {OpsEventActor} actor
+ * @property {Object} [input] - Full input payload
+ * @property {Object} [result] - Full result/output
+ * @property {string} [mode] - 'execute' or 'plan'
  * @property {OpsEventMetadata} [metadata]
  */
 
@@ -237,6 +243,9 @@ export function createOpsEventLog(input) {
     durationMs: input.durationMs,
     executedAt: input.executedAt || now,
     actor: input.actor,
+    mode: input.mode || 'execute',
+    input: input.input || null,
+    result: input.result || null,
     metadata: input.metadata || {},
     createdAt: now,
     updatedAt: now
@@ -303,10 +312,44 @@ export function createFailedEvent(requestId, tool, error, options = {}) {
     durationMs: options.durationMs || 0,
     executedAt: new Date(),
     actor: options.actor || 'system',
+    mode: options.mode || 'execute',
+    input: options.input || null,
+    result: null,
     metadata: {
       error,
       keyId: options.keyId,
       argsFormat: options.argsFormat
+    }
+  })
+}
+
+/**
+ * Create an ops event log for a plan mode execution
+ * 
+ * @param {string} requestId - Request identifier
+ * @param {string} tool - Tool name
+ * @param {Object} input - Input payload
+ * @param {Object} plan - Generated plan result
+ * @param {Object} options - Additional options
+ * @returns {OpsEventLog} Event log document
+ */
+export function createPlanEvent(requestId, tool, input, plan, options = {}) {
+  return createOpsEventLog({
+    requestId,
+    tool,
+    businessId: input?.businessId || options.businessId,
+    status: plan.ok === false ? 'failed' : 'success',
+    durationMs: options.durationMs || 0,
+    executedAt: new Date(),
+    actor: options.actor || 'system',
+    mode: 'plan',
+    input,
+    result: plan,
+    metadata: {
+      keyId: options.keyId,
+      argsFormat: options.argsFormat,
+      planMode: true,
+      canExecute: plan.readiness?.canExecute
     }
   })
 }
@@ -517,6 +560,7 @@ const opsEventLog = {
   createOpsEventLog,
   createFromBootstrapResult,
   createFailedEvent,
+  createPlanEvent,
   validateOpsEventLog,
   ensureIndexes,
   saveOpsEventLog,

@@ -62,7 +62,8 @@ import {
 import {
   saveOpsEventLog,
   createOpsEventLog,
-  createFailedEvent
+  createFailedEvent,
+  createPlanEvent
 } from '@/lib/schemas/opsEventLog'
 import {
   getToolFromRegistry,
@@ -1158,6 +1159,27 @@ export async function POST(request) {
       
       const durationMs = Date.now() - startedAt.getTime()
       
+      // Log plan mode execution (fire-and-forget)
+      try {
+        const planDatabase = await connect()
+        const planEventLog = createPlanEvent(
+          requestId,
+          tool,
+          argsValidation.data,
+          plan,
+          {
+            durationMs,
+            actor: determineActor(keyId),
+            keyId,
+            argsFormat: argsSource,
+            businessId: argsValidation.data?.businessId
+          }
+        )
+        emitOpsEvent(planDatabase, planEventLog)
+      } catch (planLogError) {
+        log(requestId, 'warn', `Failed to log plan mode execution: ${planLogError.message}`)
+      }
+      
       return NextResponse.json({
         ok: plan.ok,
         requestId,
@@ -1388,7 +1410,7 @@ export async function POST(request) {
         // Extract businessId from args if present
         const businessId = argsValidation.data?.businessId || result?.businessId || null
         
-        // Build event log entry
+        // Build event log entry with full input and result
         const eventLog = createOpsEventLog({
           requestId,
           tool,
@@ -1397,6 +1419,11 @@ export async function POST(request) {
           durationMs,
           executedAt: completedAt,
           actor: determineActor(keyId),
+          mode: 'execute',
+          // Store full input payload
+          input: argsValidation.data,
+          // Store full result output
+          result: result,
           metadata: {
             dryRun,
             ready: result.ready,
