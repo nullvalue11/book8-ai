@@ -24,7 +24,8 @@ interface Tool {
 
 async function fetchTools(): Promise<{ ok: boolean; tools: Tool[]; error?: string }> {
   // Import env module dynamically for server component
-  const { env } = await import('@/lib/env')
+  // @ts-ignore - env.js is a JavaScript module
+  const { env } = await import('@/lib/env.js')
   
   try {
     // Use internal URL for server-side fetch
