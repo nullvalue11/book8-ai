@@ -5,7 +5,8 @@
  * Adds authentication headers and handles errors.
  */
 
-import { env } from '@/lib/env'
+// @ts-ignore - env.js is a JavaScript module
+import { env } from '@/lib/env.js'
 
 // Base URL for internal ops API (from centralized env)
 const OPS_INTERNAL_BASE_URL = env.OPS_INTERNAL_BASE_URL || 'http://localhost:3000'
