@@ -60,6 +60,9 @@
  * @property {number} durationMs - Total execution time in milliseconds
  * @property {Date} executedAt - When the operation was executed
  * @property {OpsEventActor} actor - Who/what triggered the execution
+ * @property {Object} [input] - Full input payload for the tool execution
+ * @property {Object} [result] - Full result/output from the tool execution
+ * @property {string} [mode] - Execution mode: 'execute' or 'plan'
  * @property {OpsEventMetadata} metadata - Flexible tool-specific data
  * @property {Date} createdAt - Document creation timestamp
  * @property {Date} [updatedAt] - Document update timestamp
