@@ -7,10 +7,10 @@
 
 import { env } from '@/lib/env'
 
-// Base URL for internal ops API
-const OPS_INTERNAL_BASE_URL = process.env.OPS_INTERNAL_BASE_URL || 'http://localhost:3000'
+// Base URL for internal ops API (from centralized env)
+const OPS_INTERNAL_BASE_URL = env.OPS_INTERNAL_BASE_URL || 'http://localhost:3000'
 
-// Internal secret for authentication
+// Internal secret for authentication (from centralized env)
 const OPS_INTERNAL_SECRET = env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
 
 export interface OpsFetchOptions {
