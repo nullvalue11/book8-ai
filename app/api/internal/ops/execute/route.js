@@ -926,8 +926,8 @@ export async function POST(request) {
     
     keyId = auth.keyId
     
-    // 1. Rate limiting based on API key (serverless-friendly)
-    const rateLimit = checkRateLimit(keyId, keyId)
+    // 1. Rate limiting based on API key (MongoDB-backed, serverless-safe)
+    const rateLimit = await checkRateLimit(keyId, keyId)
     if (!rateLimit.allowed) {
       log(null, 'warn', `Rate limit exceeded for key: ${keyId}`)
       return NextResponse.json({
