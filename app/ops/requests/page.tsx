@@ -26,6 +26,7 @@ interface ApprovalRequest {
 interface RequestsResponse {
   ok: boolean
   requests: ApprovalRequest[]
+  error?: string
   pagination: {
     total: number
     limit: number
