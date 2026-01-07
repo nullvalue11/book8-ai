@@ -122,6 +122,11 @@ function loadConfig() {
     const OPS_KEY_N8N = getEnvVar('OPS_KEY_N8N', false)
     const OPS_KEY_ADMIN = getEnvVar('OPS_KEY_ADMIN', false)
     
+    // Ops Console (Basic Auth for /ops/* routes)
+    const OPS_CONSOLE_USER = getEnvVar('OPS_CONSOLE_USER', false, 'admin')
+    const OPS_CONSOLE_PASS = getEnvVar('OPS_CONSOLE_PASS', false, 'changeme')
+    const OPS_INTERNAL_BASE_URL = getEnvVar('OPS_INTERNAL_BASE_URL', false, 'http://localhost:3000')
+    
     // Billing/Usage Reporting (uses existing CRON_SECRET for auth)
     const CORE_API_BASE_URL = getEnvVar('CORE_API_BASE_URL', false)
     const CORE_API_INTERNAL_SECRET = getEnvVar('CORE_API_INTERNAL_SECRET', false)
@@ -202,6 +207,9 @@ function loadConfig() {
       OPS_INTERNAL_SECRET,
       OPS_KEY_N8N,
       OPS_KEY_ADMIN,
+      OPS_CONSOLE_USER,
+      OPS_CONSOLE_PASS,
+      OPS_INTERNAL_BASE_URL,
       
       // Billing/Usage Reporting
       CORE_API_BASE_URL,

@@ -1,537 +1,453 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Book8 V1 Ops Tool Pack
-Tests all 4 new ops tools (tenant.status, voice.diagnostics, billing.syncPrices, ops.replayExecution)
+Backend Test Suite for Ops Console Proxy API Endpoints and Basic Auth Protection
 
-Test Cases from Review Request:
-1. Verify Tools Appear in Registry
-2. tenant.status - Read-only Status Check  
-3. voice.diagnostics - Latency Checks
-4. billing.syncPrices - Requires Approval Gate
-5. billing.syncPrices - Plan Mode with Approval
-6. ops.replayExecution - Plan Mode
-7. ops.replayExecution - Execute Mode with Overrides
-8. Validation Errors
-9. Tool Schema Validation
+Tests the Ops Console proxy API endpoints and Basic Auth protection as specified in the review request.
 
-Authentication: x-book8-internal-secret: ops-dev-secret-change-me
+Test Cases:
+1. Basic Auth Protection - No Credentials
+2. Basic Auth Protection - Wrong Credentials  
+3. Basic Auth Protection - Valid Credentials
+4. Proxy - Tools Endpoint
+5. Proxy - Logs Endpoint
+6. Proxy - Logs with Filters
+7. Proxy - Requests Endpoint
+8. Proxy - Create Request
+9. Proxy - Approve Request
+10. UI Page Access - With Auth
+11. UI Page Access - Without Auth
+
+Authentication: admin:book8ops2024
+Header format: Authorization: Basic YWRtaW46Ym9vazhhb3BzMjAyNA==
 """
 
 import requests
 import json
+import base64
+import os
 import time
-import uuid
 from typing import Dict, Any, Optional
 
-# Configuration
-BASE_URL = "https://ops-command-9.preview.emergentagent.com"
-AUTH_HEADER = "ops-dev-secret-change-me"
+# Get base URL from environment
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://ops-command-9.preview.emergentagent.com')
 
-class OpsToolTester:
-    def __init__(self):
-        self.base_url = BASE_URL
-        self.headers = {
-            "Content-Type": "application/json",
-            "x-book8-internal-secret": AUTH_HEADER
-        }
-        self.test_results = []
-        
-    def log_test(self, test_name: str, success: bool, details: str = "", response_data: Any = None):
-        """Log test result"""
-        status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status}: {test_name}")
-        if details:
-            print(f"   Details: {details}")
-        if response_data and not success:
-            print(f"   Response: {json.dumps(response_data, indent=2)}")
-        print()
-        
-        self.test_results.append({
-            "test": test_name,
-            "success": success,
-            "details": details,
-            "response": response_data
-        })
+# Basic Auth credentials
+VALID_USERNAME = "admin"
+VALID_PASSWORD = "book8ops2024"
+VALID_AUTH_HEADER = base64.b64encode(f"{VALID_USERNAME}:{VALID_PASSWORD}".encode()).decode()
+
+# Invalid credentials for testing
+INVALID_AUTH_HEADER = base64.b64encode("wrong:credentials".encode()).decode()
+
+class TestResult:
+    def __init__(self, name: str, passed: bool, details: str = "", response_data: Any = None):
+        self.name = name
+        self.passed = passed
+        self.details = details
+        self.response_data = response_data
+
+def make_request(method: str, url: str, headers: Optional[Dict] = None, data: Optional[Dict] = None, timeout: int = 30) -> requests.Response:
+    """Make HTTP request with error handling"""
+    try:
+        if method.upper() == 'GET':
+            return requests.get(url, headers=headers, timeout=timeout)
+        elif method.upper() == 'POST':
+            return requests.post(url, headers=headers, json=data, timeout=timeout)
+        else:
+            raise ValueError(f"Unsupported method: {method}")
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+        raise
+
+def test_basic_auth_no_credentials():
+    """Test Case 1: Basic Auth Protection - No Credentials"""
+    print("\n🔒 Test Case 1: Basic Auth Protection - No Credentials")
     
-    def make_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> tuple[int, Dict]:
-        """Make HTTP request and return status code and response data"""
-        url = f"{self.base_url}{endpoint}"
+    try:
+        url = f"{BASE_URL}/api/ops/tools"
+        response = make_request('GET', url)
         
-        try:
-            if method.upper() == "GET":
-                response = requests.get(url, headers=self.headers, timeout=30)
-            elif method.upper() == "POST":
-                response = requests.post(url, headers=self.headers, json=data, timeout=30)
+        if response.status_code == 401:
+            if "Authentication required" in response.text:
+                return TestResult("Basic Auth - No Credentials", True, 
+                                f"✅ Correctly returned 401 with 'Authentication required' message")
             else:
-                raise ValueError(f"Unsupported method: {method}")
-                
+                return TestResult("Basic Auth - No Credentials", False, 
+                                f"❌ Returned 401 but wrong message: {response.text}")
+        else:
+            return TestResult("Basic Auth - No Credentials", False, 
+                            f"❌ Expected 401, got {response.status_code}: {response.text}")
+            
+    except Exception as e:
+        return TestResult("Basic Auth - No Credentials", False, f"❌ Exception: {str(e)}")
+
+def test_basic_auth_wrong_credentials():
+    """Test Case 2: Basic Auth Protection - Wrong Credentials"""
+    print("\n🔒 Test Case 2: Basic Auth Protection - Wrong Credentials")
+    
+    try:
+        url = f"{BASE_URL}/api/ops/tools"
+        headers = {"Authorization": f"Basic {INVALID_AUTH_HEADER}"}
+        response = make_request('GET', url, headers=headers)
+        
+        if response.status_code == 401:
+            return TestResult("Basic Auth - Wrong Credentials", True, 
+                            f"✅ Correctly returned 401 for invalid credentials")
+        else:
+            return TestResult("Basic Auth - Wrong Credentials", False, 
+                            f"❌ Expected 401, got {response.status_code}: {response.text}")
+            
+    except Exception as e:
+        return TestResult("Basic Auth - Wrong Credentials", False, f"❌ Exception: {str(e)}")
+
+def test_basic_auth_valid_credentials():
+    """Test Case 3: Basic Auth Protection - Valid Credentials"""
+    print("\n🔒 Test Case 3: Basic Auth Protection - Valid Credentials")
+    
+    try:
+        url = f"{BASE_URL}/api/ops/tools"
+        headers = {"Authorization": f"Basic {VALID_AUTH_HEADER}"}
+        response = make_request('GET', url, headers=headers)
+        
+        if response.status_code == 200:
             try:
-                response_data = response.json()
-            except:
-                response_data = {"raw_response": response.text}
-                
-            return response.status_code, response_data
+                data = response.json()
+                if 'tools' in data:
+                    return TestResult("Basic Auth - Valid Credentials", True, 
+                                    f"✅ Correctly returned 200 with tools array containing {len(data['tools'])} tools")
+                else:
+                    return TestResult("Basic Auth - Valid Credentials", False, 
+                                    f"❌ Got 200 but missing 'tools' in response: {data}")
+            except json.JSONDecodeError:
+                return TestResult("Basic Auth - Valid Credentials", False, 
+                                f"❌ Got 200 but invalid JSON: {response.text}")
+        else:
+            return TestResult("Basic Auth - Valid Credentials", False, 
+                            f"❌ Expected 200, got {response.status_code}: {response.text}")
             
-        except requests.exceptions.RequestException as e:
-            return 0, {"error": str(e)}
+    except Exception as e:
+        return TestResult("Basic Auth - Valid Credentials", False, f"❌ Exception: {str(e)}")
+
+def test_proxy_tools_endpoint():
+    """Test Case 4: Proxy - Tools Endpoint"""
+    print("\n🛠️ Test Case 4: Proxy - Tools Endpoint")
     
-    def test_1_verify_tools_in_registry(self):
-        """Test Case 1: Verify Tools Appear in Registry"""
-        print("🔍 Test Case 1: Verify Tools Appear in Registry")
+    try:
+        url = f"{BASE_URL}/api/ops/tools?format=full"
+        headers = {"Authorization": f"Basic {VALID_AUTH_HEADER}"}
+        response = make_request('GET', url, headers=headers)
         
-        status_code, response = self.make_request("GET", "/api/internal/ops/tools")
-        
-        if status_code != 200:
-            self.log_test("GET /api/internal/ops/tools", False, f"Expected 200, got {status_code}", response)
-            return
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                if 'tools' in data and isinstance(data['tools'], list):
+                    tools_count = len(data['tools'])
+                    if tools_count >= 1:  # Should have at least tenant.bootstrap
+                        return TestResult("Proxy - Tools Endpoint", True, 
+                                        f"✅ Successfully retrieved {tools_count} tools from internal ops endpoint")
+                    else:
+                        return TestResult("Proxy - Tools Endpoint", False, 
+                                        f"❌ Tools array is empty: {data}")
+                else:
+                    return TestResult("Proxy - Tools Endpoint", False, 
+                                    f"❌ Missing or invalid 'tools' array: {data}")
+            except json.JSONDecodeError:
+                return TestResult("Proxy - Tools Endpoint", False, 
+                                f"❌ Invalid JSON response: {response.text}")
+        else:
+            return TestResult("Proxy - Tools Endpoint", False, 
+                            f"❌ Expected 200, got {response.status_code}: {response.text}")
             
-        if not response.get("ok"):
-            self.log_test("GET /api/internal/ops/tools", False, "Response ok=false", response)
-            return
-            
-        tools = response.get("tools", [])
-        tool_names = [tool["name"] for tool in tools]
-        
-        expected_tools = ["tenant.status", "voice.diagnostics", "billing.syncPrices", "ops.replayExecution"]
-        missing_tools = [tool for tool in expected_tools if tool not in tool_names]
-        
-        if missing_tools:
-            self.log_test("Tools Registry Check", False, f"Missing tools: {missing_tools}", {"found_tools": tool_names})
-            return
-            
-        # Verify tool properties
-        for expected_tool in expected_tools:
-            tool_def = next((t for t in tools if t["name"] == expected_tool), None)
-            if not tool_def:
-                continue
-                
-            # Check specific properties based on review request
-            if expected_tool == "tenant.status":
-                if tool_def.get("category") != "tenant" or tool_def.get("mutates") != False:
-                    self.log_test(f"{expected_tool} properties", False, f"Expected category=tenant, mutates=false", tool_def)
-                    continue
-                    
-            elif expected_tool == "voice.diagnostics":
-                if tool_def.get("category") != "voice" or tool_def.get("mutates") != False:
-                    self.log_test(f"{expected_tool} properties", False, f"Expected category=voice, mutates=false", tool_def)
-                    continue
-                    
-            elif expected_tool == "billing.syncPrices":
-                if (tool_def.get("category") != "billing" or 
-                    tool_def.get("mutates") != True or 
-                    tool_def.get("requiresApproval") != True):
-                    self.log_test(f"{expected_tool} properties", False, f"Expected category=billing, mutates=true, requiresApproval=true", tool_def)
-                    continue
-                    
-            elif expected_tool == "ops.replayExecution":
-                if tool_def.get("category") != "ops" or tool_def.get("mutates") != True:
-                    self.log_test(f"{expected_tool} properties", False, f"Expected category=ops, mutates=true", tool_def)
-                    continue
-        
-        self.log_test("Tools Registry Check", True, f"All 4 tools found with correct properties: {expected_tools}")
+    except Exception as e:
+        return TestResult("Proxy - Tools Endpoint", False, f"❌ Exception: {str(e)}")
+
+def test_proxy_logs_endpoint():
+    """Test Case 5: Proxy - Logs Endpoint"""
+    print("\n📋 Test Case 5: Proxy - Logs Endpoint")
     
-    def test_2_tenant_status(self):
-        """Test Case 2: tenant.status - Read-only Status Check"""
-        print("🔍 Test Case 2: tenant.status - Read-only Status Check")
+    try:
+        url = f"{BASE_URL}/api/ops/logs?limit=5"
+        headers = {"Authorization": f"Basic {VALID_AUTH_HEADER}"}
+        response = make_request('GET', url, headers=headers)
         
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                if 'logs' in data and isinstance(data['logs'], list):
+                    return TestResult("Proxy - Logs Endpoint", True, 
+                                    f"✅ Successfully retrieved logs array with {len(data['logs'])} entries")
+                else:
+                    return TestResult("Proxy - Logs Endpoint", False, 
+                                    f"❌ Missing or invalid 'logs' array: {data}")
+            except json.JSONDecodeError:
+                return TestResult("Proxy - Logs Endpoint", False, 
+                                f"❌ Invalid JSON response: {response.text}")
+        else:
+            return TestResult("Proxy - Logs Endpoint", False, 
+                            f"❌ Expected 200, got {response.status_code}: {response.text}")
+            
+    except Exception as e:
+        return TestResult("Proxy - Logs Endpoint", False, f"❌ Exception: {str(e)}")
+
+def test_proxy_logs_with_filters():
+    """Test Case 6: Proxy - Logs with Filters"""
+    print("\n📋 Test Case 6: Proxy - Logs with Filters")
+    
+    try:
+        url = f"{BASE_URL}/api/ops/logs?tool=tenant.status&status=success&limit=3"
+        headers = {"Authorization": f"Basic {VALID_AUTH_HEADER}"}
+        response = make_request('GET', url, headers=headers)
+        
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                if 'logs' in data and isinstance(data['logs'], list):
+                    return TestResult("Proxy - Logs with Filters", True, 
+                                    f"✅ Successfully retrieved filtered logs with {len(data['logs'])} entries")
+                else:
+                    return TestResult("Proxy - Logs with Filters", False, 
+                                    f"❌ Missing or invalid 'logs' array: {data}")
+            except json.JSONDecodeError:
+                return TestResult("Proxy - Logs with Filters", False, 
+                                f"❌ Invalid JSON response: {response.text}")
+        else:
+            return TestResult("Proxy - Logs with Filters", False, 
+                            f"❌ Expected 200, got {response.status_code}: {response.text}")
+            
+    except Exception as e:
+        return TestResult("Proxy - Logs with Filters", False, f"❌ Exception: {str(e)}")
+
+def test_proxy_requests_endpoint():
+    """Test Case 7: Proxy - Requests Endpoint"""
+    print("\n✅ Test Case 7: Proxy - Requests Endpoint")
+    
+    try:
+        url = f"{BASE_URL}/api/ops/requests?status=pending"
+        headers = {"Authorization": f"Basic {VALID_AUTH_HEADER}"}
+        response = make_request('GET', url, headers=headers)
+        
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                if 'requests' in data and isinstance(data['requests'], list):
+                    return TestResult("Proxy - Requests Endpoint", True, 
+                                    f"✅ Successfully retrieved pending requests array with {len(data['requests'])} entries")
+                else:
+                    return TestResult("Proxy - Requests Endpoint", False, 
+                                    f"❌ Missing or invalid 'requests' array: {data}")
+            except json.JSONDecodeError:
+                return TestResult("Proxy - Requests Endpoint", False, 
+                                f"❌ Invalid JSON response: {response.text}")
+        else:
+            return TestResult("Proxy - Requests Endpoint", False, 
+                            f"❌ Expected 200, got {response.status_code}: {response.text}")
+            
+    except Exception as e:
+        return TestResult("Proxy - Requests Endpoint", False, f"❌ Exception: {str(e)}")
+
+def test_proxy_create_request():
+    """Test Case 8: Proxy - Create Request"""
+    print("\n✅ Test Case 8: Proxy - Create Request")
+    
+    try:
+        url = f"{BASE_URL}/api/ops/requests"
+        headers = {"Authorization": f"Basic {VALID_AUTH_HEADER}"}
         request_data = {
-            "tool": "tenant.status",
-            "payload": {"businessId": "test-status-biz"},
-            "meta": {"requestId": "test-status-001"}
+            "tool": "tenant.bootstrap",
+            "payload": {"businessId": "proxy-test-123"},
+            "requestedBy": "proxy-test"
         }
+        response = make_request('POST', url, headers=headers, data=request_data)
         
-        status_code, response = self.make_request("POST", "/api/internal/ops/execute", request_data)
-        
-        if status_code != 200:
-            self.log_test("tenant.status execution", False, f"Expected 200, got {status_code}", response)
-            return
+        if response.status_code == 201:
+            try:
+                data = response.json()
+                if 'requestId' in data and 'status' in data:
+                    if data['status'] == 'pending':
+                        return TestResult("Proxy - Create Request", True, 
+                                        f"✅ Successfully created request with ID: {data['requestId']}", 
+                                        response_data=data)
+                    else:
+                        return TestResult("Proxy - Create Request", False, 
+                                        f"❌ Expected status 'pending', got '{data['status']}': {data}")
+                else:
+                    return TestResult("Proxy - Create Request", False, 
+                                    f"❌ Missing requestId or status in response: {data}")
+            except json.JSONDecodeError:
+                return TestResult("Proxy - Create Request", False, 
+                                f"❌ Invalid JSON response: {response.text}")
+        else:
+            return TestResult("Proxy - Create Request", False, 
+                            f"❌ Expected 201, got {response.status_code}: {response.text}")
             
-        if not response.get("ok"):
-            self.log_test("tenant.status execution", False, "Response ok=false", response)
-            return
-            
-        result = response.get("result", {})
-        
-        # Check required fields from review request
-        required_fields = ["summary", "checks"]
-        missing_fields = [field for field in required_fields if field not in result]
-        
-        if missing_fields:
-            self.log_test("tenant.status response format", False, f"Missing fields: {missing_fields}", result)
-            return
-            
-        # Check summary has ready boolean
-        summary = result.get("summary", {})
-        if "ready" not in summary or not isinstance(summary["ready"], bool):
-            self.log_test("tenant.status summary.ready", False, "summary.ready should be boolean", summary)
-            return
-            
-        # Check checks is array
-        checks = result.get("checks", [])
-        if not isinstance(checks, list):
-            self.log_test("tenant.status checks array", False, "checks should be array", checks)
-            return
-            
-        self.log_test("tenant.status execution", True, f"Ready: {summary['ready']}, Checks: {len(checks)}")
+    except Exception as e:
+        return TestResult("Proxy - Create Request", False, f"❌ Exception: {str(e)}")
+
+def test_proxy_approve_request(request_id: str):
+    """Test Case 9: Proxy - Approve Request"""
+    print(f"\n✅ Test Case 9: Proxy - Approve Request (ID: {request_id})")
     
-    def test_3_voice_diagnostics(self):
-        """Test Case 3: voice.diagnostics - Latency Checks"""
-        print("🔍 Test Case 3: voice.diagnostics - Latency Checks")
+    try:
+        url = f"{BASE_URL}/api/ops/requests/{request_id}/approve"
+        headers = {"Authorization": f"Basic {VALID_AUTH_HEADER}"}
+        approve_data = {"approvedBy": "proxy-admin"}
+        response = make_request('POST', url, headers=headers, data=approve_data)
         
-        request_data = {
-            "tool": "voice.diagnostics", 
-            "payload": {"timeoutMs": 3000},
-            "meta": {"requestId": "test-voice-001"}
-        }
-        
-        status_code, response = self.make_request("POST", "/api/internal/ops/execute", request_data)
-        
-        if status_code != 200:
-            self.log_test("voice.diagnostics execution", False, f"Expected 200, got {status_code}", response)
-            return
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                if 'status' in data:
+                    if data['status'] == 'approved':
+                        return TestResult("Proxy - Approve Request", True, 
+                                        f"✅ Successfully approved request, status: {data['status']}")
+                    else:
+                        return TestResult("Proxy - Approve Request", False, 
+                                        f"❌ Expected status 'approved', got '{data['status']}': {data}")
+                else:
+                    return TestResult("Proxy - Approve Request", False, 
+                                    f"❌ Missing status in response: {data}")
+            except json.JSONDecodeError:
+                return TestResult("Proxy - Approve Request", False, 
+                                f"❌ Invalid JSON response: {response.text}")
+        else:
+            return TestResult("Proxy - Approve Request", False, 
+                            f"❌ Expected 200, got {response.status_code}: {response.text}")
             
-        if not response.get("ok"):
-            self.log_test("voice.diagnostics execution", False, "Response ok=false", response)
-            return
-            
-        result = response.get("result", {})
-        
-        # Check required fields from review request
-        required_fields = ["overallStatus", "summary", "results"]
-        missing_fields = [field for field in required_fields if field not in result]
-        
-        if missing_fields:
-            self.log_test("voice.diagnostics response format", False, f"Missing fields: {missing_fields}", result)
-            return
-            
-        # Check summary has total/healthy/unhealthy counts
-        summary = result.get("summary", {})
-        summary_fields = ["total", "healthy", "unhealthy"]
-        missing_summary = [field for field in summary_fields if field not in summary]
-        
-        if missing_summary:
-            self.log_test("voice.diagnostics summary", False, f"Missing summary fields: {missing_summary}", summary)
-            return
-            
-        # Check results array with latency info
-        results_array = result.get("results", [])
-        if not isinstance(results_array, list):
-            self.log_test("voice.diagnostics results", False, "results should be array", results_array)
-            return
-            
-        # Check at least one result has latency info
-        has_latency = any("latencyMs" in r for r in results_array)
-        if not has_latency and len(results_array) > 0:
-            self.log_test("voice.diagnostics latency", False, "No latency info found in results", results_array)
-            return
-            
-        self.log_test("voice.diagnostics execution", True, 
-                     f"Status: {result['overallStatus']}, Total: {summary['total']}, Healthy: {summary['healthy']}")
+    except Exception as e:
+        return TestResult("Proxy - Approve Request", False, f"❌ Exception: {str(e)}")
+
+def test_ui_page_access_with_auth():
+    """Test Case 10: UI Page Access - With Auth"""
+    print("\n🌐 Test Case 10: UI Page Access - With Auth")
     
-    def test_4_billing_sync_requires_approval(self):
-        """Test Case 4: billing.syncPrices - Requires Approval Gate"""
-        print("🔍 Test Case 4: billing.syncPrices - Requires Approval Gate")
+    try:
+        url = f"{BASE_URL}/ops"
+        headers = {"Authorization": f"Basic {VALID_AUTH_HEADER}"}
+        response = make_request('GET', url, headers=headers)
         
-        request_data = {
-            "tool": "billing.syncPrices",
-            "payload": {"businessId": "test-billing", "mode": "plan"},
-            "meta": {"requestId": "test-billing-001"}
-        }
-        
-        status_code, response = self.make_request("POST", "/api/internal/ops/execute", request_data)
-        
-        # Should return 403 with approval_required status since requiresApproval=true
-        if status_code != 403:
-            self.log_test("billing.syncPrices approval gate", False, f"Expected 403, got {status_code}", response)
-            return
-            
-        if response.get("status") != "approval_required":
-            self.log_test("billing.syncPrices approval status", False, f"Expected status=approval_required", response)
-            return
-            
-        # Check approval object structure
-        approval = response.get("approval", {})
-        if not approval:
-            self.log_test("billing.syncPrices approval object", False, "Missing approval object", response)
-            return
-            
-        self.log_test("billing.syncPrices approval gate", True, "Correctly requires approval")
-    
-    def test_5_billing_sync_with_approval(self):
-        """Test Case 5: billing.syncPrices - Plan Mode with Approval"""
-        print("🔍 Test Case 5: billing.syncPrices - Plan Mode with Approval")
-        
-        request_data = {
-            "tool": "billing.syncPrices",
-            "payload": {"businessId": "test-billing", "mode": "plan"},
-            "meta": {"requestId": "test-billing-002", "approved": True}
-        }
-        
-        status_code, response = self.make_request("POST", "/api/internal/ops/execute", request_data)
-        
-        # With approval, should proceed (may fail with STRIPE_NOT_CONFIGURED which is expected)
-        if status_code not in [200, 400]:
-            self.log_test("billing.syncPrices with approval", False, f"Expected 200 or 400, got {status_code}", response)
-            return
-            
-        # If 400, check if it's STRIPE_NOT_CONFIGURED (expected)
-        if status_code == 400:
-            result = response.get("result", {})
-            error = result.get("error", {})
-            if error.get("code") == "STRIPE_NOT_CONFIGURED":
-                self.log_test("billing.syncPrices with approval", True, "Approval gate bypassed, failed at Stripe config (expected)")
-                return
+        if response.status_code == 200:
+            if "Ops Control Plane" in response.text:
+                return TestResult("UI Page Access - With Auth", True, 
+                                f"✅ Successfully accessed /ops page with valid auth")
             else:
-                self.log_test("billing.syncPrices with approval", False, f"Unexpected error: {error}", response)
-                return
-        
-        # If 200, check response structure
-        if not response.get("ok"):
-            result = response.get("result", {})
-            error = result.get("error", {})
-            if error.get("code") == "STRIPE_NOT_CONFIGURED":
-                self.log_test("billing.syncPrices with approval", True, "Approval gate bypassed, failed at Stripe config (expected)")
-                return
-        
-        self.log_test("billing.syncPrices with approval", True, "Tool executed with approval")
+                return TestResult("UI Page Access - With Auth", False, 
+                                f"❌ Got 200 but page content doesn't contain expected text")
+        else:
+            return TestResult("UI Page Access - With Auth", False, 
+                            f"❌ Expected 200, got {response.status_code}: {response.text}")
+            
+    except Exception as e:
+        return TestResult("UI Page Access - With Auth", False, f"❌ Exception: {str(e)}")
+
+def test_ui_page_access_without_auth():
+    """Test Case 11: UI Page Access - Without Auth"""
+    print("\n🌐 Test Case 11: UI Page Access - Without Auth")
     
-    def test_6_ops_replay_plan_mode(self):
-        """Test Case 6: ops.replayExecution - Plan Mode"""
-        print("🔍 Test Case 6: ops.replayExecution - Plan Mode")
+    try:
+        url = f"{BASE_URL}/ops"
+        response = make_request('GET', url)
         
-        # First execute tenant.status to create an execution log
-        setup_request = {
-            "tool": "tenant.status",
-            "payload": {"businessId": "test-replay-setup"},
-            "meta": {"requestId": "test-replay-setup-001"}
-        }
-        
-        setup_status, setup_response = self.make_request("POST", "/api/internal/ops/execute", setup_request)
-        
-        if setup_status != 200 or not setup_response.get("ok"):
-            self.log_test("ops.replayExecution setup", False, "Failed to create execution for replay", setup_response)
-            return
-        
-        # Wait a moment for event log to be saved
-        time.sleep(1)
-        
-        # Now test replay in plan mode
-        replay_request = {
-            "tool": "ops.replayExecution",
-            "payload": {"requestId": "test-replay-setup-001", "mode": "plan"},
-            "meta": {"requestId": "test-replay-001"}
-        }
-        
-        status_code, response = self.make_request("POST", "/api/internal/ops/execute", replay_request)
-        
-        if status_code != 200:
-            self.log_test("ops.replayExecution plan mode", False, f"Expected 200, got {status_code}", response)
-            return
+        if response.status_code == 401:
+            if "Authentication required" in response.text:
+                return TestResult("UI Page Access - Without Auth", True, 
+                                f"✅ Correctly returned 401 with 'Authentication required' for /ops page")
+            else:
+                return TestResult("UI Page Access - Without Auth", False, 
+                                f"❌ Returned 401 but wrong message: {response.text}")
+        else:
+            return TestResult("UI Page Access - Without Auth", False, 
+                            f"❌ Expected 401, got {response.status_code}: {response.text}")
             
-        if not response.get("ok"):
-            self.log_test("ops.replayExecution plan mode", False, "Response ok=false", response)
-            return
-            
-        result = response.get("result", {})
-        
-        # Check required fields from review request
-        if result.get("mode") != "plan":
-            self.log_test("ops.replayExecution mode", False, f"Expected mode=plan, got {result.get('mode')}", result)
-            return
-            
-        if result.get("executed") != False:
-            self.log_test("ops.replayExecution executed", False, f"Expected executed=false, got {result.get('executed')}", result)
-            return
-            
-        # Check summary.originalExecution contains original tool info
-        summary = result.get("summary", {})
-        original_execution = summary.get("originalExecution", {})
-        
-        if not original_execution:
-            self.log_test("ops.replayExecution originalExecution", False, "Missing summary.originalExecution", summary)
-            return
-            
-        if original_execution.get("tool") != "tenant.status":
-            self.log_test("ops.replayExecution original tool", False, f"Expected tool=tenant.status, got {original_execution.get('tool')}", original_execution)
-            return
-            
-        self.log_test("ops.replayExecution plan mode", True, f"Plan mode successful, original tool: {original_execution.get('tool')}")
+    except Exception as e:
+        return TestResult("UI Page Access - Without Auth", False, f"❌ Exception: {str(e)}")
+
+def run_all_tests():
+    """Run all test cases and return results"""
+    print(f"🚀 Starting Ops Console Proxy API Tests")
+    print(f"📍 Base URL: {BASE_URL}")
+    print(f"🔐 Auth: {VALID_USERNAME}:{'*' * len(VALID_PASSWORD)}")
+    print("=" * 80)
     
-    def test_7_ops_replay_execute_mode(self):
-        """Test Case 7: ops.replayExecution - Execute Mode with Overrides"""
-        print("🔍 Test Case 7: ops.replayExecution - Execute Mode with Overrides")
-        
-        # Use the same setup execution from previous test
-        replay_request = {
-            "tool": "ops.replayExecution",
-            "payload": {
-                "requestId": "test-replay-setup-001", 
-                "mode": "execute",
-                "overridePayload": {"businessId": "overridden-biz"}
-            },
-            "meta": {"requestId": "test-replay-002"}
-        }
-        
-        status_code, response = self.make_request("POST", "/api/internal/ops/execute", replay_request)
-        
-        if status_code != 200:
-            self.log_test("ops.replayExecution execute mode", False, f"Expected 200, got {status_code}", response)
-            return
-            
-        if not response.get("ok"):
-            self.log_test("ops.replayExecution execute mode", False, "Response ok=false", response)
-            return
-            
-        result = response.get("result", {})
-        
-        # Check required fields from review request
-        if result.get("mode") != "execute":
-            self.log_test("ops.replayExecution execute mode", False, f"Expected mode=execute, got {result.get('mode')}", result)
-            return
-            
-        if result.get("executed") != True:
-            self.log_test("ops.replayExecution executed", False, f"Expected executed=true, got {result.get('executed')}", result)
-            return
-            
-        # Check result contains replayed execution result
-        if "result" not in result:
-            self.log_test("ops.replayExecution result", False, "Missing result field", result)
-            return
-            
-        self.log_test("ops.replayExecution execute mode", True, "Execute mode successful with overrides")
+    results = []
+    request_id = None
     
-    def test_8_validation_errors(self):
-        """Test Case 8: Validation Errors"""
-        print("🔍 Test Case 8: Validation Errors")
-        
-        # Test tenant.status without required businessId
-        request_data = {
-            "tool": "tenant.status",
-            "payload": {},  # Missing businessId
-            "meta": {"requestId": "test-validation-001"}
-        }
-        
-        status_code, response = self.make_request("POST", "/api/internal/ops/execute", request_data)
-        
-        # Should return validation error
-        if status_code != 400:
-            self.log_test("Validation error test", False, f"Expected 400, got {status_code}", response)
-            return
-            
-        error = response.get("error", {})
-        if "VALIDATION" not in error.get("code", ""):
-            self.log_test("Validation error code", False, f"Expected validation error code, got {error.get('code')}", error)
-            return
-            
-        self.log_test("Validation error test", True, f"Correctly returned validation error: {error.get('code')}")
+    # Test 1: Basic Auth - No Credentials
+    results.append(test_basic_auth_no_credentials())
     
-    def test_9_tool_schema_validation(self):
-        """Test Case 9: Tool Schema Validation"""
-        print("🔍 Test Case 9: Tool Schema Validation")
-        
-        status_code, response = self.make_request("GET", "/api/internal/ops/tools?format=full")
-        
-        if status_code != 200:
-            self.log_test("Tool schema validation", False, f"Expected 200, got {status_code}", response)
-            return
-            
-        if not response.get("ok"):
-            self.log_test("Tool schema validation", False, "Response ok=false", response)
-            return
-            
-        tools = response.get("tools", [])
-        expected_tools = ["tenant.status", "voice.diagnostics", "billing.syncPrices", "ops.replayExecution"]
-        
-        for tool_name in expected_tools:
-            tool_def = next((t for t in tools if t["name"] == tool_name), None)
-            if not tool_def:
-                self.log_test(f"{tool_name} schema", False, f"Tool not found in registry", None)
-                continue
-                
-            # Check required schema fields
-            required_fields = ["name", "description", "category", "mutates", "risk", "inputSchema", "outputSchema", "examples"]
-            missing_fields = [field for field in required_fields if field not in tool_def]
-            
-            if missing_fields:
-                self.log_test(f"{tool_name} schema", False, f"Missing fields: {missing_fields}", tool_def)
-                continue
-                
-            # Check inputSchema is valid
-            input_schema = tool_def.get("inputSchema", {})
-            if not isinstance(input_schema, dict) or "type" not in input_schema:
-                self.log_test(f"{tool_name} inputSchema", False, "Invalid inputSchema format", input_schema)
-                continue
-                
-            # Check outputSchema is valid
-            output_schema = tool_def.get("outputSchema", {})
-            if not isinstance(output_schema, dict) or "type" not in output_schema:
-                self.log_test(f"{tool_name} outputSchema", False, "Invalid outputSchema format", output_schema)
-                continue
-                
-            # Check examples is array
-            examples = tool_def.get("examples", [])
-            if not isinstance(examples, list):
-                self.log_test(f"{tool_name} examples", False, "Examples should be array", examples)
-                continue
-                
-            self.log_test(f"{tool_name} schema", True, "All required schema fields present")
+    # Test 2: Basic Auth - Wrong Credentials
+    results.append(test_basic_auth_wrong_credentials())
     
-    def run_all_tests(self):
-        """Run all test cases"""
-        print("🚀 Starting Book8 V1 Ops Tool Pack Testing")
-        print("=" * 60)
-        print()
-        
-        # Run all test cases
-        self.test_1_verify_tools_in_registry()
-        self.test_2_tenant_status()
-        self.test_3_voice_diagnostics()
-        self.test_4_billing_sync_requires_approval()
-        self.test_5_billing_sync_with_approval()
-        self.test_6_ops_replay_plan_mode()
-        self.test_7_ops_replay_execute_mode()
-        self.test_8_validation_errors()
-        self.test_9_tool_schema_validation()
-        
-        # Summary
-        print("=" * 60)
-        print("📊 TEST SUMMARY")
-        print("=" * 60)
-        
-        total_tests = len(self.test_results)
-        passed_tests = sum(1 for result in self.test_results if result["success"])
-        failed_tests = total_tests - passed_tests
-        
-        print(f"Total Tests: {total_tests}")
-        print(f"Passed: {passed_tests} ✅")
-        print(f"Failed: {failed_tests} ❌")
-        print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
-        print()
-        
-        if failed_tests > 0:
-            print("❌ FAILED TESTS:")
-            for result in self.test_results:
-                if not result["success"]:
-                    print(f"  - {result['test']}: {result['details']}")
-            print()
-        
-        print("🎯 FOCUS AREAS VERIFIED:")
-        print("  1. All 4 tools properly registered and discoverable ✅")
-        print("  2. Read-only tools (tenant.status, voice.diagnostics) work without approval ✅")
-        print("  3. Mutating tool (billing.syncPrices) requires approval gate ✅")
-        print("  4. Plan mode works for billing.syncPrices and ops.replayExecution ✅")
-        print("  5. Replay can load and re-execute previous executions ✅")
-        print()
-        
-        return passed_tests == total_tests
+    # Test 3: Basic Auth - Valid Credentials
+    results.append(test_basic_auth_valid_credentials())
+    
+    # Test 4: Proxy - Tools Endpoint
+    results.append(test_proxy_tools_endpoint())
+    
+    # Test 5: Proxy - Logs Endpoint
+    results.append(test_proxy_logs_endpoint())
+    
+    # Test 6: Proxy - Logs with Filters
+    results.append(test_proxy_logs_with_filters())
+    
+    # Test 7: Proxy - Requests Endpoint
+    results.append(test_proxy_requests_endpoint())
+    
+    # Test 8: Proxy - Create Request
+    create_result = test_proxy_create_request()
+    results.append(create_result)
+    
+    # Extract request ID for approval test
+    if create_result.passed and create_result.response_data:
+        request_id = create_result.response_data.get('requestId')
+    
+    # Test 9: Proxy - Approve Request (only if we have a request ID)
+    if request_id:
+        results.append(test_proxy_approve_request(request_id))
+    else:
+        results.append(TestResult("Proxy - Approve Request", False, 
+                                "❌ Skipped - no request ID from create test"))
+    
+    # Test 10: UI Page Access - With Auth
+    results.append(test_ui_page_access_with_auth())
+    
+    # Test 11: UI Page Access - Without Auth
+    results.append(test_ui_page_access_without_auth())
+    
+    return results
+
+def print_summary(results):
+    """Print test summary"""
+    print("\n" + "=" * 80)
+    print("📊 TEST SUMMARY")
+    print("=" * 80)
+    
+    passed = sum(1 for r in results if r.passed)
+    total = len(results)
+    
+    for i, result in enumerate(results, 1):
+        status = "✅ PASS" if result.passed else "❌ FAIL"
+        print(f"{i:2d}. {status} - {result.name}")
+        if result.details:
+            print(f"    {result.details}")
+    
+    print("\n" + "=" * 80)
+    print(f"🎯 RESULTS: {passed}/{total} tests passed ({passed/total*100:.1f}%)")
+    
+    if passed == total:
+        print("🎉 ALL TESTS PASSED! Ops Console proxy API endpoints and Basic Auth are working correctly.")
+    else:
+        print(f"⚠️  {total - passed} test(s) failed. Please review the failures above.")
+    
+    return passed == total
 
 if __name__ == "__main__":
-    tester = OpsToolTester()
-    success = tester.run_all_tests()
-    
-    if success:
-        print("🎉 ALL TESTS PASSED! V1 Ops Tool Pack is working correctly.")
-        exit(0)
-    else:
-        print("💥 SOME TESTS FAILED! Check the details above.")
+    try:
+        results = run_all_tests()
+        all_passed = print_summary(results)
+        exit(0 if all_passed else 1)
+    except KeyboardInterrupt:
+        print("\n\n⏹️  Tests interrupted by user")
+        exit(1)
+    except Exception as e:
+        print(f"\n\n💥 Unexpected error: {str(e)}")
         exit(1)
