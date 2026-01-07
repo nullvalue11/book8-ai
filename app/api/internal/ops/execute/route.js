@@ -62,7 +62,8 @@ import {
 import {
   saveOpsEventLog,
   createOpsEventLog,
-  createFailedEvent
+  createFailedEvent,
+  createPlanEvent
 } from '@/lib/schemas/opsEventLog'
 import {
   getToolFromRegistry,
