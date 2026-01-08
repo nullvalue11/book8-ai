@@ -40,6 +40,7 @@ import { MongoClient } from 'mongodb'
 import crypto from 'crypto'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME } from '@/lib/schemas/opsEventLog'
+import { checkRateLimitWithRequest } from '@/api/internal/ops/_lib/rateLimiter'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -232,6 +233,30 @@ export async function GET(request, { params }) {
   const { requestId } = await params
   
   try {
+    // 0. RATE LIMITING FIRST (before auth)
+    const rateLimit = await checkRateLimitWithRequest(request, 'executions')
+    
+    if (!rateLimit.allowed) {
+      log('warn', `Rate limit exceeded for caller=${rateLimit.caller}`)
+      return NextResponse.json({
+        ok: false,
+        error: {
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: 'Too many requests. Please try again later.',
+          retryAfter: Math.ceil(rateLimit.resetIn / 1000)
+        },
+        _meta: { version: VERSION }
+      }, { 
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000)),
+          'X-RateLimit-Limit': String(rateLimit.limit),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil((Date.now() + rateLimit.resetIn) / 1000))
+        }
+      })
+    }
+    
     // 1. Validate requestId parameter
     if (!requestId || typeof requestId !== 'string' || requestId.trim() === '') {
       log('warn', 'Missing or invalid requestId parameter')

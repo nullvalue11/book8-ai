@@ -479,51 +479,25 @@ function hasScope(allowedScopes, requiredScope) {
 // Rate Limiting (MongoDB-backed for serverless safety)
 // ============================================================================
 
-// Import MongoDB-backed rate limiter
-import { checkRateLimit as checkRateLimitMongo, getRateLimitConfig } from '@/api/internal/ops/_lib/rateLimiter'
+// Import MongoDB-backed rate limiter with caller identity
+import { checkRateLimitWithRequest, getRateLimitConfig } from '@/api/internal/ops/_lib/rateLimiter'
 
-// Different rate limits for different key types (mirrored from rateLimiter.ts)
+// Different rate limits for different caller types (reference only - actual limits in rateLimiter.ts)
 const RATE_LIMITS = {
-  // Admin keys get higher limits
-  admin: {
-    windowMs: 60000,   // 1 minute window
-    maxRequests: 300,  // 300 requests per minute
-  },
-  // n8n automation keys get generous limits
-  n8n: {
-    windowMs: 60000,   // 1 minute window
-    maxRequests: 200,  // 200 requests per minute
-  },
-  // Default/legacy keys
-  default: {
-    windowMs: 60000,   // 1 minute window
-    maxRequests: 100,  // 100 requests per minute (increased from 30)
-  }
+  n8n: { windowMs: 60000, maxRequests: 200 },
+  ops_console: { windowMs: 60000, maxRequests: 300 },
+  unknown: { windowMs: 60000, maxRequests: 100 }
 }
 
 /**
- * Check if request is within rate limit (MongoDB-backed)
- * Uses atomic MongoDB operations for accuracy across serverless instances
- * @param {string} identifier - API key prefix or requestId prefix
- * @param {string} keyType - Type of key for determining limits
- * @param {string} tool - Optional tool name for per-tool limiting
- * @returns {Promise<object>} - { allowed, remaining, resetIn, limit, retryAfter }
+ * Legacy checkRateLimit wrapper - redirects to new caller-aware rate limiter
+ * @deprecated Use checkRateLimitWithRequest directly
  */
 async function checkRateLimit(identifier, keyType = 'default', tool = null) {
-  try {
-    // Use MongoDB-backed rate limiter
-    return await checkRateLimitMongo(identifier, keyType, tool)
-  } catch (error) {
-    // If MongoDB fails, allow request but log warning
-    console.warn(`[ops] Rate limiter MongoDB error: ${error.message}`)
-    const config = RATE_LIMITS[keyType] || RATE_LIMITS.default
-    return {
-      allowed: true,
-      remaining: config.maxRequests,
-      resetIn: config.windowMs,
-      limit: config.maxRequests
-    }
-  }
+  // This function is kept for backward compatibility but the actual rate limiting
+  // is now done via checkRateLimitWithRequest which uses caller identity
+  const { checkRateLimit: legacyCheck } = await import('@/api/internal/ops/_lib/rateLimiter')
+  return legacyCheck(identifier, keyType, tool)
 }
 
 /**
@@ -911,19 +885,12 @@ export async function POST(request) {
     initializeOps()
     
     // 0. RATE LIMITING FIRST (before auth to protect against brute force)
-    // Use IP + auth header hash as identifier for pre-auth rate limiting
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
-      || request.headers.get('x-real-ip') 
-      || 'unknown-ip'
-    const authHeader = request.headers.get('x-book8-internal-secret') || ''
-    const preAuthIdentifier = `ip_${crypto.createHash('sha256').update(clientIp + authHeader).digest('hex').substring(0, 8)}`
-    
-    console.log(`[RATE_LIMITER] Checking rate limit for: ${preAuthIdentifier}`)
-    rateLimit = await checkRateLimit(preAuthIdentifier, 'default', null)
-    console.log(`[RATE_LIMITER] Result: allowed=${rateLimit.allowed}, remaining=${rateLimit.remaining}, limit=${rateLimit.limit}`)
+    // Uses caller identity from x-book8-caller header
+    console.log(`[RATE_LIMITER] /execute - Checking rate limit`)
+    rateLimit = await checkRateLimitWithRequest(request, 'execute')
     
     if (!rateLimit.allowed) {
-      log(null, 'warn', `Rate limit exceeded for: ${preAuthIdentifier}`)
+      log(null, 'warn', `Rate limit exceeded for caller=${rateLimit.caller}`)
       return NextResponse.json({
         ok: false,
         error: {
