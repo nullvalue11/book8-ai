@@ -109,6 +109,9 @@ export default function LogsPage() {
         </button>
       </div>
       
+      {/* Rate Limit Status */}
+      <RateLimitStatus rateLimit={rateLimit} endpoint="/api/ops/logs" />
+      
       {/* Filters */}
       <div className="bg-white rounded-lg border p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
