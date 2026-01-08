@@ -454,6 +454,9 @@ export async function GET(request) {
       keyId: auth.keyId 
     })
     
+    // Calculate rate limit reset timestamp
+    const resetTimestamp = Math.ceil((Date.now() + rateLimit.resetIn) / 1000)
+    
     return NextResponse.json({
       ok: true,
       logs: cleanedLogs,
@@ -468,6 +471,12 @@ export async function GET(request) {
         version: VERSION,
         durationMs,
         timestamp: new Date().toISOString()
+      }
+    }, {
+      headers: {
+        'X-RateLimit-Limit': String(rateLimit.limit),
+        'X-RateLimit-Remaining': String(rateLimit.remaining),
+        'X-RateLimit-Reset': String(resetTimestamp)
       }
     })
     
