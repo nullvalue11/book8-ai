@@ -227,7 +227,6 @@ export async function GET(request) {
         _meta: { version: VERSION }
       }, { status: 401 })
     }
-    }
     
     // 2. Parse query parameters
     const { searchParams } = new URL(request.url)
