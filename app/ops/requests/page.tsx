@@ -154,6 +154,9 @@ export default function RequestsPage() {
         </button>
       </div>
       
+      {/* Rate Limit Status */}
+      <RateLimitStatus rateLimit={rateLimit} endpoint="/api/ops/requests" />
+      
       {/* Filters */}
       <div className="bg-white rounded-lg border p-4">
         <div className="flex items-center space-x-4">
