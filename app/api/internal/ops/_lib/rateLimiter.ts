@@ -435,7 +435,7 @@ export async function getRateLimitStats(): Promise<{
 // Export
 // ============================================================================
 
-export default {
+const rateLimiter = {
   checkRateLimitWithRequest,
   checkRateLimit,
   getRateLimitStatus,
@@ -446,3 +446,5 @@ export default {
   CALLER_LIMITS,
   COLLECTION_NAME
 }
+
+export default rateLimiter
