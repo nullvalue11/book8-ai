@@ -24,6 +24,7 @@ import { MongoClient } from 'mongodb'
 import crypto from 'crypto'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME } from '@/lib/schemas/opsEventLog'
+import { checkRateLimitWithRequest } from '@/api/internal/ops/_lib/rateLimiter'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
