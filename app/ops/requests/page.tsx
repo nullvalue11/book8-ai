@@ -60,6 +60,10 @@ export default function RequestsPage() {
       params.set('limit', '50')
       
       const response = await fetch(`/api/ops/requests?${params.toString()}`)
+      
+      // Extract rate limit headers
+      setRateLimit(parseRateLimitHeaders(response))
+      
       const data: RequestsResponse = await response.json()
       
       if (!response.ok) {
