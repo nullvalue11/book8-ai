@@ -479,8 +479,8 @@ function hasScope(allowedScopes, requiredScope) {
 // Rate Limiting (MongoDB-backed for serverless safety)
 // ============================================================================
 
-// Import MongoDB-backed rate limiter
-import { checkRateLimit as checkRateLimitMongo, getRateLimitConfig } from '@/api/internal/ops/_lib/rateLimiter'
+// Import MongoDB-backed rate limiter with caller identity
+import { checkRateLimitWithRequest, getRateLimitConfig } from '@/api/internal/ops/_lib/rateLimiter'
 
 // Different rate limits for different key types (mirrored from rateLimiter.ts)
 const RATE_LIMITS = {
