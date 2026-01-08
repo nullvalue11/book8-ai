@@ -10,37 +10,47 @@ import { NextRequest, NextResponse } from 'next/server'
 import { opsGet } from '../_lib/opsFetch'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  
-  // Pass through query parameters
-  const params: Record<string, string | undefined> = {
-    category: searchParams.get('category') || undefined,
-    includeDeprecated: searchParams.get('includeDeprecated') || undefined,
-    format: searchParams.get('format') || 'full'
-  }
-  
-  const result = await opsGet('/api/internal/ops/tools', params)
-  
-  // Build response headers (include rate limit info)
-  const responseHeaders: Record<string, string> = {}
-  if (result.headers?.rateLimitLimit) {
-    responseHeaders['X-RateLimit-Limit'] = result.headers.rateLimitLimit
-  }
-  if (result.headers?.rateLimitRemaining) {
-    responseHeaders['X-RateLimit-Remaining'] = result.headers.rateLimitRemaining
-  }
-  if (result.headers?.rateLimitReset) {
-    responseHeaders['X-RateLimit-Reset'] = result.headers.rateLimitReset
-  }
-  
-  if (!result.ok) {
+  try {
+    const { searchParams } = new URL(request.url)
+    
+    // Pass through query parameters
+    const params: Record<string, string | undefined> = {
+      category: searchParams.get('category') || undefined,
+      includeDeprecated: searchParams.get('includeDeprecated') || undefined,
+      format: searchParams.get('format') || 'full'
+    }
+    
+    const result = await opsGet('/api/internal/ops/tools', params)
+    
+    // Build response headers (include rate limit info)
+    const responseHeaders: Record<string, string> = {}
+    if (result.headers?.rateLimitLimit) {
+      responseHeaders['X-RateLimit-Limit'] = result.headers.rateLimitLimit
+    }
+    if (result.headers?.rateLimitRemaining) {
+      responseHeaders['X-RateLimit-Remaining'] = result.headers.rateLimitRemaining
+    }
+    if (result.headers?.rateLimitReset) {
+      responseHeaders['X-RateLimit-Reset'] = result.headers.rateLimitReset
+    }
+    
+    if (!result.ok) {
+      return NextResponse.json(
+        { ok: false, error: result.error },
+        { status: result.status, headers: responseHeaders }
+      )
+    }
+    
+    return NextResponse.json(result.data, { headers: responseHeaders })
+    
+  } catch (error: any) {
+    console.error('[ops/tools proxy] Unhandled error:', error)
     return NextResponse.json(
-      { ok: false, error: result.error },
-      { status: result.status, headers: responseHeaders }
+      { ok: false, error: error.message || 'Internal proxy error' },
+      { status: 500 }
     )
   }
-  
-  return NextResponse.json(result.data, { headers: responseHeaders })
 }

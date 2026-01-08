@@ -31,16 +31,33 @@ export interface OpsFetchResult<T = any> {
 }
 
 /**
- * Get environment variables at runtime (not at module load time)
- * Uses dynamic import to avoid module-level initialization issues in serverless
+ * Get environment variables with error handling
+ * Uses dynamic import to load env at runtime
  */
-async function getEnvConfig() {
-  // Dynamic import to ensure env is loaded at request time, not module load time
-  // @ts-ignore - env.js is a JavaScript module
-  const { env } = await import('@/lib/env.js')
-  const baseUrl = env.OPS_INTERNAL_BASE_URL || 'http://localhost:3000'
-  const secret = env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
-  return { baseUrl, secret }
+async function getEnvConfig(): Promise<{ baseUrl: string; secret: string }> {
+  // Default fallbacks
+  const defaults = {
+    baseUrl: 'http://localhost:3000',
+    secret: 'ops-dev-secret-change-me'
+  }
+  
+  try {
+    // Dynamic import of the centralized env module
+    // @ts-ignore - env.js is a JavaScript module  
+    const envModule = await import('@/lib/env.js')
+    const env = envModule.env || envModule.default?.env || envModule
+    
+    if (env && typeof env === 'object') {
+      return {
+        baseUrl: env.OPS_INTERNAL_BASE_URL || defaults.baseUrl,
+        secret: env.OPS_INTERNAL_SECRET || defaults.secret
+      }
+    }
+  } catch (err) {
+    console.warn('[opsFetch] Failed to load env module:', err)
+  }
+  
+  return defaults
 }
 
 /**
@@ -69,10 +86,34 @@ export async function opsFetch<T = any>(
 ): Promise<OpsFetchResult<T>> {
   const { method = 'GET', body, params, timeout = 30000 } = options
   
-  // Get env config at runtime
-  const { baseUrl, secret } = await getEnvConfig()
+  let envConfig: { baseUrl: string; secret: string }
   
-  const url = buildUrl(baseUrl, path, params)
+  try {
+    envConfig = await getEnvConfig()
+  } catch (err) {
+    console.error('[opsFetch] getEnvConfig failed:', err)
+    return {
+      ok: false,
+      status: 500,
+      data: null,
+      error: 'Failed to load configuration'
+    }
+  }
+  
+  const { baseUrl, secret } = envConfig
+  
+  let url: string
+  try {
+    url = buildUrl(baseUrl, path, params)
+  } catch (err) {
+    console.error('[opsFetch] buildUrl failed:', err)
+    return {
+      ok: false,
+      status: 500,
+      data: null,
+      error: 'Failed to build URL'
+    }
+  }
   
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
@@ -83,7 +124,7 @@ export async function opsFetch<T = any>(
       headers: {
         'Content-Type': 'application/json',
         'x-book8-internal-secret': secret,
-        'x-book8-caller': OPS_CALLER_IDENTITY  // Identify as ops_console for rate limiting
+        'x-book8-caller': OPS_CALLER_IDENTITY
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
@@ -114,10 +155,10 @@ export async function opsFetch<T = any>(
       headers: rateLimitHeaders
     }
     
-  } catch (error: any) {
+  } catch (fetchError: any) {
     clearTimeout(timeoutId)
     
-    if (error.name === 'AbortError') {
+    if (fetchError.name === 'AbortError') {
       return {
         ok: false,
         status: 408,
@@ -126,11 +167,12 @@ export async function opsFetch<T = any>(
       }
     }
     
+    console.error('[opsFetch] Fetch error:', fetchError.message)
     return {
       ok: false,
       status: 500,
       data: null,
-      error: error.message || 'Internal error'
+      error: `Fetch failed: ${fetchError.message}`
     }
   }
 }
