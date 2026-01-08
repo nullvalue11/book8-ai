@@ -189,6 +189,30 @@ export async function POST(request, { params }) {
   const { id: requestId } = await params
   
   try {
+    // 0. RATE LIMITING FIRST (before auth)
+    const rateLimit = await checkRateLimitWithRequest(request, 'requests_approve')
+    
+    if (!rateLimit.allowed) {
+      log('warn', `Rate limit exceeded for caller=${rateLimit.caller}`, { requestId })
+      return NextResponse.json({
+        ok: false,
+        error: {
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: 'Too many requests. Please try again later.',
+          retryAfter: Math.ceil(rateLimit.resetIn / 1000)
+        },
+        _meta: { version: VERSION }
+      }, { 
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000)),
+          'X-RateLimit-Limit': String(rateLimit.limit),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil((Date.now() + rateLimit.resetIn) / 1000))
+        }
+      })
+    }
+    
     // 1. Verify authentication
     const auth = verifyAuth(request, 'ops.requests.approve')
     if (!auth.valid) {
