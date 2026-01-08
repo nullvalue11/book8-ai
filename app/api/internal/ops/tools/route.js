@@ -189,18 +189,11 @@ export async function GET(request) {
   
   try {
     // 0. RATE LIMITING FIRST (before auth to protect against brute force)
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
-      || request.headers.get('x-real-ip') 
-      || 'unknown-ip'
-    const authHeader = request.headers.get('x-book8-internal-secret') || ''
-    const preAuthIdentifier = `ip_${crypto.createHash('sha256').update(clientIp + authHeader).digest('hex').substring(0, 8)}`
-    
-    console.log(`[RATE_LIMITER] /tools - Checking rate limit for: ${preAuthIdentifier}`)
-    const rateLimit = await checkRateLimit(preAuthIdentifier, 'default', 'tools')
-    console.log(`[RATE_LIMITER] /tools - Result: allowed=${rateLimit.allowed}, remaining=${rateLimit.remaining}`)
+    // Uses caller identity from x-book8-caller header
+    const rateLimit = await checkRateLimitWithRequest(request, 'tools')
     
     if (!rateLimit.allowed) {
-      log('warn', `Rate limit exceeded for: ${preAuthIdentifier}`)
+      log('warn', `Rate limit exceeded for caller=${rateLimit.caller}`)
       return NextResponse.json({
         ok: false,
         error: {
@@ -233,6 +226,7 @@ export async function GET(request) {
         },
         _meta: { version: VERSION }
       }, { status: 401 })
+    }
     }
     
     // 2. Parse query parameters
