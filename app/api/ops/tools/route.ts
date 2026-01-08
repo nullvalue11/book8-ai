@@ -3,6 +3,7 @@
  * 
  * Proxy to internal ops tools endpoint.
  * Returns list of registered tools with schemas and examples.
+ * Includes rate limit headers for UI display.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -22,12 +23,24 @@ export async function GET(request: NextRequest) {
   
   const result = await opsGet('/api/internal/ops/tools', params)
   
+  // Build response headers (include rate limit info)
+  const responseHeaders: Record<string, string> = {}
+  if (result.headers?.rateLimitLimit) {
+    responseHeaders['X-RateLimit-Limit'] = result.headers.rateLimitLimit
+  }
+  if (result.headers?.rateLimitRemaining) {
+    responseHeaders['X-RateLimit-Remaining'] = result.headers.rateLimitRemaining
+  }
+  if (result.headers?.rateLimitReset) {
+    responseHeaders['X-RateLimit-Reset'] = result.headers.rateLimitReset
+  }
+  
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, error: result.error },
-      { status: result.status }
+      { status: result.status, headers: responseHeaders }
     )
   }
   
-  return NextResponse.json(result.data)
+  return NextResponse.json(result.data, { headers: responseHeaders })
 }
