@@ -911,19 +911,12 @@ export async function POST(request) {
     initializeOps()
     
     // 0. RATE LIMITING FIRST (before auth to protect against brute force)
-    // Use IP + auth header hash as identifier for pre-auth rate limiting
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
-      || request.headers.get('x-real-ip') 
-      || 'unknown-ip'
-    const authHeader = request.headers.get('x-book8-internal-secret') || ''
-    const preAuthIdentifier = `ip_${crypto.createHash('sha256').update(clientIp + authHeader).digest('hex').substring(0, 8)}`
-    
-    console.log(`[RATE_LIMITER] Checking rate limit for: ${preAuthIdentifier}`)
-    rateLimit = await checkRateLimit(preAuthIdentifier, 'default', null)
-    console.log(`[RATE_LIMITER] Result: allowed=${rateLimit.allowed}, remaining=${rateLimit.remaining}, limit=${rateLimit.limit}`)
+    // Uses caller identity from x-book8-caller header
+    console.log(`[RATE_LIMITER] /execute - Checking rate limit`)
+    rateLimit = await checkRateLimitWithRequest(request, 'execute')
     
     if (!rateLimit.allowed) {
-      log(null, 'warn', `Rate limit exceeded for: ${preAuthIdentifier}`)
+      log(null, 'warn', `Rate limit exceeded for caller=${rateLimit.caller}`)
       return NextResponse.json({
         ok: false,
         error: {
