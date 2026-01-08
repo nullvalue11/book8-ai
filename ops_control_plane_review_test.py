@@ -22,7 +22,7 @@ import time
 from datetime import datetime, timedelta
 
 # Configuration
-BASE_URL = "https://ops-command-9.preview.emergentagent.com"
+BASE_URL = "https://ops-admin-tools.preview.emergentagent.com"
 EXECUTE_ENDPOINT = f"{BASE_URL}/api/internal/ops/execute"
 LOGS_ENDPOINT = f"{BASE_URL}/api/internal/ops/logs"
 AUTH_HEADER = "x-book8-internal-secret"

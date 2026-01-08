@@ -16,7 +16,7 @@ from datetime import datetime
 from pymongo import MongoClient
 
 # Configuration
-BASE_URL = "https://ops-command-9.preview.emergentagent.com"
+BASE_URL = "https://ops-admin-tools.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 MONGO_URL = "mongodb://localhost:27017"
 DB_NAME = "your_database_name"

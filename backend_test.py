@@ -29,7 +29,7 @@ import time
 from typing import Dict, Any, Optional
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://ops-command-9.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://ops-admin-tools.preview.emergentagent.com')
 
 # Basic Auth credentials
 VALID_USERNAME = "admin"
