@@ -30,6 +30,7 @@ import {
   getToolFromRegistry,
   isToolInRegistry
 } from '@/lib/ops/tool-registry'
+import { checkRateLimitWithRequest } from '@/api/internal/ops/_lib/rateLimiter'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
