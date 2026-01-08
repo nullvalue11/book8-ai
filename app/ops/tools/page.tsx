@@ -1,10 +1,14 @@
+'use client'
+
 /**
  * Tools Registry Page
  * 
  * Lists all registered ops tools with their schemas and examples.
+ * Client component to support rate limit display.
  */
 
-export const dynamic = 'force-dynamic'
+import { useState, useEffect } from 'react'
+import RateLimitStatus, { parseRateLimitHeaders } from '../_components/RateLimitStatus'
 
 interface Tool {
   name: string
@@ -22,39 +26,52 @@ interface Tool {
   examples?: Array<{ name: string; input: any; description: string }>
 }
 
-async function fetchTools(): Promise<{ ok: boolean; tools: Tool[]; error?: string }> {
-  // Import env module dynamically for server component
-  // @ts-ignore - env.js is a JavaScript module
-  const { env } = await import('@/lib/env.js')
-  
-  try {
-    // Use internal URL for server-side fetch
-    const baseUrl = env.OPS_INTERNAL_BASE_URL || 'http://localhost:3000'
-    const secret = env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
-    
-    const response = await fetch(`${baseUrl}/api/internal/ops/tools?format=full&includeDeprecated=false`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-book8-internal-secret': secret
-      },
-      cache: 'no-store'
-    })
-    
-    if (!response.ok) {
-      return { ok: false, tools: [], error: `HTTP ${response.status}` }
-    }
-    
-    const data = await response.json()
-    return { ok: true, tools: data.tools || [] }
-  } catch (error: any) {
-    return { ok: false, tools: [], error: error.message }
-  }
+interface ToolsResponse {
+  ok: boolean
+  tools: Tool[]
+  error?: string
 }
 
-export default async function ToolsPage() {
-  const result = await fetchTools()
+interface RateLimitInfo {
+  limit: number | null
+  remaining: number | null
+  reset: number | null
+}
+
+export default function ToolsPage() {
+  const [tools, setTools] = useState<Tool[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [rateLimit, setRateLimit] = useState<RateLimitInfo>({ limit: null, remaining: null, reset: null })
   
-  const tools = result.tools || []
+  // Fetch tools from proxy API
+  const fetchTools = async () => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const response = await fetch('/api/ops/tools?format=full&includeDeprecated=false')
+      
+      // Extract rate limit headers
+      setRateLimit(parseRateLimitHeaders(response))
+      
+      const data: ToolsResponse = await response.json()
+      
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || 'Failed to fetch tools')
+      }
+      
+      setTools(data.tools || [])
+    } catch (err: any) {
+      setError(err.message || 'Failed to load tools')
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  useEffect(() => {
+    fetchTools()
+  }, [])
   
   // Group by category
   const byCategory = tools.reduce((acc, tool) => {
@@ -67,22 +84,41 @@ export default async function ToolsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Tools Registry</h1>
-        <p className="mt-1 text-gray-600">
-          {tools.length} registered tools across {Object.keys(byCategory).length} categories
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Tools Registry</h1>
+          <p className="mt-1 text-gray-600">
+            {tools.length} registered tools across {Object.keys(byCategory).length} categories
+          </p>
+        </div>
+        <button
+          onClick={fetchTools}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Refresh
+        </button>
       </div>
       
+      {/* Rate Limit Status */}
+      <RateLimitStatus rateLimit={rateLimit} endpoint="/api/ops/tools" />
+      
       {/* Error State */}
-      {!result.ok && (
+      {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">Failed to load tools: {result.error}</p>
+          <p className="text-red-800">Failed to load tools: {error}</p>
+        </div>
+      )}
+      
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+          <p className="mt-2 text-gray-600">Loading tools...</p>
         </div>
       )}
       
       {/* Tools by Category */}
-      {Object.entries(byCategory).map(([category, categoryTools]) => (
+      {!loading && Object.entries(byCategory).map(([category, categoryTools]) => (
         <div key={category} className="space-y-4">
           <h2 className="text-lg font-semibold text-gray-800 capitalize border-b pb-2">
             {category} ({categoryTools.length})
@@ -95,6 +131,13 @@ export default async function ToolsPage() {
           </div>
         </div>
       ))}
+      
+      {/* Empty State */}
+      {!loading && tools.length === 0 && !error && (
+        <div className="text-center py-12 bg-white rounded-lg border">
+          <p className="text-gray-500">No tools found</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -148,7 +191,7 @@ function ToolCard({ tool }: { tool: Tool }) {
         {tool.deprecated && tool.deprecatedReason && (
           <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm">
             <p className="text-yellow-800">
-              ⚠️ {tool.deprecatedReason}
+              {tool.deprecatedReason}
               {tool.replacedBy && (
                 <span> Use <code className="font-mono">{tool.replacedBy}</code> instead.</span>
               )}

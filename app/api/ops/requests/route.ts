@@ -4,12 +4,30 @@
  * Proxy to internal ops requests endpoint.
  * GET: List approval requests
  * POST: Create new approval request
+ * Includes rate limit headers for UI display.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { opsGet, opsPost } from '../_lib/opsFetch'
+import { opsGet, opsPost, OpsFetchResult } from '../_lib/opsFetch'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * Build response headers including rate limit info
+ */
+function buildHeaders(result: OpsFetchResult): Record<string, string> {
+  const headers: Record<string, string> = {}
+  if (result.headers?.rateLimitLimit) {
+    headers['X-RateLimit-Limit'] = result.headers.rateLimitLimit
+  }
+  if (result.headers?.rateLimitRemaining) {
+    headers['X-RateLimit-Remaining'] = result.headers.rateLimitRemaining
+  }
+  if (result.headers?.rateLimitReset) {
+    headers['X-RateLimit-Reset'] = result.headers.rateLimitReset
+  }
+  return headers
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -23,15 +41,16 @@ export async function GET(request: NextRequest) {
   }
   
   const result = await opsGet('/api/internal/ops/requests', params)
+  const headers = buildHeaders(result)
   
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, error: result.error },
-      { status: result.status }
+      { status: result.status, headers }
     )
   }
   
-  return NextResponse.json(result.data)
+  return NextResponse.json(result.data, { headers })
 }
 
 export async function POST(request: NextRequest) {
@@ -46,13 +65,14 @@ export async function POST(request: NextRequest) {
   }
   
   const result = await opsPost('/api/internal/ops/requests', body)
+  const headers = buildHeaders(result)
   
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, error: result.error, details: result.data?.error },
-      { status: result.status }
+      { status: result.status, headers }
     )
   }
   
-  return NextResponse.json(result.data, { status: 201 })
+  return NextResponse.json(result.data, { status: 201, headers })
 }

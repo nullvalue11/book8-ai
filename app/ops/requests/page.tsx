@@ -8,6 +8,13 @@
  */
 
 import { useState, useEffect } from 'react'
+import RateLimitStatus, { parseRateLimitHeaders } from '../_components/RateLimitStatus'
+
+interface RateLimitInfo {
+  limit: number | null
+  remaining: number | null
+  reset: number | null
+}
 
 interface ApprovalRequest {
   requestId: string
@@ -40,6 +47,7 @@ export default function RequestsPage() {
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState('pending')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [rateLimit, setRateLimit] = useState<RateLimitInfo>({ limit: null, remaining: null, reset: null })
   
   // Fetch requests
   const fetchRequests = async () => {
@@ -52,6 +60,10 @@ export default function RequestsPage() {
       params.set('limit', '50')
       
       const response = await fetch(`/api/ops/requests?${params.toString()}`)
+      
+      // Extract rate limit headers
+      setRateLimit(parseRateLimitHeaders(response))
+      
       const data: RequestsResponse = await response.json()
       
       if (!response.ok) {
@@ -141,6 +153,9 @@ export default function RequestsPage() {
           Refresh
         </button>
       </div>
+      
+      {/* Rate Limit Status */}
+      <RateLimitStatus rateLimit={rateLimit} endpoint="/api/ops/requests" />
       
       {/* Filters */}
       <div className="bg-white rounded-lg border p-4">

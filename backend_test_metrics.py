@@ -12,7 +12,7 @@ import sys
 import os
 
 # Configuration
-BASE_URL = "https://ops-command-9.preview.emergentagent.com"
+BASE_URL = "https://ops-admin-tools.preview.emergentagent.com"
 AUTH_HEADER = "x-book8-internal-secret"
 AUTH_TOKEN = "ops-dev-secret-change-me"
 
