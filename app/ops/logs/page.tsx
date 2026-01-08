@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import RateLimitStatus, { parseRateLimitHeaders } from '../_components/RateLimitStatus'
 
 interface Log {
   requestId: string
@@ -29,11 +30,18 @@ interface LogsResponse {
   }
 }
 
+interface RateLimitInfo {
+  limit: number | null
+  remaining: number | null
+  reset: number | null
+}
+
 export default function LogsPage() {
   const [logs, setLogs] = useState<Log[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pagination, setPagination] = useState({ total: 0, limit: 50, skip: 0 })
+  const [rateLimit, setRateLimit] = useState<RateLimitInfo>({ limit: null, remaining: null, reset: null })
   
   // Filters
   const [toolFilter, setToolFilter] = useState('')
@@ -54,6 +62,10 @@ export default function LogsPage() {
       params.set('skip', String(pagination.skip))
       
       const response = await fetch(`/api/ops/logs?${params.toString()}`)
+      
+      // Extract rate limit headers
+      setRateLimit(parseRateLimitHeaders(response))
+      
       const data: LogsResponse = await response.json()
       
       if (!data.ok) {
