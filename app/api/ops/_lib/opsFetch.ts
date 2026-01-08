@@ -8,15 +8,6 @@
  * allowing separate rate limit tracking from n8n and other callers.
  */
 
-// @ts-ignore - env.js is a JavaScript module
-import { env } from '@/lib/env.js'
-
-// Base URL for internal ops API (from centralized env)
-const OPS_INTERNAL_BASE_URL = env.OPS_INTERNAL_BASE_URL || 'http://localhost:3000'
-
-// Internal secret for authentication (from centralized env)
-const OPS_INTERNAL_SECRET = env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
-
 // Caller identity for rate limiting - identifies Ops Console traffic
 const OPS_CALLER_IDENTITY = 'ops_console'
 
@@ -40,10 +31,22 @@ export interface OpsFetchResult<T = any> {
 }
 
 /**
+ * Get environment variables at runtime (not at module load time)
+ * This is critical for Vercel serverless functions
+ */
+function getEnvConfig() {
+  // Import env dynamically or use process.env directly for serverless compatibility
+  const baseUrl = process.env.OPS_INTERNAL_BASE_URL || 'http://localhost:3000'
+  const secret = process.env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
+  return { baseUrl, secret }
+}
+
+/**
  * Build URL with query parameters
  */
 function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
-  const url = new URL(path, OPS_INTERNAL_BASE_URL)
+  const { baseUrl } = getEnvConfig()
+  const url = new URL(path, baseUrl)
   
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -64,6 +67,7 @@ export async function opsFetch<T = any>(
   options: OpsFetchOptions = {}
 ): Promise<OpsFetchResult<T>> {
   const { method = 'GET', body, params, timeout = 30000 } = options
+  const { secret } = getEnvConfig()
   
   const url = buildUrl(path, params)
   
@@ -75,7 +79,7 @@ export async function opsFetch<T = any>(
       method,
       headers: {
         'Content-Type': 'application/json',
-        'x-book8-internal-secret': OPS_INTERNAL_SECRET,
+        'x-book8-internal-secret': secret,
         'x-book8-caller': OPS_CALLER_IDENTITY  // Identify as ops_console for rate limiting
       },
       body: body ? JSON.stringify(body) : undefined,
