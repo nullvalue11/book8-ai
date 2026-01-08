@@ -27,6 +27,7 @@ import {
   CATEGORIES,
   RISK_LEVELS
 } from '@/lib/ops/tool-registry'
+import { checkRateLimit } from '@/api/internal/ops/_lib/rateLimiter'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
