@@ -47,6 +47,7 @@ export default function RequestsPage() {
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState('pending')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [rateLimit, setRateLimit] = useState<RateLimitInfo>({ limit: null, remaining: null, reset: null })
   
   // Fetch requests
   const fetchRequests = async () => {
