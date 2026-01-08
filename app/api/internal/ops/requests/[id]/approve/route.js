@@ -25,6 +25,7 @@ import {
   updateApprovalRequest,
   validateStatusTransition
 } from '@/lib/schemas/opsApprovalRequest'
+import { checkRateLimitWithRequest } from '@/api/internal/ops/_lib/rateLimiter'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
