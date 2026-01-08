@@ -904,32 +904,26 @@ export async function POST(request) {
   let database = null
   let argsSource = 'unknown'
   let keyId = 'unknown'
+  let rateLimit = null
   
   try {
     // Initialize ops tools
     initializeOps()
     
-    // 0. Verify authentication first (to get key identifier for rate limiting)
-    const auth = verifyAuth(request)
-    if (!auth.valid) {
-      log(null, 'warn', `Auth failed: ${auth.error}`)
-      return NextResponse.json({
-        ok: false,
-        error: { 
-          code: 'AUTH_FAILED', 
-          message: auth.error,
-          help: auth.help || ERROR_HELP.AUTH_FAILED
-        },
-        _meta: { version: VERSION }
-      }, { status: 401 })
-    }
+    // 0. RATE LIMITING FIRST (before auth to protect against brute force)
+    // Use IP + auth header hash as identifier for pre-auth rate limiting
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
+      || request.headers.get('x-real-ip') 
+      || 'unknown-ip'
+    const authHeader = request.headers.get('x-book8-internal-secret') || ''
+    const preAuthIdentifier = `ip_${crypto.createHash('sha256').update(clientIp + authHeader).digest('hex').substring(0, 8)}`
     
-    keyId = auth.keyId
+    console.log(`[RATE_LIMITER] Checking rate limit for: ${preAuthIdentifier}`)
+    rateLimit = await checkRateLimit(preAuthIdentifier, 'default', null)
+    console.log(`[RATE_LIMITER] Result: allowed=${rateLimit.allowed}, remaining=${rateLimit.remaining}, limit=${rateLimit.limit}`)
     
-    // 1. Rate limiting based on API key (MongoDB-backed, serverless-safe)
-    const rateLimit = await checkRateLimit(keyId, keyId)
     if (!rateLimit.allowed) {
-      log(null, 'warn', `Rate limit exceeded for key: ${keyId}`)
+      log(null, 'warn', `Rate limit exceeded for: ${preAuthIdentifier}`)
       return NextResponse.json({
         ok: false,
         error: {
@@ -949,6 +943,23 @@ export async function POST(request) {
         }
       })
     }
+    
+    // 1. Verify authentication (after rate limiting)
+    const auth = verifyAuth(request)
+    if (!auth.valid) {
+      log(null, 'warn', `Auth failed: ${auth.error}`)
+      return NextResponse.json({
+        ok: false,
+        error: { 
+          code: 'AUTH_FAILED', 
+          message: auth.error,
+          help: auth.help || ERROR_HELP.AUTH_FAILED
+        },
+        _meta: { version: VERSION }
+      }, { status: 401 })
+    }
+    
+    keyId = auth.keyId
     
     // 2. Parse request body
     let body
