@@ -8,6 +8,13 @@
  */
 
 import { useState, useEffect } from 'react'
+import RateLimitStatus, { parseRateLimitHeaders } from '../_components/RateLimitStatus'
+
+interface RateLimitInfo {
+  limit: number | null
+  remaining: number | null
+  reset: number | null
+}
 
 interface ApprovalRequest {
   requestId: string
