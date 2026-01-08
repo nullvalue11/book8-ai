@@ -4,8 +4,8 @@
  * Server-side helper for calling internal ops endpoints.
  * Adds authentication headers and caller identity.
  * 
- * The x-book8-caller header identifies traffic from the Ops Console UI,
- * allowing separate rate limit tracking from n8n and other callers.
+ * IMPORTANT: In Vercel serverless, we cannot use localhost.
+ * We must use the actual deployed URL (NEXT_PUBLIC_BASE_URL) to call internal APIs.
  */
 
 // Caller identity for rate limiting - identifies Ops Console traffic
@@ -31,33 +31,35 @@ export interface OpsFetchResult<T = any> {
 }
 
 /**
- * Get environment variables with error handling
- * Uses dynamic import to load env at runtime
+ * Get environment variables at runtime
+ * 
+ * CRITICAL: In Vercel serverless, localhost doesn't work.
+ * We use OPS_INTERNAL_BASE_URL if set, otherwise fall back to NEXT_PUBLIC_BASE_URL
  */
 async function getEnvConfig(): Promise<{ baseUrl: string; secret: string }> {
-  // Default fallbacks
-  const defaults = {
-    baseUrl: 'http://localhost:3000',
-    secret: 'ops-dev-secret-change-me'
-  }
-  
   try {
-    // Dynamic import of the centralized env module
     // @ts-ignore - env.js is a JavaScript module  
     const envModule = await import('@/lib/env.js')
     const env = envModule.env || envModule.default?.env || envModule
     
     if (env && typeof env === 'object') {
-      return {
-        baseUrl: env.OPS_INTERNAL_BASE_URL || defaults.baseUrl,
-        secret: env.OPS_INTERNAL_SECRET || defaults.secret
-      }
+      // In production (Vercel), OPS_INTERNAL_BASE_URL should be set to the deployed URL
+      // e.g., https://book8.ai or https://your-app.vercel.app
+      // If not set, use NEXT_PUBLIC_BASE_URL (the deployed app URL)
+      const baseUrl = env.OPS_INTERNAL_BASE_URL || env.BASE_URL || 'http://localhost:3000'
+      const secret = env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
+      
+      return { baseUrl, secret }
     }
   } catch (err) {
     console.warn('[opsFetch] Failed to load env module:', err)
   }
   
-  return defaults
+  // Fallback - should not reach here in production
+  return {
+    baseUrl: 'http://localhost:3000',
+    secret: 'ops-dev-secret-change-me'
+  }
 }
 
 /**
@@ -101,6 +103,9 @@ export async function opsFetch<T = any>(
   }
   
   const { baseUrl, secret } = envConfig
+  
+  // Log the base URL being used (helpful for debugging)
+  console.log(`[opsFetch] Using baseUrl: ${baseUrl}, path: ${path}`)
   
   let url: string
   try {
@@ -167,7 +172,7 @@ export async function opsFetch<T = any>(
       }
     }
     
-    console.error('[opsFetch] Fetch error:', fetchError.message)
+    console.error('[opsFetch] Fetch error:', fetchError.message, 'URL:', url)
     return {
       ok: false,
       status: 500,
