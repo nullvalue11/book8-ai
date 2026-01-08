@@ -1,8 +1,15 @@
 /**
- * MongoDB-Backed Rate Limiter
+ * MongoDB-Backed Rate Limiter with Caller Identity
  * 
  * Serverless-safe rate limiter that persists across cold starts.
  * Uses atomic MongoDB operations for accurate counting.
+ * 
+ * Key Format: {caller}|{ipHash}|{endpoint}|{windowId}
+ * 
+ * Caller Types:
+ * - n8n: Automation workflows (200/min)
+ * - ops_console: Human users via Ops Console UI (300/min)
+ * - unknown: Unidentified callers (100/min)
  * 
  * Collection: ops_rate_limits
  * TTL: Auto-cleanup via MongoDB TTL index (60s after window expires)
@@ -11,6 +18,7 @@
  */
 
 import { MongoClient, Db } from 'mongodb'
+import crypto from 'crypto'
 // @ts-ignore - env.js is a JavaScript module
 import { env } from '@/lib/env.js'
 
@@ -20,20 +28,20 @@ import { env } from '@/lib/env.js'
 
 const COLLECTION_NAME = 'ops_rate_limits'
 
-// Different rate limits for different key types
-const RATE_LIMITS: Record<string, { windowMs: number; maxRequests: number }> = {
-  // Admin keys get higher limits
-  admin: {
-    windowMs: 60000,   // 1 minute window
-    maxRequests: 300,  // 300 requests per minute
-  },
-  // n8n automation keys get generous limits
+// Rate limits by caller type (requests per minute)
+const CALLER_LIMITS: Record<string, { windowMs: number; maxRequests: number }> = {
+  // n8n automation gets generous limits
   n8n: {
     windowMs: 60000,   // 1 minute window
     maxRequests: 200,  // 200 requests per minute
   },
-  // Default/legacy keys
-  default: {
+  // Ops console (human users) get highest limits
+  ops_console: {
+    windowMs: 60000,   // 1 minute window
+    maxRequests: 300,  // 300 requests per minute
+  },
+  // Unknown/unidentified callers get lowest limits
+  unknown: {
     windowMs: 60000,   // 1 minute window
     maxRequests: 100,  // 100 requests per minute
   }
@@ -57,6 +65,8 @@ export interface RateLimitResult {
   resetIn: number
   limit: number
   retryAfter?: number
+  caller?: string
+  endpoint?: string
 }
 
 interface RateLimitDoc {
@@ -64,6 +74,8 @@ interface RateLimitDoc {
   count: number
   windowStart: Date
   expiresAt: Date
+  caller?: string
+  endpoint?: string
 }
 
 // ============================================================================
@@ -88,10 +100,6 @@ async function getDatabase(): Promise<Db> {
 
 let indexesEnsured = false
 
-/**
- * Ensure indexes exist on the rate limits collection
- * Called once per process (cached)
- */
 async function ensureIndexes(database: Db): Promise<void> {
   if (indexesEnsured) return
   
@@ -113,62 +121,88 @@ async function ensureIndexes(database: Db): Promise<void> {
     }
     
     indexesEnsured = true
-    console.log('[rateLimiter] Indexes ensured on', COLLECTION_NAME)
   } catch (error: any) {
     console.warn(`[rateLimiter] Index creation failed: ${error.message}`)
   }
 }
 
 // ============================================================================
-// Rate Limiting Functions
+// Helper Functions
 // ============================================================================
 
 /**
- * Get rate limit config based on key type
+ * Extract caller identity from request header
+ * Supported values: n8n, ops_console
  */
-export function getRateLimitConfig(keyId: string): { windowMs: number; maxRequests: number } {
-  if (keyId?.includes('admin')) return RATE_LIMITS.admin
-  if (keyId?.includes('n8n')) return RATE_LIMITS.n8n
-  return RATE_LIMITS.default
+export function getCallerIdentity(request: Request): string {
+  const callerHeader = request.headers.get('x-book8-caller')
+  
+  if (callerHeader === 'n8n') return 'n8n'
+  if (callerHeader === 'ops_console') return 'ops_console'
+  return 'unknown'
+}
+
+/**
+ * Get IP hash from request
+ */
+export function getIpHash(request: Request): string {
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
+    || request.headers.get('x-real-ip') 
+    || 'unknown-ip'
+  
+  return crypto.createHash('sha256').update(clientIp).digest('hex').substring(0, 8)
+}
+
+/**
+ * Get rate limit config for a caller type
+ */
+export function getRateLimitConfig(caller: string): { windowMs: number; maxRequests: number } {
+  return CALLER_LIMITS[caller] || CALLER_LIMITS.unknown
 }
 
 /**
  * Compute the rate limit key
- * Format: {caller}|{tool}|{windowStart}
+ * Format: {caller}|{ipHash}|{endpoint}|{windowId}
  */
-function computeRateLimitKey(caller: string, tool: string | null, windowStart: Date): string {
+function computeRateLimitKey(
+  caller: string, 
+  ipHash: string, 
+  endpoint: string, 
+  windowStart: Date
+): string {
   const windowId = Math.floor(windowStart.getTime() / 60000) // minute-based window
-  const toolPart = tool || 'all'
-  return `${caller}|${toolPart}|${windowId}`
+  return `${caller}|${ipHash}|${endpoint}|${windowId}`
 }
 
+// ============================================================================
+// Main Rate Limiting Function
+// ============================================================================
+
 /**
- * Check if request is within rate limit (MongoDB-backed)
+ * Check if request is within rate limit
  * 
- * Uses atomic findOneAndUpdate for accurate counting across serverless instances.
- * 
- * @param identifier - API key identifier (e.g., "key_abc12345")
- * @param keyType - Type of key for determining limits
- * @param tool - Optional tool name for per-tool rate limiting
- * @returns Rate limit result
+ * @param request - The incoming request object
+ * @param endpoint - Endpoint identifier (e.g., 'execute', 'tools', 'logs')
+ * @returns Rate limit result with allowed status and headers
  */
-export async function checkRateLimit(
-  identifier: string,
-  keyType: string = 'default',
-  tool: string | null = null
+export async function checkRateLimitWithRequest(
+  request: Request,
+  endpoint: string
 ): Promise<RateLimitResult> {
-  const config = getRateLimitConfig(keyType)
+  const caller = getCallerIdentity(request)
+  const ipHash = getIpHash(request)
+  const config = getRateLimitConfig(caller)
   const now = new Date()
   
   // Calculate window boundaries
   const windowStart = new Date(Math.floor(now.getTime() / config.windowMs) * config.windowMs)
   const windowEnd = new Date(windowStart.getTime() + config.windowMs)
-  
-  // Add 60s buffer for TTL cleanup
-  const expiresAt = new Date(windowEnd.getTime() + 60000)
+  const expiresAt = new Date(windowEnd.getTime() + 60000) // 60s buffer for TTL
   
   // Compute rate limit key
-  const key = computeRateLimitKey(identifier, tool, windowStart)
+  const key = computeRateLimitKey(caller, ipHash, endpoint, windowStart)
+  
+  console.log(`[RATE_LIMITER] /${endpoint} - caller=${caller}, ip=${ipHash}, key=${key}`)
   
   try {
     const database = await getDatabase()
@@ -183,7 +217,9 @@ export async function checkRateLimit(
         $inc: { count: 1 },
         $setOnInsert: {
           windowStart,
-          expiresAt
+          expiresAt,
+          caller,
+          endpoint
         }
       },
       {
@@ -199,28 +235,107 @@ export async function checkRateLimit(
     const resetIn = Math.max(0, windowEnd.getTime() - now.getTime())
     const retryAfterSeconds = Math.ceil(resetIn / 1000)
     
-    if (count > config.maxRequests) {
+    const allowed = count <= config.maxRequests
+    const remaining = Math.max(0, config.maxRequests - count)
+    
+    console.log(`[RATE_LIMITER] /${endpoint} - allowed=${allowed}, count=${count}/${config.maxRequests}, remaining=${remaining}`)
+    
+    if (!allowed) {
       return {
         allowed: false,
         remaining: 0,
         resetIn,
         limit: config.maxRequests,
-        retryAfter: retryAfterSeconds
+        retryAfter: retryAfterSeconds,
+        caller,
+        endpoint
       }
     }
     
     return {
       allowed: true,
-      remaining: Math.max(0, config.maxRequests - count),
+      remaining,
       resetIn,
-      limit: config.maxRequests
+      limit: config.maxRequests,
+      caller,
+      endpoint
     }
     
   } catch (error: any) {
     // If MongoDB fails, log warning but allow the request
-    // This prevents rate limiter failures from blocking all traffic
-    console.error(`[rateLimiter] MongoDB error: ${error.message}`)
+    console.error(`[RATE_LIMITER] MongoDB error: ${error.message}`)
     
+    return {
+      allowed: true,
+      remaining: config.maxRequests,
+      resetIn: config.windowMs,
+      limit: config.maxRequests,
+      caller,
+      endpoint
+    }
+  }
+}
+
+/**
+ * Legacy function for backward compatibility
+ * @deprecated Use checkRateLimitWithRequest instead
+ */
+export async function checkRateLimit(
+  identifier: string,
+  keyType: string = 'default',
+  tool: string | null = null
+): Promise<RateLimitResult> {
+  // Map old keyType to new caller type
+  let caller = 'unknown'
+  if (keyType.includes('admin')) caller = 'ops_console'
+  if (keyType.includes('n8n')) caller = 'n8n'
+  
+  const config = getRateLimitConfig(caller)
+  const now = new Date()
+  
+  const windowStart = new Date(Math.floor(now.getTime() / config.windowMs) * config.windowMs)
+  const windowEnd = new Date(windowStart.getTime() + config.windowMs)
+  const expiresAt = new Date(windowEnd.getTime() + 60000)
+  
+  const endpoint = tool || 'all'
+  const key = computeRateLimitKey(caller, identifier, endpoint, windowStart)
+  
+  console.log(`[RATE_LIMITER] Legacy call - caller=${caller}, id=${identifier}, endpoint=${endpoint}`)
+  
+  try {
+    const database = await getDatabase()
+    await ensureIndexes(database)
+    
+    const collection = database.collection<RateLimitDoc>(COLLECTION_NAME)
+    
+    const result = await collection.findOneAndUpdate(
+      { key },
+      {
+        $inc: { count: 1 },
+        $setOnInsert: { windowStart, expiresAt, caller, endpoint }
+      },
+      { upsert: true, returnDocument: 'after' }
+    )
+    
+    const count = result?.count || 1
+    const resetIn = Math.max(0, windowEnd.getTime() - now.getTime())
+    
+    const allowed = count <= config.maxRequests
+    
+    console.log(`[RATE_LIMITER] Legacy - allowed=${allowed}, count=${count}/${config.maxRequests}`)
+    
+    return {
+      allowed,
+      remaining: Math.max(0, config.maxRequests - count),
+      resetIn,
+      limit: config.maxRequests,
+      retryAfter: allowed ? undefined : Math.ceil(resetIn / 1000),
+      caller,
+      endpoint
+    }
+    
+  } catch (error: any) {
+    console.error(`[RATE_LIMITER] MongoDB error: ${error.message}`)
     return {
       allowed: true,
       remaining: config.maxRequests,
@@ -231,82 +346,20 @@ export async function checkRateLimit(
 }
 
 /**
- * Check rate limit synchronously using in-memory fallback
- * Used when async MongoDB call isn't possible
- * 
- * @deprecated Use checkRateLimit (async) instead
- */
-const memoryFallback = new Map<string, { count: number; windowStart: number }>()
-
-export function checkRateLimitSync(
-  identifier: string,
-  keyType: string = 'default',
-  tool: string | null = null
-): RateLimitResult {
-  const config = getRateLimitConfig(keyType)
-  const now = Date.now()
-  const windowStart = Math.floor(now / config.windowMs) * config.windowMs
-  const key = computeRateLimitKey(identifier, tool, new Date(windowStart))
-  
-  const existing = memoryFallback.get(key)
-  
-  if (existing && existing.windowStart === windowStart) {
-    existing.count++
-    
-    if (existing.count > config.maxRequests) {
-      const resetIn = windowStart + config.windowMs - now
-      return {
-        allowed: false,
-        remaining: 0,
-        resetIn,
-        limit: config.maxRequests,
-        retryAfter: Math.ceil(resetIn / 1000)
-      }
-    }
-    
-    return {
-      allowed: true,
-      remaining: Math.max(0, config.maxRequests - existing.count),
-      resetIn: windowStart + config.windowMs - now,
-      limit: config.maxRequests
-    }
-  }
-  
-  // New window
-  memoryFallback.set(key, { count: 1, windowStart })
-  
-  // Cleanup old windows (1% chance)
-  if (Math.random() < 0.01) {
-    const entries = Array.from(memoryFallback.entries())
-    for (const entry of entries) {
-      const [k, v] = entry
-      if (v.windowStart < windowStart) {
-        memoryFallback.delete(k)
-      }
-    }
-  }
-  
-  return {
-    allowed: true,
-    remaining: config.maxRequests - 1,
-    resetIn: config.windowMs,
-    limit: config.maxRequests
-  }
-}
-
-/**
- * Get current rate limit status without incrementing
+ * Get rate limit status without incrementing
  */
 export async function getRateLimitStatus(
-  identifier: string,
-  keyType: string = 'default',
-  tool: string | null = null
+  request: Request,
+  endpoint: string
 ): Promise<RateLimitResult> {
-  const config = getRateLimitConfig(keyType)
+  const caller = getCallerIdentity(request)
+  const ipHash = getIpHash(request)
+  const config = getRateLimitConfig(caller)
   const now = new Date()
+  
   const windowStart = new Date(Math.floor(now.getTime() / config.windowMs) * config.windowMs)
   const windowEnd = new Date(windowStart.getTime() + config.windowMs)
-  const key = computeRateLimitKey(identifier, tool, windowStart)
+  const key = computeRateLimitKey(caller, ipHash, endpoint, windowStart)
   
   try {
     const database = await getDatabase()
@@ -320,12 +373,13 @@ export async function getRateLimitStatus(
       allowed: count < config.maxRequests,
       remaining: Math.max(0, config.maxRequests - count),
       resetIn,
-      limit: config.maxRequests
+      limit: config.maxRequests,
+      caller,
+      endpoint
     }
     
   } catch (error: any) {
-    console.error(`[rateLimiter] Status check failed: ${error.message}`)
-    
+    console.error(`[RATE_LIMITER] Status check failed: ${error.message}`)
     return {
       allowed: true,
       remaining: config.maxRequests,
@@ -336,38 +390,12 @@ export async function getRateLimitStatus(
 }
 
 /**
- * Reset rate limit for a specific identifier
- * Useful for testing or manual override
- */
-export async function resetRateLimit(
-  identifier: string,
-  tool: string | null = null
-): Promise<boolean> {
-  const config = getRateLimitConfig(identifier)
-  const now = new Date()
-  const windowStart = new Date(Math.floor(now.getTime() / config.windowMs) * config.windowMs)
-  const key = computeRateLimitKey(identifier, tool, windowStart)
-  
-  try {
-    const database = await getDatabase()
-    const collection = database.collection(COLLECTION_NAME)
-    
-    const result = await collection.deleteOne({ key })
-    return result.deletedCount > 0
-    
-  } catch (error: any) {
-    console.error(`[rateLimiter] Reset failed: ${error.message}`)
-    return false
-  }
-}
-
-/**
- * Get rate limit statistics (for monitoring)
+ * Get rate limit statistics
  */
 export async function getRateLimitStats(): Promise<{
   totalEntries: number
-  activeKeys: string[]
-  oldestEntry: Date | null
+  byCaller: Record<string, number>
+  byEndpoint: Record<string, number>
 }> {
   try {
     const database = await getDatabase()
@@ -375,30 +403,31 @@ export async function getRateLimitStats(): Promise<{
     
     const totalEntries = await collection.countDocuments()
     
-    const activeEntries = await collection
-      .find({})
-      .sort({ windowStart: -1 })
-      .limit(100)
-      .toArray()
+    // Aggregate by caller
+    const callerAgg = await collection.aggregate([
+      { $group: { _id: '$caller', count: { $sum: 1 } } }
+    ]).toArray()
     
-    const activeKeys = activeEntries.map(e => e.key)
-    const oldestEntry = activeEntries.length > 0 
-      ? activeEntries[activeEntries.length - 1].windowStart 
-      : null
-    
-    return {
-      totalEntries,
-      activeKeys,
-      oldestEntry
+    const byCaller: Record<string, number> = {}
+    for (const item of callerAgg) {
+      byCaller[item._id || 'unknown'] = item.count
     }
+    
+    // Aggregate by endpoint
+    const endpointAgg = await collection.aggregate([
+      { $group: { _id: '$endpoint', count: { $sum: 1 } } }
+    ]).toArray()
+    
+    const byEndpoint: Record<string, number> = {}
+    for (const item of endpointAgg) {
+      byEndpoint[item._id || 'unknown'] = item.count
+    }
+    
+    return { totalEntries, byCaller, byEndpoint }
     
   } catch (error: any) {
-    console.error(`[rateLimiter] Stats failed: ${error.message}`)
-    return {
-      totalEntries: 0,
-      activeKeys: [],
-      oldestEntry: null
-    }
+    console.error(`[RATE_LIMITER] Stats failed: ${error.message}`)
+    return { totalEntries: 0, byCaller: {}, byEndpoint: {} }
   }
 }
 
@@ -407,12 +436,13 @@ export async function getRateLimitStats(): Promise<{
 // ============================================================================
 
 export default {
+  checkRateLimitWithRequest,
   checkRateLimit,
-  checkRateLimitSync,
   getRateLimitStatus,
-  resetRateLimit,
   getRateLimitStats,
+  getCallerIdentity,
+  getIpHash,
   getRateLimitConfig,
-  RATE_LIMITS,
+  CALLER_LIMITS,
   COLLECTION_NAME
 }
