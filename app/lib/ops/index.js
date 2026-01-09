@@ -19,6 +19,9 @@ import * as voiceDiagnostics from './tools/voice-diagnostics.js'
 import * as billingSyncPrices from './tools/billing-sync-prices.js'
 import * as opsReplayExecution from './tools/ops-replay-execution.js'
 
+// Import Golden Workflows
+import * as tenantRecovery from './tools/tenant-recovery.js'
+
 // Register all tools
 const tools = [
   // Existing tools
@@ -31,7 +34,9 @@ const tools = [
   tenantStatus,
   voiceDiagnostics,
   billingSyncPrices,
-  opsReplayExecution
+  opsReplayExecution,
+  // Golden Workflows
+  tenantRecovery
 ]
 
 let initialized = false
