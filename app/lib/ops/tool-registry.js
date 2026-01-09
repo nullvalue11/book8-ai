@@ -135,6 +135,115 @@ export const TOOL_REGISTRY = [
   },
 
   // =========================================================================
+  // GOLDEN WORKFLOWS - High-value operations
+  // =========================================================================
+  {
+    name: 'tenant.recovery',
+    description: 'Diagnose and recover unhealthy tenants by re-validating voice configuration, billing status, and re-running provisioning checks. Use this when a tenant reports issues or after infrastructure changes.',
+    category: 'tenant',
+    mutates: true,
+    risk: 'medium',
+    dryRunSupported: true,
+    allowedCallers: ['n8n', 'ops_console', 'api'],
+    requiresApproval: false,
+    deprecated: false,
+    inputSchema: {
+      type: 'object',
+      required: ['businessId'],
+      properties: {
+        businessId: { 
+          type: 'string', 
+          description: 'Unique business identifier',
+          minLength: 1
+        },
+        runVoiceTest: { 
+          type: 'boolean', 
+          default: true,
+          description: 'Run voice diagnostics'
+        },
+        recheckBilling: { 
+          type: 'boolean', 
+          default: true,
+          description: 'Re-check billing/Stripe status'
+        },
+        autoFix: { 
+          type: 'boolean', 
+          default: false,
+          description: 'If true, attempt to fix issues found'
+        }
+      }
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['ok', 'businessId', 'recoveryStatus'],
+      properties: {
+        ok: { type: 'boolean', description: 'Did the recovery check complete successfully?' },
+        businessId: { type: 'string' },
+        recoveryStatus: { 
+          type: 'string', 
+          enum: ['healthy', 'recovered', 'needs_attention', 'failed'],
+          description: 'Overall recovery status'
+        },
+        issuesFound: { type: 'number', description: 'Number of issues detected' },
+        issuesFixed: { type: 'number', description: 'Number of issues automatically fixed' },
+        checks: {
+          type: 'object',
+          properties: {
+            voice: {
+              type: 'object',
+              properties: {
+                status: { type: 'string' },
+                latencyMs: { type: 'number' },
+                error: { type: 'string' }
+              }
+            },
+            billing: {
+              type: 'object',
+              properties: {
+                status: { type: 'string' },
+                valid: { type: 'boolean' },
+                error: { type: 'string' }
+              }
+            },
+            provisioning: {
+              type: 'object',
+              properties: {
+                ready: { type: 'boolean' },
+                message: { type: 'string' }
+              }
+            }
+          }
+        },
+        actions: { type: 'array', items: { type: 'string' }, description: 'Actions taken if autoFix=true' },
+        recommendations: { type: 'array', items: { type: 'string' }, description: 'Suggested next steps' }
+      }
+    },
+    examples: [
+      {
+        name: 'Plan recovery',
+        input: { businessId: 'biz_abc123' },
+        description: 'Preview what recovery checks would run (use mode: plan)'
+      },
+      {
+        name: 'Basic recovery check',
+        input: { businessId: 'biz_abc123', autoFix: false },
+        description: 'Run full diagnostics without auto-fix'
+      },
+      {
+        name: 'Recovery with auto-fix',
+        input: { businessId: 'biz_abc123', autoFix: true },
+        description: 'Run diagnostics and attempt to fix issues'
+      },
+      {
+        name: 'Quick check (skip voice)',
+        input: { businessId: 'biz_abc123', runVoiceTest: false, recheckBilling: true },
+        description: 'Fast recovery check without voice latency tests'
+      }
+    ],
+    documentation: '/docs/tenant-recovery-golden-workflow.md'
+  },
+
+  // =========================================================================
   // V1 TOOL PACK - Read-Only Tools
   // =========================================================================
   {
