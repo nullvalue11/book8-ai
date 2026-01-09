@@ -133,6 +133,7 @@ const TOOL_SCOPES = {
   'tenant.provisioningSummary': 'tenant.read',
   'tenant.bootstrap': 'tenant.write',
   'tenant.recovery': 'tenant.write',
+  'call_logs': 'voice.read',
   'billing.validateStripeConfig': 'billing.read',
   'voice.smokeTest': 'voice.test',
 }
