@@ -303,6 +303,130 @@ export const TOOL_REGISTRY = [
     ]
   },
   {
+    name: 'call_logs',
+    description: 'Query call logs for a business within a date range. Returns call history with details like duration, status, and timestamps.',
+    category: 'voice',
+    mutates: false,
+    risk: 'low',
+    dryRunSupported: true,
+    allowedCallers: ['n8n', 'ops_console', 'api', 'mcp'],
+    requiresApproval: false,
+    deprecated: false,
+    inputSchema: {
+      type: 'object',
+      required: ['businessId'],
+      properties: {
+        businessId: { 
+          type: 'string', 
+          description: 'Unique business identifier',
+          minLength: 1
+        },
+        startDate: { 
+          type: 'string', 
+          description: 'Start date in ISO format (e.g., 2024-01-01). Defaults to 30 days ago.'
+        },
+        endDate: { 
+          type: 'string', 
+          description: 'End date in ISO format (e.g., 2024-01-31). Defaults to now.'
+        },
+        limit: { 
+          type: 'number', 
+          minimum: 1,
+          maximum: 1000,
+          default: 100,
+          description: 'Maximum number of logs to return'
+        },
+        status: { 
+          type: 'string', 
+          enum: ['all', 'completed', 'failed', 'missed', 'in_progress'],
+          default: 'all',
+          description: 'Filter by call status'
+        },
+        sortOrder: { 
+          type: 'string', 
+          enum: ['asc', 'desc'],
+          default: 'desc',
+          description: 'Sort order by timestamp'
+        }
+      }
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['ok', 'businessId', 'logs'],
+      properties: {
+        ok: { type: 'boolean', description: 'Did the query complete successfully?' },
+        businessId: { type: 'string' },
+        dateRange: {
+          type: 'object',
+          properties: {
+            start: { type: 'string' },
+            end: { type: 'string' }
+          }
+        },
+        logs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              businessId: { type: 'string' },
+              callId: { type: 'string' },
+              agentId: { type: 'string' },
+              phoneNumber: { type: 'string' },
+              direction: { type: 'string', enum: ['inbound', 'outbound'] },
+              status: { type: 'string' },
+              durationSeconds: { type: 'number' },
+              startedAt: { type: 'string' },
+              endedAt: { type: 'string' },
+              createdAt: { type: 'string' },
+              summary: { type: 'string' },
+              cost: { type: 'number' }
+            }
+          }
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            returned: { type: 'number' },
+            total: { type: 'number' },
+            limit: { type: 'number' },
+            hasMore: { type: 'boolean' }
+          }
+        },
+        summary: {
+          type: 'object',
+          properties: {
+            totalCalls: { type: 'number' },
+            completed: { type: 'number' },
+            failed: { type: 'number' },
+            missed: { type: 'number' },
+            inProgress: { type: 'number' },
+            totalDurationMinutes: { type: 'number' },
+            averageDurationSeconds: { type: 'number' },
+            totalCost: { type: 'number' }
+          }
+        }
+      }
+    },
+    examples: [
+      {
+        name: 'Get recent call logs',
+        input: { businessId: 'biz_abc123' },
+        description: 'Get last 100 call logs from past 30 days'
+      },
+      {
+        name: 'Get call logs for date range',
+        input: { businessId: 'biz_abc123', startDate: '2024-01-01', endDate: '2024-01-31', limit: 50 },
+        description: 'Get up to 50 call logs for January 2024'
+      },
+      {
+        name: 'Get failed calls only',
+        input: { businessId: 'biz_abc123', status: 'failed', limit: 20 },
+        description: 'Get last 20 failed calls for debugging'
+      }
+    ]
+  },
+  {
     name: 'voice.diagnostics',
     description: 'Voice service diagnostics - checks latency and connectivity to voice targets',
     category: 'voice',
