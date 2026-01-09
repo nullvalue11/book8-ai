@@ -132,6 +132,7 @@ const TOOL_SCOPES = {
   'tenant.ensure': 'tenant.write',
   'tenant.provisioningSummary': 'tenant.read',
   'tenant.bootstrap': 'tenant.write',
+  'tenant.recovery': 'tenant.write',
   'billing.validateStripeConfig': 'billing.read',
   'voice.smokeTest': 'voice.test',
 }
@@ -268,6 +269,70 @@ const TOOL_PLANS = {
     estimatedDurationMs: 30,
     idempotent: true,
     dryRunSupported: false
+  },
+  'tenant.recovery': {
+    description: 'Golden Workflow - Diagnose and recover unhealthy tenants',
+    steps: [
+      { 
+        order: 1, 
+        name: 'tenant.status', 
+        description: 'Get current tenant status and identify issues',
+        mutates: false,
+        reversible: true,
+        estimatedMs: 50
+      },
+      { 
+        order: 2, 
+        name: 'voice.diagnostics', 
+        description: 'Run voice service connectivity and latency tests',
+        mutates: false,
+        reversible: true,
+        estimatedMs: 300,
+        skippable: true
+      },
+      { 
+        order: 3, 
+        name: 'billing.validateStripeConfig', 
+        description: 'Validate Stripe configuration and subscription status',
+        mutates: false,
+        reversible: true,
+        estimatedMs: 200,
+        skippable: true
+      },
+      { 
+        order: 4, 
+        name: 'aggregate_results', 
+        description: 'Aggregate check results and determine recovery status',
+        mutates: false,
+        reversible: true,
+        estimatedMs: 10
+      },
+      { 
+        order: 5, 
+        name: 'auto_fix', 
+        description: 'Attempt automatic fixes if autoFix=true and issues found',
+        mutates: true,
+        reversible: false,
+        estimatedMs: 500,
+        conditional: true
+      }
+    ],
+    sideEffects: [
+      { type: 'database', operation: 'read', collection: 'users', description: 'Reads tenant data' },
+      { type: 'database', operation: 'insert', collection: 'ops_audit_logs', description: 'Logs execution audit trail' },
+      { type: 'database', operation: 'insert', collection: 'ops_event_logs', description: 'Logs execution event' },
+      { type: 'api', operation: 'call', target: 'voice_services', description: 'Voice diagnostics API calls', conditional: true },
+      { type: 'api', operation: 'call', target: 'stripe', description: 'Stripe validation if autoFix', conditional: true }
+    ],
+    requiredSecrets: [
+      { name: 'MONGO_URL', description: 'Database connection', required: true },
+      { name: 'OPENAI_API_KEY', description: 'OpenAI for voice diagnostics', required: false, skippableWith: 'runVoiceTest' },
+      { name: 'STRIPE_SECRET_KEY', description: 'Stripe API access', required: false, skippableWith: 'recheckBilling' }
+    ],
+    estimatedRisk: 'medium',
+    estimatedDurationMs: 600,
+    idempotent: true,
+    dryRunSupported: true
   }
 }
 

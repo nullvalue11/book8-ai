@@ -4,8 +4,8 @@
  * Server-side helper for calling internal ops endpoints.
  * Adds authentication headers and caller identity.
  * 
- * The x-book8-caller header identifies traffic from the Ops Console UI,
- * allowing separate rate limit tracking from n8n and other callers.
+ * IMPORTANT: In Vercel serverless, we cannot use localhost.
+ * We must use the actual deployed URL to call internal APIs.
  */
 
 // Caller identity for rate limiting - identifies Ops Console traffic
@@ -31,33 +31,55 @@ export interface OpsFetchResult<T = any> {
 }
 
 /**
- * Get environment variables with error handling
- * Uses dynamic import to load env at runtime
+ * Get environment variables at runtime
+ * 
+ * CRITICAL: In production (Vercel serverless), localhost doesn't work.
+ * We ALWAYS prefer BASE_URL (NEXT_PUBLIC_BASE_URL) over localhost.
  */
 async function getEnvConfig(): Promise<{ baseUrl: string; secret: string }> {
-  // Default fallbacks
-  const defaults = {
-    baseUrl: 'http://localhost:3000',
-    secret: 'ops-dev-secret-change-me'
-  }
-  
   try {
-    // Dynamic import of the centralized env module
     // @ts-ignore - env.js is a JavaScript module  
     const envModule = await import('@/lib/env.js')
     const env = envModule.env || envModule.default?.env || envModule
     
     if (env && typeof env === 'object') {
-      return {
-        baseUrl: env.OPS_INTERNAL_BASE_URL || defaults.baseUrl,
-        secret: env.OPS_INTERNAL_SECRET || defaults.secret
+      // Determine the base URL to use
+      let baseUrl: string
+      
+      // Check if we're in production/Vercel (not localhost)
+      const isProduction = env.IS_PRODUCTION || env.NODE_ENV === 'production'
+      const opsInternalUrl = env.OPS_INTERNAL_BASE_URL || ''
+      const publicBaseUrl = env.BASE_URL || ''
+      
+      // In production, NEVER use localhost - always use the public base URL
+      if (isProduction || opsInternalUrl.includes('localhost') || !opsInternalUrl) {
+        // Use the public base URL (the deployed app URL)
+        baseUrl = publicBaseUrl || 'http://localhost:3000'
+      } else {
+        // Use the explicitly configured internal URL (only if it's not localhost)
+        baseUrl = opsInternalUrl
       }
+      
+      // Final safety check: if we're still on localhost in production, use BASE_URL
+      if (isProduction && baseUrl.includes('localhost')) {
+        baseUrl = publicBaseUrl
+      }
+      
+      const secret = env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
+      
+      console.log(`[opsFetch] Environment: ${env.NODE_ENV}, baseUrl resolved to: ${baseUrl}`)
+      
+      return { baseUrl, secret }
     }
   } catch (err) {
     console.warn('[opsFetch] Failed to load env module:', err)
   }
   
-  return defaults
+  // Fallback for development only
+  return {
+    baseUrl: 'http://localhost:3000',
+    secret: 'ops-dev-secret-change-me'
+  }
 }
 
 /**
@@ -105,6 +127,7 @@ export async function opsFetch<T = any>(
   let url: string
   try {
     url = buildUrl(baseUrl, path, params)
+    console.log(`[opsFetch] Fetching: ${method} ${url}`)
   } catch (err) {
     console.error('[opsFetch] buildUrl failed:', err)
     return {
@@ -167,7 +190,7 @@ export async function opsFetch<T = any>(
       }
     }
     
-    console.error('[opsFetch] Fetch error:', fetchError.message)
+    console.error('[opsFetch] Fetch error:', fetchError.message, 'URL:', url)
     return {
       ok: false,
       status: 500,
