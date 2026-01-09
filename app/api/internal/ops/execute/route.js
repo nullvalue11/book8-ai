@@ -134,6 +134,7 @@ const TOOL_SCOPES = {
   'tenant.bootstrap': 'tenant.write',
   'tenant.recovery': 'tenant.write',
   'call_logs': 'voice.read',
+  'billing_verification': 'billing.read',
   'billing.validateStripeConfig': 'billing.read',
   'voice.smokeTest': 'voice.test',
 }
@@ -368,6 +369,58 @@ const TOOL_PLANS = {
     ],
     estimatedRisk: 'low',
     estimatedDurationMs: 50,
+    idempotent: true,
+    dryRunSupported: true
+  },
+  'billing_verification': {
+    description: 'Verify billing records and identify discrepancies',
+    steps: [
+      { 
+        order: 1, 
+        name: 'fetchSubscription', 
+        description: 'Get subscription details and pricing',
+        mutates: false,
+        estimatedMs: 20
+      },
+      { 
+        order: 2, 
+        name: 'fetchUsage', 
+        description: 'Get metered usage records (call minutes)',
+        mutates: false,
+        estimatedMs: 30
+      },
+      { 
+        order: 3, 
+        name: 'fetchBillingRecords', 
+        description: 'Get billing records from database',
+        mutates: false,
+        estimatedMs: 30
+      },
+      { 
+        order: 4, 
+        name: 'calculateExpected', 
+        description: 'Calculate expected billing amounts',
+        mutates: false,
+        estimatedMs: 10
+      },
+      { 
+        order: 5, 
+        name: 'compareAndVerify', 
+        description: 'Compare actual vs expected and identify discrepancies',
+        mutates: false,
+        estimatedMs: 10
+      }
+    ],
+    sideEffects: [
+      { type: 'database', operation: 'read', collection: 'users', description: 'Reads subscription data' },
+      { type: 'database', operation: 'read', collection: 'billing_records', description: 'Reads billing records' },
+      { type: 'database', operation: 'read', collection: 'call_logs', description: 'Reads usage data' }
+    ],
+    requiredSecrets: [
+      { name: 'MONGO_URL', description: 'Database connection', required: true }
+    ],
+    estimatedRisk: 'low',
+    estimatedDurationMs: 100,
     idempotent: true,
     dryRunSupported: true
   }

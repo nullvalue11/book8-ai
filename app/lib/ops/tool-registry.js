@@ -427,6 +427,116 @@ export const TOOL_REGISTRY = [
     ]
   },
   {
+    name: 'billing_verification',
+    description: 'Verify billing records for a business. Compares actual billing against expected amounts, identifies discrepancies, and flags potential issues for review.',
+    category: 'billing',
+    mutates: false,
+    risk: 'low',
+    dryRunSupported: true,
+    allowedCallers: ['n8n', 'ops_console', 'api', 'mcp'],
+    requiresApproval: false,
+    deprecated: false,
+    inputSchema: {
+      type: 'object',
+      required: ['businessId'],
+      properties: {
+        businessId: { 
+          type: 'string', 
+          description: 'Unique business identifier',
+          minLength: 1
+        },
+        startDate: { 
+          type: 'string', 
+          description: 'Start date in ISO format. Defaults to current billing period start.'
+        },
+        endDate: { 
+          type: 'string', 
+          description: 'End date in ISO format. Defaults to now.'
+        },
+        includeDetails: { 
+          type: 'boolean', 
+          default: true,
+          description: 'Include detailed line items in response'
+        },
+        tolerancePercent: { 
+          type: 'number', 
+          minimum: 0,
+          maximum: 100,
+          default: 1,
+          description: 'Tolerance percentage for flagging discrepancies'
+        }
+      }
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['ok', 'businessId', 'status'],
+      properties: {
+        ok: { type: 'boolean', description: 'Did verification complete successfully?' },
+        businessId: { type: 'string' },
+        status: { 
+          type: 'string', 
+          enum: ['verified', 'minor_issues', 'needs_review', 'flagged', 'error'],
+          description: 'Overall verification status'
+        },
+        dateRange: {
+          type: 'object',
+          properties: {
+            start: { type: 'string' },
+            end: { type: 'string' }
+          }
+        },
+        totalBilled: { type: 'number', description: 'Total amount billed' },
+        totalExpected: { type: 'number', description: 'Total expected amount' },
+        difference: { type: 'number', description: 'Difference between billed and expected' },
+        differencePercent: { type: 'number', description: 'Percentage difference' },
+        discrepancies: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string' },
+              severity: { type: 'string', enum: ['low', 'medium', 'high'] },
+              message: { type: 'string' },
+              expected: { type: 'number' },
+              actual: { type: 'number' }
+            }
+          }
+        },
+        lineItems: { type: 'array', description: 'Detailed billing line items' },
+        flags: { type: 'array', description: 'Warning flags' },
+        recommendations: { type: 'array', items: { type: 'string' } },
+        summary: {
+          type: 'object',
+          properties: {
+            totalBilled: { type: 'number' },
+            totalExpected: { type: 'number' },
+            difference: { type: 'number' },
+            differencePercent: { type: 'number' },
+            discrepancyCount: { type: 'number' },
+            flagCount: { type: 'number' }
+          }
+        }
+      }
+    },
+    examples: [
+      {
+        name: 'Verify current billing period',
+        input: { businessId: 'biz_abc123' },
+        description: 'Verify billing for current month'
+      },
+      {
+        name: 'Verify specific date range',
+        input: { businessId: 'biz_abc123', startDate: '2024-01-01', endDate: '2024-01-31' },
+        description: 'Verify billing for January 2024'
+      },
+      {
+        name: 'Quick verification without details',
+        input: { businessId: 'biz_abc123', includeDetails: false, tolerancePercent: 5 },
+        description: 'Fast verification with 5% tolerance'
+      }
+    ]
+  },
+  {
     name: 'voice.diagnostics',
     description: 'Voice service diagnostics - checks latency and connectivity to voice targets',
     category: 'voice',

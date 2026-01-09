@@ -19,6 +19,7 @@ import * as voiceDiagnostics from './tools/voice-diagnostics.js'
 import * as billingSyncPrices from './tools/billing-sync-prices.js'
 import * as opsReplayExecution from './tools/ops-replay-execution.js'
 import * as callLogs from './tools/call-logs.js'
+import * as billingVerification from './tools/billing-verification.js'
 
 // Import Golden Workflows
 import * as tenantRecovery from './tools/tenant-recovery.js'
@@ -37,6 +38,7 @@ const tools = [
   billingSyncPrices,
   opsReplayExecution,
   callLogs,
+  billingVerification,
   // Golden Workflows
   tenantRecovery
 ]
