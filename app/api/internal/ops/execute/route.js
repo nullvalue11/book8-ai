@@ -333,6 +333,42 @@ const TOOL_PLANS = {
     estimatedDurationMs: 600,
     idempotent: true,
     dryRunSupported: true
+  },
+  'call_logs': {
+    description: 'Query call logs for a business within a date range',
+    steps: [
+      { 
+        order: 1, 
+        name: 'buildQuery', 
+        description: 'Build MongoDB query with date range and filters',
+        mutates: false,
+        estimatedMs: 5
+      },
+      { 
+        order: 2, 
+        name: 'executeQuery', 
+        description: 'Query call_logs collection',
+        mutates: false,
+        estimatedMs: 30
+      },
+      { 
+        order: 3, 
+        name: 'calculateSummary', 
+        description: 'Calculate call statistics',
+        mutates: false,
+        estimatedMs: 5
+      }
+    ],
+    sideEffects: [
+      { type: 'database', operation: 'read', collection: 'call_logs', description: 'Reads call log records' }
+    ],
+    requiredSecrets: [
+      { name: 'MONGO_URL', description: 'Database connection', required: true }
+    ],
+    estimatedRisk: 'low',
+    estimatedDurationMs: 50,
+    idempotent: true,
+    dryRunSupported: true
   }
 }
 
