@@ -15,6 +15,12 @@
 
 import { z } from 'zod'
 
+// Import sub-tools directly
+import * as tenantStatusTool from './tenant-status.js'
+import * as voiceDiagnosticsTool from './voice-diagnostics.js'
+import * as billingValidateTool from './billing-validate-stripe.js'
+import * as billingSyncPricesTool from './billing-sync-prices.js'
+
 export const name = 'tenant.recovery'
 
 export const description = 'Diagnose and recover unhealthy tenants by re-validating voice configuration, billing status, and re-running provisioning checks. Use this when a tenant reports issues or after infrastructure changes.'
@@ -25,16 +31,6 @@ export const schema = z.object({
   recheckBilling: z.boolean().default(true).describe('Re-check billing/Stripe status'),
   autoFix: z.boolean().default(false).describe('If true, attempt to fix issues found')
 })
-
-// Import other tools for orchestration
-async function loadTool(toolPath) {
-  try {
-    return await import(toolPath)
-  } catch (err) {
-    console.error(`Failed to load tool: ${toolPath}`, err)
-    return null
-  }
-}
 
 /**
  * Execute tenant.recovery
@@ -204,32 +200,29 @@ async function executeRecovery(args, ctx) {
   console.log(`[ops:${requestId}] tenant.recovery: Step 1 - Checking tenant status`)
   
   try {
-    const tenantStatusTool = await loadTool('./tenant-status.js')
-    if (tenantStatusTool) {
-      const statusResult = await tenantStatusTool.execute({ businessId }, ctx)
-      results.details.tenantStatus = statusResult
+    const statusResult = await tenantStatusTool.execute({ businessId }, ctx)
+    results.details.tenantStatus = statusResult
+    
+    if (!statusResult.ok) {
+      issues.push({ type: 'tenant_status', severity: 'high', message: 'Failed to get tenant status' })
+    } else if (!statusResult.summary?.ready) {
+      issues.push({ type: 'tenant_not_ready', severity: 'medium', message: statusResult.summary?.readyMessage || 'Tenant not fully operational' })
       
-      if (!statusResult.ok) {
-        issues.push({ type: 'tenant_status', severity: 'high', message: 'Failed to get tenant status' })
-      } else if (!statusResult.summary?.ready) {
-        issues.push({ type: 'tenant_not_ready', severity: 'medium', message: statusResult.summary?.readyMessage || 'Tenant not fully operational' })
-        
-        // Add recommendations from tenant status
-        if (statusResult.recommendations) {
-          results.recommendations.push(...statusResult.recommendations)
-        }
-        
-        // Check for failed items
-        const failedChecks = (statusResult.checks || []).filter(c => c.status === 'failed')
-        for (const check of failedChecks) {
-          issues.push({ type: `tenant_${check.item}`, severity: 'high', message: check.details })
-        }
+      // Add recommendations from tenant status
+      if (statusResult.recommendations) {
+        results.recommendations.push(...statusResult.recommendations)
       }
       
-      results.checks.provisioning = {
-        ready: statusResult.summary?.ready || false,
-        message: statusResult.summary?.readyMessage || 'Unknown'
+      // Check for failed items
+      const failedChecks = (statusResult.checks || []).filter(c => c.status === 'failed')
+      for (const check of failedChecks) {
+        issues.push({ type: `tenant_${check.item}`, severity: 'high', message: check.details })
       }
+    }
+    
+    results.checks.provisioning = {
+      ready: statusResult.summary?.ready || false,
+      message: statusResult.summary?.readyMessage || 'Unknown'
     }
   } catch (err) {
     console.error(`[ops:${requestId}] tenant.recovery: tenant.status failed:`, err)
@@ -244,31 +237,28 @@ async function executeRecovery(args, ctx) {
     console.log(`[ops:${requestId}] tenant.recovery: Step 2 - Running voice diagnostics`)
     
     try {
-      const voiceTool = await loadTool('./voice-diagnostics.js')
-      if (voiceTool) {
-        const voiceResult = await voiceTool.execute({ businessId, timeoutMs: 5000 }, ctx)
-        results.details.voiceDiagnostics = voiceResult
+      const voiceResult = await voiceDiagnosticsTool.execute({ businessId, timeoutMs: 5000 }, ctx)
+      results.details.voiceDiagnostics = voiceResult
+      
+      results.checks.voice = {
+        status: voiceResult.overallStatus || 'unknown',
+        latencyMs: voiceResult.summary?.avgLatencyMs,
+        error: voiceResult.overallStatus !== 'healthy' ? voiceResult.statusReason : undefined
+      }
+      
+      if (voiceResult.overallStatus === 'critical' || voiceResult.overallStatus === 'degraded') {
+        issues.push({
+          type: 'voice_unhealthy',
+          severity: voiceResult.overallStatus === 'critical' ? 'high' : 'medium',
+          message: voiceResult.statusReason || 'Voice services unhealthy'
+        })
         
-        results.checks.voice = {
-          status: voiceResult.overallStatus || 'unknown',
-          latencyMs: voiceResult.summary?.avgLatencyMs,
-          error: voiceResult.overallStatus !== 'healthy' ? voiceResult.statusReason : undefined
-        }
-        
-        if (voiceResult.overallStatus === 'critical' || voiceResult.overallStatus === 'degraded') {
-          issues.push({
-            type: 'voice_unhealthy',
-            severity: voiceResult.overallStatus === 'critical' ? 'high' : 'medium',
-            message: voiceResult.statusReason || 'Voice services unhealthy'
-          })
-          
-          // Add unhealthy targets to recommendations
-          const unhealthyTargets = (voiceResult.results || []).filter(r => 
-            ['unhealthy', 'error', 'timeout', 'unreachable'].includes(r.status)
-          )
-          for (const target of unhealthyTargets) {
-            results.recommendations.push(`Check ${target.target}: ${target.reason}`)
-          }
+        // Add unhealthy targets to recommendations
+        const unhealthyTargets = (voiceResult.results || []).filter(r => 
+          ['unhealthy', 'error', 'timeout', 'unreachable'].includes(r.status)
+        )
+        for (const target of unhealthyTargets) {
+          results.recommendations.push(`Check ${target.target}: ${target.reason}`)
         }
       }
     } catch (err) {
@@ -287,34 +277,35 @@ async function executeRecovery(args, ctx) {
     console.log(`[ops:${requestId}] tenant.recovery: Step 3 - Validating billing configuration`)
     
     try {
-      const billingTool = await loadTool('./billing-validate-stripe.js')
-      if (billingTool) {
-        const billingResult = await billingTool.execute({ businessId }, ctx)
-        results.details.billingValidation = billingResult
+      const billingResult = await billingValidateTool.execute({ businessId }, ctx)
+      results.details.billingValidation = billingResult
+      
+      results.checks.billing = {
+        status: billingResult.valid ? 'healthy' : 'unhealthy',
+        valid: billingResult.valid || false,
+        error: !billingResult.valid ? billingResult.message : undefined
+      }
+      
+      if (!billingResult.valid) {
+        issues.push({
+          type: 'billing_invalid',
+          severity: 'high',
+          message: billingResult.message || 'Billing configuration invalid'
+        })
         
-        results.checks.billing = {
-          status: billingResult.valid ? 'healthy' : 'unhealthy',
-          valid: billingResult.valid || false,
-          error: !billingResult.valid ? billingResult.message : undefined
-        }
-        
-        if (!billingResult.valid) {
-          issues.push({
-            type: 'billing_invalid',
-            severity: 'high',
-            message: billingResult.message || 'Billing configuration invalid'
-          })
-          
-          // Add billing-specific recommendations
-          if (billingResult.checks) {
-            const failedBillingChecks = billingResult.checks.filter(c => c.status === 'failed')
-            for (const check of failedBillingChecks) {
-              results.recommendations.push(`Billing: ${check.details || check.item}`)
-            }
+        // Add billing-specific recommendations
+        if (billingResult.checks) {
+          const failedBillingChecks = billingResult.checks.filter(c => c.status === 'failed')
+          for (const check of failedBillingChecks) {
+            results.recommendations.push(`Billing: ${check.details || check.item}`)
           }
         }
-      } else {
-        // Fallback: Check billing directly from user record
+      }
+    } catch (err) {
+      console.error(`[ops:${requestId}] tenant.recovery: billing check failed:`, err)
+      
+      // Fallback: Check billing directly from user record
+      try {
         const user = await db.collection('users').findOne({ id: businessId })
         if (user) {
           const hasStripe = !!(user.subscription?.stripeCustomerId && user.subscription?.stripeSubscriptionId)
@@ -333,12 +324,13 @@ async function executeRecovery(args, ctx) {
               message: !hasStripe ? 'Stripe not configured' : 'Subscription not active'
             })
           }
+        } else {
+          results.checks.billing = { status: 'error', valid: false, error: 'User not found' }
         }
+      } catch (dbErr) {
+        issues.push({ type: 'billing_check_error', severity: 'medium', message: err.message })
+        results.checks.billing = { status: 'error', valid: false, error: err.message }
       }
-    } catch (err) {
-      console.error(`[ops:${requestId}] tenant.recovery: billing check failed:`, err)
-      issues.push({ type: 'billing_check_error', severity: 'medium', message: err.message })
-      results.checks.billing = { status: 'error', valid: false, error: err.message }
     }
   } else {
     results.actions.push('Skipped billing validation (recheckBilling=false)')
@@ -362,18 +354,14 @@ async function executeRecovery(args, ctx) {
     const billingIssues = issues.filter(i => i.type.startsWith('billing_'))
     if (billingIssues.length > 0) {
       try {
-        // Attempt to sync prices
-        const syncPricesTool = await loadTool('./billing-sync-prices.js')
-        if (syncPricesTool) {
-          console.log(`[ops:${requestId}] tenant.recovery: Attempting billing.syncPrices`)
-          const syncResult = await syncPricesTool.execute({ businessId, mode: 'plan' }, ctx)
-          
-          if (syncResult.ok && syncResult.summary?.toCreate > 0) {
-            results.actions.push(`Billing: Found ${syncResult.summary.toCreate} price(s) to sync`)
-            results.recommendations.push('Run billing.syncPrices with mode=execute to apply changes')
-          }
-          results.details.billingSyncPlan = syncResult
+        console.log(`[ops:${requestId}] tenant.recovery: Attempting billing.syncPrices`)
+        const syncResult = await billingSyncPricesTool.execute({ businessId, mode: 'plan' }, ctx)
+        
+        if (syncResult.ok && syncResult.summary?.toCreate > 0) {
+          results.actions.push(`Billing: Found ${syncResult.summary.toCreate} price(s) to sync`)
+          results.recommendations.push('Run billing.syncPrices with mode=execute to apply changes')
         }
+        results.details.billingSyncPlan = syncResult
       } catch (err) {
         console.error(`[ops:${requestId}] tenant.recovery: billing sync failed:`, err)
         results.actions.push(`Billing auto-fix failed: ${err.message}`)
