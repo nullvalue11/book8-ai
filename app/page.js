@@ -562,6 +562,30 @@ export default function Home(props) {
               </div>
             </CardContent>
           </Card>
+          
+          {/* Business Registration Card */}
+          <Card className="bg-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                Business Setup
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Register and provision your business to enable AI phone agents, billing integration, and more.
+                </p>
+                <Button 
+                  className="w-full"
+                  onClick={() => router.push('/dashboard/business')}
+                >
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Manage Business
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
