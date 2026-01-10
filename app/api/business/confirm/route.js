@@ -13,7 +13,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
+import { MongoClient } from 'mongodb'
 import { verifyToken } from '@/lib/auth'
 import { env } from '@/lib/env'
 import { 
@@ -24,6 +24,16 @@ import {
 import toolRegistry from '@/lib/ops/tool-registry'
 
 export const dynamic = 'force-dynamic'
+
+let cachedClient = null
+
+async function getDb() {
+  if (!cachedClient) {
+    cachedClient = new MongoClient(env.MONGO_URL)
+    await cachedClient.connect()
+  }
+  return cachedClient.db()
+}
 
 /**
  * Generate unique request ID for ops tracking
