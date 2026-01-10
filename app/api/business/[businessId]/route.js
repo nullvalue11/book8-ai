@@ -6,20 +6,36 @@
 
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
-import { verifyToken } from '@/lib/auth'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME } from '@/lib/schemas/business'
 
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-let cachedClient = null
+let client, db
 
-async function getDb() {
-  if (!cachedClient) {
-    cachedClient = new MongoClient(env.MONGO_URL)
-    await cachedClient.connect()
+async function connect() {
+  if (!client) {
+    client = new MongoClient(env.MONGO_URL)
+    await client.connect()
+    db = client.db()
   }
-  return cachedClient.db()
+  return db
+}
+
+async function verifyAuth(request, database) {
+  const auth = request.headers.get('authorization') || ''
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
+  if (!token) return { payload: null, user: null }
+  
+  const jwt = (await import('jsonwebtoken')).default
+  try {
+    const payload = jwt.verify(token, env.JWT_SECRET)
+    const user = database ? await database.collection('users').findOne({ id: payload.sub }) : null
+    return { payload, user }
+  } catch {
+    return { payload: null, user: null }
+  }
 }
 
 export async function GET(request, { params }) {
@@ -33,30 +49,19 @@ export async function GET(request, { params }) {
       )
     }
     
-    // Authenticate
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    const database = await connect()
+    const { payload: authPayload } = await verifyAuth(request, database)
+    
+    if (!authPayload?.sub) {
       return NextResponse.json(
         { ok: false, error: 'Authentication required' },
         { status: 401 }
       )
     }
     
-    const token = authHeader.split(' ')[1]
-    const payload = await verifyToken(token)
+    const userId = authPayload.sub
     
-    if (!payload?.sub) {
-      return NextResponse.json(
-        { ok: false, error: 'Invalid token' },
-        { status: 401 }
-      )
-    }
-    
-    const userId = payload.sub
-    
-    // Get business
-    const db = await getDb()
-    const business = await db.collection(COLLECTION_NAME).findOne({ businessId })
+    const business = await database.collection(COLLECTION_NAME).findOne({ businessId })
     
     if (!business) {
       return NextResponse.json(
@@ -65,7 +70,6 @@ export async function GET(request, { params }) {
       )
     }
     
-    // Verify ownership
     if (business.ownerUserId !== userId) {
       return NextResponse.json(
         { ok: false, error: 'Access denied' },
@@ -73,7 +77,6 @@ export async function GET(request, { params }) {
       )
     }
     
-    // Return business details
     return NextResponse.json({
       ok: true,
       business: {
@@ -111,7 +114,6 @@ export async function GET(request, { params }) {
     
   } catch (error) {
     console.error('[business/[businessId]] Error:', error)
-    
     return NextResponse.json({
       ok: false,
       error: error.message || 'Internal server error'
