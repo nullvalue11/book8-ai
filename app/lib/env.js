@@ -211,6 +211,9 @@ function loadConfig() {
       OPS_CONSOLE_PASS,
       OPS_INTERNAL_BASE_URL,
       
+      // n8n Webhooks
+      N8N_BUSINESS_PROVISIONED_WEBHOOK_URL: getEnvVar('N8N_BUSINESS_PROVISIONED_WEBHOOK_URL', false),
+      
       // Billing/Usage Reporting
       CORE_API_BASE_URL,
       CORE_API_INTERNAL_SECRET,
