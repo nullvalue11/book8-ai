@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timedelta
 
 # Get base URL from environment
-BASE_URL = 'https://ops-admin-tools.preview.emergentagent.com'
+BASE_URL = 'https://tenant-provision.preview.emergentagent.com'
 API_BASE = f"{BASE_URL}/api"
 
 def log(message):

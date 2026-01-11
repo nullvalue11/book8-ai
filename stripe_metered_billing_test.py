@@ -12,7 +12,7 @@ Test Flow:
 3. Test checkout without auth - Should return 401
 4. Test checkout without priceId - Should return 400 (after auth)
 
-Backend URL: https://ops-admin-tools.preview.emergentagent.com
+Backend URL: https://tenant-provision.preview.emergentagent.com
 """
 
 import requests
@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 import os
 
 # Backend URL from review request
-BASE_URL = "https://ops-admin-tools.preview.emergentagent.com"
+BASE_URL = "https://tenant-provision.preview.emergentagent.com"
 
 def test_admin_backfill_without_token():
     """Test POST /api/admin/stripe/backfill-call-minutes without x-admin-token header"""

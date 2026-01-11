@@ -13,7 +13,7 @@ from pymongo import MongoClient
 from datetime import datetime, timedelta
 
 # Configuration
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://ops-admin-tools.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://tenant-provision.preview.emergentagent.com')
 API_ENDPOINT = f"{BASE_URL}/api/internal/ops/execute"
 AUTH_HEADER = "ops-dev-secret-change-me"
 MONGO_URL = "mongodb://localhost:27017"

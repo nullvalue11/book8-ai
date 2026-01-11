@@ -13,7 +13,7 @@ import os
 import sys
 
 # Configuration
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://ops-admin-tools.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://tenant-provision.preview.emergentagent.com')
 API_ENDPOINT = f"{BASE_URL}/api/internal/ops/execute"
 AUTH_HEADER = "ops-dev-secret-change-me"  # From .env OPS_INTERNAL_SECRET
 

@@ -9,7 +9,7 @@ from datetime import datetime
 import uuid
 
 # Configuration
-BASE_URL = "https://ops-admin-tools.preview.emergentagent.com"
+BASE_URL = "https://tenant-provision.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test user credentials

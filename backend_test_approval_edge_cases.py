@@ -11,7 +11,7 @@ import time
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://ops-admin-tools.preview.emergentagent.com"
+BASE_URL = "https://tenant-provision.preview.emergentagent.com"
 AUTH_HEADER = "ops-dev-secret-change-me"
 
 def test_approval_lifecycle_edge_cases():

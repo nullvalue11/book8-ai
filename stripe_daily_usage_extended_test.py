@@ -9,7 +9,7 @@ import json
 import sys
 
 # Configuration
-BASE_URL = "https://ops-admin-tools.preview.emergentagent.com"
+BASE_URL = "https://tenant-provision.preview.emergentagent.com"
 ENDPOINT = "/api/billing/usage/run-daily"
 
 def test_with_placeholder_token():
