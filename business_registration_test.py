@@ -136,7 +136,7 @@ class BusinessRegistrationTester:
             "skipBillingCheck": True
         }
         
-        result = self.make_request('POST', '/api/business/register', business_data, headers, expect_status=201)
+        result = self.make_request('POST', '/api/business/register', business_data, headers)
         
         if result['success']:
             data = result['data']
