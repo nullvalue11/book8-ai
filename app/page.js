@@ -13,7 +13,7 @@ import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
 import HomeHero from "./(home)/HomeHero";
 import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
@@ -559,6 +559,30 @@ export default function Home(props) {
                     <Button size="sm" onClick={() => window.location.href = '/dashboard/settings/scheduling'}>Configure Scheduling</Button>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Business Registration Card */}
+          <Card className="bg-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                Business Setup
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Register and provision your business to enable AI phone agents, billing integration, and more.
+                </p>
+                <Button 
+                  className="w-full"
+                  onClick={() => router.push('/dashboard/business')}
+                >
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Manage Business
+                </Button>
               </div>
             </CardContent>
           </Card>
