@@ -10,7 +10,7 @@
  * - Connect Google Calendar
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -52,7 +52,8 @@ const SUBSCRIPTION_COLORS = {
   canceled: 'bg-gray-100 text-gray-800'
 }
 
-export default function BusinessPage() {
+// Main content component that uses useSearchParams
+function BusinessPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -92,9 +93,12 @@ export default function BusinessPage() {
     
     if (checkoutStatus === 'success' && checkoutBusinessId) {
       // Refresh businesses to show updated subscription
-      fetchBusinesses()
+      if (token) {
+        fetchBusinesses()
+      }
     }
-  }, [searchParams])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, token])
   
   // Load auth on mount
   useEffect(() => {
@@ -122,6 +126,7 @@ export default function BusinessPage() {
     if (token) {
       fetchBusinesses()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
   
   async function fetchBusinesses() {
@@ -678,5 +683,23 @@ export default function BusinessPage() {
         )}
       </div>
     </main>
+  )
+}
+
+// Loading fallback for Suspense
+function BusinessPageLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+    </div>
+  )
+}
+
+// Main export with Suspense boundary for useSearchParams
+export default function BusinessPage() {
+  return (
+    <Suspense fallback={<BusinessPageLoading />}>
+      <BusinessPageContent />
+    </Suspense>
   )
 }
