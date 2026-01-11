@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { env } from '@/lib/env'
 import { getCallMinutesItemId, extractSubscriptionBillingFields } from '@/lib/stripeSubscription'
 import { updateSubscriptionFields, updateSubscriptionByCustomerId } from '@/lib/subscriptionUpdate'
+import { COLLECTION_NAME as BUSINESS_COLLECTION, SUBSCRIPTION_STATUS } from '@/lib/schemas/business'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
