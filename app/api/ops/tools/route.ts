@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
     
     // Build response headers (include rate limit info)
     const responseHeaders: Record<string, string> = {}
+    
+    // Priority 1: Use headers from the fetch response
     if (result.headers?.rateLimitLimit) {
       responseHeaders['X-RateLimit-Limit'] = result.headers.rateLimitLimit
     }
@@ -36,6 +38,23 @@ export async function GET(request: NextRequest) {
     if (result.headers?.rateLimitReset) {
       responseHeaders['X-RateLimit-Reset'] = result.headers.rateLimitReset
     }
+    
+    // Priority 2: Fallback to rateLimit object in response data
+    if (!responseHeaders['X-RateLimit-Limit'] && result.data?.rateLimit) {
+      const rl = result.data.rateLimit
+      if (rl.limit !== undefined) responseHeaders['X-RateLimit-Limit'] = String(rl.limit)
+      if (rl.remaining !== undefined) responseHeaders['X-RateLimit-Remaining'] = String(rl.remaining)
+      if (rl.windowMs !== undefined) {
+        responseHeaders['X-RateLimit-Reset'] = String(Math.ceil((Date.now() + rl.windowMs) / 1000))
+      }
+    }
+    
+    // Log for debugging
+    console.log('[ops/tools proxy] Rate limit headers:', {
+      fromFetch: result.headers,
+      fromData: result.data?.rateLimit,
+      toClient: responseHeaders
+    })
     
     if (!result.ok) {
       return NextResponse.json(
