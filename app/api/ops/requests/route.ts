@@ -15,9 +15,12 @@ export const runtime = 'nodejs'
 
 /**
  * Build response headers including rate limit info
+ * Supports both fetch headers and rateLimit object in response data
  */
 function buildHeaders(result: OpsFetchResult): Record<string, string> {
   const headers: Record<string, string> = {}
+  
+  // Priority 1: Use headers from the fetch response
   if (result.headers?.rateLimitLimit) {
     headers['X-RateLimit-Limit'] = result.headers.rateLimitLimit
   }
@@ -27,6 +30,17 @@ function buildHeaders(result: OpsFetchResult): Record<string, string> {
   if (result.headers?.rateLimitReset) {
     headers['X-RateLimit-Reset'] = result.headers.rateLimitReset
   }
+  
+  // Priority 2: Fallback to rateLimit object in response data
+  if (!headers['X-RateLimit-Limit'] && result.data?.rateLimit) {
+    const rl = result.data.rateLimit
+    if (rl.limit !== undefined) headers['X-RateLimit-Limit'] = String(rl.limit)
+    if (rl.remaining !== undefined) headers['X-RateLimit-Remaining'] = String(rl.remaining)
+    if (rl.windowMs !== undefined) {
+      headers['X-RateLimit-Reset'] = String(Math.ceil((Date.now() + rl.windowMs) / 1000))
+    }
+  }
+  
   return headers
 }
 
