@@ -123,6 +123,29 @@ async function handleSubscriptionEvent(event, stripe, database) {
       })
       
       console.log(`[webhooks/stripe] checkout.session.completed: Updated user ${userId} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
+      
+      // Also update business entity if businessId is in metadata
+      const businessId = obj.metadata?.businessId
+      if (businessId) {
+        await database.collection(BUSINESS_COLLECTION).updateOne(
+          { businessId },
+          {
+            $set: {
+              'subscription.status': SUBSCRIPTION_STATUS.ACTIVE,
+              'subscription.stripeCustomerId': customerId,
+              'subscription.stripeSubscriptionId': subscriptionId,
+              'subscription.stripePriceId': billingFields.stripePriceId,
+              'subscription.currentPeriodStart': billingFields.currentPeriodStart,
+              'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
+              'subscription.activatedAt': new Date().toISOString(),
+              'features.billingEnabled': true,
+              updatedAt: new Date()
+            }
+          }
+        )
+        console.log(`[webhooks/stripe] checkout.session.completed: Updated business ${businessId} subscription to active`)
+      }
+      
       return
     }
     
