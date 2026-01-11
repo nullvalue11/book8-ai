@@ -1108,3 +1108,41 @@ agent_communication:
       - working: "NA"
         agent: "testing"
         comment: "TESTING REQUESTED: Test MongoDB-backed rate limiter. Auth Header: x-book8-internal-secret: ops-dev-secret-change-me. Test Cases: 1) Multiple requests increment count - Make 10 requests quickly, verify MongoDB ops_rate_limits count increases. 2) Check rate limit collection - Verify documents have key, count, windowStart, expiresAt fields. 3) Retry-After header - Force rate limit exceeded (may need temp lower limit), verify 429 response with Retry-After header. 4) Cold start simulation - Delete all docs from ops_rate_limits, make requests, verify new count starts correctly. 5) TTL behavior - Verify expiresAt is set ~2 min from window start. 6) Key format - Verify key format is {caller}|{tool}|{windowId}. 7) Normal operation - Verify requests succeed when under limit."
+
+
+  - task: "Business Registration Golden Workflow - API Endpoints"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/business/register/route.js, /app/app/api/business/confirm/route.js, /app/app/api/business/[businessId]/route.js, /app/app/api/business/[businessId]/billing/checkout/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: Complete Golden Workflow for business registration. Endpoints created: POST /api/business/register (creates business, returns plan), POST /api/business/confirm (executes plan, triggers n8n webhook), GET /api/business/[businessId] (gets business status), POST /api/business/[businessId]/billing/checkout (creates Stripe checkout). Uses tenant.bootstrap ops tool internally. Stripe webhook updated to handle business subscriptions. Needs backend testing."
+
+  - task: "Business Management UI Dashboard"
+    implemented: true
+    working: "NA"
+    file: "/app/app/dashboard/business/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: Business management dashboard with registration form, plan review, provisioning workflow, subscription management, and Google Calendar connection. Uses Suspense boundary for useSearchParams (Next.js 14 requirement). Shows status cards for subscription, calendar, and agent readiness."
+
+  - task: "Google Calendar Integration for Business"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/integrations/google/auth/route.js, /app/app/api/integrations/google/callback/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "IMPLEMENTED: Updated Google OAuth flow to support business-context calendar connections. Auth route accepts businessId query param, includes it in JWT state, validates business ownership and subscription. Callback route extracts businessId from state and updates businesses collection with calendar.connected=true. Redirects to /dashboard/business?google_connected=1 on success."
+
