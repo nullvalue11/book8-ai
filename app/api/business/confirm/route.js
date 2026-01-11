@@ -77,8 +77,15 @@ async function callOpsControlPlane(endpoint, body) {
 async function triggerN8nWebhook(businessData, opsResult) {
   const webhookUrl = env.N8N_BUSINESS_PROVISIONED_WEBHOOK_URL
   
+  // Debug logging for webhook configuration
+  console.log('[business/confirm] Webhook config check:', {
+    webhookUrl: webhookUrl ? `${webhookUrl.substring(0, 30)}...` : 'NOT_SET',
+    hasUrl: !!webhookUrl,
+    businessId: businessData.businessId
+  })
+  
   if (!webhookUrl) {
-    console.log('[business/confirm] N8N_BUSINESS_PROVISIONED_WEBHOOK_URL not configured, skipping webhook')
+    console.log('[business/confirm] ⚠️ N8N_BUSINESS_PROVISIONED_WEBHOOK_URL not configured, skipping webhook')
     return { skipped: true, reason: 'Webhook URL not configured' }
   }
   
@@ -97,6 +104,13 @@ async function triggerN8nWebhook(businessData, opsResult) {
       result: opsResult?.result || opsResult
     }
     
+    console.log('[business/confirm] 📤 Triggering n8n webhook:', {
+      url: webhookUrl.substring(0, 30) + '...',
+      event: webhookPayload.event,
+      businessId: webhookPayload.business.businessId,
+      opsRequestId: webhookPayload.opsRequestId
+    })
+    
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -105,15 +119,15 @@ async function triggerN8nWebhook(businessData, opsResult) {
     })
     
     if (!response.ok) {
-      console.warn(`[business/confirm] n8n webhook returned ${response.status}`)
+      console.warn(`[business/confirm] ❌ n8n webhook returned ${response.status}`)
       return { triggered: true, success: false, status: response.status }
     }
     
-    console.log('[business/confirm] n8n webhook triggered successfully')
+    console.log('[business/confirm] ✅ n8n webhook triggered successfully')
     return { triggered: true, success: true }
     
   } catch (error) {
-    console.error('[business/confirm] n8n webhook failed:', error.message)
+    console.error('[business/confirm] ❌ n8n webhook failed:', error.message)
     return { triggered: true, success: false, error: error.message }
   }
 }
