@@ -86,13 +86,14 @@ function BusinessPageContent() {
   const [subscribing, setSubscribing] = useState(null)
   const [connectingCalendar, setConnectingCalendar] = useState(null)
   
-  // Check for checkout success/cancel
+  // Check for checkout success/cancel and google calendar connection
   useEffect(() => {
     const checkoutStatus = searchParams.get('checkout')
     const checkoutBusinessId = searchParams.get('businessId')
+    const googleConnected = searchParams.get('google_connected')
     
-    if (checkoutStatus === 'success' && checkoutBusinessId) {
-      // Refresh businesses to show updated subscription
+    if ((checkoutStatus === 'success' && checkoutBusinessId) || googleConnected === '1') {
+      // Refresh businesses to show updated status
       if (token) {
         fetchBusinesses()
       }
