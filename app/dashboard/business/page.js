@@ -314,6 +314,29 @@ function BusinessPageContent() {
           </div>
         )}
         
+        {/* Success message for Google Calendar connection */}
+        {searchParams.get('google_connected') === '1' && (
+          <div className="mb-4 p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5" />
+            <p>Google Calendar connected successfully!</p>
+          </div>
+        )}
+        
+        {/* Error messages */}
+        {searchParams.get('error') === 'subscription_required' && (
+          <div className="mb-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5" />
+            <p>A subscription is required to connect Google Calendar. Please subscribe first.</p>
+          </div>
+        )}
+        
+        {searchParams.get('error') === 'business_not_found' && (
+          <div className="mb-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 flex items-center gap-3">
+            <XCircle className="w-5 h-5" />
+            <p>Business not found or you don't have permission to access it.</p>
+          </div>
+        )}
+        
         {/* Business List View */}
         {step === 'list' && (
           <>
