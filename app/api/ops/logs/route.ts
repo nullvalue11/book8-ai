@@ -32,7 +32,10 @@ export async function GET(request: NextRequest) {
     const result = await opsGet('/api/internal/ops/logs', params)
     
     // Build response headers (include rate limit info)
+    // Check both headers from fetch and rateLimit object in data
     const responseHeaders: Record<string, string> = {}
+    
+    // Priority 1: Use headers from the fetch response
     if (result.headers?.rateLimitLimit) {
       responseHeaders['X-RateLimit-Limit'] = result.headers.rateLimitLimit
     }
@@ -42,6 +45,28 @@ export async function GET(request: NextRequest) {
     if (result.headers?.rateLimitReset) {
       responseHeaders['X-RateLimit-Reset'] = result.headers.rateLimitReset
     }
+    
+    // Priority 2: Fallback to rateLimit object in response data (if headers not present)
+    if (!responseHeaders['X-RateLimit-Limit'] && result.data?.rateLimit) {
+      const rl = result.data.rateLimit
+      if (rl.limit !== undefined) responseHeaders['X-RateLimit-Limit'] = String(rl.limit)
+      if (rl.remaining !== undefined) responseHeaders['X-RateLimit-Remaining'] = String(rl.remaining)
+      if (rl.windowMs !== undefined) {
+        // Calculate reset time from windowMs
+        responseHeaders['X-RateLimit-Reset'] = String(Math.ceil((Date.now() + rl.windowMs) / 1000))
+      }
+    }
+    
+    // Log for debugging in production
+    console.log('[ops/logs proxy] Rate limit headers:', {
+      fromFetch: {
+        limit: result.headers?.rateLimitLimit,
+        remaining: result.headers?.rateLimitRemaining,
+        reset: result.headers?.rateLimitReset
+      },
+      fromData: result.data?.rateLimit,
+      toClient: responseHeaders
+    })
     
     if (!result.ok) {
       return NextResponse.json(
