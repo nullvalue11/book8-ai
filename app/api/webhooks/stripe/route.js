@@ -232,6 +232,20 @@ async function handleSubscriptionEvent(event, stripe, database) {
       )
       
       console.log(`[webhooks/stripe] ${type}: Marked subscription as canceled for user ${user.id}`)
+      
+      // Also update any business linked to this customer
+      await database.collection(BUSINESS_COLLECTION).updateMany(
+        { 'subscription.stripeCustomerId': customerId },
+        {
+          $set: {
+            'subscription.status': SUBSCRIPTION_STATUS.CANCELED,
+            'subscription.canceledAt': new Date().toISOString(),
+            'features.billingEnabled': false,
+            updatedAt: new Date()
+          }
+        }
+      )
+      
       return
     }
     
