@@ -20,7 +20,7 @@ async function connect() {
   if (!client) {
     client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(env.DB_NAME)
+    db = client.db()
   }
   return db
 }
