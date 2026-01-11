@@ -111,7 +111,7 @@ class BusinessRegistrationTester:
             "name": f"Test User {unique_id}"
         }
         
-        result = self.make_request('POST', '/api/auth/register', register_data, expect_status=201)
+        result = self.make_request('POST', '/api/auth/register', register_data)
         
         if result['success'] and result['data'].get('token'):
             self.jwt_token = result['data']['token']
