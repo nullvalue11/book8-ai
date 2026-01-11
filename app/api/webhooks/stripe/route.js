@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { env } from '@/lib/env'
 import { getCallMinutesItemId, extractSubscriptionBillingFields } from '@/lib/stripeSubscription'
 import { updateSubscriptionFields, updateSubscriptionByCustomerId } from '@/lib/subscriptionUpdate'
+import { COLLECTION_NAME as BUSINESS_COLLECTION, SUBSCRIPTION_STATUS } from '@/lib/schemas/business'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -122,6 +123,29 @@ async function handleSubscriptionEvent(event, stripe, database) {
       })
       
       console.log(`[webhooks/stripe] checkout.session.completed: Updated user ${userId} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
+      
+      // Also update business entity if businessId is in metadata
+      const businessId = obj.metadata?.businessId
+      if (businessId) {
+        await database.collection(BUSINESS_COLLECTION).updateOne(
+          { businessId },
+          {
+            $set: {
+              'subscription.status': SUBSCRIPTION_STATUS.ACTIVE,
+              'subscription.stripeCustomerId': customerId,
+              'subscription.stripeSubscriptionId': subscriptionId,
+              'subscription.stripePriceId': billingFields.stripePriceId,
+              'subscription.currentPeriodStart': billingFields.currentPeriodStart,
+              'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
+              'subscription.activatedAt': new Date().toISOString(),
+              'features.billingEnabled': true,
+              updatedAt: new Date()
+            }
+          }
+        )
+        console.log(`[webhooks/stripe] checkout.session.completed: Updated business ${businessId} subscription to active`)
+      }
+      
       return
     }
     
@@ -163,6 +187,23 @@ async function handleSubscriptionEvent(event, stripe, database) {
       })
       
       console.log(`[webhooks/stripe] ${type}: Updated user ${user.id} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
+      
+      // Also update any business linked to this customer
+      await database.collection(BUSINESS_COLLECTION).updateMany(
+        { 'subscription.stripeCustomerId': customerId },
+        {
+          $set: {
+            'subscription.status': subscription.status === 'active' ? SUBSCRIPTION_STATUS.ACTIVE : 
+                                   subscription.status === 'past_due' ? 'past_due' : subscription.status,
+            'subscription.stripeSubscriptionId': subscriptionId,
+            'subscription.stripePriceId': billingFields.stripePriceId,
+            'subscription.currentPeriodStart': billingFields.currentPeriodStart,
+            'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
+            updatedAt: new Date()
+          }
+        }
+      )
+      
       return
     }
     
@@ -191,6 +232,20 @@ async function handleSubscriptionEvent(event, stripe, database) {
       )
       
       console.log(`[webhooks/stripe] ${type}: Marked subscription as canceled for user ${user.id}`)
+      
+      // Also update any business linked to this customer
+      await database.collection(BUSINESS_COLLECTION).updateMany(
+        { 'subscription.stripeCustomerId': customerId },
+        {
+          $set: {
+            'subscription.status': SUBSCRIPTION_STATUS.CANCELED,
+            'subscription.canceledAt': new Date().toISOString(),
+            'features.billingEnabled': false,
+            updatedAt: new Date()
+          }
+        }
+      )
+      
       return
     }
     

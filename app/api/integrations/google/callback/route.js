@@ -50,9 +50,11 @@ export async function GET(request) {
     }
 
     let uid = null
+    let businessId = null
     try {
       const payload = jwt.verify(state, getJwtSecret())
       uid = payload.sub
+      businessId = payload.businessId || null  // Extract businessId if present
     } catch (err) {
       return NextResponse.redirect(`${base}/?google_error=invalid_state`)
     }
@@ -85,10 +87,37 @@ export async function GET(request) {
       console.info('[Google Callback] Preserving existing refresh_token (Google did not return new one)')
     }
 
+    // Always update the user's Google credentials
     await database.collection('users').updateOne(
       { id: uid },
       { $set: { google: googleObj, updatedAt: new Date() } }
     )
+
+    // If this is a business-context connection, update the business document
+    if (businessId) {
+      const updateResult = await database.collection('businesses').updateOne(
+        { businessId, ownerUserId: uid },
+        { 
+          $set: { 
+            calendar: {
+              connected: true,
+              connectedAt: new Date().toISOString(),
+              provider: 'google',
+            },
+            updatedAt: new Date() 
+          } 
+        }
+      )
+      
+      if (updateResult.matchedCount > 0) {
+        console.info(`[Google Callback] Updated business ${businessId} with calendar connection`)
+        return NextResponse.redirect(`${base}/dashboard/business?google_connected=1&businessId=${businessId}`)
+      } else {
+        console.warn(`[Google Callback] Business ${businessId} not found for user ${uid}`)
+        // Still redirect to business page, calendar is connected at user level
+        return NextResponse.redirect(`${base}/dashboard/business?google_connected=1&warning=business_not_updated`)
+      }
+    }
 
     return NextResponse.redirect(`${base}/?google_connected=1`)
   } catch (e) {
