@@ -187,6 +187,23 @@ async function handleSubscriptionEvent(event, stripe, database) {
       })
       
       console.log(`[webhooks/stripe] ${type}: Updated user ${user.id} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
+      
+      // Also update any business linked to this customer
+      await database.collection(BUSINESS_COLLECTION).updateMany(
+        { 'subscription.stripeCustomerId': customerId },
+        {
+          $set: {
+            'subscription.status': subscription.status === 'active' ? SUBSCRIPTION_STATUS.ACTIVE : 
+                                   subscription.status === 'past_due' ? 'past_due' : subscription.status,
+            'subscription.stripeSubscriptionId': subscriptionId,
+            'subscription.stripePriceId': billingFields.stripePriceId,
+            'subscription.currentPeriodStart': billingFields.currentPeriodStart,
+            'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
+            updatedAt: new Date()
+          }
+        }
+      )
+      
       return
     }
     
