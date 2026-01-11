@@ -79,9 +79,22 @@ export default function RateLimitStatus({
     return () => clearInterval(interval)
   }, [rateLimit?.reset])
   
-  // Don't render if no rate limit info
+  // Show unavailable state if no rate limit info (instead of hiding)
   if (!rateLimit || rateLimit.limit === null) {
-    return null
+    return (
+      <div className={`rounded-lg border p-3 bg-gray-50 border-gray-200 ${className}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-gray-600">Rate Limit</span>
+            <span className="text-xs text-gray-400">(unavailable)</span>
+          </div>
+          <span className="text-xs text-gray-400">{endpoint}</span>
+        </div>
+        <p className="mt-1 text-xs text-gray-400">
+          Rate limit headers not returned by API. Check authentication or endpoint configuration.
+        </p>
+      </div>
+    )
   }
   
   const statusColor = getStatusColor(rateLimit.remaining, rateLimit.limit)
