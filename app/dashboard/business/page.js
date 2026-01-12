@@ -223,55 +223,75 @@ function BusinessPageContent() {
     setError(null)
     
     const endpoint = `/api/business/${biz.businessId}/billing/checkout`
-    console.log('[Subscribe] Starting checkout for business:', biz.businessId)
+    console.log('[Subscribe] ====== STARTING CHECKOUT ======')
+    console.log('[Subscribe] Business ID:', biz.businessId)
     console.log('[Subscribe] Endpoint:', endpoint)
-    console.log('[Subscribe] Token present:', !!token)
+    console.log('[Subscribe] Token exists:', !!token)
+    console.log('[Subscribe] Token preview:', token ? token.substring(0, 20) + '...' : 'none')
     
     try {
-      const res = await fetch(endpoint, {
+      console.log('[Subscribe] Sending POST request...')
+      
+      const fetchOptions = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({})
-      })
+      }
+      console.log('[Subscribe] Fetch options:', JSON.stringify(fetchOptions, null, 2))
       
-      console.log('[Subscribe] Response status:', res.status)
-      console.log('[Subscribe] Response statusText:', res.statusText)
+      const res = await fetch(endpoint, fetchOptions)
+      
+      console.log('[Subscribe] Response received!')
+      console.log('[Subscribe] Status:', res.status)
+      console.log('[Subscribe] Status Text:', res.statusText)
+      console.log('[Subscribe] Headers:', JSON.stringify(Object.fromEntries(res.headers.entries())))
       
       // Read response body
       const text = await res.text()
-      console.log('[Subscribe] Response body:', text.substring(0, 500))
+      console.log('[Subscribe] Response body length:', text.length)
+      console.log('[Subscribe] Response body:', text.substring(0, 1000))
       
       // Try to parse as JSON
       let data
       try {
         data = JSON.parse(text)
+        console.log('[Subscribe] Parsed JSON:', data)
       } catch (parseError) {
-        console.error('[Subscribe] JSON parse error:', parseError)
-        // Not JSON - show raw text with status
-        throw new Error(`Server returned non-JSON response (${res.status}): ${text.substring(0, 100)}`)
+        console.error('[Subscribe] JSON parse error:', parseError.message)
+        throw new Error(`Server returned non-JSON (${res.status}): ${text.substring(0, 200)}`)
       }
       
-      // Check for errors - show server's error message
+      // Check for errors
       if (!res.ok || !data.ok) {
-        const errorMsg = data.error || data.message || `Request failed with status ${res.status}`
-        console.error('[Subscribe] Server error:', errorMsg)
+        const errorMsg = data.error || data.message || `Request failed (${res.status})`
+        console.error('[Subscribe] Server returned error:', errorMsg)
         throw new Error(errorMsg)
       }
       
       if (data.checkoutUrl) {
-        console.log('[Subscribe] Redirecting to Stripe:', data.checkoutUrl.substring(0, 50))
+        console.log('[Subscribe] SUCCESS! Redirecting to Stripe...')
         window.location.href = data.checkoutUrl
       } else {
-        throw new Error('No checkout URL returned from server')
+        throw new Error('No checkout URL in response')
       }
     } catch (err) {
-      console.error('[Subscribe Error]', err)
-      setError(err.message)
+      console.error('[Subscribe] ====== ERROR ======')
+      console.error('[Subscribe] Error name:', err.name)
+      console.error('[Subscribe] Error message:', err.message)
+      console.error('[Subscribe] Error stack:', err.stack)
+      
+      // Check for specific error types
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError('Network error - could not reach server')
+      } else {
+        setError(err.message)
+      }
     } finally {
       setSubscribing(null)
+      console.log('[Subscribe] ====== FINISHED ======')
     }
   }
   
