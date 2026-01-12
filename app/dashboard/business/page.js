@@ -221,32 +221,47 @@ function BusinessPageContent() {
   async function handleSubscribe(biz) {
     setSubscribing(biz.businessId)
     setError(null)
+    
+    const endpoint = `/api/business/${biz.businessId}/billing/checkout`
+    console.log('[Subscribe] Starting checkout for business:', biz.businessId)
+    console.log('[Subscribe] Endpoint:', endpoint)
+    console.log('[Subscribe] Token present:', !!token)
+    
     try {
-      const res = await fetch(`/api/business/${biz.businessId}/billing/checkout`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({}) // Send empty body to prevent JSON parse errors
+        body: JSON.stringify({})
       })
       
-      // Check if response is OK before parsing
+      console.log('[Subscribe] Response status:', res.status)
+      console.log('[Subscribe] Response ok:', res.ok)
+      
+      // Read response body
+      const text = await res.text()
+      console.log('[Subscribe] Response body:', text.substring(0, 200))
+      
+      // Try to parse as JSON
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch {
+        // Not JSON - show raw text
+        throw new Error(text || `Server error (${res.status})`)
+      }
+      
+      // Check for errors
       if (!res.ok) {
-        const text = await res.text()
-        let errorMsg = `Server error (${res.status})`
-        try {
-          const errorData = JSON.parse(text)
-          errorMsg = errorData.error || errorMsg
-        } catch {
-          errorMsg = text || errorMsg
-        }
+        // Show specific error from server
+        const errorMsg = data.error || data.message || `Server error (${res.status})`
         throw new Error(errorMsg)
       }
       
-      const data = await res.json()
-      
       if (data.ok && data.checkoutUrl) {
+        console.log('[Subscribe] Redirecting to:', data.checkoutUrl)
         window.location.href = data.checkoutUrl
       } else {
         throw new Error(data.error || 'Failed to create checkout session')
