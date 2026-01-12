@@ -221,35 +221,51 @@ function BusinessPageContent() {
   async function handleSubscribe(biz) {
     setSubscribing(biz.businessId)
     setError(null)
+    
+    const endpoint = `/api/business/${biz.businessId}/billing/checkout`
+    console.log('[Subscribe] Starting checkout for business:', biz.businessId)
+    console.log('[Subscribe] Endpoint:', endpoint)
+    console.log('[Subscribe] Token present:', !!token)
+    
     try {
-      const res = await fetch(`/api/business/${biz.businessId}/billing/checkout`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({}) // Send empty body to prevent JSON parse errors
+        body: JSON.stringify({})
       })
       
-      // Check if response is OK before parsing
-      if (!res.ok) {
-        const text = await res.text()
-        let errorMsg = `Server error (${res.status})`
-        try {
-          const errorData = JSON.parse(text)
-          errorMsg = errorData.error || errorMsg
-        } catch {
-          errorMsg = text || errorMsg
-        }
+      console.log('[Subscribe] Response status:', res.status)
+      console.log('[Subscribe] Response statusText:', res.statusText)
+      
+      // Read response body
+      const text = await res.text()
+      console.log('[Subscribe] Response body:', text.substring(0, 500))
+      
+      // Try to parse as JSON
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch (parseError) {
+        console.error('[Subscribe] JSON parse error:', parseError)
+        // Not JSON - show raw text with status
+        throw new Error(`Server returned non-JSON response (${res.status}): ${text.substring(0, 100)}`)
+      }
+      
+      // Check for errors - show server's error message
+      if (!res.ok || !data.ok) {
+        const errorMsg = data.error || data.message || `Request failed with status ${res.status}`
+        console.error('[Subscribe] Server error:', errorMsg)
         throw new Error(errorMsg)
       }
       
-      const data = await res.json()
-      
-      if (data.ok && data.checkoutUrl) {
+      if (data.checkoutUrl) {
+        console.log('[Subscribe] Redirecting to Stripe:', data.checkoutUrl.substring(0, 50))
         window.location.href = data.checkoutUrl
       } else {
-        throw new Error(data.error || 'Failed to create checkout session')
+        throw new Error('No checkout URL returned from server')
       }
     } catch (err) {
       console.error('[Subscribe Error]', err)
