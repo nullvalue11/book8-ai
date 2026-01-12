@@ -222,53 +222,53 @@ function BusinessPageContent() {
     setSubscribing(biz.businessId)
     setError(null)
     
-    const endpoint = `/api/business/${biz.businessId}/billing/checkout`
-    console.log('[Subscribe] Starting checkout for business:', biz.businessId)
+    // Use simpler endpoint path (avoids nested billing/checkout folder issues)
+    const endpoint = `/api/business/${biz.businessId}/subscribe`
+    console.log('[Subscribe] ====== STARTING CHECKOUT ======')
+    console.log('[Subscribe] Business ID:', biz.businessId)
     console.log('[Subscribe] Endpoint:', endpoint)
-    console.log('[Subscribe] Token present:', !!token)
+    console.log('[Subscribe] Token exists:', !!token)
     
     try {
+      console.log('[Subscribe] Sending POST request...')
+      
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({})
       })
       
       console.log('[Subscribe] Response status:', res.status)
-      console.log('[Subscribe] Response statusText:', res.statusText)
       
       // Read response body
       const text = await res.text()
-      console.log('[Subscribe] Response body:', text.substring(0, 500))
+      console.log('[Subscribe] Response:', text.substring(0, 500))
       
-      // Try to parse as JSON
+      // Parse JSON
       let data
       try {
         data = JSON.parse(text)
       } catch (parseError) {
-        console.error('[Subscribe] JSON parse error:', parseError)
-        // Not JSON - show raw text with status
-        throw new Error(`Server returned non-JSON response (${res.status}): ${text.substring(0, 100)}`)
+        console.error('[Subscribe] JSON parse error:', parseError.message)
+        throw new Error(`Server returned non-JSON (${res.status}): ${text.substring(0, 200)}`)
       }
       
-      // Check for errors - show server's error message
+      // Check for errors
       if (!res.ok || !data.ok) {
-        const errorMsg = data.error || data.message || `Request failed with status ${res.status}`
-        console.error('[Subscribe] Server error:', errorMsg)
-        throw new Error(errorMsg)
+        throw new Error(data.error || `Request failed (${res.status})`)
       }
       
       if (data.checkoutUrl) {
-        console.log('[Subscribe] Redirecting to Stripe:', data.checkoutUrl.substring(0, 50))
+        console.log('[Subscribe] SUCCESS! Redirecting to Stripe...')
         window.location.href = data.checkoutUrl
       } else {
-        throw new Error('No checkout URL returned from server')
+        throw new Error('No checkout URL in response')
       }
     } catch (err) {
-      console.error('[Subscribe Error]', err)
+      console.error('[Subscribe] Error:', err.message)
       setError(err.message)
     } finally {
       setSubscribing(null)
