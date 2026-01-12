@@ -63,11 +63,20 @@ export async function POST(request, { params }) {
       )
     }
     
+    // Check Stripe configuration first
+    if (!env.STRIPE?.SECRET_KEY) {
+      console.error('[business/billing/checkout] STRIPE_SECRET_KEY not configured')
+      return NextResponse.json(
+        { ok: false, error: 'Stripe is not configured. Please add STRIPE_SECRET_KEY to environment.' },
+        { status: 500 }
+      )
+    }
+    
     const stripe = await getStripe()
     if (!stripe) {
       return NextResponse.json(
-        { ok: false, error: 'Stripe not configured' },
-        { status: 400 }
+        { ok: false, error: 'Failed to initialize Stripe' },
+        { status: 500 }
       )
     }
     
@@ -124,7 +133,16 @@ export async function POST(request, { params }) {
     const { priceId } = body
     
     // Use default price if not specified
-    const basePriceId = priceId || env.STRIPE?.DEFAULT_PRICE_ID || 'price_starter'
+    const basePriceId = priceId || env.STRIPE?.DEFAULT_PRICE_ID
+    
+    // Validate price ID exists
+    if (!basePriceId) {
+      console.error('[business/billing/checkout] No price ID configured')
+      return NextResponse.json({
+        ok: false,
+        error: 'No Stripe price configured. Please add STRIPE_DEFAULT_PRICE_ID to environment.'
+      }, { status: 500 })
+    }
     
     // Get or create Stripe customer for business
     let stripeCustomerId = business.subscription?.stripeCustomerId
