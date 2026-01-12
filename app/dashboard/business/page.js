@@ -238,33 +238,34 @@ function BusinessPageContent() {
       })
       
       console.log('[Subscribe] Response status:', res.status)
-      console.log('[Subscribe] Response ok:', res.ok)
+      console.log('[Subscribe] Response statusText:', res.statusText)
       
       // Read response body
       const text = await res.text()
-      console.log('[Subscribe] Response body:', text.substring(0, 200))
+      console.log('[Subscribe] Response body:', text.substring(0, 500))
       
       // Try to parse as JSON
       let data
       try {
         data = JSON.parse(text)
-      } catch {
-        // Not JSON - show raw text
-        throw new Error(text || `Server error (${res.status})`)
+      } catch (parseError) {
+        console.error('[Subscribe] JSON parse error:', parseError)
+        // Not JSON - show raw text with status
+        throw new Error(`Server returned non-JSON response (${res.status}): ${text.substring(0, 100)}`)
       }
       
-      // Check for errors
-      if (!res.ok) {
-        // Show specific error from server
-        const errorMsg = data.error || data.message || `Server error (${res.status})`
+      // Check for errors - show server's error message
+      if (!res.ok || !data.ok) {
+        const errorMsg = data.error || data.message || `Request failed with status ${res.status}`
+        console.error('[Subscribe] Server error:', errorMsg)
         throw new Error(errorMsg)
       }
       
-      if (data.ok && data.checkoutUrl) {
-        console.log('[Subscribe] Redirecting to:', data.checkoutUrl)
+      if (data.checkoutUrl) {
+        console.log('[Subscribe] Redirecting to Stripe:', data.checkoutUrl.substring(0, 50))
         window.location.href = data.checkoutUrl
       } else {
-        throw new Error(data.error || 'Failed to create checkout session')
+        throw new Error('No checkout URL returned from server')
       }
     } catch (err) {
       console.error('[Subscribe Error]', err)
