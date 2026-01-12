@@ -54,20 +54,29 @@ async function requireAuth(request, database) {
 
 // Test endpoint - GET
 export async function GET(request, { params }) {
-  console.log('[business/subscribe] GET request - params:', params)
+  console.log('[business/subscribe] ====== GET REQUEST RECEIVED ======')
+  console.log('[business/subscribe] params:', JSON.stringify(params))
+  console.log('[business/subscribe] URL:', request.url)
+  console.log('[business/subscribe] Method:', request.method)
+  console.log('[business/subscribe] Headers:', JSON.stringify(Object.fromEntries(request.headers.entries())))
+  
   return NextResponse.json({
     ok: true,
-    message: 'Subscribe endpoint is working',
+    message: 'Subscribe endpoint is working - use POST to create checkout',
     businessId: params.businessId,
     method: 'GET',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    hint: 'If you see this in production, your POST request was converted to GET'
   })
 }
 
 // Main subscription endpoint - POST
 export async function POST(request, { params }) {
-  console.log('[business/subscribe] POST request received')
-  console.log('[business/subscribe] params:', params)
+  console.log('[business/subscribe] ====== POST REQUEST RECEIVED ======')
+  console.log('[business/subscribe] params:', JSON.stringify(params))
+  console.log('[business/subscribe] URL:', request.url)
+  console.log('[business/subscribe] Method:', request.method)
+  console.log('[business/subscribe] Headers:', JSON.stringify(Object.fromEntries(request.headers.entries())))
   
   try {
     const { businessId } = params
