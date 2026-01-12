@@ -133,7 +133,7 @@ async function triggerN8nWebhook(businessData, opsResult) {
 }
 
 function checkToolRequiresApproval(toolName) {
-  const tool = toolRegistry.getTool(toolName)
+  const tool = toolRegistry.getToolFromRegistry(toolName)
   return tool?.requiresApproval === true
 }
 
