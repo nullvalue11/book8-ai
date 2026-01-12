@@ -222,43 +222,35 @@ function BusinessPageContent() {
     setSubscribing(biz.businessId)
     setError(null)
     
-    const endpoint = `/api/business/${biz.businessId}/billing/checkout`
+    // Use simpler endpoint path (avoids nested billing/checkout folder issues)
+    const endpoint = `/api/business/${biz.businessId}/subscribe`
     console.log('[Subscribe] ====== STARTING CHECKOUT ======')
     console.log('[Subscribe] Business ID:', biz.businessId)
     console.log('[Subscribe] Endpoint:', endpoint)
     console.log('[Subscribe] Token exists:', !!token)
-    console.log('[Subscribe] Token preview:', token ? token.substring(0, 20) + '...' : 'none')
     
     try {
       console.log('[Subscribe] Sending POST request...')
       
-      const fetchOptions = {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({})
-      }
-      console.log('[Subscribe] Fetch options:', JSON.stringify(fetchOptions, null, 2))
+      })
       
-      const res = await fetch(endpoint, fetchOptions)
-      
-      console.log('[Subscribe] Response received!')
-      console.log('[Subscribe] Status:', res.status)
-      console.log('[Subscribe] Status Text:', res.statusText)
-      console.log('[Subscribe] Headers:', JSON.stringify(Object.fromEntries(res.headers.entries())))
+      console.log('[Subscribe] Response status:', res.status)
       
       // Read response body
       const text = await res.text()
-      console.log('[Subscribe] Response body length:', text.length)
-      console.log('[Subscribe] Response body:', text.substring(0, 1000))
+      console.log('[Subscribe] Response:', text.substring(0, 500))
       
-      // Try to parse as JSON
+      // Parse JSON
       let data
       try {
         data = JSON.parse(text)
-        console.log('[Subscribe] Parsed JSON:', data)
       } catch (parseError) {
         console.error('[Subscribe] JSON parse error:', parseError.message)
         throw new Error(`Server returned non-JSON (${res.status}): ${text.substring(0, 200)}`)
@@ -266,9 +258,7 @@ function BusinessPageContent() {
       
       // Check for errors
       if (!res.ok || !data.ok) {
-        const errorMsg = data.error || data.message || `Request failed (${res.status})`
-        console.error('[Subscribe] Server returned error:', errorMsg)
-        throw new Error(errorMsg)
+        throw new Error(data.error || `Request failed (${res.status})`)
       }
       
       if (data.checkoutUrl) {
@@ -278,20 +268,10 @@ function BusinessPageContent() {
         throw new Error('No checkout URL in response')
       }
     } catch (err) {
-      console.error('[Subscribe] ====== ERROR ======')
-      console.error('[Subscribe] Error name:', err.name)
-      console.error('[Subscribe] Error message:', err.message)
-      console.error('[Subscribe] Error stack:', err.stack)
-      
-      // Check for specific error types
-      if (err.name === 'TypeError' && err.message.includes('fetch')) {
-        setError('Network error - could not reach server')
-      } else {
-        setError(err.message)
-      }
+      console.error('[Subscribe] Error:', err.message)
+      setError(err.message)
     } finally {
       setSubscribing(null)
-      console.log('[Subscribe] ====== FINISHED ======')
     }
   }
   
