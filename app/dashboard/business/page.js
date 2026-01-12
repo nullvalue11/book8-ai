@@ -220,14 +220,29 @@ function BusinessPageContent() {
   
   async function handleSubscribe(biz) {
     setSubscribing(biz.businessId)
+    setError(null)
     try {
       const res = await fetch(`/api/business/${biz.businessId}/billing/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({}) // Send empty body to prevent JSON parse errors
       })
+      
+      // Check if response is OK before parsing
+      if (!res.ok) {
+        const text = await res.text()
+        let errorMsg = `Server error (${res.status})`
+        try {
+          const errorData = JSON.parse(text)
+          errorMsg = errorData.error || errorMsg
+        } catch {
+          errorMsg = text || errorMsg
+        }
+        throw new Error(errorMsg)
+      }
       
       const data = await res.json()
       
@@ -237,6 +252,7 @@ function BusinessPageContent() {
         throw new Error(data.error || 'Failed to create checkout session')
       }
     } catch (err) {
+      console.error('[Subscribe Error]', err)
       setError(err.message)
     } finally {
       setSubscribing(null)
