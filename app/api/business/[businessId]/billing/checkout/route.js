@@ -170,17 +170,18 @@ export async function POST(request, { params }) {
     
     const { priceId } = body
     
-    // Use default price if not specified
-    const basePriceId = priceId || env.STRIPE?.DEFAULT_PRICE_ID
+    // Use default price if not specified - use PRICE_STARTER as default
+    const basePriceId = priceId || env.STRIPE?.PRICE_STARTER
     
     // Validate price ID exists
     if (!basePriceId) {
       console.error('[business/billing/checkout] No price ID configured')
       return NextResponse.json({
         ok: false,
-        error: 'No Stripe price configured. Please add STRIPE_DEFAULT_PRICE_ID to environment.'
+        error: 'No Stripe price configured (STRIPE_PRICE_STARTER missing)'
       }, { status: 500 })
     }
+    console.log('[business/billing/checkout] Using price:', basePriceId)
     
     // Get or create Stripe customer for business
     let stripeCustomerId = business.subscription?.stripeCustomerId

@@ -13,6 +13,7 @@ import { COLLECTION_NAME, SUBSCRIPTION_STATUS } from '@/lib/schemas/business'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 let client, db
 
@@ -54,20 +55,29 @@ async function requireAuth(request, database) {
 
 // Test endpoint - GET
 export async function GET(request, { params }) {
-  console.log('[business/subscribe] GET request - params:', params)
+  console.log('[business/subscribe] ====== GET REQUEST RECEIVED ======')
+  console.log('[business/subscribe] params:', JSON.stringify(params))
+  console.log('[business/subscribe] URL:', request.url)
+  console.log('[business/subscribe] Method:', request.method)
+  console.log('[business/subscribe] Headers:', JSON.stringify(Object.fromEntries(request.headers.entries())))
+  
   return NextResponse.json({
     ok: true,
-    message: 'Subscribe endpoint is working',
+    message: 'Subscribe endpoint is working - use POST to create checkout',
     businessId: params.businessId,
     method: 'GET',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    hint: 'If you see this in production, your POST request was converted to GET'
   })
 }
 
 // Main subscription endpoint - POST
 export async function POST(request, { params }) {
-  console.log('[business/subscribe] POST request received')
-  console.log('[business/subscribe] params:', params)
+  console.log('[business/subscribe] ====== POST REQUEST RECEIVED ======')
+  console.log('[business/subscribe] params:', JSON.stringify(params))
+  console.log('[business/subscribe] URL:', request.url)
+  console.log('[business/subscribe] Method:', request.method)
+  console.log('[business/subscribe] Headers:', JSON.stringify(Object.fromEntries(request.headers.entries())))
   
   try {
     const { businessId } = params
@@ -129,14 +139,15 @@ export async function POST(request, { params }) {
       )
     }
     
-    // Get price ID
-    const basePriceId = env.STRIPE?.DEFAULT_PRICE_ID
+    // Get price ID - use PRICE_STARTER as default
+    const basePriceId = env.STRIPE?.PRICE_STARTER
     if (!basePriceId) {
       return NextResponse.json({
         ok: false,
-        error: 'No Stripe price configured (STRIPE_DEFAULT_PRICE_ID missing)'
+        error: 'No Stripe price configured (STRIPE_PRICE_STARTER missing)'
       }, { status: 500 })
     }
+    console.log('[business/subscribe] Using price:', basePriceId)
     
     // Get or create customer
     let stripeCustomerId = business.subscription?.stripeCustomerId
