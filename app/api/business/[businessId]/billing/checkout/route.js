@@ -27,6 +27,7 @@ async function connect() {
 
 // Handle OPTIONS requests for CORS preflight
 export async function OPTIONS() {
+  console.log('[business/billing/checkout] OPTIONS request received')
   return new NextResponse(null, {
     status: 200,
     headers: {
@@ -37,13 +38,17 @@ export async function OPTIONS() {
   })
 }
 
-// Handle GET requests - return helpful error
-export async function GET() {
+// Handle GET requests - return method info (not 405 to avoid confusion)
+export async function GET(request, { params }) {
+  console.log('[business/billing/checkout] GET request received - should be POST')
+  console.log('[business/billing/checkout] params:', params)
   return NextResponse.json({
     ok: false,
-    error: 'Use POST method to create a checkout session',
-    usage: 'POST /api/business/[businessId]/billing/checkout with Authorization header'
-  }, { status: 405 })
+    error: 'This endpoint requires POST method. Use POST to create a checkout session.',
+    method: 'GET',
+    receivedAt: new Date().toISOString(),
+    hint: 'If you are seeing this in production, the POST request may be redirecting to GET'
+  }, { status: 400 })
 }
 
 async function getStripe() {
