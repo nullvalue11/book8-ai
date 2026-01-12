@@ -13,6 +13,7 @@ import { COLLECTION_NAME, SUBSCRIPTION_STATUS } from '@/lib/schemas/business'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 let client, db
 
