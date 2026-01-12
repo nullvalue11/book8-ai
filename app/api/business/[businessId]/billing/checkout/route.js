@@ -196,6 +196,13 @@ export async function POST(request, { params }) {
     // Create checkout session
     const baseUrl = env.BASE_URL || 'http://localhost:3000'
     
+    console.log('[business/billing/checkout] Creating session:', {
+      businessId: business.businessId,
+      customerId: stripeCustomerId,
+      priceId: basePriceId,
+      baseUrl
+    })
+    
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',
@@ -215,6 +222,8 @@ export async function POST(request, { params }) {
         }
       }
     })
+    
+    console.log('[business/billing/checkout] Session created:', session.id)
     
     // Update business with pending subscription info
     await database.collection(COLLECTION_NAME).updateOne(
