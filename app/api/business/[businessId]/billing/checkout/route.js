@@ -25,6 +25,27 @@ async function connect() {
   return db
 }
 
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+
+// Handle GET requests - return helpful error
+export async function GET() {
+  return NextResponse.json({
+    ok: false,
+    error: 'Use POST method to create a checkout session',
+    usage: 'POST /api/business/[businessId]/billing/checkout with Authorization header'
+  }, { status: 405 })
+}
+
 async function getStripe() {
   try {
     const Stripe = (await import('stripe')).default
