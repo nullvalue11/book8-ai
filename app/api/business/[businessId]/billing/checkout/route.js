@@ -74,8 +74,11 @@ async function requireAuth(request, database) {
 }
 
 export async function POST(request, { params }) {
+  console.log('[business/billing/checkout] POST request received')
+  
   try {
     const { businessId } = params
+    console.log('[business/billing/checkout] businessId:', businessId)
     
     if (!businessId) {
       return NextResponse.json(
@@ -85,6 +88,7 @@ export async function POST(request, { params }) {
     }
     
     // Check Stripe configuration first
+    console.log('[business/billing/checkout] Checking Stripe config...')
     if (!env.STRIPE?.SECRET_KEY) {
       console.error('[business/billing/checkout] STRIPE_SECRET_KEY not configured')
       return NextResponse.json(
@@ -100,11 +104,15 @@ export async function POST(request, { params }) {
         { status: 500 }
       )
     }
+    console.log('[business/billing/checkout] Stripe initialized')
     
     const database = await connect()
+    console.log('[business/billing/checkout] Database connected')
+    
     const authResult = await requireAuth(request, database)
     
     if (authResult.error) {
+      console.log('[business/billing/checkout] Auth failed:', authResult.error)
       return NextResponse.json(
         { ok: false, error: authResult.error },
         { status: authResult.status }
@@ -112,19 +120,23 @@ export async function POST(request, { params }) {
     }
     
     const { user, payload } = authResult
+    console.log('[business/billing/checkout] User authenticated:', user.id)
     
     // Get business
     const business = await database.collection(COLLECTION_NAME).findOne({ businessId })
     
     if (!business) {
+      console.log('[business/billing/checkout] Business not found:', businessId)
       return NextResponse.json(
         { ok: false, error: 'Business not found' },
         { status: 404 }
       )
     }
+    console.log('[business/billing/checkout] Business found:', business.name)
     
     // Verify ownership
     if (business.ownerUserId !== payload.sub) {
+      console.log('[business/billing/checkout] Access denied - owner mismatch')
       return NextResponse.json(
         { ok: false, error: 'Access denied' },
         { status: 403 }
