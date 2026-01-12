@@ -219,59 +219,92 @@ function BusinessPageContent() {
   }
   
   async function handleSubscribe(biz) {
+    // ====== DEBUGGING: Log everything BEFORE any async operations ======
+    console.log('[Subscribe] ====== STARTING CHECKOUT ======')
+    console.log('[Subscribe] Business ID:', biz.businessId)
+    console.log('[Subscribe] Business object:', JSON.stringify(biz, null, 2))
+    console.log('[Subscribe] Token present:', !!token)
+    console.log('[Subscribe] Token value (first 30 chars):', token ? token.substring(0, 30) + '...' : 'NULL/UNDEFINED')
+    console.log('[Subscribe] Window origin:', window.location.origin)
+    
+    // Validate token BEFORE proceeding
+    if (!token) {
+      console.error('[Subscribe] ERROR: No auth token available!')
+      setError('Authentication required. Please log in again.')
+      return
+    }
+    
     setSubscribing(biz.businessId)
     setError(null)
     
-    // Use simpler endpoint path (avoids nested billing/checkout folder issues)
-    const endpoint = `/api/business/${biz.businessId}/subscribe`
-    console.log('[Subscribe] ====== STARTING CHECKOUT ======')
-    console.log('[Subscribe] Business ID:', biz.businessId)
-    console.log('[Subscribe] Endpoint:', endpoint)
-    console.log('[Subscribe] Token exists:', !!token)
+    // Use absolute URL to avoid any routing issues
+    const endpoint = `${window.location.origin}/api/business/${biz.businessId}/subscribe`
+    console.log('[Subscribe] Full endpoint URL:', endpoint)
     
     try {
-      console.log('[Subscribe] Sending POST request...')
+      console.log('[Subscribe] About to call fetch()...')
       
-      const res = await fetch(endpoint, {
+      const fetchOptions = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({})
-      })
+        body: JSON.stringify({}),
+        cache: 'no-store',
+        credentials: 'same-origin'
+      }
+      console.log('[Subscribe] Fetch options:', JSON.stringify(fetchOptions, null, 2))
       
-      console.log('[Subscribe] Response status:', res.status)
+      const res = await fetch(endpoint, fetchOptions)
+      
+      // ====== DEBUGGING: Log response details ======
+      console.log('[Subscribe] Response received!')
+      console.log('[Subscribe] Status:', res.status)
+      console.log('[Subscribe] Status Text:', res.statusText)
+      console.log('[Subscribe] Response type:', res.type)
+      console.log('[Subscribe] Response redirected:', res.redirected)
+      console.log('[Subscribe] Response URL:', res.url)
+      console.log('[Subscribe] Response headers:', JSON.stringify(Object.fromEntries(res.headers.entries())))
       
       // Read response body
       const text = await res.text()
-      console.log('[Subscribe] Response:', text.substring(0, 500))
+      console.log('[Subscribe] Response body length:', text.length)
+      console.log('[Subscribe] Response body:', text.substring(0, 1000))
       
       // Parse JSON
       let data
       try {
         data = JSON.parse(text)
+        console.log('[Subscribe] Parsed JSON:', JSON.stringify(data, null, 2))
       } catch (parseError) {
         console.error('[Subscribe] JSON parse error:', parseError.message)
+        console.error('[Subscribe] Raw response was:', text)
         throw new Error(`Server returned non-JSON (${res.status}): ${text.substring(0, 200)}`)
       }
       
       // Check for errors
       if (!res.ok || !data.ok) {
-        throw new Error(data.error || `Request failed (${res.status})`)
+        const errorMsg = data.error || data.message || `Request failed (${res.status})`
+        console.error('[Subscribe] Server error:', errorMsg)
+        throw new Error(errorMsg)
       }
       
       if (data.checkoutUrl) {
-        console.log('[Subscribe] SUCCESS! Redirecting to Stripe...')
+        console.log('[Subscribe] SUCCESS! Redirecting to Stripe:', data.checkoutUrl)
         window.location.href = data.checkoutUrl
       } else {
         throw new Error('No checkout URL in response')
       }
     } catch (err) {
-      console.error('[Subscribe] Error:', err.message)
+      console.error('[Subscribe] ====== CAUGHT ERROR ======')
+      console.error('[Subscribe] Error name:', err.name)
+      console.error('[Subscribe] Error message:', err.message)
+      console.error('[Subscribe] Error stack:', err.stack)
       setError(err.message)
     } finally {
       setSubscribing(null)
+      console.log('[Subscribe] ====== FINISHED ======')
     }
   }
   
