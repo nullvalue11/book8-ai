@@ -2,22 +2,16 @@
  * POST /api/business/[businessId]/subscribe
  * 
  * Creates a Stripe Checkout session for business subscription.
- * Uses process.env directly to avoid any module loading issues.
  */
 
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
-import Stripe from 'stripe'
+import { env } from '@/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-// Initialize Stripe directly with process.env
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16'
-})
 
 // MongoDB connection
 let cachedClient = null
@@ -26,10 +20,18 @@ let cachedDb = null
 async function connectToDatabase() {
   if (cachedDb) return cachedDb
   
-  const client = await MongoClient.connect(process.env.MONGO_URL)
+  const client = await MongoClient.connect(env.MONGO_URL)
   cachedClient = client
-  cachedDb = client.db(process.env.DB_NAME || 'book8')
+  cachedDb = client.db(env.DB_NAME)
   return cachedDb
+}
+
+// Initialize Stripe lazily
+async function getStripe() {
+  const Stripe = (await import('stripe')).default
+  return new Stripe(env.STRIPE.SECRET_KEY, {
+    apiVersion: '2023-10-16'
+  })
 }
 
 // GET - Health check
@@ -42,8 +44,8 @@ export async function GET(request, { params }) {
     ok: true,
     message: 'Subscribe endpoint active. Use POST to create checkout session.',
     businessId,
-    stripeConfigured: !!process.env.STRIPE_SECRET_KEY,
-    priceConfigured: !!process.env.STRIPE_PRICE_STARTER
+    stripeConfigured: !!env.STRIPE?.SECRET_KEY,
+    priceConfigured: !!env.STRIPE?.PRICE_STARTER
   })
 }
 
@@ -56,7 +58,7 @@ export async function POST(request, { params }) {
     const { businessId } = params
     
     // 1. Validate Stripe configuration
-    if (!process.env.STRIPE_SECRET_KEY) {
+    if (!env.STRIPE?.SECRET_KEY) {
       console.error('[subscribe] STRIPE_SECRET_KEY not set')
       return NextResponse.json({ 
         ok: false, 
@@ -64,7 +66,7 @@ export async function POST(request, { params }) {
       }, { status: 500 })
     }
     
-    if (!process.env.STRIPE_PRICE_STARTER) {
+    if (!env.STRIPE?.PRICE_STARTER) {
       console.error('[subscribe] STRIPE_PRICE_STARTER not set')
       return NextResponse.json({ 
         ok: false, 
@@ -86,7 +88,7 @@ export async function POST(request, { params }) {
     
     let userId
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET)
+      const payload = jwt.verify(token, env.JWT_SECRET)
       userId = payload.sub
       console.log('[subscribe] Authenticated user:', userId)
     } catch (err) {
@@ -129,7 +131,10 @@ export async function POST(request, { params }) {
       }, { status: 403 })
     }
     
-    // 7. Get or create Stripe customer
+    // 7. Initialize Stripe
+    const stripe = await getStripe()
+    
+    // 8. Get or create Stripe customer
     let customerId = business.subscription?.stripeCustomerId || user.subscription?.stripeCustomerId
     
     if (!customerId) {
@@ -152,9 +157,9 @@ export async function POST(request, { params }) {
       )
     }
     
-    // 8. Create Checkout Session
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'https://book8.io'
-    const priceId = process.env.STRIPE_PRICE_STARTER
+    // 9. Create Checkout Session
+    const baseUrl = env.BASE_URL
+    const priceId = env.STRIPE.PRICE_STARTER
     
     console.log('[subscribe] Creating checkout session...')
     console.log('[subscribe] Customer:', customerId)
