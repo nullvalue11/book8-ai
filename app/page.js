@@ -116,15 +116,46 @@ export default function Home(props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchArchivedCount(); checkSubscription(); } }, [token]);
 
+  // Check for checkout success (from pricing page redirect)
+  useEffect(() => {
+    const checkoutStatus = searchParams.get('checkout');
+    const sessionId = searchParams.get('session_id');
+    
+    if (checkoutStatus === 'success' || sessionId) {
+      // Force refresh subscription status
+      if (token) {
+        checkSubscription(true); // Force refresh and show success
+      }
+      // Clean up URL params
+      const url = new URL(window.location.href);
+      url.searchParams.delete('checkout');
+      url.searchParams.delete('session_id');
+      window.history.replaceState({}, '', url.toString());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, token]);
+
   // Check subscription status
-  async function checkSubscription() {
+  async function checkSubscription(showSuccessOnActive = false) {
     try {
       const res = await fetch('/api/billing/me', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       if (data.ok) {
         setIsSubscribed(data.subscribed);
+        setPlanTier(data.planTier || 'free');
+        setPlanName(data.planName || 'Free');
+        setFeatures(data.features || {});
+        
+        // Show success message and confetti if just subscribed
+        if (showSuccessOnActive && data.subscribed) {
+          setShowSubscriptionSuccess(true);
+          fireConfetti();
+          // Auto-hide after 5 seconds
+          setTimeout(() => setShowSubscriptionSuccess(false), 5000);
+        }
       }
     } catch (err) {
       console.error('Subscription check failed:', err);
