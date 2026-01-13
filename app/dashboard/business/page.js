@@ -86,6 +86,11 @@ function BusinessPageContent() {
   // Action states
   const [subscribing, setSubscribing] = useState(null)
   const [connectingCalendar, setConnectingCalendar] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  
+  // Constants
+  const MAX_BUSINESSES = 5
   
   // Check for checkout success/cancel and google calendar connection
   useEffect(() => {
