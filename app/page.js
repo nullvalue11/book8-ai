@@ -487,6 +487,17 @@ export default function Home(props) {
             <HeaderLogo className="opacity-90 hover:opacity-100 transition" />
             <div className="hidden md:block h-6 w-px bg-border"></div>
             <span className="hidden md:inline text-sm text-muted-foreground">Dashboard</span>
+            {/* Plan badge for subscribed users */}
+            {subscriptionChecked && isSubscribed && (
+              <span className={`hidden md:inline px-2 py-0.5 rounded-full text-xs font-medium ${
+                planTier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
+                planTier === 'growth' ? 'bg-blue-100 text-blue-800' :
+                'bg-green-100 text-green-800'
+              }`}>
+                {planTier === 'enterprise' && <Crown className="w-3 h-3 inline mr-1" />}
+                {planName}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3 text-sm">
             <ThemeToggle resolved={resolved} setTheme={setTheme} />
@@ -496,7 +507,31 @@ export default function Home(props) {
         </div>
       </header>
 
-      {/* Top Subscription Banner */}
+      {/* Subscription Success Modal */}
+      {showSubscriptionSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-background rounded-xl p-8 shadow-2xl max-w-md mx-4 text-center animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">You're Subscribed! 🎉</h2>
+            <p className="text-muted-foreground mb-4">
+              Welcome to <span className="font-semibold text-foreground">{planName}</span>! 
+              {planTier === 'enterprise' && ' You now have access to all premium features including advanced analytics, multi-calendar support, and priority support.'}
+              {planTier === 'growth' && ' You now have access to multi-calendar support and all standard features.'}
+              {planTier === 'starter' && ' You now have access to calendar sync, AI agents, and analytics.'}
+            </p>
+            <Button 
+              className="bg-brand-500 hover:bg-brand-600"
+              onClick={() => setShowSubscriptionSuccess(false)}
+            >
+              Start Exploring
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Top Subscription Banner - only show if NOT subscribed */}
       {subscriptionChecked && !isSubscribed && (
         <div className="bg-brand-500 border-b border-brand-600">
           <div className="container mx-auto max-w-7xl px-6 py-3">
