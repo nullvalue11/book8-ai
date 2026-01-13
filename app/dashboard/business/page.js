@@ -33,7 +33,8 @@ import {
   CreditCard,
   Calendar,
   ExternalLink,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react'
 
 const STATUS_COLORS = {
@@ -85,6 +86,11 @@ function BusinessPageContent() {
   // Action states
   const [subscribing, setSubscribing] = useState(null)
   const [connectingCalendar, setConnectingCalendar] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  
+  // Constants
+  const MAX_BUSINESSES = 5
   
   // Check for checkout success/cancel and google calendar connection
   useEffect(() => {
@@ -236,6 +242,54 @@ function BusinessPageContent() {
     }
   }
   
+  async function handleDeleteBusiness(biz) {
+    // Show confirmation first
+    if (deleteConfirm !== biz.businessId) {
+      setDeleteConfirm(biz.businessId)
+      return
+    }
+    
+    setDeleting(biz.businessId)
+    setError(null)
+    
+    try {
+      const res = await fetch('/api/business/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ businessId: biz.businessId })
+      })
+      
+      const data = await res.json()
+      
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Failed to delete business')
+      }
+      
+      // Refresh the business list
+      fetchBusinesses()
+      setDeleteConfirm(null)
+      
+    } catch (err) {
+      console.error('[Delete] Error:', err.message)
+      setError(err.message)
+    } finally {
+      setDeleting(null)
+    }
+  }
+  
+  function cancelDelete() {
+    setDeleteConfirm(null)
+  }
+  
+  // Check if user can delete a business (only if no active subscription)
+  function canDeleteBusiness(biz) {
+    const status = biz.subscription?.status
+    return !status || status === 'none' || status === 'canceled'
+  }
+  
   function resetForm() {
     setStep('list')
     setBusinessName('')
@@ -349,6 +403,42 @@ function BusinessPageContent() {
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[biz.status] || 'bg-gray-100'}`}>
                               {biz.status}
                             </span>
+                            {/* Delete button - only show if no active subscription */}
+                            {canDeleteBusiness(biz) && (
+                              deleteConfirm === biz.businessId ? (
+                                <div className="flex items-center gap-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="destructive"
+                                    onClick={() => handleDeleteBusiness(biz)}
+                                    disabled={deleting === biz.businessId}
+                                  >
+                                    {deleting === biz.businessId ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      'Confirm'
+                                    )}
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={cancelDelete}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => handleDeleteBusiness(biz)}
+                                  title="Delete business"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )
+                            )}
                           </div>
                         </div>
                         
@@ -465,13 +555,24 @@ function BusinessPageContent() {
                 </CardTitle>
                 <CardDescription>
                   Set up a new business to enable AI phone agents, billing, and more.
+                  <span className="block mt-1 text-xs">
+                    {businesses.length} of {MAX_BUSINESSES} businesses used
+                  </span>
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => setStep('form')}>
-                  <Building2 className="w-4 h-4 mr-2" />
-                  Start Registration
-                </Button>
+                {businesses.length < MAX_BUSINESSES ? (
+                  <Button onClick={() => setStep('form')}>
+                    <Building2 className="w-4 h-4 mr-2" />
+                    Start Registration
+                  </Button>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    <AlertTriangle className="w-4 h-4 inline mr-2 text-yellow-500" />
+                    You have reached the maximum of {MAX_BUSINESSES} businesses. 
+                    Delete a business without an active subscription to create a new one.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>
