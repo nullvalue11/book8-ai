@@ -555,13 +555,24 @@ function BusinessPageContent() {
                 </CardTitle>
                 <CardDescription>
                   Set up a new business to enable AI phone agents, billing, and more.
+                  <span className="block mt-1 text-xs">
+                    {businesses.length} of {MAX_BUSINESSES} businesses used
+                  </span>
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => setStep('form')}>
-                  <Building2 className="w-4 h-4 mr-2" />
-                  Start Registration
-                </Button>
+                {businesses.length < MAX_BUSINESSES ? (
+                  <Button onClick={() => setStep('form')}>
+                    <Building2 className="w-4 h-4 mr-2" />
+                    Start Registration
+                  </Button>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    <AlertTriangle className="w-4 h-4 inline mr-2 text-yellow-500" />
+                    You have reached the maximum of {MAX_BUSINESSES} businesses. 
+                    Delete a business without an active subscription to create a new one.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>
