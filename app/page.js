@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Input } from "./components/ui/input";
@@ -13,13 +13,43 @@ import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
 import HomeHero from "./(home)/HomeHero";
 import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2 } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 
+// Confetti helper - dynamically import to avoid SSR issues
+async function fireConfetti() {
+  try {
+    const confetti = (await import('canvas-confetti')).default;
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+    // Fire a second burst
+    setTimeout(() => {
+      confetti({
+        particleCount: 50,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 }
+      });
+      confetti({
+        particleCount: 50,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 }
+      });
+    }, 200);
+  } catch (e) {
+    console.log('Confetti not available');
+  }
+}
+
 export default function Home(props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const forceDashboard = !!props?.forceDashboard;
   const { theme, setTheme, systemTheme } = useTheme();
   const resolved = theme === "system" ? systemTheme : theme;
@@ -28,9 +58,13 @@ export default function Home(props) {
   const [user, setUser] = useState(null);
   const [appReady, setAppReady] = useState(false);
   
-  // Subscription state
+  // Subscription state - enhanced
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [planTier, setPlanTier] = useState('free');
+  const [planName, setPlanName] = useState('Free');
+  const [features, setFeatures] = useState({});
+  const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
 
   const [title, setTitle] = useState("Intro call");
   const [customerName, setCustomerName] = useState("");
