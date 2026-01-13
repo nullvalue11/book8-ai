@@ -777,3 +777,13 @@ function ThemeToggle({ resolved, setTheme }) {
     </div>
   );
 }
+
+
+// Export with Suspense wrapper for useSearchParams
+export default function Home(props) {
+  return (
+    <Suspense fallback={<HomeLoading />}>
+      <HomeContent {...props} />
+    </Suspense>
+  );
+}
