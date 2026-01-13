@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Input } from "./components/ui/input";
@@ -13,13 +13,55 @@ import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
 import HomeHero from "./(home)/HomeHero";
 import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2 } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 
-export default function Home(props) {
+// Confetti helper - dynamically import to avoid SSR issues
+async function fireConfetti() {
+  try {
+    const confetti = (await import('canvas-confetti')).default;
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+    // Fire a second burst
+    setTimeout(() => {
+      confetti({
+        particleCount: 50,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 }
+      });
+      confetti({
+        particleCount: 50,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 }
+      });
+    }, 200);
+  } catch (e) {
+    console.log('Confetti not available');
+  }
+}
+
+import { Suspense } from "react";
+
+// Loading fallback for Suspense
+function HomeLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin h-8 w-8 border-4 border-brand-500 border-t-transparent rounded-full"></div>
+    </div>
+  );
+}
+
+// Main home content component
+function HomeContent(props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const forceDashboard = !!props?.forceDashboard;
   const { theme, setTheme, systemTheme } = useTheme();
   const resolved = theme === "system" ? systemTheme : theme;
@@ -28,9 +70,13 @@ export default function Home(props) {
   const [user, setUser] = useState(null);
   const [appReady, setAppReady] = useState(false);
   
-  // Subscription state
+  // Subscription state - enhanced
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [planTier, setPlanTier] = useState('free');
+  const [planName, setPlanName] = useState('Free');
+  const [features, setFeatures] = useState({});
+  const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
 
   const [title, setTitle] = useState("Intro call");
   const [customerName, setCustomerName] = useState("");
@@ -82,15 +128,46 @@ export default function Home(props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchArchivedCount(); checkSubscription(); } }, [token]);
 
+  // Check for checkout success (from pricing page redirect)
+  useEffect(() => {
+    const checkoutStatus = searchParams.get('checkout');
+    const sessionId = searchParams.get('session_id');
+    
+    if (checkoutStatus === 'success' || sessionId) {
+      // Force refresh subscription status
+      if (token) {
+        checkSubscription(true); // Force refresh and show success
+      }
+      // Clean up URL params
+      const url = new URL(window.location.href);
+      url.searchParams.delete('checkout');
+      url.searchParams.delete('session_id');
+      window.history.replaceState({}, '', url.toString());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, token]);
+
   // Check subscription status
-  async function checkSubscription() {
+  async function checkSubscription(showSuccessOnActive = false) {
     try {
       const res = await fetch('/api/billing/me', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       if (data.ok) {
         setIsSubscribed(data.subscribed);
+        setPlanTier(data.planTier || 'free');
+        setPlanName(data.planName || 'Free');
+        setFeatures(data.features || {});
+        
+        // Show success message and confetti if just subscribed
+        if (showSuccessOnActive && data.subscribed) {
+          setShowSubscriptionSuccess(true);
+          fireConfetti();
+          // Auto-hide after 5 seconds
+          setTimeout(() => setShowSubscriptionSuccess(false), 5000);
+        }
       }
     } catch (err) {
       console.error('Subscription check failed:', err);
@@ -140,7 +217,24 @@ export default function Home(props) {
   async function saveCalendars() { try { setSavingCalendars(true); const selected = calendars.filter((c) => c.selected).map((c) => c.id); await api(`/integrations/google/calendars`, { method: "POST", body: JSON.stringify({ selectedCalendarIds: selected }), }); setCalendarDialogOpen(false); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Failed to save selections"); } finally { setSavingCalendars(false); } }
   async function syncGoogle() { try { const res = await api(`/integrations/google/sync`, { method: "POST" }); alert(`Synced: created=${res.created}, updated=${res.updated}, deleted=${res.deleted}`); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Sync failed"); } }
 
-  function handleLogout() { if (fetchAbort.current) try { fetchAbort.current.abort(); } catch {} localStorage.removeItem("book8_token"); localStorage.removeItem("book8_user"); setToken(null); setUser(null); setBookings([]); }
+  function handleLogout() { 
+    // Abort any pending fetches
+    if (fetchAbort.current) try { fetchAbort.current.abort(); } catch {} 
+    // Clear local storage
+    localStorage.removeItem("book8_token"); 
+    localStorage.removeItem("book8_user"); 
+    // Clear all state
+    setToken(null); 
+    setUser(null); 
+    setBookings([]); 
+    setIsSubscribed(false);
+    setPlanTier('free');
+    setPlanName('Free');
+    setFeatures({});
+    setSubscriptionChecked(false);
+    // Immediately redirect to home
+    router.push('/');
+  }
 
   async function handleLogin() {
     if (!formData.email || !formData.password) {
@@ -405,6 +499,17 @@ export default function Home(props) {
             <HeaderLogo className="opacity-90 hover:opacity-100 transition" />
             <div className="hidden md:block h-6 w-px bg-border"></div>
             <span className="hidden md:inline text-sm text-muted-foreground">Dashboard</span>
+            {/* Plan badge for subscribed users */}
+            {subscriptionChecked && isSubscribed && (
+              <span className={`hidden md:inline px-2 py-0.5 rounded-full text-xs font-medium ${
+                planTier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
+                planTier === 'growth' ? 'bg-blue-100 text-blue-800' :
+                'bg-green-100 text-green-800'
+              }`}>
+                {planTier === 'enterprise' && <Crown className="w-3 h-3 inline mr-1" />}
+                {planName}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3 text-sm">
             <ThemeToggle resolved={resolved} setTheme={setTheme} />
@@ -414,7 +519,31 @@ export default function Home(props) {
         </div>
       </header>
 
-      {/* Top Subscription Banner */}
+      {/* Subscription Success Modal */}
+      {showSubscriptionSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-background rounded-xl p-8 shadow-2xl max-w-md mx-4 text-center animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">You're Subscribed! 🎉</h2>
+            <p className="text-muted-foreground mb-4">
+              Welcome to <span className="font-semibold text-foreground">{planName}</span>! 
+              {planTier === 'enterprise' && ' You now have access to all premium features including advanced analytics, multi-calendar support, and priority support.'}
+              {planTier === 'growth' && ' You now have access to multi-calendar support and all standard features.'}
+              {planTier === 'starter' && ' You now have access to calendar sync, AI agents, and analytics.'}
+            </p>
+            <Button 
+              className="bg-brand-500 hover:bg-brand-600"
+              onClick={() => setShowSubscriptionSuccess(false)}
+            >
+              Start Exploring
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Top Subscription Banner - only show if NOT subscribed */}
       {subscriptionChecked && !isSubscribed && (
         <div className="bg-brand-500 border-b border-brand-600">
           <div className="container mx-auto max-w-7xl px-6 py-3">
@@ -646,5 +775,15 @@ function ThemeToggle({ resolved, setTheme }) {
         Sys
       </button>
     </div>
+  );
+}
+
+
+// Export with Suspense wrapper for useSearchParams
+export default function Home(props) {
+  return (
+    <Suspense fallback={<HomeLoading />}>
+      <HomeContent {...props} />
+    </Suspense>
   );
 }

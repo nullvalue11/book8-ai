@@ -74,6 +74,7 @@ function PricingContent() {
   const [isLoading, setIsLoading] = useState({});
   const [isPaywall, setIsPaywall] = useState(false);
   const [feature, setFeature] = useState(null);
+  const [businessId, setBusinessId] = useState(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -91,6 +92,11 @@ function PricingContent() {
     const blockedFeature = searchParams.get("feature");
     if (blockedFeature) {
       setFeature(blockedFeature);
+    }
+    // Check for businessId (from business dashboard)
+    const bizId = searchParams.get("businessId");
+    if (bizId) {
+      setBusinessId(bizId);
     }
   }, [searchParams]);
 
@@ -119,14 +125,17 @@ function PricingContent() {
         throw new Error("Plan not available");
       }
 
-      // Create checkout session
+      // Create checkout session - include businessId if present
       const checkoutRes = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ priceId })
+        body: JSON.stringify({ 
+          priceId,
+          businessId: businessId || undefined
+        })
       });
 
       const checkoutData = await checkoutRes.json();

@@ -88,7 +88,7 @@ export async function POST(request) {
     
     const user = auth.user
     const body = await request.json()
-    const { priceId } = body
+    const { priceId, businessId } = body
     requestPriceId = priceId // Store for error handling
     
     if (!priceId) {
@@ -120,7 +120,8 @@ export async function POST(request) {
         email: user.email,
         name: user.name || undefined,
         metadata: {
-          userId: user.id
+          userId: user.id,
+          ...(businessId && { businessId })
         }
       })
       customerId = customer.id
@@ -138,20 +139,30 @@ export async function POST(request) {
     // Create checkout session with idempotency key
     const idempotencyKey = generateIdempotencyKey('checkout', user.id, priceId)
     
+    // Determine success/cancel URLs - go to dashboard with checkout success
+    const successUrl = businessId 
+      ? `${env.BASE_URL}/dashboard/business?checkout=success&businessId=${businessId}`
+      : `${env.BASE_URL}/?checkout=success`
+    const cancelUrl = businessId
+      ? `${env.BASE_URL}/dashboard/business?checkout=canceled&businessId=${businessId}`
+      : `${env.BASE_URL}/pricing?canceled=true`
+    
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: lineItems,
-      success_url: `${env.BASE_URL}/dashboard/settings/billing?success=true`,
-      cancel_url: `${env.BASE_URL}/dashboard/settings/billing?canceled=true`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         userId: user.id,
-        priceId: priceId
+        priceId: priceId,
+        ...(businessId && { businessId })
       },
       subscription_data: {
         metadata: {
           userId: user.id,
-          priceId: priceId
+          priceId: priceId,
+          ...(businessId && { businessId })
         }
       }
     }, {

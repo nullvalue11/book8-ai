@@ -2,7 +2,7 @@
  * GET /api/billing/me
  * 
  * Purpose:
- * Return the current user's subscription status.
+ * Return the current user's subscription status with plan tier and features.
  * Used to verify subscription state for paywall enforcement.
  * 
  * Authentication:
@@ -12,15 +12,10 @@
  * {
  *   "ok": true,
  *   "subscribed": true,
- *   "subscription": {
- *     "status": "active",
- *     "stripeCustomerId": "cus_xxx",
- *     "stripeSubscriptionId": "sub_xxx",
- *     "stripeCallMinutesItemId": "si_xxx",
- *     "stripePriceId": "price_xxx",
- *     "currentPeriodStart": "2024-01-01T00:00:00Z",
- *     "currentPeriodEnd": "2024-02-01T00:00:00Z"
- *   }
+ *   "planTier": "enterprise",
+ *   "planName": "Enterprise",
+ *   "features": { ... },
+ *   "subscription": { ... }
  * }
  */
 
@@ -77,11 +72,14 @@ export async function GET(request) {
     
     const user = auth.user
     const subscribed = isSubscribed(user)
-    const subscription = getSubscriptionDetails(user)
+    const subscription = getSubscriptionDetails(user, env)
     
     return NextResponse.json({
       ok: true,
       subscribed,
+      planTier: subscription.planTier,
+      planName: subscription.planName,
+      features: subscription.features,
       subscription
     })
     
