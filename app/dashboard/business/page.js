@@ -242,6 +242,54 @@ function BusinessPageContent() {
     }
   }
   
+  async function handleDeleteBusiness(biz) {
+    // Show confirmation first
+    if (deleteConfirm !== biz.businessId) {
+      setDeleteConfirm(biz.businessId)
+      return
+    }
+    
+    setDeleting(biz.businessId)
+    setError(null)
+    
+    try {
+      const res = await fetch('/api/business/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ businessId: biz.businessId })
+      })
+      
+      const data = await res.json()
+      
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Failed to delete business')
+      }
+      
+      // Refresh the business list
+      fetchBusinesses()
+      setDeleteConfirm(null)
+      
+    } catch (err) {
+      console.error('[Delete] Error:', err.message)
+      setError(err.message)
+    } finally {
+      setDeleting(null)
+    }
+  }
+  
+  function cancelDelete() {
+    setDeleteConfirm(null)
+  }
+  
+  // Check if user can delete a business (only if no active subscription)
+  function canDeleteBusiness(biz) {
+    const status = biz.subscription?.status
+    return !status || status === 'none' || status === 'canceled'
+  }
+  
   function resetForm() {
     setStep('list')
     setBusinessName('')
