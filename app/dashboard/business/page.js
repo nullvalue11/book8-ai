@@ -33,7 +33,8 @@ import {
   CreditCard,
   Calendar,
   ExternalLink,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react'
 
 const STATUS_COLORS = {
