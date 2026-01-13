@@ -205,7 +205,24 @@ export default function Home(props) {
   async function saveCalendars() { try { setSavingCalendars(true); const selected = calendars.filter((c) => c.selected).map((c) => c.id); await api(`/integrations/google/calendars`, { method: "POST", body: JSON.stringify({ selectedCalendarIds: selected }), }); setCalendarDialogOpen(false); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Failed to save selections"); } finally { setSavingCalendars(false); } }
   async function syncGoogle() { try { const res = await api(`/integrations/google/sync`, { method: "POST" }); alert(`Synced: created=${res.created}, updated=${res.updated}, deleted=${res.deleted}`); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Sync failed"); } }
 
-  function handleLogout() { if (fetchAbort.current) try { fetchAbort.current.abort(); } catch {} localStorage.removeItem("book8_token"); localStorage.removeItem("book8_user"); setToken(null); setUser(null); setBookings([]); }
+  function handleLogout() { 
+    // Abort any pending fetches
+    if (fetchAbort.current) try { fetchAbort.current.abort(); } catch {} 
+    // Clear local storage
+    localStorage.removeItem("book8_token"); 
+    localStorage.removeItem("book8_user"); 
+    // Clear all state
+    setToken(null); 
+    setUser(null); 
+    setBookings([]); 
+    setIsSubscribed(false);
+    setPlanTier('free');
+    setPlanName('Free');
+    setFeatures({});
+    setSubscriptionChecked(false);
+    // Immediately redirect to home
+    router.push('/');
+  }
 
   async function handleLogin() {
     if (!formData.email || !formData.password) {
