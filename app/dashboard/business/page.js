@@ -403,6 +403,42 @@ function BusinessPageContent() {
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[biz.status] || 'bg-gray-100'}`}>
                               {biz.status}
                             </span>
+                            {/* Delete button - only show if no active subscription */}
+                            {canDeleteBusiness(biz) && (
+                              deleteConfirm === biz.businessId ? (
+                                <div className="flex items-center gap-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="destructive"
+                                    onClick={() => handleDeleteBusiness(biz)}
+                                    disabled={deleting === biz.businessId}
+                                  >
+                                    {deleting === biz.businessId ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      'Confirm'
+                                    )}
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={cancelDelete}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => handleDeleteBusiness(biz)}
+                                  title="Delete business"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )
+                            )}
                           </div>
                         </div>
                         
