@@ -219,65 +219,10 @@ function BusinessPageContent() {
   }
   
   async function handleSubscribe(biz) {
-    // ====== DEBUGGING ======
-    console.log('[Subscribe] ====== STARTING CHECKOUT ======')
-    console.log('[Subscribe] Business ID:', biz.businessId)
-    console.log('[Subscribe] Token present:', !!token)
-    
-    if (!token) {
-      console.error('[Subscribe] ERROR: No auth token!')
-      setError('Authentication required. Please log in again.')
-      return
-    }
-    
-    setSubscribing(biz.businessId)
-    setError(null)
-    
-    // Use flat /api/subscribe endpoint (businessId in body, not URL)
-    const endpoint = `${window.location.origin}/api/subscribe`
-    console.log('[Subscribe] Endpoint:', endpoint)
-    
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ businessId: biz.businessId }),
-        cache: 'no-store',
-        credentials: 'same-origin'
-      })
-      
-      console.log('[Subscribe] Response status:', res.status)
-      
-      const text = await res.text()
-      console.log('[Subscribe] Response:', text.substring(0, 500))
-      
-      let data
-      try {
-        data = JSON.parse(text)
-      } catch (parseError) {
-        console.error('[Subscribe] JSON parse error:', parseError.message)
-        throw new Error(`Server returned non-JSON (${res.status}): ${text.substring(0, 200)}`)
-      }
-      
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || `Request failed (${res.status})`)
-      }
-      
-      if (data.checkoutUrl) {
-        console.log('[Subscribe] SUCCESS! Redirecting to Stripe...')
-        window.location.href = data.checkoutUrl
-      } else {
-        throw new Error('No checkout URL in response')
-      }
-    } catch (err) {
-      console.error('[Subscribe] Error:', err.message)
-      setError(err.message)
-    } finally {
-      setSubscribing(null)
-    }
+    // Redirect to pricing page where user can choose their plan
+    const pricingUrl = `/pricing?paywall=1&businessId=${biz.businessId}`
+    console.log('[Subscribe] Redirecting to pricing page:', pricingUrl)
+    window.location.href = pricingUrl
   }
   
   async function handleConnectCalendar(biz) {
