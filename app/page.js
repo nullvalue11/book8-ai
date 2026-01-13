@@ -134,10 +134,58 @@ function HomeContent(props) {
     const sessionId = searchParams.get('session_id');
     
     if (checkoutStatus === 'success' || sessionId) {
-      // Force refresh subscription status
+      console.log('[Dashboard] Checkout success detected, checking subscription...');
+      
+      // Force refresh subscription status with retries
+      // Webhook might take a moment to update the database
       if (token) {
-        checkSubscription(true); // Force refresh and show success
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        const checkWithRetry = async () => {
+          attempts++;
+          console.log(`[Dashboard] Subscription check attempt ${attempts}/${maxAttempts}`);
+          
+          try {
+            const res = await fetch('/api/billing/me', {
+              headers: { Authorization: `Bearer ${token}` },
+              cache: 'no-store'
+            });
+            const data = await res.json();
+            console.log('[Dashboard] Subscription response:', data);
+            
+            if (data.ok && data.subscribed) {
+              // Success! Update state and show confetti
+              setIsSubscribed(true);
+              setPlanTier(data.planTier || 'starter');
+              setPlanName(data.planName || 'Starter');
+              setFeatures(data.features || {});
+              setSubscriptionChecked(true);
+              setShowSubscriptionSuccess(true);
+              fireConfetti();
+              setTimeout(() => setShowSubscriptionSuccess(false), 5000);
+              console.log('[Dashboard] Subscription confirmed!');
+            } else if (attempts < maxAttempts) {
+              // Not subscribed yet, retry after delay
+              console.log('[Dashboard] Not subscribed yet, retrying in 2s...');
+              setTimeout(checkWithRetry, 2000);
+            } else {
+              // Max attempts reached
+              console.log('[Dashboard] Max attempts reached, subscription not found');
+              setSubscriptionChecked(true);
+            }
+          } catch (err) {
+            console.error('[Dashboard] Subscription check error:', err);
+            if (attempts < maxAttempts) {
+              setTimeout(checkWithRetry, 2000);
+            }
+          }
+        };
+        
+        // Start checking after a short delay (give webhook time to fire)
+        setTimeout(checkWithRetry, 1000);
       }
+      
       // Clean up URL params
       const url = new URL(window.location.href);
       url.searchParams.delete('checkout');
