@@ -71,8 +71,15 @@ export async function GET(request) {
     }
     
     const user = auth.user
+    
+    // Debug logging
+    console.log('[billing/me] User subscription data:', JSON.stringify(user.subscription, null, 2))
+    
     const subscribed = isSubscribed(user)
     const subscription = getSubscriptionDetails(user, env)
+    
+    console.log('[billing/me] isSubscribed:', subscribed)
+    console.log('[billing/me] planTier:', subscription.planTier)
     
     return NextResponse.json({
       ok: true,
