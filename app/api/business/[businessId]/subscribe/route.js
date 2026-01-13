@@ -1,189 +1,191 @@
 /**
- * GET/POST /api/business/[businessId]/subscribe
+ * POST /api/business/[businessId]/subscribe
  * 
- * Simplified subscription endpoint for business checkout.
- * This is a flatter route structure to avoid nested folder issues.
+ * Creates a Stripe Checkout session for business subscription.
+ * Uses process.env directly to avoid any module loading issues.
  */
 
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
-import { env } from '@/lib/env'
-import { COLLECTION_NAME, SUBSCRIPTION_STATUS } from '@/lib/schemas/business'
+import Stripe from 'stripe'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-let client, db
+// Initialize Stripe directly with process.env
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2023-10-16'
+})
 
-async function connect() {
-  if (!client) {
-    client = new MongoClient(env.MONGO_URL)
-    await client.connect()
-    db = client.db(env.DB_NAME)
-  }
-  return db
-}
+// MongoDB connection
+let cachedClient = null
+let cachedDb = null
 
-async function getStripe() {
-  try {
-    const Stripe = (await import('stripe')).default
-    const key = env.STRIPE?.SECRET_KEY
-    if (!key) return null
-    return new Stripe(key)
-  } catch (e) {
-    console.error('[business/subscribe] failed to load stripe', e)
-    return null
-  }
-}
-
-async function requireAuth(request, database) {
-  const auth = request.headers.get('authorization') || ''
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
-  if (!token) return { error: 'Missing Authorization header', status: 401 }
+async function connectToDatabase() {
+  if (cachedDb) return cachedDb
   
-  try {
-    const payload = jwt.verify(token, env.JWT_SECRET)
-    const user = await database.collection('users').findOne({ id: payload.sub })
-    if (!user) return { error: 'User not found', status: 401 }
-    return { user, payload }
-  } catch {
-    return { error: 'Invalid or expired token', status: 401 }
-  }
+  const client = await MongoClient.connect(process.env.MONGO_URL)
+  cachedClient = client
+  cachedDb = client.db(process.env.DB_NAME || 'book8')
+  return cachedDb
 }
 
-// Test endpoint - GET
+// GET - Health check
 export async function GET(request, { params }) {
-  console.log('[business/subscribe] ====== GET REQUEST RECEIVED ======')
-  console.log('[business/subscribe] params:', JSON.stringify(params))
-  console.log('[business/subscribe] URL:', request.url)
-  console.log('[business/subscribe] Method:', request.method)
-  console.log('[business/subscribe] Headers:', JSON.stringify(Object.fromEntries(request.headers.entries())))
+  const { businessId } = params
+  
+  console.log('[subscribe] GET request for businessId:', businessId)
   
   return NextResponse.json({
     ok: true,
-    message: 'Subscribe endpoint is working - use POST to create checkout',
-    businessId: params.businessId,
-    method: 'GET',
-    timestamp: new Date().toISOString(),
-    hint: 'If you see this in production, your POST request was converted to GET'
+    message: 'Subscribe endpoint active. Use POST to create checkout session.',
+    businessId,
+    stripeConfigured: !!process.env.STRIPE_SECRET_KEY,
+    priceConfigured: !!process.env.STRIPE_PRICE_STARTER
   })
 }
 
-// Main subscription endpoint - POST
+// POST - Create Stripe Checkout Session
 export async function POST(request, { params }) {
-  console.log('[business/subscribe] ====== POST REQUEST RECEIVED ======')
-  console.log('[business/subscribe] params:', JSON.stringify(params))
-  console.log('[business/subscribe] URL:', request.url)
-  console.log('[business/subscribe] Method:', request.method)
-  console.log('[business/subscribe] Headers:', JSON.stringify(Object.fromEntries(request.headers.entries())))
+  console.log('[subscribe] ========== POST REQUEST ==========')
+  console.log('[subscribe] businessId:', params.businessId)
   
   try {
     const { businessId } = params
-    console.log('[business/subscribe] businessId:', businessId)
     
-    if (!businessId) {
-      return NextResponse.json(
-        { ok: false, error: 'businessId is required' },
-        { status: 400 }
-      )
-    }
-    
-    // Check Stripe
-    if (!env.STRIPE?.SECRET_KEY) {
-      console.error('[business/subscribe] STRIPE_SECRET_KEY not configured')
-      return NextResponse.json(
-        { ok: false, error: 'Stripe is not configured' },
-        { status: 500 }
-      )
-    }
-    
-    const stripe = await getStripe()
-    if (!stripe) {
-      return NextResponse.json(
-        { ok: false, error: 'Failed to initialize Stripe' },
-        { status: 500 }
-      )
-    }
-    
-    const database = await connect()
-    const authResult = await requireAuth(request, database)
-    
-    if (authResult.error) {
-      console.log('[business/subscribe] Auth failed:', authResult.error)
-      return NextResponse.json(
-        { ok: false, error: authResult.error },
-        { status: authResult.status }
-      )
-    }
-    
-    const { user, payload } = authResult
-    console.log('[business/subscribe] User:', user.id)
-    
-    // Get business
-    const business = await database.collection(COLLECTION_NAME).findOne({ businessId })
-    
-    if (!business) {
-      return NextResponse.json(
-        { ok: false, error: 'Business not found' },
-        { status: 404 }
-      )
-    }
-    
-    // Verify ownership
-    if (business.ownerUserId !== payload.sub) {
-      return NextResponse.json(
-        { ok: false, error: 'Access denied' },
-        { status: 403 }
-      )
-    }
-    
-    // Get price ID - use PRICE_STARTER as default
-    const basePriceId = env.STRIPE?.PRICE_STARTER
-    if (!basePriceId) {
-      return NextResponse.json({
-        ok: false,
-        error: 'No Stripe price configured (STRIPE_PRICE_STARTER missing)'
+    // 1. Validate Stripe configuration
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('[subscribe] STRIPE_SECRET_KEY not set')
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Stripe not configured (missing STRIPE_SECRET_KEY)' 
       }, { status: 500 })
     }
-    console.log('[business/subscribe] Using price:', basePriceId)
     
-    // Get or create customer
-    let stripeCustomerId = business.subscription?.stripeCustomerId
+    if (!process.env.STRIPE_PRICE_STARTER) {
+      console.error('[subscribe] STRIPE_PRICE_STARTER not set')
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Stripe price not configured (missing STRIPE_PRICE_STARTER)' 
+      }, { status: 500 })
+    }
     
-    if (!stripeCustomerId) {
-      if (user.subscription?.stripeCustomerId) {
-        stripeCustomerId = user.subscription.stripeCustomerId
-      } else {
-        const customer = await stripe.customers.create({
-          email: user.email,
-          name: business.name,
-          metadata: { userId: user.id, businessId: business.businessId }
-        })
-        stripeCustomerId = customer.id
-      }
+    // 2. Authenticate user
+    const authHeader = request.headers.get('authorization') || ''
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+    
+    if (!token) {
+      console.log('[subscribe] No auth token')
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Authentication required' 
+      }, { status: 401 })
+    }
+    
+    let userId
+    try {
+      const payload = jwt.verify(token, process.env.JWT_SECRET)
+      userId = payload.sub
+      console.log('[subscribe] Authenticated user:', userId)
+    } catch (err) {
+      console.log('[subscribe] Invalid token:', err.message)
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Invalid or expired token' 
+      }, { status: 401 })
+    }
+    
+    // 3. Get database
+    const db = await connectToDatabase()
+    console.log('[subscribe] Database connected')
+    
+    // 4. Get user
+    const user = await db.collection('users').findOne({ id: userId })
+    if (!user) {
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'User not found' 
+      }, { status: 404 })
+    }
+    console.log('[subscribe] User found:', user.email)
+    
+    // 5. Get business
+    const business = await db.collection('businesses').findOne({ businessId })
+    if (!business) {
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Business not found' 
+      }, { status: 404 })
+    }
+    console.log('[subscribe] Business found:', business.name)
+    
+    // 6. Verify ownership
+    if (business.ownerUserId !== userId) {
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Access denied - not business owner' 
+      }, { status: 403 })
+    }
+    
+    // 7. Get or create Stripe customer
+    let customerId = business.subscription?.stripeCustomerId || user.subscription?.stripeCustomerId
+    
+    if (!customerId) {
+      console.log('[subscribe] Creating new Stripe customer...')
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: business.name,
+        metadata: { 
+          userId: user.id, 
+          businessId: business.businessId 
+        }
+      })
+      customerId = customer.id
+      console.log('[subscribe] Created customer:', customerId)
       
-      await database.collection(COLLECTION_NAME).updateOne(
+      // Save customer ID
+      await db.collection('businesses').updateOne(
         { businessId },
-        { $set: { 'subscription.stripeCustomerId': stripeCustomerId, updatedAt: new Date() } }
+        { $set: { 'subscription.stripeCustomerId': customerId, updatedAt: new Date() } }
       )
     }
     
-    // Create session
-    const baseUrl = env.BASE_URL || 'http://localhost:3000'
+    // 8. Create Checkout Session
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'https://book8.io'
+    const priceId = process.env.STRIPE_PRICE_STARTER
     
-    console.log('[business/subscribe] Creating Stripe session...')
+    console.log('[subscribe] Creating checkout session...')
+    console.log('[subscribe] Customer:', customerId)
+    console.log('[subscribe] Price:', priceId)
+    console.log('[subscribe] BaseURL:', baseUrl)
+    
     const session = await stripe.checkout.sessions.create({
-      customer: stripeCustomerId,
+      customer: customerId,
       mode: 'subscription',
-      line_items: [{ price: basePriceId, quantity: 1 }],
+      payment_method_types: ['card'],
+      line_items: [{
+        price: priceId,
+        quantity: 1
+      }],
       success_url: `${baseUrl}/dashboard/business?checkout=success&businessId=${businessId}`,
       cancel_url: `${baseUrl}/dashboard/business?checkout=canceled&businessId=${businessId}`,
-      metadata: { userId: user.id, businessId: business.businessId }
+      metadata: {
+        userId: user.id,
+        businessId: business.businessId,
+        businessName: business.name
+      },
+      subscription_data: {
+        metadata: {
+          userId: user.id,
+          businessId: business.businessId
+        }
+      }
     })
     
-    console.log('[business/subscribe] Session created:', session.id)
+    console.log('[subscribe] Session created:', session.id)
+    console.log('[subscribe] Checkout URL:', session.url)
     
     return NextResponse.json({
       ok: true,
@@ -193,10 +195,13 @@ export async function POST(request, { params }) {
     })
     
   } catch (error) {
-    console.error('[business/subscribe] Error:', error)
+    console.error('[subscribe] ERROR:', error.message)
+    console.error('[subscribe] Stack:', error.stack)
+    
     return NextResponse.json({
       ok: false,
-      error: error.message || 'Internal server error'
+      error: error.message || 'Internal server error',
+      code: error.code || 'UNKNOWN'
     }, { status: 500 })
   }
 }
