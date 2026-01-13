@@ -47,7 +47,19 @@ async function fireConfetti() {
   }
 }
 
-export default function Home(props) {
+import { Suspense } from "react";
+
+// Loading fallback for Suspense
+function HomeLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin h-8 w-8 border-4 border-brand-500 border-t-transparent rounded-full"></div>
+    </div>
+  );
+}
+
+// Main home content component
+function HomeContent(props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const forceDashboard = !!props?.forceDashboard;
