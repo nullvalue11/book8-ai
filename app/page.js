@@ -868,7 +868,7 @@ function HomeContent(props) {
             </CardContent>
           </Card>
 
-          <AnalyticsDashboard token={token} />
+          <AnalyticsDashboard token={token} subscribed={isSubscribed} />
         </div>
       </div>
     </main>

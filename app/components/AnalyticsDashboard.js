@@ -3,24 +3,41 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { TrendingUp, Calendar, RotateCcw, XCircle, Bell } from 'lucide-react'
+import { TrendingUp, Calendar, RotateCcw, XCircle, Bell, Lock, RefreshCw } from 'lucide-react'
+import { Button } from './ui/button'
 
-export default function AnalyticsDashboard({ token }) {
+export default function AnalyticsDashboard({ token, subscribed = false, onSubscriptionRequired }) {
   const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [range, setRange] = useState('7d')
+  const [isSubscriptionError, setIsSubscriptionError] = useState(false)
 
   const fetchAnalytics = useCallback(async () => {
+    if (!token) return
+    
     setLoading(true)
     setError(null)
+    setIsSubscriptionError(false)
+    
     try {
       const res = await fetch(`/api/analytics/summary?range=${range}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to fetch analytics')
+      
+      if (!res.ok) {
+        // Check if it's a subscription error
+        if (res.status === 402 || data.code === 'SUBSCRIPTION_REQUIRED' || data.error?.includes('Subscription required')) {
+          setIsSubscriptionError(true)
+          throw new Error('Subscription required')
+        }
+        throw new Error(data.error || 'Failed to fetch analytics')
+      }
+      
       setAnalytics(data)
+      setIsSubscriptionError(false)
     } catch (err) {
       console.error('[analytics] Error:', err)
       setError(err.message)
@@ -29,9 +46,18 @@ export default function AnalyticsDashboard({ token }) {
     }
   }, [token, range])
 
+  // Fetch when token or range changes
   useEffect(() => {
     if (token) fetchAnalytics()
   }, [token, range, fetchAnalytics])
+  
+  // Re-fetch when subscribed prop changes to true
+  useEffect(() => {
+    if (subscribed && isSubscriptionError && token) {
+      console.log('[analytics] Subscription status changed, re-fetching...')
+      fetchAnalytics()
+    }
+  }, [subscribed, isSubscriptionError, token, fetchAnalytics])
 
   if (loading) {
     return (
@@ -60,12 +86,54 @@ export default function AnalyticsDashboard({ token }) {
       return null
     }
     
+    // Show subscription required UI
+    if (isSubscriptionError) {
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">Analytics</h2>
+          <Card className="border-yellow-200 bg-yellow-50/50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <Lock className="w-8 h-8 text-yellow-600 shrink-0" />
+                <div className="flex-1">
+                  <p className="font-medium text-yellow-800">Analytics requires a subscription</p>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    {subscribed 
+                      ? "Your subscription is active. Click refresh to load analytics."
+                      : "Subscribe to unlock detailed analytics, booking trends, and conversion metrics."}
+                  </p>
+                  <div className="mt-4 flex gap-2">
+                    {subscribed ? (
+                      <Button size="sm" onClick={fetchAnalytics} disabled={loading}>
+                        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh Analytics
+                      </Button>
+                    ) : (
+                      <Button size="sm" onClick={() => window.location.href = '/pricing?paywall=1&feature=analytics'}>
+                        View Plans
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+    
     return (
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Analytics</h2>
         <Card className="border-destructive">
           <CardContent className="pt-6">
-            <p className="text-destructive">Error loading analytics: {error}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-destructive">Error loading analytics: {error}</p>
+              <Button size="sm" variant="outline" onClick={fetchAnalytics}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
