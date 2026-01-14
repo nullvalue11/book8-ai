@@ -222,6 +222,40 @@ function HomeContent(props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, token]);
 
+  // Manual subscription sync function
+  async function syncSubscription() {
+    setIsSyncingSubscription(true);
+    try {
+      console.log('[Dashboard] Manual sync triggered');
+      const res = await fetch('/api/billing/sync', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store'
+      });
+      const data = await res.json();
+      console.log('[Dashboard] Sync response:', data);
+      
+      if (data.ok && data.subscribed) {
+        setIsSubscribed(true);
+        setPlanTier(data.planTier || 'starter');
+        setPlanName(data.planName || 'Starter');
+        setFeatures(data.features || {});
+        setShowSubscriptionSuccess(true);
+        fireConfetti();
+        setTimeout(() => setShowSubscriptionSuccess(false), 5000);
+      } else if (data.ok) {
+        alert(data.message || 'No active subscription found');
+      } else {
+        alert(data.error || 'Sync failed');
+      }
+    } catch (err) {
+      console.error('[Dashboard] Sync error:', err);
+      alert('Failed to sync subscription: ' + err.message);
+    } finally {
+      setIsSyncingSubscription(false);
+    }
+  }
+
   // Check subscription status
   async function checkSubscription(showSuccessOnActive = false) {
     try {
