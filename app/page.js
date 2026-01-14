@@ -664,13 +664,24 @@ function HomeContent(props) {
                   Subscribe to connect calendars, use AI agents, and access analytics.
                 </p>
               </div>
-              <Button 
-                size="sm" 
-                className="bg-white text-brand-600 hover:bg-gray-100 font-semibold shrink-0 shadow-sm"
-                onClick={() => router.push('/pricing?paywall=1')}
-              >
-                Subscribe Now
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="text-white border-white/50 hover:bg-white/10 text-xs"
+                  onClick={syncSubscription}
+                  disabled={isSyncingSubscription}
+                >
+                  {isSyncingSubscription ? 'Syncing...' : 'Already paid? Sync'}
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="bg-white text-brand-600 hover:bg-gray-100 font-semibold shrink-0 shadow-sm"
+                  onClick={() => router.push('/pricing?paywall=1')}
+                >
+                  Subscribe Now
+                </Button>
+              </div>
             </div>
           </div>
         </div>
