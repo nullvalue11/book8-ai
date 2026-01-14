@@ -86,12 +86,54 @@ export default function AnalyticsDashboard({ token, subscribed = false, onSubscr
       return null
     }
     
+    // Show subscription required UI
+    if (isSubscriptionError) {
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">Analytics</h2>
+          <Card className="border-yellow-200 bg-yellow-50/50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <Lock className="w-8 h-8 text-yellow-600 shrink-0" />
+                <div className="flex-1">
+                  <p className="font-medium text-yellow-800">Analytics requires a subscription</p>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    {subscribed 
+                      ? "Your subscription is active. Click refresh to load analytics."
+                      : "Subscribe to unlock detailed analytics, booking trends, and conversion metrics."}
+                  </p>
+                  <div className="mt-4 flex gap-2">
+                    {subscribed ? (
+                      <Button size="sm" onClick={fetchAnalytics} disabled={loading}>
+                        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh Analytics
+                      </Button>
+                    ) : (
+                      <Button size="sm" onClick={() => window.location.href = '/pricing?paywall=1&feature=analytics'}>
+                        View Plans
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+    
     return (
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Analytics</h2>
         <Card className="border-destructive">
           <CardContent className="pt-6">
-            <p className="text-destructive">Error loading analytics: {error}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-destructive">Error loading analytics: {error}</p>
+              <Button size="sm" variant="outline" onClick={fetchAnalytics}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
