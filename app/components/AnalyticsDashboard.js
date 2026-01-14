@@ -3,24 +3,41 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { TrendingUp, Calendar, RotateCcw, XCircle, Bell } from 'lucide-react'
+import { TrendingUp, Calendar, RotateCcw, XCircle, Bell, Lock, RefreshCw } from 'lucide-react'
+import { Button } from './ui/button'
 
-export default function AnalyticsDashboard({ token }) {
+export default function AnalyticsDashboard({ token, subscribed = false, onSubscriptionRequired }) {
   const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [range, setRange] = useState('7d')
+  const [isSubscriptionError, setIsSubscriptionError] = useState(false)
 
   const fetchAnalytics = useCallback(async () => {
+    if (!token) return
+    
     setLoading(true)
     setError(null)
+    setIsSubscriptionError(false)
+    
     try {
       const res = await fetch(`/api/analytics/summary?range=${range}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to fetch analytics')
+      
+      if (!res.ok) {
+        // Check if it's a subscription error
+        if (res.status === 402 || data.code === 'SUBSCRIPTION_REQUIRED' || data.error?.includes('Subscription required')) {
+          setIsSubscriptionError(true)
+          throw new Error('Subscription required')
+        }
+        throw new Error(data.error || 'Failed to fetch analytics')
+      }
+      
       setAnalytics(data)
+      setIsSubscriptionError(false)
     } catch (err) {
       console.error('[analytics] Error:', err)
       setError(err.message)
@@ -29,9 +46,18 @@ export default function AnalyticsDashboard({ token }) {
     }
   }, [token, range])
 
+  // Fetch when token or range changes
   useEffect(() => {
     if (token) fetchAnalytics()
   }, [token, range, fetchAnalytics])
+  
+  // Re-fetch when subscribed prop changes to true
+  useEffect(() => {
+    if (subscribed && isSubscriptionError && token) {
+      console.log('[analytics] Subscription status changed, re-fetching...')
+      fetchAnalytics()
+    }
+  }, [subscribed, isSubscriptionError, token, fetchAnalytics])
 
   if (loading) {
     return (
