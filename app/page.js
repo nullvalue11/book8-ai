@@ -77,6 +77,7 @@ function HomeContent(props) {
   const [planName, setPlanName] = useState('Free');
   const [features, setFeatures] = useState({});
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
+  const [isSyncingSubscription, setIsSyncingSubscription] = useState(false);
 
   const [title, setTitle] = useState("Intro call");
   const [customerName, setCustomerName] = useState("");
