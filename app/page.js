@@ -134,56 +134,82 @@ function HomeContent(props) {
     const sessionId = searchParams.get('session_id');
     
     if (checkoutStatus === 'success' || sessionId) {
-      console.log('[Dashboard] Checkout success detected, checking subscription...');
+      console.log('[Dashboard] Checkout success detected, syncing subscription...');
       
-      // Force refresh subscription status with retries
-      // Webhook might take a moment to update the database
       if (token) {
-        let attempts = 0;
-        const maxAttempts = 5;
-        
-        const checkWithRetry = async () => {
-          attempts++;
-          console.log(`[Dashboard] Subscription check attempt ${attempts}/${maxAttempts}`);
-          
+        // First, call the sync endpoint to ensure database is up to date
+        // Then check subscription status
+        const syncAndCheck = async () => {
           try {
-            const res = await fetch('/api/billing/me', {
+            // Step 1: Call sync endpoint to fetch from Stripe
+            console.log('[Dashboard] Calling /api/billing/sync...');
+            const syncRes = await fetch('/api/billing/sync', {
+              method: 'POST',
               headers: { Authorization: `Bearer ${token}` },
               cache: 'no-store'
             });
-            const data = await res.json();
-            console.log('[Dashboard] Subscription response:', data);
+            const syncData = await syncRes.json();
+            console.log('[Dashboard] Sync response:', syncData);
             
-            if (data.ok && data.subscribed) {
-              // Success! Update state and show confetti
+            if (syncData.ok && syncData.subscribed) {
+              // Sync found active subscription!
               setIsSubscribed(true);
-              setPlanTier(data.planTier || 'starter');
-              setPlanName(data.planName || 'Starter');
-              setFeatures(data.features || {});
+              setPlanTier(syncData.planTier || 'starter');
+              setPlanName(syncData.planName || 'Starter');
+              setFeatures(syncData.features || {});
               setSubscriptionChecked(true);
               setShowSubscriptionSuccess(true);
               fireConfetti();
               setTimeout(() => setShowSubscriptionSuccess(false), 5000);
-              console.log('[Dashboard] Subscription confirmed!');
-            } else if (attempts < maxAttempts) {
-              // Not subscribed yet, retry after delay
-              console.log('[Dashboard] Not subscribed yet, retrying in 2s...');
-              setTimeout(checkWithRetry, 2000);
-            } else {
-              // Max attempts reached
-              console.log('[Dashboard] Max attempts reached, subscription not found');
-              setSubscriptionChecked(true);
+              console.log('[Dashboard] Subscription synced and confirmed!');
+              return;
             }
+            
+            // Step 2: If sync didn't find it, retry a few times
+            // Stripe might take a moment to process
+            let attempts = 0;
+            const maxAttempts = 5;
+            
+            const checkWithRetry = async () => {
+              attempts++;
+              console.log(`[Dashboard] Subscription check attempt ${attempts}/${maxAttempts}`);
+              
+              // Try sync again
+              const retryRes = await fetch('/api/billing/sync', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                cache: 'no-store'
+              });
+              const retryData = await retryRes.json();
+              
+              if (retryData.ok && retryData.subscribed) {
+                setIsSubscribed(true);
+                setPlanTier(retryData.planTier || 'starter');
+                setPlanName(retryData.planName || 'Starter');
+                setFeatures(retryData.features || {});
+                setSubscriptionChecked(true);
+                setShowSubscriptionSuccess(true);
+                fireConfetti();
+                setTimeout(() => setShowSubscriptionSuccess(false), 5000);
+                console.log('[Dashboard] Subscription confirmed on retry!');
+              } else if (attempts < maxAttempts) {
+                console.log('[Dashboard] Not subscribed yet, retrying in 2s...');
+                setTimeout(checkWithRetry, 2000);
+              } else {
+                console.log('[Dashboard] Max attempts reached');
+                setSubscriptionChecked(true);
+              }
+            };
+            
+            setTimeout(checkWithRetry, 2000);
+            
           } catch (err) {
-            console.error('[Dashboard] Subscription check error:', err);
-            if (attempts < maxAttempts) {
-              setTimeout(checkWithRetry, 2000);
-            }
+            console.error('[Dashboard] Sync error:', err);
+            setSubscriptionChecked(true);
           }
         };
         
-        // Start checking after a short delay (give webhook time to fire)
-        setTimeout(checkWithRetry, 1000);
+        syncAndCheck();
       }
       
       // Clean up URL params
