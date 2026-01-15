@@ -186,6 +186,17 @@ function loadConfig() {
       RESET_TOKEN_SECRET,
       RESET_TOKEN_TTL_MINUTES: isNaN(RESET_TOKEN_TTL_MINUTES) ? 30 : Math.max(5, Math.min(RESET_TOKEN_TTL_MINUTES, 120)),
       
+      // NextAuth.js
+      NEXTAUTH_SECRET,
+      NEXTAUTH_URL,
+      
+      // Microsoft Azure AD
+      AZURE_AD: AZURE_AD_CLIENT_ID && AZURE_AD_CLIENT_SECRET ? {
+        CLIENT_ID: AZURE_AD_CLIENT_ID,
+        CLIENT_SECRET: AZURE_AD_CLIENT_SECRET,
+        TENANT_ID: AZURE_AD_TENANT_ID
+      } : null,
+      
       // Google
       GOOGLE: hasGoogleOAuth ? {
         CLIENT_ID: GOOGLE_CLIENT_ID,
