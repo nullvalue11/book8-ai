@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { v4 as uuidv4 } from 'uuid'
+import { env } from '@/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,13 +12,11 @@ let db
 
 async function connectToMongo() {
   if (!client) {
-    const mongoUrl = process.env.MONGO_URL
-    const dbName = process.env.DB_NAME
-    if (!mongoUrl) throw new Error('MONGO_URL missing')
-    if (!dbName) throw new Error('DB_NAME missing')
-    client = new MongoClient(mongoUrl)
+    if (!env.MONGO_URL) throw new Error('MONGO_URL missing')
+    if (!env.DB_NAME) throw new Error('DB_NAME missing')
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(dbName)
+    db = client.db(env.DB_NAME)
   }
   return db
 }
@@ -68,14 +67,13 @@ export async function POST(req) {
     }
 
     // Generate our custom JWT token (same format as regular login)
-    const jwtSecret = process.env.JWT_SECRET
-    if (!jwtSecret) {
+    if (!env.JWT_SECRET) {
       return NextResponse.json({ ok: false, error: 'Server configuration error' }, { status: 500 })
     }
 
     const token = jwt.sign(
       { sub: user.id, email: user.email },
-      jwtSecret,
+      env.JWT_SECRET,
       { expiresIn: '7d' }
     )
 
