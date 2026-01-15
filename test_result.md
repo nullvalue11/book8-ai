@@ -1164,3 +1164,28 @@ agent_communication:
       - working: true
         agent: "testing"
         comment: "✅ BUSINESS REGISTRATION GOLDEN WORKFLOW API - 100% SUCCESS RATE (9/9 tests passed). Core Workflow Tests: POST /api/business/register creates businesses with auto-generated IDs and returns complete provisioning plan ✅, GET /api/business/register lists user's businesses correctly ✅, POST /api/business/confirm handles business confirmation with ops control plane integration ✅, GET /api/business/:businessId returns complete business details and status ✅, POST /api/business/:businessId/billing/checkout validates auth/ownership and handles Stripe configuration ✅. Validation Tests: Missing Authorization header returns 401 ✅, Missing businessId in confirm returns 400 ✅, Invalid businessId format returns 404 ✅. Critical Fix Applied: Fixed database consistency issue where different endpoints used different databases (client.db() vs client.db(env.DB_NAME)). All business endpoints now use consistent database configuration."
+
+  - task: "OAuth Social Login - Google and Microsoft"
+    implemented: true
+    working: "partial"
+    file: "/app/app/api/auth/[...nextauth]/route.js, /app/app/auth/oauth-callback/page.js, /app/app/api/auth/oauth-sync/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "partial"
+        agent: "main"
+        comment: "IMPLEMENTED: OAuth Social Login with Google and Microsoft (placeholder). 1) NextAuth.js v4 integrated with existing JWT auth system. 2) Google OAuth provider fully configured - uses existing GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET. 3) Microsoft OAuth provider added with placeholder credentials - will work when AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET, AZURE_AD_TENANT_ID are configured. 4) OAuth callback page handles session-to-JWT conversion. 5) OAuth sync API creates/links users in MongoDB with existing user schema. 6) UI updated with 'Continue with Google' and 'Continue with Microsoft' buttons. Microsoft button disabled with 'Soon' badge until credentials added. NOTE: Google OAuth requires adding callback URL to Google Cloud Console: {NEXTAUTH_URL}/api/auth/callback/google"
+
+## frontend:
+  - task: "OAuth Social Login UI Buttons"
+    implemented: true
+    working: true
+    file: "/app/app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "IMPLEMENTED: Added 'Continue with Google' and 'Continue with Microsoft' buttons to login/register form. Google button is active and functional. Microsoft button is disabled with 'Soon' badge since credentials are placeholders. Existing email/password login preserved below OAuth buttons with divider 'or continue with email'."
