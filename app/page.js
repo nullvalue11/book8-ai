@@ -490,19 +490,21 @@ function HomeContent(props) {
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="w-full bg-white/80 hover:bg-white/90 text-gray-500 border-gray-300 cursor-not-allowed relative"
-                  disabled={true}
-                  title="Microsoft login - coming soon (add AZURE_AD credentials)"
+                  className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
+                  onClick={() => {
+                    const callbackUrl = encodeURIComponent('/auth/oauth-callback');
+                    window.location.href = `/api/auth/signin/azure-ad?callbackUrl=${callbackUrl}`;
+                  }}
+                  disabled={isLoading}
                 >
-                  <svg className="w-5 h-5 mr-2 opacity-50" viewBox="0 0 23 23">
+                  <svg className="w-5 h-5 mr-2" viewBox="0 0 23 23">
                     <path fill="#f3f3f3" d="M0 0h23v23H0z"/>
                     <path fill="#f35325" d="M1 1h10v10H1z"/>
                     <path fill="#81bc06" d="M12 1h10v10H12z"/>
                     <path fill="#05a6f0" d="M1 12h10v10H1z"/>
                     <path fill="#ffba08" d="M12 12h10v10H12z"/>
                   </svg>
-                  <span className="opacity-70">Continue with Microsoft</span>
-                  <span className="absolute -top-2 -right-2 text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full">Soon</span>
+                  Continue with Microsoft
                 </Button>
               </div>
 
