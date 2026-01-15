@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://tenant-provision.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://stripe-unlock.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 def log_test(test_name, status, details=""):

@@ -12,7 +12,7 @@ import sys
 import os
 
 # Configuration
-BASE_URL = "https://tenant-provision.preview.emergentagent.com"
+BASE_URL = "https://stripe-unlock.preview.emergentagent.com"
 AUTH_HEADER = "x-book8-internal-secret"
 AUTH_TOKEN = "ops-dev-secret-change-me"
 
