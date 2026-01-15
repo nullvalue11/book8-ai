@@ -11,7 +11,7 @@ import time
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://tenant-provision.preview.emergentagent.com"
+BASE_URL = "https://stripe-unlock.preview.emergentagent.com"
 AUTH_HEADER = "ops-dev-secret-change-me"
 
 def test_approval_lifecycle():

@@ -74,6 +74,15 @@ function loadConfig() {
     const RESET_TOKEN_SECRET = getEnvVar('RESET_TOKEN_SECRET', false, JWT_SECRET)
     const RESET_TOKEN_TTL_MINUTES = parseInt(getEnvVar('RESET_TOKEN_TTL_MINUTES', false, '30'), 10)
     
+    // NextAuth.js
+    const NEXTAUTH_SECRET = getEnvVar('NEXTAUTH_SECRET', false, JWT_SECRET)
+    const NEXTAUTH_URL = getEnvVar('NEXTAUTH_URL', false, NEXT_PUBLIC_BASE_URL)
+    
+    // Microsoft Azure AD OAuth
+    const AZURE_AD_CLIENT_ID = getEnvVar('AZURE_AD_CLIENT_ID', false)
+    const AZURE_AD_CLIENT_SECRET = getEnvVar('AZURE_AD_CLIENT_SECRET', false)
+    const AZURE_AD_TENANT_ID = getEnvVar('AZURE_AD_TENANT_ID', false, 'common')
+    
     if (JWT_SECRET.length < 32) {
       console.warn('[env] WARNING: JWT_SECRET should be at least 32 characters for security')
     }
@@ -176,6 +185,17 @@ function loadConfig() {
       JWT_SECRET,
       RESET_TOKEN_SECRET,
       RESET_TOKEN_TTL_MINUTES: isNaN(RESET_TOKEN_TTL_MINUTES) ? 30 : Math.max(5, Math.min(RESET_TOKEN_TTL_MINUTES, 120)),
+      
+      // NextAuth.js
+      NEXTAUTH_SECRET,
+      NEXTAUTH_URL,
+      
+      // Microsoft Azure AD
+      AZURE_AD: AZURE_AD_CLIENT_ID && AZURE_AD_CLIENT_SECRET ? {
+        CLIENT_ID: AZURE_AD_CLIENT_ID,
+        CLIENT_SECRET: AZURE_AD_CLIENT_SECRET,
+        TENANT_ID: AZURE_AD_TENANT_ID
+      } : null,
       
       // Google
       GOOGLE: hasGoogleOAuth ? {

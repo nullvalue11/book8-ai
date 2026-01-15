@@ -9,7 +9,7 @@ import os
 import uuid
 
 # Configuration
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://tenant-provision.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://stripe-unlock.preview.emergentagent.com')
 
 def make_request(method, endpoint, data=None, headers=None):
     """Make HTTP request with detailed logging"""
