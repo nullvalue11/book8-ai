@@ -4,8 +4,8 @@ import AzureADProvider from 'next-auth/providers/azure-ad'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { MongoClient } from 'mongodb'
 import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
 import { v4 as uuidv4 } from 'uuid'
+import { env } from '@/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,13 +16,11 @@ let db
 
 async function connectToMongo() {
   if (!client) {
-    const mongoUrl = process.env.MONGO_URL
-    const dbName = process.env.DB_NAME
-    if (!mongoUrl) throw new Error('MONGO_URL missing')
-    if (!dbName) throw new Error('DB_NAME missing')
-    client = new MongoClient(mongoUrl)
+    if (!env.MONGO_URL) throw new Error('MONGO_URL missing')
+    if (!env.DB_NAME) throw new Error('DB_NAME missing')
+    client = new MongoClient(env.MONGO_URL)
     await client.connect()
-    db = client.db(dbName)
+    db = client.db(env.DB_NAME)
   }
   return db
 }
@@ -31,8 +29,8 @@ const authOptions = {
   providers: [
     // Google OAuth
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      clientId: env.GOOGLE?.CLIENT_ID || '',
+      clientSecret: env.GOOGLE?.CLIENT_SECRET || '',
       authorization: {
         params: {
           prompt: 'consent',
@@ -43,9 +41,9 @@ const authOptions = {
     }),
     // Microsoft OAuth (placeholder - will work when credentials are added)
     AzureADProvider({
-      clientId: process.env.AZURE_AD_CLIENT_ID || 'placeholder',
-      clientSecret: process.env.AZURE_AD_CLIENT_SECRET || 'placeholder',
-      tenantId: process.env.AZURE_AD_TENANT_ID || 'common',
+      clientId: env.AZURE_AD?.CLIENT_ID || 'placeholder',
+      clientSecret: env.AZURE_AD?.CLIENT_SECRET || 'placeholder',
+      tenantId: env.AZURE_AD?.TENANT_ID || 'common',
     }),
     // Email/Password credentials (existing system)
     CredentialsProvider({
@@ -220,8 +218,8 @@ const authOptions = {
     strategy: 'jwt',
     maxAge: 7 * 24 * 60 * 60, // 7 days
   },
-  secret: process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development',
+  secret: env.NEXTAUTH_SECRET || env.JWT_SECRET,
+  debug: env.IS_DEVELOPMENT,
 }
 
 const handler = NextAuth(authOptions)
