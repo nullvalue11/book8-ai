@@ -29,8 +29,8 @@ const authOptions = {
   providers: [
     // Google OAuth
     GoogleProvider({
-      clientId: env.GOOGLE?.CLIENT_ID || '',
-      clientSecret: env.GOOGLE?.CLIENT_SECRET || '',
+      clientId: env.GOOGLE_CLIENT_ID || '',
+      clientSecret: env.GOOGLE_CLIENT_SECRET || '',
       authorization: {
         params: {
           prompt: 'consent',
@@ -39,10 +39,10 @@ const authOptions = {
         }
       }
     }),
-    // Microsoft OAuth (placeholder - will work when credentials are added)
+    // Microsoft OAuth
     AzureADProvider({
-      clientId: env.AZURE_AD?.CLIENT_ID || 'placeholder',
-      clientSecret: env.AZURE_AD?.CLIENT_SECRET || 'placeholder',
+      clientId: env.AZURE_AD?.CLIENT_ID || '',
+      clientSecret: env.AZURE_AD?.CLIENT_SECRET || '',
       tenantId: env.AZURE_AD?.TENANT_ID || 'common',
     }),
     // Email/Password credentials (existing system)
