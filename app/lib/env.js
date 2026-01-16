@@ -199,11 +199,16 @@ function loadConfig() {
       } : null,
       
       // Google
+      // Google (for Calendar integration - requires redirect URI)
       GOOGLE: hasGoogleOAuth ? {
         CLIENT_ID: GOOGLE_CLIENT_ID,
         CLIENT_SECRET: GOOGLE_CLIENT_SECRET,
         REDIRECT_URI: GOOGLE_REDIRECT_URI
       } : null,
+      
+      // Google credentials (for NextAuth - just needs client ID and secret)
+      GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID || null,
+      GOOGLE_CLIENT_SECRET: GOOGLE_CLIENT_SECRET || null,
       
       // Email
       RESEND_API_KEY,
