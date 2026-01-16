@@ -1,5 +1,11 @@
 {
   "crons": [
     { "path": "/api/billing/usage/run-daily", "schedule": "0 2 * * *" }
-  ]
+  ],
+  "functions": {
+    "app/api/auth/[...nextauth]/route.js": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 30
+    }
+  }
 }
