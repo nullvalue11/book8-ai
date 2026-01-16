@@ -1,3 +1,11 @@
+/* eslint-disable no-restricted-syntax */
+/**
+ * NextAuth.js API Route
+ * 
+ * This file uses direct process.env access because NextAuth requires
+ * environment variables at initialization time before our env module loads.
+ * This is an intentional exception to the centralized env module rule.
+ */
 import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import AzureADProvider from 'next-auth/providers/azure-ad'
