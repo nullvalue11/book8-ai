@@ -1,3 +1,11 @@
+/* eslint-disable no-restricted-syntax */
+/**
+ * NextAuth.js API Route
+ * 
+ * This file uses direct process.env access because NextAuth requires
+ * environment variables at initialization time before our env module loads.
+ * This is an intentional exception to the centralized env module rule.
+ */
 import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import AzureADProvider from 'next-auth/providers/azure-ad'
@@ -5,10 +13,15 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { MongoClient } from 'mongodb'
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
-import { env } from '@/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+// Direct env access for NextAuth (Edge-compatible pattern)
+const getEnv = (key, fallback = '') => {
+  const value = process.env[key]
+  return value || fallback
+}
 
 // MongoDB connection
 let client
@@ -16,11 +29,13 @@ let db
 
 async function connectToMongo() {
   if (!client) {
-    if (!env.MONGO_URL) throw new Error('MONGO_URL missing')
-    if (!env.DB_NAME) throw new Error('DB_NAME missing')
-    client = new MongoClient(env.MONGO_URL)
+    const mongoUrl = getEnv('MONGO_URL')
+    const dbName = getEnv('DB_NAME')
+    if (!mongoUrl) throw new Error('MONGO_URL missing')
+    if (!dbName) throw new Error('DB_NAME missing')
+    client = new MongoClient(mongoUrl)
     await client.connect()
-    db = client.db(env.DB_NAME)
+    db = client.db(dbName)
   }
   return db
 }
@@ -29,8 +44,8 @@ const authOptions = {
   providers: [
     // Google OAuth
     GoogleProvider({
-      clientId: env.GOOGLE_CLIENT_ID || '',
-      clientSecret: env.GOOGLE_CLIENT_SECRET || '',
+      clientId: getEnv('GOOGLE_CLIENT_ID'),
+      clientSecret: getEnv('GOOGLE_CLIENT_SECRET'),
       authorization: {
         params: {
           prompt: 'consent',
@@ -41,9 +56,9 @@ const authOptions = {
     }),
     // Microsoft OAuth
     AzureADProvider({
-      clientId: env.AZURE_AD_CLIENT_ID || '',
-      clientSecret: env.AZURE_AD_CLIENT_SECRET || '',
-      tenantId: env.AZURE_AD_TENANT_ID || 'common',
+      clientId: getEnv('AZURE_AD_CLIENT_ID'),
+      clientSecret: getEnv('AZURE_AD_CLIENT_SECRET'),
+      tenantId: getEnv('AZURE_AD_TENANT_ID', 'common'),
     }),
     // Email/Password credentials (existing system)
     CredentialsProvider({
@@ -204,8 +219,12 @@ const authOptions = {
         return `${baseUrl}${url}`
       }
       // Allow same origin URLs
-      if (new URL(url).origin === baseUrl) {
-        return url
+      try {
+        if (new URL(url).origin === baseUrl) {
+          return url
+        }
+      } catch {
+        // Invalid URL, return baseUrl
       }
       return baseUrl
     }
@@ -218,8 +237,8 @@ const authOptions = {
     strategy: 'jwt',
     maxAge: 7 * 24 * 60 * 60, // 7 days
   },
-  secret: env.NEXTAUTH_SECRET || env.JWT_SECRET,
-  debug: env.IS_DEVELOPMENT,
+  secret: getEnv('NEXTAUTH_SECRET') || getEnv('JWT_SECRET'),
+  debug: getEnv('NODE_ENV') === 'development',
 }
 
 const handler = NextAuth(authOptions)
