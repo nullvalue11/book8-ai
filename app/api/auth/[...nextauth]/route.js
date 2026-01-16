@@ -41,9 +41,9 @@ const authOptions = {
     }),
     // Microsoft OAuth
     AzureADProvider({
-      clientId: env.AZURE_AD?.CLIENT_ID || '',
-      clientSecret: env.AZURE_AD?.CLIENT_SECRET || '',
-      tenantId: env.AZURE_AD?.TENANT_ID || 'common',
+      clientId: env.AZURE_AD_CLIENT_ID || '',
+      clientSecret: env.AZURE_AD_CLIENT_SECRET || '',
+      tenantId: env.AZURE_AD_TENANT_ID || 'common',
     }),
     // Email/Password credentials (existing system)
     CredentialsProvider({
