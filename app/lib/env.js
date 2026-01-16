@@ -97,8 +97,9 @@ function loadConfig() {
     }
     
     const hasGoogleOAuth = GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_REDIRECT_URI
-    if (!hasGoogleOAuth && NODE_ENV === 'production') {
-      console.warn('[env] WARNING: Google OAuth not configured. Calendar features will be disabled.')
+    const hasGoogleCredentials = GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
+    if (!hasGoogleCredentials && NODE_ENV === 'production') {
+      console.warn('[env] WARNING: Google OAuth not configured. Calendar and social login features will be disabled.')
     }
     
     // Email Service (Resend)
@@ -197,12 +198,22 @@ function loadConfig() {
         TENANT_ID: AZURE_AD_TENANT_ID
       } : null,
       
+      // Azure AD credentials directly (for NextAuth)
+      AZURE_AD_CLIENT_ID: AZURE_AD_CLIENT_ID || null,
+      AZURE_AD_CLIENT_SECRET: AZURE_AD_CLIENT_SECRET || null,
+      AZURE_AD_TENANT_ID: AZURE_AD_TENANT_ID || 'common',
+      
       // Google
+      // Google (for Calendar integration - requires redirect URI)
       GOOGLE: hasGoogleOAuth ? {
         CLIENT_ID: GOOGLE_CLIENT_ID,
         CLIENT_SECRET: GOOGLE_CLIENT_SECRET,
         REDIRECT_URI: GOOGLE_REDIRECT_URI
       } : null,
+      
+      // Google credentials (for NextAuth - just needs client ID and secret)
+      GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID || null,
+      GOOGLE_CLIENT_SECRET: GOOGLE_CLIENT_SECRET || null,
       
       // Email
       RESEND_API_KEY,
