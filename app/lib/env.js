@@ -198,6 +198,11 @@ function loadConfig() {
         TENANT_ID: AZURE_AD_TENANT_ID
       } : null,
       
+      // Azure AD credentials directly (for NextAuth)
+      AZURE_AD_CLIENT_ID: AZURE_AD_CLIENT_ID || null,
+      AZURE_AD_CLIENT_SECRET: AZURE_AD_CLIENT_SECRET || null,
+      AZURE_AD_TENANT_ID: AZURE_AD_TENANT_ID || 'common',
+      
       // Google
       // Google (for Calendar integration - requires redirect URI)
       GOOGLE: hasGoogleOAuth ? {
