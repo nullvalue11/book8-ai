@@ -97,8 +97,9 @@ function loadConfig() {
     }
     
     const hasGoogleOAuth = GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_REDIRECT_URI
-    if (!hasGoogleOAuth && NODE_ENV === 'production') {
-      console.warn('[env] WARNING: Google OAuth not configured. Calendar features will be disabled.')
+    const hasGoogleCredentials = GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
+    if (!hasGoogleCredentials && NODE_ENV === 'production') {
+      console.warn('[env] WARNING: Google OAuth not configured. Calendar and social login features will be disabled.')
     }
     
     // Email Service (Resend)
