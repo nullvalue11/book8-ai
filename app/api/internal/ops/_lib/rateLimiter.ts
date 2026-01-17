@@ -48,7 +48,13 @@ const CALLER_LIMITS: Record<string, { windowMs: number; maxRequests: number }> =
 }
 
 // Index definitions
-const INDEXES = [
+interface IndexDef {
+  key: IndexSpecification;
+  unique?: boolean;
+  expireAfterSeconds?: number;
+}
+
+const INDEXES: IndexDef[] = [
   // Unique key for rate limit entry
   { key: { key: 1 }, unique: true },
   // TTL index for auto-cleanup (documents expire 60s after window ends)
