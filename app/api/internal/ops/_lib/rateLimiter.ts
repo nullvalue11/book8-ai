@@ -17,7 +17,7 @@
  * @module lib/ops/rateLimiter
  */
 
-import { MongoClient, Db } from 'mongodb'
+import { MongoClient, Db, IndexSpecification } from 'mongodb'
 import crypto from 'crypto'
 // @ts-ignore - env.js is a JavaScript module
 import { env } from '@/lib/env.js'
