@@ -1,7 +1,7 @@
 const path = require("path");
 
 const nextConfig = {
-  output: 'standalone',
+  // output: 'standalone', // Disabled for Vercel - causes routing issues
   images: { unoptimized: true },
   experimental: { serverComponentsExternalPackages: ['mongodb'] },
   webpack(config, { dev }) {
