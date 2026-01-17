@@ -163,7 +163,7 @@ export async function opsFetch<T = any>(
       rateLimitReset: response.headers.get('X-RateLimit-Reset') || undefined
     }
     
-    let data = null
+    let data: any = null
     try {
       data = await response.json()
     } catch {
@@ -174,7 +174,7 @@ export async function opsFetch<T = any>(
       ok: response.ok,
       status: response.status,
       data,
-      error: response.ok ? undefined : data?.error?.message || `HTTP ${response.status}`,
+      error: response.ok ? undefined : (data?.error?.message || `HTTP ${response.status}`),
       headers: rateLimitHeaders
     }
     
