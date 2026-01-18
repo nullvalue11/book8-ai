@@ -1,10 +1,10 @@
 /* eslint-disable no-restricted-syntax */
 /**
- * NextAuth.js API Route
+ * NextAuth.js API Route (Pages Router version)
  * 
+ * Using Pages Router for better compatibility with NextAuth catch-all routes.
  * This file uses direct process.env access because NextAuth requires
- * environment variables at initialization time before our env module loads.
- * This is an intentional exception to the centralized env module rule.
+ * environment variables at initialization time.
  */
 import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
@@ -14,14 +14,8 @@ import { MongoClient } from 'mongodb'
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
 
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
-
-// Direct env access for NextAuth (Edge-compatible pattern)
-const getEnv = (key, fallback = '') => {
-  const value = process.env[key]
-  return value || fallback
-}
+// Direct env access for NextAuth
+const getEnv = (key, fallback = '') => process.env[key] || fallback
 
 // MongoDB connection
 let client
@@ -40,7 +34,7 @@ async function connectToMongo() {
   return db
 }
 
-const authOptions = {
+export const authOptions = {
   providers: [
     // Google OAuth
     GoogleProvider({
@@ -60,7 +54,7 @@ const authOptions = {
       clientSecret: getEnv('AZURE_AD_CLIENT_SECRET'),
       tenantId: getEnv('AZURE_AD_TENANT_ID', 'common'),
     }),
-    // Email/Password credentials (existing system)
+    // Email/Password credentials
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -104,11 +98,9 @@ const authOptions = {
     async signIn({ user, account, profile }) {
       console.log('[NextAuth] signIn callback:', { 
         provider: account?.provider, 
-        email: user?.email,
-        name: profile?.name 
+        email: user?.email 
       })
 
-      // For OAuth providers, create or link user in our database
       if (account?.provider === 'google' || account?.provider === 'azure-ad') {
         try {
           const database = await connectToMongo()
@@ -119,11 +111,9 @@ const authOptions = {
             return false
           }
 
-          // Check if user already exists
           let existingUser = await database.collection('users').findOne({ email })
 
           if (existingUser) {
-            // Update OAuth provider info
             const updateField = account.provider === 'google' 
               ? { 'oauthProviders.google': { id: user.id, connectedAt: new Date() } }
               : { 'oauthProviders.microsoft': { id: user.id, connectedAt: new Date() } }
@@ -138,14 +128,12 @@ const authOptions = {
                 }
               }
             )
-            console.log('[NextAuth] Linked OAuth to existing user:', email)
           } else {
-            // Create new user
             const newUser = {
               id: uuidv4(),
               email,
               name: user.name || profile?.name || '',
-              passwordHash: null, // OAuth users don't have password
+              passwordHash: null,
               createdAt: new Date(),
               lastLogin: new Date(),
               subscription: null,
@@ -157,29 +145,23 @@ const authOptions = {
                 }
               }
             }
-            
             await database.collection('users').insertOne(newUser)
-            console.log('[NextAuth] Created new OAuth user:', email)
           }
-
           return true
         } catch (error) {
           console.error('[NextAuth] signIn error:', error)
           return false
         }
       }
-
       return true
     },
     async jwt({ token, user, account }) {
-      // Initial sign in
       if (account && user) {
         token.provider = account.provider
         token.userId = user.id
         token.email = user.email
         token.name = user.name
         
-        // For OAuth users, fetch the MongoDB user ID
         if (account.provider === 'google' || account.provider === 'azure-ad') {
           try {
             const database = await connectToMongo()
@@ -210,21 +192,18 @@ const authOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      // After OAuth callback, redirect to a special handler page
       if (url.includes('/api/auth/callback')) {
         return `${baseUrl}/auth/oauth-callback`
       }
-      // Allow relative URLs
       if (url.startsWith('/')) {
         return `${baseUrl}${url}`
       }
-      // Allow same origin URLs
       try {
         if (new URL(url).origin === baseUrl) {
           return url
         }
       } catch {
-        // Invalid URL, return baseUrl
+        // Invalid URL
       }
       return baseUrl
     }
@@ -235,12 +214,10 @@ const authOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 7 * 24 * 60 * 60,
   },
   secret: getEnv('NEXTAUTH_SECRET') || getEnv('JWT_SECRET'),
   debug: getEnv('NODE_ENV') === 'development',
 }
 
-const handler = NextAuth(authOptions)
-
-export { handler as GET, handler as POST }
+export default NextAuth(authOptions)
