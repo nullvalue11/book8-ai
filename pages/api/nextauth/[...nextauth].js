@@ -94,8 +94,6 @@ export const authOptions = {
       }
     })
   ],
-  // Use custom base path to avoid App Router conflicts
-  basePath: '/api/nextauth',
   callbacks: {
     async signIn({ user, account, profile }) {
       console.log('[NextAuth] signIn callback:', { 
