@@ -476,7 +476,7 @@ function HomeContent(props) {
                   className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
                   onClick={() => {
                     const callbackUrl = encodeURIComponent('/auth/oauth-callback');
-                    window.location.href = `/api/auth/signin/google?callbackUrl=${callbackUrl}`;
+                    window.location.href = `/api/nextauth/signin/google?callbackUrl=${callbackUrl}`;
                   }}
                   disabled={isLoading}
                 >
