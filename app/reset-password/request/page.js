@@ -15,7 +15,7 @@ export default function ResetRequestPage() {
     setMsg('')
     try {
       setLoading(true)
-      const res = await fetch('/api/auth/reset/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+      const res = await fetch('/api/credentials/reset/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed')
       setMsg('If an account exists, we emailed a link.')
