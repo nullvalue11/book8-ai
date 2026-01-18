@@ -14,8 +14,8 @@ function OAuthCallbackContent() {
   useEffect(() => {
     async function handleCallback() {
       try {
-        // Fetch the session from NextAuth
-        const sessionRes = await fetch('/api/auth/session');
+        // Fetch the session from NextAuth (using new base path)
+        const sessionRes = await fetch('/api/nextauth/session');
         const session = await sessionRes.json();
         
         console.log('[OAuth Callback] Session:', session);
