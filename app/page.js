@@ -493,7 +493,7 @@ function HomeContent(props) {
                   className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
                   onClick={() => {
                     const callbackUrl = encodeURIComponent('/auth/oauth-callback');
-                    window.location.href = `/api/auth/signin/azure-ad?callbackUrl=${callbackUrl}`;
+                    window.location.href = `/api/nextauth/signin/azure-ad?callbackUrl=${callbackUrl}`;
                   }}
                   disabled={isLoading}
                 >
