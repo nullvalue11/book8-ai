@@ -13,6 +13,11 @@ import { MongoClient } from 'mongodb'
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
 
+// Force Node.js runtime (not Edge) and dynamic rendering
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 // Direct env access for NextAuth
 const getEnv = (key, fallback = '') => process.env[key] || fallback
 
