@@ -17,6 +17,15 @@ const nextConfig = {
     return config;
   },
   onDemandEntries: { maxInactiveAge: 10000, pagesBufferLength: 2 },
+  async rewrites() {
+    return [
+      // Ensure NextAuth catch-all routes are properly handled
+      {
+        source: '/api/auth/:path*',
+        destination: '/api/auth/:path*',
+      },
+    ];
+  },
   async headers() {
     return [
       {
