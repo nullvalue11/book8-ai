@@ -34,6 +34,14 @@ const nextConfig = {
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" }
         ],
       },
+      {
+        // Disable caching for auth routes to prevent stale 404s
+        source: "/api/auth/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
+          { key: "Pragma", value: "no-cache" },
+        ],
+      },
       { source: "/(.*)", headers: [
         { key: "X-Frame-Options", value: "ALLOWALL" },
         { key: "Content-Security-Policy", value: "frame-ancestors *;" },
