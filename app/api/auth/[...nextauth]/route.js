@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 /**
- * NextAuth.js API Route (Pages Router)
+ * NextAuth.js API Route (App Router)
  * 
  * This file uses direct process.env access because NextAuth requires
  * environment variables at initialization time.
@@ -33,7 +33,7 @@ async function connectToMongo() {
   return db
 }
 
-export const authOptions = {
+const authOptions = {
   providers: [
     // Google OAuth
     GoogleProvider({
@@ -219,4 +219,6 @@ export const authOptions = {
   debug: getEnv('NODE_ENV') === 'development',
 }
 
-export default NextAuth(authOptions)
+const handler = NextAuth(authOptions)
+
+export { handler as GET, handler as POST }
