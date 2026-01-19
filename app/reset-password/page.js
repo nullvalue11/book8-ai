@@ -42,7 +42,7 @@ export default function ResetPasswordPage() {
     }
     try {
       setLoading(true)
-      const res = await fetch('/api/auth/reset/confirm', {
+      const res = await fetch('/api/credentials/reset/confirm', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, token, newPassword: password })
       })

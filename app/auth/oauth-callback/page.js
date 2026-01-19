@@ -25,7 +25,7 @@ function OAuthCallbackContent() {
           setStatus('Creating your session...');
           
           // Fetch user from our API to get the proper user object
-          const userRes = await fetch('/api/auth/oauth-sync', {
+          const userRes = await fetch('/api/credentials/oauth-sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

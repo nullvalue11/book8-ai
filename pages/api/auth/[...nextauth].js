@@ -1,8 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 /**
- * NextAuth.js API Route (Pages Router version)
+ * NextAuth.js API Route (Pages Router)
  * 
- * Using Pages Router for better compatibility with NextAuth catch-all routes.
  * This file uses direct process.env access because NextAuth requires
  * environment variables at initialization time.
  */
