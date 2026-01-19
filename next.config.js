@@ -1,7 +1,7 @@
 const path = require("path");
 
 const nextConfig = {
-  output: 'standalone',
+  // Removed 'standalone' output - was causing routing issues with catch-all routes on Vercel
   images: { unoptimized: true },
   experimental: { serverComponentsExternalPackages: ['mongodb'] },
   webpack(config, { dev }) {
