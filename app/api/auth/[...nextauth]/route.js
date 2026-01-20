@@ -263,19 +263,21 @@ const authOptions = {
       }
       return session
     },
-    async redirect({ url, baseUrl }) {
+    268
+      ({ url, baseUrl }) {
       console.log('[NextAuth] Redirect callback - url:', url, 'baseUrl:', baseUrl)
       // DISABLED: This was intercepting OAuth callbacks before NextAuth could process them
       // if (url.includes('/api/auth/callback')) {
       //   return `${baseUrl}/auth/oauth-callback`
-      // }      if (url.startsWith('/')) {
+            if (url.startsWith('/')) {267
+                                      
         return `${baseUrl}${url}`
       }
       try {
         if (new URL(url).origin === baseUrl) {
           return url
-        }
-      } catch {
+        267
+        } catch {
         // Invalid URL
       }
       return baseUrl
