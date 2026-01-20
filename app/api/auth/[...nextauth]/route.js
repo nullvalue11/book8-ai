@@ -21,6 +21,18 @@ export const fetchCache = 'force-no-store'
 // Direct env access for NextAuth
 const getEnv = (key, fallback = '') => process.env[key] || fallback
 
+// Log OAuth configuration on startup (helps debug in production)
+const googleClientId = getEnv('GOOGLE_CLIENT_ID')
+const azureClientId = getEnv('AZURE_AD_CLIENT_ID')
+const nextAuthUrl = getEnv('NEXTAUTH_URL')
+
+console.log('[NextAuth] Configuration check:', {
+  NEXTAUTH_URL: nextAuthUrl || 'NOT SET',
+  GOOGLE_CLIENT_ID: googleClientId ? `${googleClientId.substring(0, 10)}...` : 'NOT SET',
+  AZURE_AD_CLIENT_ID: azureClientId ? `${azureClientId.substring(0, 10)}...` : 'NOT SET',
+  NODE_ENV: getEnv('NODE_ENV', 'development')
+})
+
 // MongoDB connection
 let client
 let db
