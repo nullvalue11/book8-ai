@@ -270,24 +270,39 @@ const authOptions = {
       // Those URLs are handled internally by NextAuth. Intercepting them causes 404 errors
       // because it redirects users before NextAuth can complete the OAuth flow.
       
-      // Handle relative URLs
+      // Always return absolute URLs - NextAuth requires this
+      // If redirecting to error page, preserve it
+      if (url.includes('/auth/error')) {
+        console.log('[NextAuth] Redirecting to error page:', url)
+        if (url.startsWith('/')) {
+          return `${baseUrl}${url}`
+        }
+        // If already absolute, return as-is
+        return url
+      }
+      
+      // Handle relative URLs - convert to absolute
       if (url.startsWith('/')) {
-        return `${baseUrl}${url}`
+        const fullUrl = `${baseUrl}${url}`
+        console.log('[NextAuth] Redirecting to (relative->absolute):', fullUrl)
+        return fullUrl
       }
       
       // Handle absolute URLs on the same origin
       try {
         const urlObj = new URL(url)
         if (urlObj.origin === baseUrl) {
+          console.log('[NextAuth] Redirecting to absolute URL:', url)
           return url
         }
-      } catch {
-        // Invalid URL, fall through to default
+        // External URL - don't allow redirects to external domains for security
+        console.log('[NextAuth] External URL detected, redirecting to baseUrl:', urlObj.origin)
+        return baseUrl
+      } catch (err) {
+        // Invalid URL - return baseUrl as fallback
+        console.log('[NextAuth] Invalid URL format, redirecting to baseUrl:', err.message)
+        return baseUrl
       }
-      
-      // Default redirect to baseUrl
-      // OAuth users will be redirected via callbackUrl parameter specified in sign-in URL
-      return baseUrl
     }
   },
   events: {
