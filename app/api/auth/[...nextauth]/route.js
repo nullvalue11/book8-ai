@@ -263,23 +263,30 @@ const authOptions = {
       }
       return session
     },
-    268
-      ({ url, baseUrl }) {
+    async redirect({ url, baseUrl }) {
       console.log('[NextAuth] Redirect callback - url:', url, 'baseUrl:', baseUrl)
-      // DISABLED: This was intercepting OAuth callbacks before NextAuth could process them
-      // if (url.includes('/api/auth/callback')) {
-      //   return `${baseUrl}/auth/oauth-callback`
-            if (url.startsWith('/')) {267
-                                      
+      
+      // CRITICAL FIX: Remove the check that intercepts /api/auth/callback URLs
+      // Those URLs are handled internally by NextAuth. Intercepting them causes 404 errors
+      // because it redirects users before NextAuth can complete the OAuth flow.
+      
+      // Handle relative URLs
+      if (url.startsWith('/')) {
         return `${baseUrl}${url}`
       }
+      
+      // Handle absolute URLs on the same origin
       try {
-        if (new URL(url).origin === baseUrl) {
+        const urlObj = new URL(url)
+        if (urlObj.origin === baseUrl) {
           return url
-        267
-        } catch {
-        // Invalid URL
+        }
+      } catch {
+        // Invalid URL, fall through to default
       }
+      
+      // Default redirect to baseUrl
+      // OAuth users will be redirected via callbackUrl parameter specified in sign-in URL
       return baseUrl
     }
   },
