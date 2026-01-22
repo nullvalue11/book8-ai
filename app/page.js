@@ -475,10 +475,9 @@ function HomeContent(props) {
                   variant="outline" 
                   className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
                   onClick={() => {
-                    // Use absolute URL for callbackUrl - NextAuth requires this
-                    const baseUrl = window.location.origin;
-                    const callbackUrl = encodeURIComponent(`${baseUrl}/auth/oauth-callback`);
-                    window.location.href = `/api/auth/signin/google?callbackUrl=${callbackUrl}`;
+                    // Don't pass callbackUrl - let NextAuth handle OAuth flow naturally
+                    // We'll redirect to /auth/oauth-callback in the redirect callback after OAuth completes
+                    window.location.href = `/api/auth/signin/google`;
                   }}
                   disabled={isLoading}
                 >
@@ -494,10 +493,9 @@ function HomeContent(props) {
                   variant="outline" 
                   className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
                   onClick={() => {
-                    // Use absolute URL for callbackUrl - NextAuth requires this
-                    const baseUrl = window.location.origin;
-                    const callbackUrl = encodeURIComponent(`${baseUrl}/auth/oauth-callback`);
-                    window.location.href = `/api/auth/signin/azure-ad?callbackUrl=${callbackUrl}`;
+                    // Don't pass callbackUrl - let NextAuth handle OAuth flow naturally
+                    // We'll redirect to /auth/oauth-callback in the redirect callback after OAuth completes
+                    window.location.href = `/api/auth/signin/azure-ad`;
                   }}
                   disabled={isLoading}
                 >
