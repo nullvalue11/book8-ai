@@ -331,13 +331,16 @@ const authOptions = {
   },
   logger: {
     error(code, metadata) {
-      console.error('[NextAuth] ERROR:', code, JSON.stringify(metadata, null, 2))
+      console.error('[NextAuth] ====== ERROR ======')
+      console.error('[NextAuth] Error code:', code)
+      console.error('[NextAuth] Error metadata:', JSON.stringify(metadata, null, 2))
+      console.error('[NextAuth] ==================')
     },
-    warn(code) {
-      console.warn('[NextAuth] WARN:', code)
+    warn(code, metadata) {
+      console.warn('[NextAuth] WARN:', code, metadata ? JSON.stringify(metadata) : '')
     },
     debug(code, metadata) {
-      console.log('[NextAuth] DEBUG:', code, metadata)
+      console.log('[NextAuth] DEBUG:', code, metadata ? JSON.stringify(metadata) : '')
     }
   },
   pages: {
@@ -353,5 +356,14 @@ const authOptions = {
 }
 
 const handler = NextAuth(authOptions)
+
+// Add logging for provider availability
+console.log('[NextAuth] ====== PROVIDER STATUS ======')
+console.log('[NextAuth] Total providers:', providers.length)
+providers.forEach((provider, index) => {
+  const providerId = provider.id || provider.name || 'unknown'
+  console.log(`[NextAuth] Provider ${index + 1}: ${providerId}`)
+})
+console.log('[NextAuth] ============================')
 
 export { handler as GET, handler as POST }
