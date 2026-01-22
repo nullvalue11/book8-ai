@@ -475,7 +475,9 @@ function HomeContent(props) {
                   variant="outline" 
                   className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
                   onClick={() => {
-                    const callbackUrl = encodeURIComponent('/auth/oauth-callback');
+                    // Use absolute URL for callbackUrl - NextAuth requires this
+                    const baseUrl = window.location.origin;
+                    const callbackUrl = encodeURIComponent(`${baseUrl}/auth/oauth-callback`);
                     window.location.href = `/api/auth/signin/google?callbackUrl=${callbackUrl}`;
                   }}
                   disabled={isLoading}
@@ -492,7 +494,9 @@ function HomeContent(props) {
                   variant="outline" 
                   className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
                   onClick={() => {
-                    const callbackUrl = encodeURIComponent('/auth/oauth-callback');
+                    // Use absolute URL for callbackUrl - NextAuth requires this
+                    const baseUrl = window.location.origin;
+                    const callbackUrl = encodeURIComponent(`${baseUrl}/auth/oauth-callback`);
                     window.location.href = `/api/auth/signin/azure-ad?callbackUrl=${callbackUrl}`;
                   }}
                   disabled={isLoading}
