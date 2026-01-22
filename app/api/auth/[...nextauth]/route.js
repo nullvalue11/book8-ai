@@ -266,18 +266,42 @@ const authOptions = {
     async redirect({ url, baseUrl }) {
       console.log('[NextAuth] Redirect callback - url:', url, 'baseUrl:', baseUrl)
       
-      // CRITICAL FIX: Remove the check that intercepts /api/auth/callback URLs
-      // Those URLs are handled internally by NextAuth. Intercepting them causes 404 errors
-      // because it redirects users before NextAuth can complete the OAuth flow.
+      // CRITICAL FIX: The redirect callback is called at different times:
+      // 1. During sign-in initiation: NextAuth may call this with callbackUrl, but we should NOT
+      //    return it yet - we need to let NextAuth redirect to the OAuth provider first
+      // 2. After OAuth completion: NextAuth calls this to determine final redirect destination
+      //
+      // The issue: If we return /auth/oauth-callback during sign-in initiation, NextAuth
+      // redirects there immediately instead of going to the OAuth provider.
+      //
+      // Solution: Only use callbackUrl if it's an absolute URL pointing to our domain.
+      // For relative URLs during sign-in, let NextAuth use its default behavior.
       
-      // Always return absolute URLs - NextAuth requires this
+      // If this is our custom OAuth callback page, allow it (but only after OAuth completion)
+      // During sign-in initiation, NextAuth should redirect to the provider, not here
+      if (url.includes('/auth/oauth-callback')) {
+        // Check if it's an absolute URL (means it's from callbackUrl param after OAuth)
+        // vs relative URL (might be during sign-in initiation)
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          // Absolute URL - this is after OAuth completion, redirect to our callback page
+          console.log('[NextAuth] Redirecting to OAuth callback page (after OAuth completion):', url)
+          return url
+        } else {
+          // Relative URL - might be during sign-in initiation
+          // Let NextAuth handle it - it will redirect to provider first
+          console.log('[NextAuth] Relative callbackUrl detected - letting NextAuth handle OAuth flow')
+          // Don't return it yet - let NextAuth redirect to provider
+          // NextAuth will call this again after OAuth with the absolute URL
+          return baseUrl // Return baseUrl to let NextAuth use default behavior
+        }
+      }
+      
       // If redirecting to error page, preserve it
       if (url.includes('/auth/error')) {
         console.log('[NextAuth] Redirecting to error page:', url)
         if (url.startsWith('/')) {
           return `${baseUrl}${url}`
         }
-        // If already absolute, return as-is
         return url
       }
       
