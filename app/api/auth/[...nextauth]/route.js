@@ -266,56 +266,31 @@ const authOptions = {
     async redirect({ url, baseUrl }) {
       console.log('[NextAuth] Redirect callback - url:', url, 'baseUrl:', baseUrl)
       
-      // CRITICAL FIX: We removed callbackUrl from sign-in URLs to prevent NextAuth
-      // from trying to use it during sign-in initiation. Now we handle redirects here.
-      //
-      // After OAuth completion, NextAuth calls this with baseUrl (or the default redirect).
-      // We detect OAuth completion by checking if url is baseUrl and we have a session
-      // with an OAuth provider. Then we redirect to /auth/oauth-callback.
-      //
-      // If redirecting to error page, preserve it.
-      // For all other cases, use NextAuth's default behavior.
+      // Simplified redirect callback - let NextAuth handle OAuth flow naturally
+      // After OAuth completion, NextAuth redirects to baseUrl by default
+      // We redirect to /auth/oauth-callback to sync NextAuth session with custom JWT
       
-      // If redirecting to error page, preserve it
-      if (url.includes('/auth/error')) {
-        console.log('[NextAuth] Redirecting to error page:', url)
-        if (url.startsWith('/')) {
-          return `${baseUrl}${url}`
+      // Handle relative URLs - convert to absolute
+      if (url.startsWith('/')) {
+        // After OAuth completion, NextAuth redirects to baseUrl (which becomes '/')
+        // Redirect OAuth users to our custom callback page for JWT sync
+        if (url === '/' || url === '') {
+          return `${baseUrl}/auth/oauth-callback`
+        }
+        return `${baseUrl}${url}`
+      }
+      
+      // Handle absolute URLs on the same origin
+      if (url.startsWith(baseUrl)) {
+        // If redirecting to baseUrl after OAuth, redirect to callback page
+        if (url === baseUrl || url === `${baseUrl}/`) {
+          return `${baseUrl}/auth/oauth-callback`
         }
         return url
       }
       
-      // After OAuth completion, NextAuth typically redirects to baseUrl
-      // If url is baseUrl (or matches it), redirect OAuth users to our custom callback page
-      // We can't check session here, but we can check if url is the base URL
-      // and assume OAuth completion if it's not an error page
-      if (url === baseUrl || url === `${baseUrl}/`) {
-        console.log('[NextAuth] OAuth completion detected (baseUrl redirect) - redirecting to /auth/oauth-callback')
-        return `${baseUrl}/auth/oauth-callback`
-      }
-      
-      // Handle relative URLs - convert to absolute
-      if (url.startsWith('/')) {
-        const fullUrl = `${baseUrl}${url}`
-        console.log('[NextAuth] Redirecting to (relative->absolute):', fullUrl)
-        return fullUrl
-      }
-      
-      // Handle absolute URLs on the same origin
-      try {
-        const urlObj = new URL(url)
-        if (urlObj.origin === baseUrl) {
-          console.log('[NextAuth] Redirecting to absolute URL:', url)
-          return url
-        }
-        // External URL - don't allow redirects to external domains for security
-        console.log('[NextAuth] External URL detected, redirecting to baseUrl:', urlObj.origin)
-        return baseUrl
-      } catch (err) {
-        // Invalid URL - return baseUrl as fallback
-        console.log('[NextAuth] Invalid URL format, redirecting to baseUrl:', err.message)
-        return baseUrl
-      }
+      // Default: return baseUrl (NextAuth will handle external redirects)
+      return baseUrl
     }
   },
   events: {
