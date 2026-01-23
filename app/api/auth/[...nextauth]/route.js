@@ -265,18 +265,12 @@ const authOptions = {
     },
     async redirect({ url, baseUrl }) {
       console.log('[NextAuth] Redirect callback - url:', url, 'baseUrl:', baseUrl)
-      if (url.includes('/api/auth/callback')) {
-        return `${baseUrl}/auth/oauth-callback`
-      }
+      // Simple redirect logic - let NextAuth handle OAuth flow
       if (url.startsWith('/')) {
         return `${baseUrl}${url}`
       }
-      try {
-        if (new URL(url).origin === baseUrl) {
-          return url
-        }
-      } catch {
-        // Invalid URL
+      if (url.startsWith(baseUrl)) {
+        return url
       }
       return baseUrl
     }
