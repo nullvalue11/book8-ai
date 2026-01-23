@@ -523,7 +523,9 @@ function HomeContent(props) {
                   variant="outline" 
                   className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
                   onClick={() => {
-                    window.location.href = '/api/auth/signin/google';
+                    // Don't pass callbackUrl - let NextAuth handle OAuth flow naturally
+                    // We'll redirect to /auth/oauth-callback in the redirect callback after OAuth completes
+                    window.location.href = `/api/auth/signin/google`;
                   }}
                   disabled={isLoading}
                 >
@@ -539,7 +541,9 @@ function HomeContent(props) {
                   variant="outline" 
                   className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
                   onClick={() => {
-                    window.location.href = '/api/auth/signin/azure-ad';
+                    // Don't pass callbackUrl - let NextAuth handle OAuth flow naturally
+                    // We'll redirect to /auth/oauth-callback in the redirect callback after OAuth completes
+                    window.location.href = `/api/auth/signin/azure-ad`;
                   }}
                   disabled={isLoading}
                 >
