@@ -119,6 +119,54 @@ function HomeContent(props) {
     }
   }, []);
 
+  // Check for NextAuth OAuth session and sync to our JWT system
+  useEffect(() => {
+    const syncOAuthSession = async () => {
+      // Skip if already logged in with our token
+      if (token) return;
+      
+      try {
+        // Check if there's a NextAuth session
+        const sessionRes = await fetch('/api/auth/session');
+        const session = await sessionRes.json();
+        
+        if (session && session.user && session.user.email) {
+          console.log('[OAuth] Found NextAuth session, syncing to JWT...');
+          
+          // Sync the OAuth session to our JWT system
+          const syncRes = await fetch('/api/credentials/oauth-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: session.user.email,
+              name: session.user.name,
+              provider: session.provider || 'oauth'
+            })
+          });
+          
+          const syncData = await syncRes.json();
+          
+          if (syncData.ok && syncData.token) {
+            console.log('[OAuth] JWT sync successful, logging in...');
+            localStorage.setItem('book8_token', syncData.token);
+            localStorage.setItem('book8_user', JSON.stringify(syncData.user));
+            setToken(syncData.token);
+            setUser(syncData.user);
+            
+            // Redirect to dashboard
+            window.location.replace('/dashboard');
+          }
+        }
+      } catch (err) {
+        console.error('[OAuth] Session sync error:', err);
+      }
+    };
+    
+    if (appReady && !token) {
+      syncOAuthSession();
+    }
+  }, [appReady, token]);
+
   // Redirect away from marketing when logged in
   useEffect(() => {
     if (appReady && token && typeof window !== 'undefined' && window.location.pathname === '/') {
