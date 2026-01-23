@@ -270,6 +270,15 @@ const authOptions = {
       // After OAuth completion, NextAuth redirects to baseUrl by default
       // We redirect to /auth/oauth-callback to sync NextAuth session with custom JWT
       
+      
+          // Handle error redirects - preserve error URLs
+          if (url.includes('/auth/error')) {
+                  console.log('[NextAuth] Preserving error redirect:', url)
+                  if (url.startsWith('/')) {
+                            return `${baseUrl}${url}`
+                          }
+                  return url
+                }
       // Handle relative URLs - convert to absolute
       if (url.startsWith('/')) {
         // After OAuth completion, NextAuth redirects to baseUrl (which becomes '/')
