@@ -55,7 +55,7 @@ export default function DeviceMockup() {
 
         {/* Trust Indicators */}
         <div className={`flex items-center justify-center ${isPhone ? 'gap-1 mt-1' : 'gap-2 mt-2'}`}>
-          {['No credit card', '14-day trial', 'Cancel anytime'].map((text, i) => (
+          {['No credit card', '7-day trial', 'Cancel anytime'].map((text, i) => (
             <div key={i} className={`flex items-center gap-0.5 ${isPhone ? 'text-[2.5px]' : 'text-[5px]'} text-gray-400`}>
               <span className="text-green-400">✓</span>
               <span>{text}</span>
