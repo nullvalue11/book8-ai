@@ -22,7 +22,7 @@ import time
 from datetime import datetime
 
 # Configuration
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://stripe-unlock.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://oauth-fix-10.preview.emergentagent.com')
 
 class BusinessRegistrationTester:
     def __init__(self):

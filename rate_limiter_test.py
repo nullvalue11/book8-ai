@@ -29,7 +29,7 @@ from pymongo import MongoClient
 from datetime import datetime
 
 # Get configuration from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://stripe-unlock.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://oauth-fix-10.preview.emergentagent.com')
 MONGO_URL = os.getenv('MONGO_URL', 'mongodb://localhost:27017')
 DB_NAME = os.getenv('DB_NAME', 'your_database_name')
 
