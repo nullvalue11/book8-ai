@@ -29,6 +29,9 @@ export const metadata = {
     description: 'Intelligent booking & automation',
     images: ['/brand/book8_ai_social_icon.png'],
   },
+  verification: {
+    google: 'VTEmVdfwkSzOOhH1--KcCwxw-vVF0uJ_HPDvmvSsqC4',
+  },
 };
 
 export default function RootLayout({ children }) {
