@@ -1,5 +1,5 @@
 import "./globals.css";
-import { ThemeProvider } from "next-themes";
+import { Providers } from "./components/Providers";
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://book8-ai.vercel.app";
 
@@ -38,9 +38,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <Providers>
           {children}
-        </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
