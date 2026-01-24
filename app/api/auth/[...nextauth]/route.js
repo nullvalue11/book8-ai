@@ -265,13 +265,40 @@ const authOptions = {
     },
     async redirect({ url, baseUrl }) {
       console.log('[NextAuth] Redirect callback - url:', url, 'baseUrl:', baseUrl)
-      // Simple redirect logic - let NextAuth handle OAuth flow
+      
+      // Simplified redirect callback - let NextAuth handle OAuth flow naturally
+      // After OAuth completion, NextAuth redirects to baseUrl by default
+      // We redirect to /auth/oauth-callback to sync NextAuth session with custom JWT
+      
+      
+          // Handle error redirects - preserve error URLs
+          if (url.includes('/auth/error')) {
+                  console.log('[NextAuth] Preserving error redirect:', url)
+                  if (url.startsWith('/')) {
+                            return `${baseUrl}${url}`
+                          }
+                  return url
+                }
+      // Handle relative URLs - convert to absolute
       if (url.startsWith('/')) {
+        // After OAuth completion, NextAuth redirects to baseUrl (which becomes '/')
+        // Redirect OAuth users to our custom callback page for JWT sync
+        if (url === '/' || url === '') {
+          return `${baseUrl}/auth/oauth-callback`
+        }
         return `${baseUrl}${url}`
       }
+      
+      // Handle absolute URLs on the same origin
       if (url.startsWith(baseUrl)) {
+        // If redirecting to baseUrl after OAuth, redirect to callback page
+        if (url === baseUrl || url === `${baseUrl}/`) {
+          return `${baseUrl}/auth/oauth-callback`
+        }
         return url
       }
+      
+      // Default: return baseUrl (NextAuth will handle external redirects)
       return baseUrl
     }
   },
@@ -301,13 +328,16 @@ const authOptions = {
   },
   logger: {
     error(code, metadata) {
-      console.error('[NextAuth] ERROR:', code, JSON.stringify(metadata, null, 2))
+      console.error('[NextAuth] ====== ERROR ======')
+      console.error('[NextAuth] Error code:', code)
+      console.error('[NextAuth] Error metadata:', JSON.stringify(metadata, null, 2))
+      console.error('[NextAuth] ==================')
     },
-    warn(code) {
-      console.warn('[NextAuth] WARN:', code)
+    warn(code, metadata) {
+      console.warn('[NextAuth] WARN:', code, metadata ? JSON.stringify(metadata) : '')
     },
     debug(code, metadata) {
-      console.log('[NextAuth] DEBUG:', code, metadata)
+      console.log('[NextAuth] DEBUG:', code, metadata ? JSON.stringify(metadata) : '')
     }
   },
   pages: {
@@ -321,6 +351,20 @@ const authOptions = {
   secret: nextAuthSecret,
   debug: true, // Enable debug mode to see more logs
 }
+
+// Add logging for provider availability
+console.log('[NextAuth] ====== PROVIDER STATUS ======')
+console.log('[NextAuth] Total providers:', providers.length)
+providers.forEach((provider, index) => {
+  const providerId = provider.id || provider.name || 'unknown'
+  console.log(`[NextAuth] Provider ${index + 1}: ${providerId}`)
+  // Log provider type for debugging
+  if (provider.type) {
+    console.log(`[NextAuth] Provider ${index + 1} type: ${provider.type}`)
+  }
+})
+console.log('[NextAuth] NEXTAUTH_URL:', nextAuthUrl)
+console.log('[NextAuth] ============================')
 
 const handler = NextAuth(authOptions)
 
