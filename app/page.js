@@ -523,8 +523,19 @@ function HomeContent(props) {
                 <Button 
                   variant="outline" 
                   className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
-                  onClick={() => {
-                    window.location.href = '/api/auth/signin/google';
+                  onClick={async () => {
+                    setIsLoading(true);
+                    try {
+                      // Use NextAuth signIn function for proper OAuth flow
+                      await signIn('google', { 
+                        callbackUrl: '/auth/oauth-callback',
+                        redirect: true
+                      });
+                    } catch (err) {
+                      console.error('[OAuth] Google sign-in error:', err);
+                      setFormError('Failed to initiate Google sign-in. Please try again.');
+                      setIsLoading(false);
+                    }
                   }}
                   disabled={isLoading}
                 >
@@ -539,8 +550,19 @@ function HomeContent(props) {
                 <Button 
                   variant="outline" 
                   className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
-                  onClick={() => {
-                    window.location.href = '/api/auth/signin/azure-ad';
+                  onClick={async () => {
+                    setIsLoading(true);
+                    try {
+                      // Use NextAuth signIn function for proper OAuth flow
+                      await signIn('azure-ad', { 
+                        callbackUrl: '/auth/oauth-callback',
+                        redirect: true
+                      });
+                    } catch (err) {
+                      console.error('[OAuth] Microsoft sign-in error:', err);
+                      setFormError('Failed to initiate Microsoft sign-in. Please try again.');
+                      setIsLoading(false);
+                    }
                   }}
                   disabled={isLoading}
                 >
