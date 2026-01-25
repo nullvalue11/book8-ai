@@ -215,7 +215,7 @@ const authOptions = {
             }
             await database.collection('users').insertOne(newUser)
           }
-          console.log('[NextAuth] SignIn successful for:', userEmail)
+          debugLog('[NextAuth] SignIn successful for:', userEmail)
           return true
         } catch (error) {
           console.error('[NextAuth] signIn callback error:', error)
