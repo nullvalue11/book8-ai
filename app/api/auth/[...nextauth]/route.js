@@ -335,7 +335,7 @@ const authOptions = {
       console.warn('[NextAuth] WARN:', code, metadata ? JSON.stringify(metadata) : '')
     },
     debug(code, metadata) {
-      console.log('[NextAuth] DEBUG:', code, metadata ? JSON.stringify(metadata) : '')
+      debugLog('[NextAuth] DEBUG:', code, metadata ? JSON.stringify(metadata) : '')
     }
   },
   pages: {
