@@ -335,4 +335,61 @@ Testing:
 
 ## Deployment Test
 Testing Vercel deployment with proper git configuration - January 2025
->>>>>>> 87195ff9cba19e80bc2fcf4bee619181aa347613
+
+## 🔐 Environment Variables
+
+Book8 AI uses environment variables for configuration. Create a `.env.local` file or set these in your hosting platform (e.g., Vercel).
+
+### Required Variables
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_BASE_URL` | Your application's base URL (e.g., `https://book8-ai.vercel.app`) |
+| `MONGO_URL` | MongoDB connection string |
+| `JWT_SECRET` | Secret for JWT token signing (min 32 characters) |
+
+### Authentication (Optional)
+
+| Variable | Description |
+|----------|-------------|
+| `NEXTAUTH_SECRET` | NextAuth.js session encryption (defaults to JWT_SECRET) |
+| `NEXTAUTH_URL` | NextAuth.js callback URL (defaults to NEXT_PUBLIC_BASE_URL) |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `AZURE_AD_CLIENT_ID` | Microsoft Azure AD client ID |
+| `AZURE_AD_CLIENT_SECRET` | Microsoft Azure AD client secret |
+
+### Integrations (Optional)
+
+| Variable | Description |
+|----------|-------------|
+| `RESEND_API_KEY` | Resend API key for email notifications |
+| `TAVILY_API_KEY` | Tavily API key for web search |
+| `STRIPE_SECRET_KEY` | Stripe secret key for payments |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+
+### Debug Mode
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEBUG_LOGS` | Enable verbose debug logging | `false` |
+
+**⚠️ Warning:** Do not enable `DEBUG_LOGS=true` in production as it may expose sensitive information.
+
+### Using DEBUG_LOGS for Development
+
+To enable verbose logging for debugging:
+
+```bash
+# In .env.local
+DEBUG_LOGS=true
+```
+
+When enabled, you'll see detailed logs for:
+- NextAuth.js authentication flow
+- Billing and subscription operations
+- API request/response details
+- Database operations
+
+For a complete list of all environment variables, see `.env.example`.
+
