@@ -96,7 +96,7 @@ if (googleClientId && googleClientSecret) {
 
 // Only add Azure AD provider if credentials exist
 if (azureClientId && azureClientSecret) {
-  console.log('[NextAuth] Adding Azure AD provider')
+  debugLog('[NextAuth] Adding Azure AD provider')
   providers.push(
     AzureADProvider({
       clientId: azureClientId,
@@ -105,7 +105,7 @@ if (azureClientId && azureClientSecret) {
     })
   )
 } else {
-  console.warn('[NextAuth] Skipping Azure AD provider - missing credentials')
+  debugLog('[NextAuth] Skipping Azure AD provider - missing credentials')
 }
 
 // Always add credentials provider
