@@ -22,7 +22,7 @@ import time
 from datetime import datetime, timedelta
 
 # Configuration
-BASE_URL = "https://oauth-fix-10.preview.emergentagent.com"
+BASE_URL = "https://config-guardian-1.preview.emergentagent.com"
 EXECUTE_ENDPOINT = f"{BASE_URL}/api/internal/ops/execute"
 LOGS_ENDPOINT = f"{BASE_URL}/api/internal/ops/logs"
 AUTH_HEADER = "x-book8-internal-secret"
