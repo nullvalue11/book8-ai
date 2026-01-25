@@ -1,5 +1,6 @@
 import Link from "next/link";
 import HeaderLogo from "./HeaderLogo";
+import { Shield } from "lucide-react";
 
 export default function Header() {
   return (
@@ -11,10 +12,17 @@ export default function Header() {
             <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Pricing
             </Link>
+            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5" />
+              Privacy
+            </Link>
           </nav>
         </div>
         {/* right-side actions */}
         <div className="flex items-center gap-4">
+          <Link href="/privacy" className="md:hidden text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Shield className="w-4 h-4" />
+          </Link>
           <Link href="/#auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Sign In</Link>
           <Link href="/pricing" className="inline-flex h-11 items-center rounded-md px-4 text-sm font-medium bg-brand-500 text-white hover:bg-brand-600 hover:scale-[1.01] active:scale-[0.99] transition-transform shadow-[0_8px_24px_-12px_rgba(124,77,255,.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
             Get Started
