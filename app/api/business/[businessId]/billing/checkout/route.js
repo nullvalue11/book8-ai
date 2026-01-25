@@ -262,7 +262,7 @@ export async function POST(request, { params }) {
       }
     })
     
-    console.log('[business/billing/checkout] Session created:', session.id)
+    debugLog('[business/billing/checkout] Session created:', session.id)
     
     // Update business with pending subscription info
     await database.collection(COLLECTION_NAME).updateOne(
