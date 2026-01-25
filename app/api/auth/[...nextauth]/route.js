@@ -350,19 +350,19 @@ const authOptions = {
   debug: DEBUG_LOGS, // Enable debug mode only when DEBUG_LOGS=true
 }
 
-// Add logging for provider availability
-console.log('[NextAuth] ====== PROVIDER STATUS ======')
-console.log('[NextAuth] Total providers:', providers.length)
+// Provider status logging (only when DEBUG_LOGS=true)
+debugLog('[NextAuth] ====== PROVIDER STATUS ======')
+debugLog('[NextAuth] Total providers:', providers.length)
 providers.forEach((provider, index) => {
   const providerId = provider.id || provider.name || 'unknown'
-  console.log(`[NextAuth] Provider ${index + 1}: ${providerId}`)
+  debugLog(`[NextAuth] Provider ${index + 1}: ${providerId}`)
   // Log provider type for debugging
   if (provider.type) {
-    console.log(`[NextAuth] Provider ${index + 1} type: ${provider.type}`)
+    debugLog(`[NextAuth] Provider ${index + 1} type: ${provider.type}`)
   }
 })
-console.log('[NextAuth] NEXTAUTH_URL:', nextAuthUrl)
-console.log('[NextAuth] ============================')
+debugLog('[NextAuth] NEXTAUTH_URL:', nextAuthUrl)
+debugLog('[NextAuth] ==============================')
 
 const handler = NextAuth(authOptions)
 
