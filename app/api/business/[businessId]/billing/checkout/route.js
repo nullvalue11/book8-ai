@@ -181,7 +181,7 @@ export async function POST(request, { params }) {
         error: 'No Stripe price configured (STRIPE_PRICE_STARTER missing)'
       }, { status: 500 })
     }
-    console.log('[business/billing/checkout] Using price:', basePriceId)
+    debugLog('[business/billing/checkout] Using price:', basePriceId)
     
     // Get or create Stripe customer for business
     let stripeCustomerId = business.subscription?.stripeCustomerId
@@ -235,7 +235,7 @@ export async function POST(request, { params }) {
     // Create checkout session
     const baseUrl = env.BASE_URL || 'http://localhost:3000'
     
-    console.log('[business/billing/checkout] Creating session:', {
+    debugLog('[business/billing/checkout] Creating session:', {
       businessId: business.businessId,
       customerId: stripeCustomerId,
       priceId: basePriceId,
