@@ -117,7 +117,7 @@ providers.push(
       password: { label: 'Password', type: 'password' }
     },
     async authorize(credentials) {
-      console.log('[NextAuth] Credentials authorize attempt for:', credentials?.email)
+      debugLog('[NextAuth] Credentials authorize attempt for:', credentials?.email)
       if (!credentials?.email || !credentials?.password) {
         return null
       }
@@ -129,17 +129,17 @@ providers.push(
         })
 
         if (!user || !user.passwordHash) {
-          console.log('[NextAuth] User not found or no password hash')
+          debugLog('[NextAuth] User not found or no password hash')
           return null
         }
 
         const isValid = await bcrypt.compare(credentials.password, user.passwordHash)
         if (!isValid) {
-          console.log('[NextAuth] Invalid password')
+          debugLog('[NextAuth] Invalid password')
           return null
         }
 
-        console.log('[NextAuth] Credentials auth successful for:', user.email)
+        debugLog('[NextAuth] Credentials auth successful for:', user.email)
         return {
           id: user.id,
           email: user.email,
