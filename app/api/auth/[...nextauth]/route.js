@@ -34,30 +34,24 @@ const azureTenantId = getEnv('AZURE_AD_TENANT_ID', 'common')
 const nextAuthUrl = getEnv('NEXTAUTH_URL')
 const nextAuthSecret = getEnv('NEXTAUTH_SECRET') || getEnv('JWT_SECRET')
 
-// Detailed configuration logging
-console.log('[NextAuth] ====== CONFIGURATION CHECK ======')
-console.log('[NextAuth] NEXTAUTH_URL:', nextAuthUrl || 'NOT SET ❌')
-console.log('[NextAuth] NEXTAUTH_SECRET:', nextAuthSecret ? 'SET ✓' : 'NOT SET ❌')
-console.log('[NextAuth] GOOGLE_CLIENT_ID:', googleClientId ? `${googleClientId.substring(0, 20)}... ✓` : 'NOT SET ❌')
-console.log('[NextAuth] GOOGLE_CLIENT_SECRET:', googleClientSecret ? 'SET ✓' : 'NOT SET ❌')
-console.log('[NextAuth] AZURE_AD_CLIENT_ID:', azureClientId ? `${azureClientId.substring(0, 20)}... ✓` : 'NOT SET ❌')
-console.log('[NextAuth] AZURE_AD_CLIENT_SECRET:', azureClientSecret ? 'SET ✓' : 'NOT SET ❌')
-console.log('[NextAuth] AZURE_AD_TENANT_ID:', azureTenantId)
-console.log('[NextAuth] NODE_ENV:', getEnv('NODE_ENV', 'development'))
-console.log('[NextAuth] =====================================')
+// Configuration logging (only when DEBUG_LOGS=true)
+debugLog('[NextAuth] ====== CONFIGURATION CHECK ======')
+debugLog('[NextAuth] NEXTAUTH_URL:', nextAuthUrl || 'NOT SET ❌')
+debugLog('[NextAuth] NEXTAUTH_SECRET:', nextAuthSecret ? 'SET ✓' : 'NOT SET ❌')
+debugLog('[NextAuth] GOOGLE_CLIENT_ID:', googleClientId ? `${googleClientId.substring(0, 20)}... ✓` : 'NOT SET ❌')
+debugLog('[NextAuth] GOOGLE_CLIENT_SECRET:', googleClientSecret ? 'SET ✓' : 'NOT SET ❌')
+debugLog('[NextAuth] AZURE_AD_CLIENT_ID:', azureClientId ? `${azureClientId.substring(0, 20)}... ✓` : 'NOT SET ❌')
+debugLog('[NextAuth] AZURE_AD_CLIENT_SECRET:', azureClientSecret ? 'SET ✓' : 'NOT SET ❌')
+debugLog('[NextAuth] AZURE_AD_TENANT_ID:', azureTenantId)
+debugLog('[NextAuth] NODE_ENV:', getEnv('NODE_ENV', 'development'))
+debugLog('[NextAuth] =====================================')
 
-// Validate critical config
+// Validate critical config - errors always logged
 if (!nextAuthUrl) {
   console.error('[NextAuth] CRITICAL: NEXTAUTH_URL is not set!')
 }
 if (!nextAuthSecret) {
   console.error('[NextAuth] CRITICAL: NEXTAUTH_SECRET is not set!')
-}
-if (!googleClientId || !googleClientSecret) {
-  console.error('[NextAuth] WARNING: Google OAuth credentials missing - Google login will fail')
-}
-if (!azureClientId || !azureClientSecret) {
-  console.error('[NextAuth] WARNING: Azure AD credentials missing - Microsoft login will fail')
 }
 
 // MongoDB connection
