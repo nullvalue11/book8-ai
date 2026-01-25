@@ -14,7 +14,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
-import { env } from '@/lib/env'
+import { env, debugLog } from '@/lib/env'
 import { extractSubscriptionBillingFields } from '@/lib/stripeSubscription'
 import { updateSubscriptionFields } from '@/lib/subscriptionUpdate'
 import { isSubscribed, getSubscriptionDetails, getPlanTier } from '@/lib/subscription'
