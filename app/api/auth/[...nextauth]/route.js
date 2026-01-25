@@ -196,7 +196,7 @@ const authOptions = {
               }
             )
           } else {
-            console.log('[NextAuth] Creating new user:', userEmail)
+            debugLog('[NextAuth] Creating new user:', userEmail)
             const newUser = {
               id: uuidv4(),
               email: userEmail,
