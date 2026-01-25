@@ -262,7 +262,7 @@ const authOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      console.log('[NextAuth] Redirect callback - url:', url, 'baseUrl:', baseUrl)
+      debugLog('[NextAuth] Redirect callback - url:', url, 'baseUrl:', baseUrl)
       
       // Simplified redirect callback - let NextAuth handle OAuth flow naturally
       // After OAuth completion, NextAuth redirects to baseUrl by default
@@ -271,7 +271,7 @@ const authOptions = {
       
           // Handle error redirects - preserve error URLs
           if (url.includes('/auth/error')) {
-                  console.log('[NextAuth] Preserving error redirect:', url)
+                  debugLog('[NextAuth] Preserving error redirect:', url)
                   if (url.startsWith('/')) {
                             return `${baseUrl}${url}`
                           }
