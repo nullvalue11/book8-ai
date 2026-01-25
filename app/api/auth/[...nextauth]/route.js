@@ -21,6 +21,10 @@ export const fetchCache = 'force-no-store'
 // Direct env access for NextAuth
 const getEnv = (key, fallback = '') => process.env[key] || fallback
 
+// Debug logging control - only log verbose info when DEBUG_LOGS=true
+const DEBUG_LOGS = getEnv('DEBUG_LOGS', 'false').toLowerCase() === 'true'
+const debugLog = (...args) => DEBUG_LOGS && console.log(...args)
+
 // Validate and log OAuth configuration on module load
 const googleClientId = getEnv('GOOGLE_CLIENT_ID')
 const googleClientSecret = getEnv('GOOGLE_CLIENT_SECRET')
