@@ -302,20 +302,20 @@ const authOptions = {
   },
   events: {
     async signIn({ user, account, profile, isNewUser }) {
-      console.log('[NextAuth] EVENT signIn:', { 
+      debugLog('[NextAuth] EVENT signIn:', { 
         provider: account?.provider, 
         email: user?.email,
         isNewUser 
       })
     },
     async signOut({ token }) {
-      console.log('[NextAuth] EVENT signOut')
+      debugLog('[NextAuth] EVENT signOut')
     },
     async createUser({ user }) {
-      console.log('[NextAuth] EVENT createUser:', user?.email)
+      debugLog('[NextAuth] EVENT createUser:', user?.email)
     },
     async linkAccount({ user, account, profile }) {
-      console.log('[NextAuth] EVENT linkAccount:', { 
+      debugLog('[NextAuth] EVENT linkAccount:', { 
         provider: account?.provider, 
         email: user?.email 
       })
