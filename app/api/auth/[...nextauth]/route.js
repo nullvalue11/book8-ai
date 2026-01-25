@@ -160,12 +160,12 @@ const authOptions = {
   providers,
   callbacks: {
     async signIn({ user, account, profile, email, credentials }) {
-      console.log('[NextAuth] ====== SIGNIN CALLBACK ======')
-      console.log('[NextAuth] Provider:', account?.provider)
-      console.log('[NextAuth] User email:', user?.email)
-      console.log('[NextAuth] Account type:', account?.type)
-      console.log('[NextAuth] Has profile:', !!profile)
-      console.log('[NextAuth] =============================')
+      debugLog('[NextAuth] ====== SIGNIN CALLBACK ======')
+      debugLog('[NextAuth] Provider:', account?.provider)
+      debugLog('[NextAuth] User email:', user?.email)
+      debugLog('[NextAuth] Account type:', account?.type)
+      debugLog('[NextAuth] Has profile:', !!profile)
+      debugLog('[NextAuth] =============================')
 
       if (account?.provider === 'google' || account?.provider === 'azure-ad') {
         try {
@@ -180,7 +180,7 @@ const authOptions = {
           let existingUser = await database.collection('users').findOne({ email: userEmail })
 
           if (existingUser) {
-            console.log('[NextAuth] Updating existing user:', userEmail)
+            debugLog('[NextAuth] Updating existing user:', userEmail)
             const updateField = account.provider === 'google' 
               ? { 'oauthProviders.google': { id: user.id, connectedAt: new Date() } }
               : { 'oauthProviders.microsoft': { id: user.id, connectedAt: new Date() } }
