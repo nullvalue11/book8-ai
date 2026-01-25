@@ -347,7 +347,7 @@ const authOptions = {
     maxAge: 7 * 24 * 60 * 60,
   },
   secret: nextAuthSecret,
-  debug: true, // Enable debug mode to see more logs
+  debug: DEBUG_LOGS, // Enable debug mode only when DEBUG_LOGS=true
 }
 
 // Add logging for provider availability
