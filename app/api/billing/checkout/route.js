@@ -169,7 +169,7 @@ export async function POST(request) {
       idempotencyKey
     })
     
-    console.log(`[billing/checkout] Created session ${session.id} for user ${user.id}, plan ${priceId}`)
+    debugLog(`[billing/checkout] Created session ${session.id} for user ${user.id}, plan ${priceId}`)
     
     return NextResponse.json({
       ok: true,
