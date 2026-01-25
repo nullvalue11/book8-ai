@@ -22,7 +22,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
-import { env } from '@/lib/env'
+import { env, debugLog } from '@/lib/env'
 import { isSubscribed, getSubscriptionDetails } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
