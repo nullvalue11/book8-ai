@@ -39,7 +39,7 @@ async function getStripe() {
 }
 
 export async function POST(request) {
-  console.log('[billing/sync] Manual subscription sync requested')
+  debugLog('[billing/sync] Manual subscription sync requested')
   
   try {
     // Authenticate user
@@ -64,8 +64,8 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 })
     }
     
-    console.log('[billing/sync] User found:', user.email)
-    console.log('[billing/sync] Current subscription:', JSON.stringify(user.subscription, null, 2))
+    debugLog('[billing/sync] User found:', user.email)
+    debugLog('[billing/sync] Current subscription:', JSON.stringify(user.subscription, null, 2))
     
     const stripe = await getStripe()
     
@@ -74,14 +74,14 @@ export async function POST(request) {
     
     // If no customer ID, try to find by email
     if (!customerId) {
-      console.log('[billing/sync] No customer ID found, searching by email...')
+      debugLog('[billing/sync] No customer ID found, searching by email...')
       const customers = await stripe.customers.list({ email: user.email, limit: 1 })
       
       if (customers.data.length > 0) {
         customerId = customers.data[0].id
-        console.log('[billing/sync] Found customer by email:', customerId)
+        debugLog('[billing/sync] Found customer by email:', customerId)
       } else {
-        console.log('[billing/sync] No Stripe customer found for this user')
+        debugLog('[billing/sync] No Stripe customer found for this user')
         return NextResponse.json({
           ok: true,
           message: 'No Stripe customer found',
@@ -91,7 +91,7 @@ export async function POST(request) {
       }
     }
     
-    console.log('[billing/sync] Customer ID:', customerId)
+    debugLog('[billing/sync] Customer ID:', customerId)
     
     // Fetch subscriptions from Stripe
     const subscriptions = await stripe.subscriptions.list({
@@ -101,7 +101,7 @@ export async function POST(request) {
       expand: ['data.items.data.price']
     })
     
-    console.log('[billing/sync] Found subscriptions:', subscriptions.data.length)
+    debugLog('[billing/sync] Found subscriptions:', subscriptions.data.length)
     
     // Find the most recent active/trialing subscription
     const activeSubscription = subscriptions.data.find(
@@ -109,12 +109,12 @@ export async function POST(request) {
     )
     
     if (activeSubscription) {
-      console.log('[billing/sync] Active subscription found:', activeSubscription.id, 'status:', activeSubscription.status)
+      debugLog('[billing/sync] Active subscription found:', activeSubscription.id, 'status:', activeSubscription.status)
       
       // Extract billing fields
       const billingFields = extractSubscriptionBillingFields(activeSubscription)
       
-      console.log('[billing/sync] Billing fields:', JSON.stringify(billingFields, null, 2))
+      debugLog('[billing/sync] Billing fields:', JSON.stringify(billingFields, null, 2))
       
       // Update the database
       await updateSubscriptionFields(database.collection('users'), user.id, {
@@ -129,7 +129,7 @@ export async function POST(request) {
         syncedAt: new Date().toISOString()
       })
       
-      console.log('[billing/sync] Database updated successfully')
+      debugLog('[billing/sync] Database updated successfully')
       
       // Fetch the updated user
       const updatedUser = await database.collection('users').findOne({ id: payload.sub })
@@ -150,7 +150,7 @@ export async function POST(request) {
       })
       
     } else {
-      console.log('[billing/sync] No active subscription found')
+      debugLog('[billing/sync] No active subscription found')
       
       // Clear subscription status if no active subscription
       await updateSubscriptionFields(database.collection('users'), user.id, {
