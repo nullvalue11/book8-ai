@@ -226,7 +226,7 @@ const authOptions = {
     },
     async jwt({ token, user, account }) {
       if (account && user) {
-        console.log('[NextAuth] JWT callback - new sign in from:', account.provider)
+        debugLog('[NextAuth] JWT callback - new sign in from:', account.provider)
         token.provider = account.provider
         token.userId = user.id
         token.email = user.email
