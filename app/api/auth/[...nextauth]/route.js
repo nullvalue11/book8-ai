@@ -154,7 +154,7 @@ providers.push(
   })
 )
 
-console.log('[NextAuth] Total providers configured:', providers.length)
+debugLog('[NextAuth] Total providers configured:', providers.length)
 
 const authOptions = {
   providers,
