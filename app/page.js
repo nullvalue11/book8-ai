@@ -717,6 +717,9 @@ function HomeContent(props) {
           </Card>
         </section>
 
+        {/* Data Privacy Section - after login */}
+        <DataPrivacy />
+
         {/* Footer */}
         <footer className="border-t border-white/10 mt-16">
           <div className="container mx-auto max-w-6xl px-6 py-8">
