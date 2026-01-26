@@ -14,6 +14,7 @@ import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
 import HomeHero from "./(home)/HomeHero";
+import DataPrivacy from "./(home)/DataPrivacy";
 import { useTheme } from "next-themes";
 import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -715,6 +716,9 @@ function HomeContent(props) {
             </CardContent>
           </Card>
         </section>
+
+        {/* Data Privacy Section - after login */}
+        <DataPrivacy />
 
         {/* Footer */}
         <footer className="border-t border-white/10 mt-16">
