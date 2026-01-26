@@ -11,7 +11,7 @@ import time
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://oauth-fix-10.preview.emergentagent.com"
+BASE_URL = "https://config-guardian-1.preview.emergentagent.com"
 AUTH_HEADER = "ops-dev-secret-change-me"
 
 def test_approval_lifecycle_edge_cases():

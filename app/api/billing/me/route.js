@@ -22,7 +22,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
-import { env } from '@/lib/env'
+import { env, debugLog } from '@/lib/env'
 import { isSubscribed, getSubscriptionDetails } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
@@ -72,14 +72,14 @@ export async function GET(request) {
     
     const user = auth.user
     
-    // Debug logging
-    console.log('[billing/me] User subscription data:', JSON.stringify(user.subscription, null, 2))
+    // Debug logging (only when DEBUG_LOGS=true)
+    debugLog('[billing/me] User subscription data:', JSON.stringify(user.subscription, null, 2))
     
     const subscribed = isSubscribed(user)
     const subscription = getSubscriptionDetails(user, env)
     
-    console.log('[billing/me] isSubscribed:', subscribed)
-    console.log('[billing/me] planTier:', subscription.planTier)
+    debugLog('[billing/me] isSubscribed:', subscribed)
+    debugLog('[billing/me] planTier:', subscription.planTier)
     
     return NextResponse.json({
       ok: true,

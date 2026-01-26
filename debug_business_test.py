@@ -9,7 +9,7 @@ import os
 import uuid
 
 # Configuration
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://oauth-fix-10.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://config-guardian-1.preview.emergentagent.com')
 
 def make_request(method, endpoint, data=None, headers=None):
     """Make HTTP request with detailed logging"""

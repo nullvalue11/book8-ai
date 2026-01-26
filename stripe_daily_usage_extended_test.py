@@ -9,7 +9,7 @@ import json
 import sys
 
 # Configuration
-BASE_URL = "https://oauth-fix-10.preview.emergentagent.com"
+BASE_URL = "https://config-guardian-1.preview.emergentagent.com"
 ENDPOINT = "/api/billing/usage/run-daily"
 
 def test_with_placeholder_token():

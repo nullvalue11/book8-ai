@@ -21,6 +21,10 @@ export const fetchCache = 'force-no-store'
 // Direct env access for NextAuth
 const getEnv = (key, fallback = '') => process.env[key] || fallback
 
+// Debug logging control - only log verbose info when DEBUG_LOGS=true
+const DEBUG_LOGS = getEnv('DEBUG_LOGS', 'false').toLowerCase() === 'true'
+const debugLog = (...args) => DEBUG_LOGS && console.log(...args)
+
 // Validate and log OAuth configuration on module load
 const googleClientId = getEnv('GOOGLE_CLIENT_ID')
 const googleClientSecret = getEnv('GOOGLE_CLIENT_SECRET')
@@ -30,30 +34,24 @@ const azureTenantId = getEnv('AZURE_AD_TENANT_ID', 'common')
 const nextAuthUrl = getEnv('NEXTAUTH_URL')
 const nextAuthSecret = getEnv('NEXTAUTH_SECRET') || getEnv('JWT_SECRET')
 
-// Detailed configuration logging
-console.log('[NextAuth] ====== CONFIGURATION CHECK ======')
-console.log('[NextAuth] NEXTAUTH_URL:', nextAuthUrl || 'NOT SET ❌')
-console.log('[NextAuth] NEXTAUTH_SECRET:', nextAuthSecret ? 'SET ✓' : 'NOT SET ❌')
-console.log('[NextAuth] GOOGLE_CLIENT_ID:', googleClientId ? `${googleClientId.substring(0, 20)}... ✓` : 'NOT SET ❌')
-console.log('[NextAuth] GOOGLE_CLIENT_SECRET:', googleClientSecret ? 'SET ✓' : 'NOT SET ❌')
-console.log('[NextAuth] AZURE_AD_CLIENT_ID:', azureClientId ? `${azureClientId.substring(0, 20)}... ✓` : 'NOT SET ❌')
-console.log('[NextAuth] AZURE_AD_CLIENT_SECRET:', azureClientSecret ? 'SET ✓' : 'NOT SET ❌')
-console.log('[NextAuth] AZURE_AD_TENANT_ID:', azureTenantId)
-console.log('[NextAuth] NODE_ENV:', getEnv('NODE_ENV', 'development'))
-console.log('[NextAuth] =====================================')
+// Configuration logging (only when DEBUG_LOGS=true)
+debugLog('[NextAuth] ====== CONFIGURATION CHECK ======')
+debugLog('[NextAuth] NEXTAUTH_URL:', nextAuthUrl || 'NOT SET ❌')
+debugLog('[NextAuth] NEXTAUTH_SECRET:', nextAuthSecret ? 'SET ✓' : 'NOT SET ❌')
+debugLog('[NextAuth] GOOGLE_CLIENT_ID:', googleClientId ? `${googleClientId.substring(0, 20)}... ✓` : 'NOT SET ❌')
+debugLog('[NextAuth] GOOGLE_CLIENT_SECRET:', googleClientSecret ? 'SET ✓' : 'NOT SET ❌')
+debugLog('[NextAuth] AZURE_AD_CLIENT_ID:', azureClientId ? `${azureClientId.substring(0, 20)}... ✓` : 'NOT SET ❌')
+debugLog('[NextAuth] AZURE_AD_CLIENT_SECRET:', azureClientSecret ? 'SET ✓' : 'NOT SET ❌')
+debugLog('[NextAuth] AZURE_AD_TENANT_ID:', azureTenantId)
+debugLog('[NextAuth] NODE_ENV:', getEnv('NODE_ENV', 'development'))
+debugLog('[NextAuth] =====================================')
 
-// Validate critical config
+// Validate critical config - errors always logged
 if (!nextAuthUrl) {
   console.error('[NextAuth] CRITICAL: NEXTAUTH_URL is not set!')
 }
 if (!nextAuthSecret) {
   console.error('[NextAuth] CRITICAL: NEXTAUTH_SECRET is not set!')
-}
-if (!googleClientId || !googleClientSecret) {
-  console.error('[NextAuth] WARNING: Google OAuth credentials missing - Google login will fail')
-}
-if (!azureClientId || !azureClientSecret) {
-  console.error('[NextAuth] WARNING: Azure AD credentials missing - Microsoft login will fail')
 }
 
 // MongoDB connection
@@ -78,7 +76,7 @@ const providers = []
 
 // Only add Google provider if credentials exist
 if (googleClientId && googleClientSecret) {
-  console.log('[NextAuth] Adding Google provider')
+  debugLog('[NextAuth] Adding Google provider')
   providers.push(
     GoogleProvider({
       clientId: googleClientId,
@@ -93,12 +91,12 @@ if (googleClientId && googleClientSecret) {
     })
   )
 } else {
-  console.warn('[NextAuth] Skipping Google provider - missing credentials')
+  debugLog('[NextAuth] Skipping Google provider - missing credentials')
 }
 
 // Only add Azure AD provider if credentials exist
 if (azureClientId && azureClientSecret) {
-  console.log('[NextAuth] Adding Azure AD provider')
+  debugLog('[NextAuth] Adding Azure AD provider')
   providers.push(
     AzureADProvider({
       clientId: azureClientId,
@@ -107,7 +105,7 @@ if (azureClientId && azureClientSecret) {
     })
   )
 } else {
-  console.warn('[NextAuth] Skipping Azure AD provider - missing credentials')
+  debugLog('[NextAuth] Skipping Azure AD provider - missing credentials')
 }
 
 // Always add credentials provider
@@ -119,7 +117,7 @@ providers.push(
       password: { label: 'Password', type: 'password' }
     },
     async authorize(credentials) {
-      console.log('[NextAuth] Credentials authorize attempt for:', credentials?.email)
+      debugLog('[NextAuth] Credentials authorize attempt for:', credentials?.email)
       if (!credentials?.email || !credentials?.password) {
         return null
       }
@@ -131,17 +129,17 @@ providers.push(
         })
 
         if (!user || !user.passwordHash) {
-          console.log('[NextAuth] User not found or no password hash')
+          debugLog('[NextAuth] User not found or no password hash')
           return null
         }
 
         const isValid = await bcrypt.compare(credentials.password, user.passwordHash)
         if (!isValid) {
-          console.log('[NextAuth] Invalid password')
+          debugLog('[NextAuth] Invalid password')
           return null
         }
 
-        console.log('[NextAuth] Credentials auth successful for:', user.email)
+        debugLog('[NextAuth] Credentials auth successful for:', user.email)
         return {
           id: user.id,
           email: user.email,
@@ -156,18 +154,18 @@ providers.push(
   })
 )
 
-console.log('[NextAuth] Total providers configured:', providers.length)
+debugLog('[NextAuth] Total providers configured:', providers.length)
 
 const authOptions = {
   providers,
   callbacks: {
     async signIn({ user, account, profile, email, credentials }) {
-      console.log('[NextAuth] ====== SIGNIN CALLBACK ======')
-      console.log('[NextAuth] Provider:', account?.provider)
-      console.log('[NextAuth] User email:', user?.email)
-      console.log('[NextAuth] Account type:', account?.type)
-      console.log('[NextAuth] Has profile:', !!profile)
-      console.log('[NextAuth] =============================')
+      debugLog('[NextAuth] ====== SIGNIN CALLBACK ======')
+      debugLog('[NextAuth] Provider:', account?.provider)
+      debugLog('[NextAuth] User email:', user?.email)
+      debugLog('[NextAuth] Account type:', account?.type)
+      debugLog('[NextAuth] Has profile:', !!profile)
+      debugLog('[NextAuth] =============================')
 
       if (account?.provider === 'google' || account?.provider === 'azure-ad') {
         try {
@@ -182,7 +180,7 @@ const authOptions = {
           let existingUser = await database.collection('users').findOne({ email: userEmail })
 
           if (existingUser) {
-            console.log('[NextAuth] Updating existing user:', userEmail)
+            debugLog('[NextAuth] Updating existing user:', userEmail)
             const updateField = account.provider === 'google' 
               ? { 'oauthProviders.google': { id: user.id, connectedAt: new Date() } }
               : { 'oauthProviders.microsoft': { id: user.id, connectedAt: new Date() } }
@@ -198,7 +196,7 @@ const authOptions = {
               }
             )
           } else {
-            console.log('[NextAuth] Creating new user:', userEmail)
+            debugLog('[NextAuth] Creating new user:', userEmail)
             const newUser = {
               id: uuidv4(),
               email: userEmail,
@@ -217,7 +215,7 @@ const authOptions = {
             }
             await database.collection('users').insertOne(newUser)
           }
-          console.log('[NextAuth] SignIn successful for:', userEmail)
+          debugLog('[NextAuth] SignIn successful for:', userEmail)
           return true
         } catch (error) {
           console.error('[NextAuth] signIn callback error:', error)
@@ -228,7 +226,7 @@ const authOptions = {
     },
     async jwt({ token, user, account }) {
       if (account && user) {
-        console.log('[NextAuth] JWT callback - new sign in from:', account.provider)
+        debugLog('[NextAuth] JWT callback - new sign in from:', account.provider)
         token.provider = account.provider
         token.userId = user.id
         token.email = user.email
@@ -264,7 +262,7 @@ const authOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      console.log('[NextAuth] Redirect callback - url:', url, 'baseUrl:', baseUrl)
+      debugLog('[NextAuth] Redirect callback - url:', url, 'baseUrl:', baseUrl)
       
       // Simplified redirect callback - let NextAuth handle OAuth flow naturally
       // After OAuth completion, NextAuth redirects to baseUrl by default
@@ -273,7 +271,7 @@ const authOptions = {
       
           // Handle error redirects - preserve error URLs
           if (url.includes('/auth/error')) {
-                  console.log('[NextAuth] Preserving error redirect:', url)
+                  debugLog('[NextAuth] Preserving error redirect:', url)
                   if (url.startsWith('/')) {
                             return `${baseUrl}${url}`
                           }
@@ -304,20 +302,20 @@ const authOptions = {
   },
   events: {
     async signIn({ user, account, profile, isNewUser }) {
-      console.log('[NextAuth] EVENT signIn:', { 
+      debugLog('[NextAuth] EVENT signIn:', { 
         provider: account?.provider, 
         email: user?.email,
         isNewUser 
       })
     },
     async signOut({ token }) {
-      console.log('[NextAuth] EVENT signOut')
+      debugLog('[NextAuth] EVENT signOut')
     },
     async createUser({ user }) {
-      console.log('[NextAuth] EVENT createUser:', user?.email)
+      debugLog('[NextAuth] EVENT createUser:', user?.email)
     },
     async linkAccount({ user, account, profile }) {
-      console.log('[NextAuth] EVENT linkAccount:', { 
+      debugLog('[NextAuth] EVENT linkAccount:', { 
         provider: account?.provider, 
         email: user?.email 
       })
@@ -337,7 +335,7 @@ const authOptions = {
       console.warn('[NextAuth] WARN:', code, metadata ? JSON.stringify(metadata) : '')
     },
     debug(code, metadata) {
-      console.log('[NextAuth] DEBUG:', code, metadata ? JSON.stringify(metadata) : '')
+      debugLog('[NextAuth] DEBUG:', code, metadata ? JSON.stringify(metadata) : '')
     }
   },
   pages: {
@@ -349,22 +347,22 @@ const authOptions = {
     maxAge: 7 * 24 * 60 * 60,
   },
   secret: nextAuthSecret,
-  debug: true, // Enable debug mode to see more logs
+  debug: DEBUG_LOGS, // Enable debug mode only when DEBUG_LOGS=true
 }
 
-// Add logging for provider availability
-console.log('[NextAuth] ====== PROVIDER STATUS ======')
-console.log('[NextAuth] Total providers:', providers.length)
+// Provider status logging (only when DEBUG_LOGS=true)
+debugLog('[NextAuth] ====== PROVIDER STATUS ======')
+debugLog('[NextAuth] Total providers:', providers.length)
 providers.forEach((provider, index) => {
   const providerId = provider.id || provider.name || 'unknown'
-  console.log(`[NextAuth] Provider ${index + 1}: ${providerId}`)
+  debugLog(`[NextAuth] Provider ${index + 1}: ${providerId}`)
   // Log provider type for debugging
   if (provider.type) {
-    console.log(`[NextAuth] Provider ${index + 1} type: ${provider.type}`)
+    debugLog(`[NextAuth] Provider ${index + 1} type: ${provider.type}`)
   }
 })
-console.log('[NextAuth] NEXTAUTH_URL:', nextAuthUrl)
-console.log('[NextAuth] ============================')
+debugLog('[NextAuth] NEXTAUTH_URL:', nextAuthUrl)
+debugLog('[NextAuth] ==============================')
 
 const handler = NextAuth(authOptions)
 

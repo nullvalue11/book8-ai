@@ -24,7 +24,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
-import { env } from '@/lib/env'
+import { env, debugLog } from '@/lib/env'
 import {
   getStripe,
   buildSubscriptionLineItems,
@@ -169,7 +169,7 @@ export async function POST(request) {
       idempotencyKey
     })
     
-    console.log(`[billing/checkout] Created session ${session.id} for user ${user.id}, plan ${priceId}`)
+    debugLog(`[billing/checkout] Created session ${session.id} for user ${user.id}, plan ${priceId}`)
     
     return NextResponse.json({
       ok: true,

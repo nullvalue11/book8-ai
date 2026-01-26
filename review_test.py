@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 import os
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://oauth-fix-10.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://config-guardian-1.preview.emergentagent.com')
 print(f"Testing against: {BASE_URL}")
 
 def test_app_router_presence():
