@@ -192,7 +192,12 @@ export async function POST(request) {
       cancel_url: `${baseUrl}/dashboard/business?checkout=canceled&businessId=${businessId}`,
       metadata: {
         userId: user.id,
-        businessId: business.businessId
+        businessId: business.businessId,
+        businessName: business.name,
+        timezone: business.timezone || 'America/Toronto',
+        category: business.category || null,
+        plan: 'starter',
+        priceId
       }
     })
     

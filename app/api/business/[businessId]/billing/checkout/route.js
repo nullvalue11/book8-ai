@@ -242,6 +242,11 @@ export async function POST(request, { params }) {
       baseUrl
     })
     
+    let planName = 'starter'
+    if (basePriceId === env.STRIPE?.PRICE_ENTERPRISE) planName = 'enterprise'
+    else if (basePriceId === env.STRIPE?.PRICE_GROWTH) planName = 'growth'
+    else if (basePriceId === env.STRIPE?.PRICE_STARTER) planName = 'starter'
+
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',
@@ -252,7 +257,10 @@ export async function POST(request, { params }) {
         userId: user.id,
         businessId: business.businessId,
         businessName: business.name,
-        priceId: basePriceId
+        priceId: basePriceId,
+        timezone: business.timezone || 'America/Toronto',
+        category: business.category || null,
+        plan: planName
       },
       subscription_data: {
         metadata: {

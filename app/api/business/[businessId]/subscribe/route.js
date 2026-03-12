@@ -179,7 +179,11 @@ export async function POST(request, { params }) {
       metadata: {
         userId: user.id,
         businessId: business.businessId,
-        businessName: business.name
+        businessName: business.name,
+        timezone: business.timezone || 'America/Toronto',
+        category: business.category || null,
+        plan: 'starter',
+        priceId
       },
       subscription_data: {
         metadata: {

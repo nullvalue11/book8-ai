@@ -145,6 +145,93 @@ async function handleSubscriptionEvent(event, stripe, database) {
         )
         console.log(`[webhooks/stripe] checkout.session.completed: Updated business ${businessId} subscription to active`)
       }
+
+      // ── TENANT PROVISIONING ──────────────────────────────────
+      // After successful checkout, provision the tenant in core-api
+      // so they're immediately bookable by phone.
+      // This is idempotent — safe if Stripe sends duplicate webhooks.
+      // ──────────────────────────────────────────────────────────
+      try {
+        const session = event.data.object
+
+        const businessName = session.metadata?.businessName || session.customer_details?.name || null
+        const businessEmail = session.customer_email || session.customer_details?.email || null
+        const businessTimezone = session.metadata?.timezone || 'America/Toronto'
+        const businessCategory = session.metadata?.category || null
+
+        const provisionBusinessId = session.metadata?.businessId || (businessName
+          ? businessName
+              .toLowerCase()
+              .trim()
+              .replace(/[^\w\s-]/g, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-')
+              .replace(/^-+|-+$/g, '')
+          : null)
+
+        const lineItems = session.line_items?.data || []
+        const priceId = lineItems[0]?.price?.id || session.metadata?.priceId || null
+        let plan = session.metadata?.plan || 'starter'
+        if (priceId === env.STRIPE?.PRICE_ENTERPRISE) plan = 'enterprise'
+        else if (priceId === env.STRIPE?.PRICE_GROWTH) plan = 'growth'
+        else if (priceId === env.STRIPE?.PRICE_STARTER) plan = 'starter'
+
+        if (provisionBusinessId && businessName) {
+          const coreApiUrl = env.CORE_API_BASE_URL ||
+            process.env.CORE_API_URL ||
+            process.env.BOOK8_CORE_API_URL ||
+            'https://book8-core-api.onrender.com'
+
+          const coreApiSecret = env.CORE_API_INTERNAL_SECRET ||
+            process.env.INTERNAL_API_SECRET ||
+            ''
+
+          const provisionResponse = await fetch(
+            `${coreApiUrl}/internal/provision-from-stripe`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-book8-internal-secret': coreApiSecret
+              },
+              body: JSON.stringify({
+                businessId: provisionBusinessId,
+                name: businessName,
+                email: businessEmail,
+                category: businessCategory,
+                timezone: businessTimezone,
+                stripeCustomerId: session.customer || null,
+                stripeSubscriptionId: session.subscription || null,
+                plan
+              })
+            }
+          )
+
+          const provisionResult = await provisionResponse.json().catch(() => ({}))
+
+          if (provisionResponse.ok && provisionResult.ok) {
+            console.log('[stripe-webhook] Tenant provisioned:', {
+              businessId: provisionResult.businessId,
+              created: provisionResult.created,
+              defaultsEnsured: provisionResult.defaultsEnsured
+            })
+          } else {
+            console.error('[stripe-webhook] Tenant provisioning failed:', {
+              status: provisionResponse.status,
+              error: provisionResult.error || 'Unknown error',
+              businessId: provisionBusinessId
+            })
+          }
+        } else {
+          console.warn('[stripe-webhook] Skipping provisioning — missing businessId or name:', {
+            hasBusinessId: !!provisionBusinessId,
+            hasBusinessName: !!businessName,
+            sessionId: session.id
+          })
+        }
+      } catch (provisionError) {
+        console.error('[stripe-webhook] Error during tenant provisioning:', provisionError)
+      }
       
       return
     }
