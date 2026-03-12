@@ -147,6 +147,23 @@ export async function POST(request) {
       ? `${env.BASE_URL}/dashboard/business?checkout=canceled&businessId=${businessId}`
       : `${env.BASE_URL}/pricing?canceled=true`
     
+    // Enrich metadata for tenant provisioning in webhook (businessName, timezone, plan)
+    let businessName = null
+    let timezone = 'America/Toronto'
+    let category = null
+    let planName = 'starter'
+    if (businessId) {
+      const business = await database.collection('businesses').findOne({ businessId })
+      if (business) {
+        businessName = business.name
+        timezone = business.timezone || timezone
+        category = business.category || null
+      }
+      if (priceId === env.STRIPE?.PRICE_ENTERPRISE) planName = 'enterprise'
+      else if (priceId === env.STRIPE?.PRICE_GROWTH) planName = 'growth'
+      else if (priceId === env.STRIPE?.PRICE_STARTER) planName = 'starter'
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
@@ -156,7 +173,13 @@ export async function POST(request) {
       metadata: {
         userId: user.id,
         priceId: priceId,
-        ...(businessId && { businessId })
+        ...(businessId && {
+          businessId,
+          ...(businessName && { businessName }),
+          timezone,
+          ...(category != null && { category }),
+          plan: planName
+        })
       },
       subscription_data: {
         metadata: {
