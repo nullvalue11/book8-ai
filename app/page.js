@@ -16,7 +16,7 @@ import HeaderLogo from "./components/HeaderLogo";
 import HomeHero from "./(home)/HomeHero";
 import DataPrivacy from "./(home)/DataPrivacy";
 import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
@@ -101,6 +101,10 @@ function HomeContent(props) {
 
   const [archivedCount, setArchivedCount] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [justCompletedCheckout, setJustCompletedCheckout] = useState(false);
+
+  const [phoneSetup, setPhoneSetup] = useState(null);
+  const [phoneSetupLoading, setPhoneSetupLoading] = useState(false);
 
   const [formData, setFormData] = useState({ email: "", password: "", name: "" });
   const [formError, setFormError] = useState("");
@@ -187,7 +191,8 @@ function HomeContent(props) {
     
     if (checkoutStatus === 'success' || sessionId) {
       console.log('[Dashboard] Checkout success detected, syncing subscription...');
-      
+      setJustCompletedCheckout(true);
+
       if (token) {
         // First, call the sync endpoint to ensure database is up to date
         // Then check subscription status
@@ -272,6 +277,15 @@ function HomeContent(props) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, token]);
+
+  // After checkout success, guide user into phone setup wizard
+  useEffect(() => {
+    if (justCompletedCheckout && token) {
+      try {
+        router.push('/setup');
+      } catch {}
+    }
+  }, [justCompletedCheckout, token, router]);
 
   // Manual subscription sync function
   async function syncSubscription() {
@@ -376,6 +390,41 @@ function HomeContent(props) {
   async function openCalendars() { try { const res = await api(`/integrations/google/calendars`, { method: "GET" }); setCalendars(res?.calendars || []); setCalendarDialogOpen(true); } catch (err) { alert(err.message || "Failed to load calendars"); } }
   async function saveCalendars() { try { setSavingCalendars(true); const selected = calendars.filter((c) => c.selected).map((c) => c.id); await api(`/integrations/google/calendars`, { method: "POST", body: JSON.stringify({ selectedCalendarIds: selected }), }); setCalendarDialogOpen(false); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Failed to save selections"); } finally { setSavingCalendars(false); } }
   async function syncGoogle() { try { const res = await api(`/integrations/google/sync`, { method: "POST" }); alert(`Synced: created=${res.created}, updated=${res.updated}, deleted=${res.deleted}`); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Sync failed"); } }
+
+  // Load primary business phone setup status for dashboard card
+  async function fetchPhoneSetupStatus() {
+    if (!token) return;
+    try {
+      setPhoneSetupLoading(true);
+      const bizRes = await api(`/business/register`, { method: "GET" });
+      const businesses = bizRes.businesses || [];
+      if (!businesses.length) {
+        setPhoneSetup(null);
+        return;
+      }
+      const primary = businesses[0];
+      const setupRes = await api(`/business/phone-setup?businessId=${encodeURIComponent(primary.businessId)}`, { method: "GET" });
+      setPhoneSetup({
+        businessId: primary.businessId,
+        name: primary.name,
+        forwardingEnabled: setupRes.forwardingEnabled,
+        forwardingFrom: setupRes.forwardingFrom,
+        assignedTwilioNumber: setupRes.assignedTwilioNumber,
+        numberSetupMethod: setupRes.numberSetupMethod
+      });
+    } catch (err) {
+      console.error('[Dashboard] Failed to load phone setup status:', err);
+      setPhoneSetup(null);
+    } finally {
+      setPhoneSetupLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (token) {
+      fetchPhoneSetupStatus();
+    }
+  }, [token]);
 
   function handleLogout() { 
     // Abort any pending fetches
@@ -963,6 +1012,76 @@ function HomeContent(props) {
             </CardContent>
           </Card>
           
+          {/* Booking Line Status Card */}
+          <Card className="bg-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="w-5 h-5" />
+                Your Booking Line
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {phoneSetupLoading ? (
+                <p className="text-muted-foreground">Loading booking line status...</p>
+              ) : !phoneSetup ? (
+                <p className="text-muted-foreground">
+                  Set up a business to activate your AI booking line.
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <p>
+                      <span className="font-medium">Status:</span>{' '}
+                      {phoneSetup.numberSetupMethod || phoneSetup.forwardingEnabled || phoneSetup.assignedTwilioNumber ? (
+                        <span className="text-emerald-600 font-medium">Active</span>
+                      ) : (
+                        <span className="text-amber-600 font-medium">Setup needed</span>
+                      )}
+                    </p>
+                    <p>
+                      <span className="font-medium">Business:</span>{' '}
+                      {phoneSetup.name}
+                    </p>
+                    <p>
+                      <span className="font-medium">Book8 number:</span>{' '}
+                      {phoneSetup.assignedTwilioNumber || 'Pending assignment'}
+                    </p>
+                    {Array.isArray(phoneSetup.forwardingFrom) && phoneSetup.forwardingFrom.length > 0 && (
+                      <p>
+                        <span className="font-medium">Forwarding from:</span>{' '}
+                        {phoneSetup.forwardingFrom.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push(`/setup?businessId=${encodeURIComponent(phoneSetup.businessId)}`)}
+                    >
+                      {phoneSetup.numberSetupMethod || phoneSetup.forwardingEnabled || phoneSetup.assignedTwilioNumber
+                        ? 'Manage'
+                        : 'Complete Setup'}
+                    </Button>
+                    {phoneSetup.assignedTwilioNumber && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          try {
+                            window.location.href = `tel:${phoneSetup.assignedTwilioNumber}`;
+                          } catch {}
+                        }}
+                      >
+                        Test Call
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Business Registration Card */}
           <Card className="bg-card">
             <CardHeader>

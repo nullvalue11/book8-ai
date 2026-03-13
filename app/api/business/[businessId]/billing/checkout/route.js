@@ -260,7 +260,8 @@ export async function POST(request, { params }) {
         priceId: basePriceId,
         timezone: business.timezone || 'America/Toronto',
         category: business.category || null,
-        plan: planName
+        plan: planName,
+        numberSetupMethod: 'pending'
       },
       subscription_data: {
         metadata: {

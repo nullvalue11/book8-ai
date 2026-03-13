@@ -197,7 +197,8 @@ export async function POST(request) {
         timezone: business.timezone || 'America/Toronto',
         category: business.category || null,
         plan: 'starter',
-        priceId
+        priceId,
+        numberSetupMethod: 'pending'
       }
     })
     

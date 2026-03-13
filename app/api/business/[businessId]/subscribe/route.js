@@ -183,7 +183,8 @@ export async function POST(request, { params }) {
         timezone: business.timezone || 'America/Toronto',
         category: business.category || null,
         plan: 'starter',
-        priceId
+        priceId,
+        numberSetupMethod: 'pending'
       },
       subscription_data: {
         metadata: {

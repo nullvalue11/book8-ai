@@ -179,7 +179,8 @@ export async function POST(request) {
           timezone,
           ...(category != null && { category }),
           plan: planName
-        })
+        }),
+        numberSetupMethod: 'pending'
       },
       subscription_data: {
         metadata: {
