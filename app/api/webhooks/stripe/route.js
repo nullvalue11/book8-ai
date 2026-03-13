@@ -177,14 +177,8 @@ async function handleSubscriptionEvent(event, stripe, database) {
         else if (priceId === env.STRIPE?.PRICE_STARTER) plan = 'starter'
 
         if (provisionBusinessId && businessName) {
-          const coreApiUrl = env.CORE_API_BASE_URL ||
-            process.env.CORE_API_URL ||
-            process.env.BOOK8_CORE_API_URL ||
-            'https://book8-core-api.onrender.com'
-
-          const coreApiSecret = env.CORE_API_INTERNAL_SECRET ||
-            process.env.INTERNAL_API_SECRET ||
-            ''
+          const coreApiUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
+          const coreApiSecret = env.CORE_API_INTERNAL_SECRET || ''
 
           const provisionResponse = await fetch(
             `${coreApiUrl}/internal/provision-from-stripe`,
