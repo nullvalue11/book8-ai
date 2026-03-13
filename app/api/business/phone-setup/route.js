@@ -36,17 +36,8 @@ async function verifyAuth(request, database) {
 }
 
 function getCoreApiConfig() {
-  const baseUrl =
-    env.CORE_API_BASE_URL ||
-    process.env.CORE_API_URL ||
-    'https://book8-core-api.onrender.com'
-
-  const secret =
-    env.CORE_API_INTERNAL_SECRET ||
-    process.env.CORE_API_INTERNAL_SECRET ||
-    process.env.INTERNAL_API_SECRET ||
-    ''
-
+  const baseUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
+  const secret = env.CORE_API_INTERNAL_SECRET || ''
   return { baseUrl, secret }
 }
 
