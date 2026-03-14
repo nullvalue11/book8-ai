@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Header from "@/components/Header";
@@ -70,18 +71,54 @@ const plans = [
 function PricingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState({});
   const [isPaywall, setIsPaywall] = useState(false);
   const [feature, setFeature] = useState(null);
   const [businessId, setBusinessId] = useState(null);
+  const [sessionSynced, setSessionSynced] = useState(false);
 
+  // Read token from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const t = localStorage.getItem("book8_token");
       if (t) setToken(t);
     }
   }, []);
+
+  // If we have NextAuth session but no JWT token, sync to get token so API calls work
+  useEffect(() => {
+    if (sessionSynced || token) return;
+    if (status !== "authenticated" || !session?.user?.email) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const syncRes = await fetch("/api/credentials/oauth-sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: session.user.email,
+            name: session.user.name || "",
+            provider: session.provider || "oauth"
+          }),
+          credentials: "include"
+        });
+        const syncData = await syncRes.json();
+        if (!cancelled && syncData.ok && syncData.token) {
+          localStorage.setItem("book8_token", syncData.token);
+          localStorage.setItem("book8_user", JSON.stringify(syncData.user));
+          setToken(syncData.token);
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        if (!cancelled) setSessionSynced(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [status, session?.user?.email, session?.user?.name, session?.provider, token, sessionSynced]);
 
   useEffect(() => {
     // Check for paywall mode
@@ -100,22 +137,33 @@ function PricingContent() {
     }
   }, [searchParams]);
 
+  const buildReturnUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    if (searchParams.get("paywall") === "1") params.set("paywall", "1");
+    if (businessId) params.set("businessId", businessId);
+    const feat = searchParams.get("feature");
+    if (feat) params.set("feature", feat);
+    const q = params.toString();
+    return `/pricing${q ? `?${q}` : ""}`;
+  }, [searchParams, businessId]);
+
   async function handleSelectPlan(planId) {
-    if (!token) {
-      // Redirect to home page with auth section
-      router.push("/#auth");
+    const authToken = token || (typeof window !== "undefined" ? localStorage.getItem("book8_token") : null);
+    if (!authToken) {
+      const returnUrl = buildReturnUrl();
+      router.push(returnUrl ? `/#auth?callbackUrl=${encodeURIComponent(returnUrl)}` : "/#auth");
       return;
     }
 
-    setIsLoading({ ...isLoading, [planId]: true });
+    setIsLoading((prev) => ({ ...prev, [planId]: true }));
 
     try {
-      // Get the price ID from env (we'll need to fetch this from an API)
       const res = await fetch("/api/billing/plans", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` },
+        credentials: "include"
       });
       const data = await res.json();
-      
+
       if (!data.ok) {
         throw new Error(data.error || "Failed to get plans");
       }
@@ -125,14 +173,14 @@ function PricingContent() {
         throw new Error("Plan not available");
       }
 
-      // Create checkout session - include businessId if present
       const checkoutRes = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${authToken}`
         },
-        body: JSON.stringify({ 
+        credentials: "include",
+        body: JSON.stringify({
           priceId,
           businessId: businessId || undefined
         })
@@ -143,12 +191,15 @@ function PricingContent() {
         throw new Error(checkoutData.error || "Failed to create checkout");
       }
 
-      // Redirect to Stripe Checkout
-      window.location.href = checkoutData.checkoutUrl;
+      if (checkoutData.checkoutUrl) {
+        window.location.href = checkoutData.checkoutUrl;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
     } catch (err) {
       alert(err.message);
     } finally {
-      setIsLoading({ ...isLoading, [planId]: false });
+      setIsLoading((prev) => ({ ...prev, [planId]: false }));
     }
   }
 
@@ -157,12 +208,14 @@ function PricingContent() {
     phone: "You need a subscription to use AI phone agent features."
   };
 
+  const isLoggedIn = !!token || (status === "authenticated" && session?.user);
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <Header />
 
       {/* Paywall Banner */}
-      {isPaywall && token && (
+      {isPaywall && isLoggedIn && (
         <div className="bg-brand-500/10 border-b border-brand-500/30">
           <div className="max-w-4xl mx-auto px-6 py-4">
             <div className="flex items-center gap-3">
@@ -184,10 +237,10 @@ function PricingContent() {
       <section className="pt-20 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-6 text-foreground">
-            {isPaywall && token ? "Choose Your Plan" : "Simple, transparent pricing"}
+            {isPaywall && isLoggedIn ? "Choose Your Plan" : "Simple, transparent pricing"}
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            {isPaywall && token 
+            {isPaywall && isLoggedIn
               ? "Subscribe to unlock calendar sync, AI phone agents, and all premium features."
               : "Choose the plan that's right for you. All plans include our core scheduling features with metered billing for AI call minutes."}
           </p>
@@ -257,7 +310,7 @@ function PricingContent() {
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
-                          {isPaywall && token ? `Subscribe to ${plan.name}` : "Get Started"} <ArrowRight className="w-4 h-4" />
+                          {isPaywall && isLoggedIn ? `Subscribe to ${plan.name}` : "Get Started"} <ArrowRight className="w-4 h-4" />
                         </span>
                       )}
                     </Button>

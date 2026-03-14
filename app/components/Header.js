@@ -1,8 +1,35 @@
+"use client";
+
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
+import { useEffect, useState } from "react";
 import HeaderLogo from "./HeaderLogo";
 import { Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Header() {
+  const { data: session, status } = useSession();
+  const [hasToken, setHasToken] = useState(false);
+  const [tokenUserEmail, setTokenUserEmail] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const t = localStorage.getItem("book8_token");
+      setHasToken(!!t);
+      if (t) {
+        try {
+          const u = localStorage.getItem("book8_user");
+          setTokenUserEmail(u ? JSON.parse(u).email || "" : "");
+        } catch {
+          setTokenUserEmail("");
+        }
+      }
+    }
+  }, []);
+
+  const isLoggedIn = (status === "authenticated" && session?.user) || hasToken;
+  const displayEmail = session?.user?.email || tokenUserEmail;
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6">
@@ -23,10 +50,36 @@ export default function Header() {
           <Link href="/privacy" className="md:hidden text-sm text-muted-foreground hover:text-foreground transition-colors">
             <Shield className="w-4 h-4" />
           </Link>
-          <Link href="/#auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Sign In</Link>
-          <Link href="/pricing" className="inline-flex h-11 items-center rounded-md px-4 text-sm font-medium bg-brand-500 text-white hover:bg-brand-600 hover:scale-[1.01] active:scale-[0.99] transition-transform shadow-[0_8px_24px_-12px_rgba(124,77,255,.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-            Get Started
-          </Link>
+          {isLoggedIn ? (
+            <>
+              <span className="text-sm text-muted-foreground hidden sm:inline truncate max-w-[180px]">
+                {displayEmail}
+              </span>
+              <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Dashboard
+              </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    localStorage.removeItem("book8_token");
+                    localStorage.removeItem("book8_user");
+                  }
+                  signOut({ callbackUrl: "/" });
+                }}
+              >
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link href="/#auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Sign In</Link>
+              <Link href="/pricing" className="inline-flex h-11 items-center rounded-md px-4 text-sm font-medium bg-brand-500 text-white hover:bg-brand-600 hover:scale-[1.01] active:scale-[0.99] transition-transform shadow-[0_8px_24px_-12px_rgba(124,77,255,.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>
