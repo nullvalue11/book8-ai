@@ -55,6 +55,53 @@ const SUBSCRIPTION_COLORS = {
   canceled: 'bg-gray-100 text-gray-800'
 }
 
+/** Subscription status from user (Stripe webhook) or business record */
+function getSubscriptionStatus(business, user) {
+  if (user?.subscription?.status === 'active' || user?.subscription?.status === 'trialing') {
+    const plan = user.subscription?.plan || 'starter'
+    return {
+      status: 'active',
+      plan,
+      label: plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'Active'
+    }
+  }
+  if (business?.subscription?.status === 'active' || business?.subscription?.status === 'trialing') {
+    return { status: 'active', plan: 'starter', label: 'Active' }
+  }
+  if (business?.plan && business.plan !== 'none') {
+    const plan = business.plan
+    return {
+      status: 'active',
+      plan,
+      label: plan.charAt(0).toUpperCase() + plan.slice(1)
+    }
+  }
+  if (business?.stripeSubscriptionId) {
+    return { status: 'active', plan: 'starter', label: 'Active' }
+  }
+  return { status: 'none', plan: null, label: 'None' }
+}
+
+/** Calendar status from user (Google OAuth) or business record */
+function getCalendarStatus(business, user) {
+  if (user?.google?.connected || user?.googleAccessToken || user?.google?.accessToken) {
+    return { connected: true, label: 'Connected' }
+  }
+  if (business?.calendar?.connected || business?.calendarProvider || business?.googleCalendarConnected) {
+    return { connected: true, label: 'Connected' }
+  }
+  return { connected: false, label: 'Not connected' }
+}
+
+/** Agent status from phone-setup (Twilio number assigned) or business fields */
+function getAgentStatus(business, phoneSetup) {
+  const assigned = phoneSetup?.assignedTwilioNumber ?? business?.assignedTwilioNumber
+  const method = phoneSetup?.numberSetupMethod ?? business?.numberSetupMethod
+  if (assigned) return { ready: true, label: 'Active' }
+  if (method && method !== 'pending') return { ready: true, label: 'Setup in progress' }
+  return { ready: false, label: 'Setup required' }
+}
+
 // Main content component that uses useSearchParams
 function BusinessPageContent() {
   const router = useRouter()
@@ -69,6 +116,8 @@ function BusinessPageContent() {
   const [businesses, setBusinesses] = useState([])
   const [loadingBusinesses, setLoadingBusinesses] = useState(true)
   const [selectedBusiness, setSelectedBusiness] = useState(null)
+  /** Phone setup per businessId from GET /api/business/phone-setup (assignedTwilioNumber, numberSetupMethod) */
+  const [phoneSetupByBiz, setPhoneSetupByBiz] = useState({})
   
   // Form state
   const [businessName, setBusinessName] = useState('')
@@ -117,7 +166,7 @@ function BusinessPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, token])
   
-  // Load auth on mount
+  // Load auth on mount (localStorage may have stale user; we refetch below)
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
@@ -130,6 +179,41 @@ function BusinessPageContent() {
       setAppReady(true)
     }
   }, [])
+
+  // Fetch full user from API (subscription + google so cards show correct status)
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    fetch('/api/user', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+      .then(res => res.json())
+      .then(data => {
+        if (!cancelled && data?.id) setUser(data)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [token])
+
+  // Fetch phone-setup for each business (for Agent status: assignedTwilioNumber)
+  useEffect(() => {
+    if (!token || !businesses.length) {
+      setPhoneSetupByBiz({})
+      return
+    }
+    let cancelled = false
+    const acc = {}
+    Promise.all(
+      businesses.map(biz =>
+        fetch(`/api/business/phone-setup?businessId=${encodeURIComponent(biz.businessId)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(r => r.json()).then(data => {
+          if (!cancelled && data?.ok) acc[biz.businessId] = data
+        }).catch(() => {})
+      )
+    ).then(() => {
+      if (!cancelled) setPhoneSetupByBiz(acc)
+    })
+    return () => { cancelled = true }
+  }, [token, businesses])
   
   // Redirect if not logged in
   useEffect(() => {
@@ -309,8 +393,8 @@ function BusinessPageContent() {
   
   // Check if user can delete a business (only if no active subscription)
   function canDeleteBusiness(biz) {
-    const status = biz.subscription?.status
-    return !status || status === 'none' || status === 'canceled'
+    const sub = getSubscriptionStatus(biz, user)
+    return sub.status === 'none' || sub.status === 'canceled'
   }
   
   function resetForm() {
@@ -478,85 +562,84 @@ function BusinessPageContent() {
                         </div>
                         
                         {/* Status Cards */}
-                        {biz.status === 'ready' && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            {/* Subscription Status */}
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <div className="flex items-center gap-2 mb-2">
-                                <CreditCard className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm font-medium">Subscription</span>
+                        {biz.status === 'ready' && (() => {
+                          const subStatus = getSubscriptionStatus(biz, user)
+                          const calStatus = getCalendarStatus(biz, user)
+                          const agentStatus = getAgentStatus(biz, phoneSetupByBiz[biz.businessId])
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              {/* Subscription Status */}
+                              <div className="p-3 rounded-lg bg-muted/50">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <CreditCard className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium">Subscription</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SUBSCRIPTION_COLORS[subStatus.status] || 'bg-gray-100'}`}>
+                                    {subStatus.label}
+                                  </span>
+                                  {subStatus.status !== 'active' && subStatus.status !== 'trialing' && (
+                                    <Button 
+                                      size="sm" 
+                                      onClick={() => handleSubscribe(biz)}
+                                      disabled={subscribing === biz.businessId}
+                                    >
+                                      {subscribing === biz.businessId ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        <>Subscribe</>
+                                      )}
+                                    </Button>
+                                  )}
+                                  {(subStatus.status === 'active' || subStatus.status === 'trialing') && (
+                                    <Check className="w-4 h-4 text-green-500" />
+                                  )}
+                                </div>
                               </div>
-                              <div className="flex items-center justify-between">
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SUBSCRIPTION_COLORS[biz.subscription?.status] || 'bg-gray-100'}`}>
-                                  {biz.subscription?.status || 'none'}
-                                </span>
-                                {biz.subscription?.status !== 'active' && (
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => handleSubscribe(biz)}
-                                    disabled={subscribing === biz.businessId}
-                                  >
-                                    {subscribing === biz.businessId ? (
-                                      <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                      <>Subscribe</>
-                                    )}
-                                  </Button>
-                                )}
-                                {biz.subscription?.status === 'active' && (
-                                  <Check className="w-4 h-4 text-green-500" />
-                                )}
+                              {/* Calendar Status */}
+                              <div className="p-3 rounded-lg bg-muted/50">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium">Calendar</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${calStatus.connected ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                    {calStatus.label}
+                                  </span>
+                                  {!calStatus.connected && (subStatus.status === 'active' || subStatus.status === 'trialing') && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => handleConnectCalendar(biz)}
+                                      disabled={connectingCalendar === biz.businessId}
+                                    >
+                                      {connectingCalendar === biz.businessId ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        <>Connect</>
+                                      )}
+                                    </Button>
+                                  )}
+                                  {calStatus.connected && (
+                                    <Check className="w-4 h-4 text-green-500" />
+                                  )}
+                                </div>
+                              </div>
+                              {/* Agent Status */}
+                              <div className="p-3 rounded-lg bg-muted/50">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Rocket className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium">Agent</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${agentStatus.ready ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                    {agentStatus.label}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                            
-                            {/* Calendar Status */}
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Calendar className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm font-medium">Calendar</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${biz.calendar?.connected ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                  {biz.calendar?.connected ? 'Connected' : 'Not connected'}
-                                </span>
-                                {!biz.calendar?.connected && biz.subscription?.status === 'active' && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => handleConnectCalendar(biz)}
-                                    disabled={connectingCalendar === biz.businessId}
-                                  >
-                                    {connectingCalendar === biz.businessId ? (
-                                      <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                      <>Connect</>
-                                    )}
-                                  </Button>
-                                )}
-                                {biz.calendar?.connected && (
-                                  <Check className="w-4 h-4 text-green-500" />
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* Agent Status */}
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Rocket className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm font-medium">Agent</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  biz.subscription?.status === 'active' && biz.calendar?.connected 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {biz.subscription?.status === 'active' && biz.calendar?.connected ? 'Ready' : 'Setup required'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                          )
+                        })()}
                         
                         {/* Pending/Failed Actions */}
                         {(biz.status === 'pending' || biz.status === 'failed') && (
