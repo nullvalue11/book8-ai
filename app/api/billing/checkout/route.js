@@ -24,6 +24,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import { env, debugLog } from '@/lib/env'
 import {
   getStripe,
@@ -135,10 +136,7 @@ export async function POST(request) {
     
     // Build line items (base plan + metered minutes)
     const lineItems = buildSubscriptionLineItems(priceId)
-    
-    // Create checkout session with idempotency key
-    const idempotencyKey = generateIdempotencyKey('checkout', user.id, priceId)
-    
+
     // Determine success/cancel URLs - go to dashboard with checkout success
     const successUrl = businessId 
       ? `${env.BASE_URL}/dashboard/business?checkout=success&businessId=${businessId}`
@@ -164,7 +162,7 @@ export async function POST(request) {
       else if (priceId === env.STRIPE?.PRICE_STARTER) planName = 'starter'
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionPayload = {
       customer: customerId,
       mode: 'subscription',
       line_items: lineItems,
@@ -189,10 +187,26 @@ export async function POST(request) {
           ...(businessId && { businessId })
         }
       }
-    }, {
-      idempotencyKey
-    })
-    
+    }
+
+    let session
+    const idempotencyKeyBase = generateIdempotencyKey('checkout', user.id, priceId)
+    const idempotencyKey = `${idempotencyKeyBase}:${crypto.randomUUID()}`
+
+    try {
+      session = await stripe.checkout.sessions.create(sessionPayload, { idempotencyKey })
+    } catch (idemError) {
+      const isIdempotencyConflict =
+        idemError?.code === 'idempotency_key_inuse' ||
+        (typeof idemError?.message === 'string' && idemError.message.includes('Keys for idempotent requests'))
+      if (isIdempotencyConflict) {
+        const retryKey = `${idempotencyKeyBase}:${crypto.randomUUID()}`
+        session = await stripe.checkout.sessions.create(sessionPayload, { idempotencyKey: retryKey })
+      } else {
+        throw idemError
+      }
+    }
+
     debugLog(`[billing/checkout] Created session ${session.id} for user ${user.id}, plan ${priceId}`)
     
     return NextResponse.json({
