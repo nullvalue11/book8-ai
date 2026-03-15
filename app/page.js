@@ -129,6 +129,8 @@ function HomeContent(props) {
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [callsLoading, setCallsLoading] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [servicesMap, setServicesMap] = useState({});
+  const [expandedCallId, setExpandedCallId] = useState(null);
 
   const [formData, setFormData] = useState({ email: "", password: "", name: "" });
   const [formError, setFormError] = useState("");
@@ -503,6 +505,33 @@ function HomeContent(props) {
       })
       .catch(() => { if (!cancelled) setUpcomingBookings([]); })
       .finally(() => { if (!cancelled) setBookingsLoading(false); });
+    return () => { cancelled = true; };
+  }, [token, phoneSetup?.businessId]);
+
+  // Fetch services for primary business (map serviceId → name for booking cards)
+  useEffect(() => {
+    const businessId = phoneSetup?.businessId;
+    if (!token || !businessId) {
+      setServicesMap({});
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/business/${encodeURIComponent(businessId)}/services`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const list = data?.services ?? (Array.isArray(data) ? data : []);
+        const arr = Array.isArray(list) ? list : [];
+        const map = Object.fromEntries(
+          arr
+            .filter((s) => s && (s.serviceId != null || s.slug != null))
+            .map((s) => [(s.serviceId ?? s.slug ?? "").toString(), s.name || s.serviceId || s.slug || "Appointment"])
+        );
+        setServicesMap(map);
+      })
+      .catch(() => { if (!cancelled) setServicesMap({}); });
     return () => { cancelled = true; };
   }, [token, phoneSetup?.businessId]);
 
@@ -977,7 +1006,9 @@ function HomeContent(props) {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">📞 Recent Calls</CardTitle>
                 {recentCalls.length > 0 && (
-                  <span className="text-sm text-muted-foreground">{recentCalls.length} calls</span>
+                  <span className="text-sm text-muted-foreground">
+                    {recentCalls.length} call{recentCalls.length !== 1 ? "s" : ""} · last 7 days
+                  </span>
                 )}
               </CardHeader>
               <CardContent>
@@ -990,13 +1021,22 @@ function HomeContent(props) {
                 ) : (
                   <div className="divide-y divide-border">
                     {recentCalls.map((call, i) => {
+                      const callId = call.callSid || call._id || i;
                       const isSuccess = call.elevenLabs?.callSuccessful === "success" || call.status === "completed";
                       const summary = call.elevenLabs?.transcriptSummary || call.summary || "";
                       const callerPhone = call.fromNumber || call.callerPhone || "";
                       const duration = call.durationSeconds ?? call.duration;
                       const time = call.startTime || call.createdAt;
+                      const isExpanded = expandedCallId === callId;
                       return (
-                        <div key={call.callSid || call._id || i} className="flex items-start justify-between py-3 first:pt-0">
+                        <div
+                          key={callId}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setExpandedCallId((prev) => (prev === callId ? null : callId))}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpandedCallId((prev) => (prev === callId ? null : callId)); } }}
+                          className="flex items-start justify-between py-3 first:pt-0 cursor-pointer hover:bg-muted/50 rounded-md -mx-1 px-1 transition-colors"
+                        >
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                               <span className="text-muted-foreground shrink-0">{formatCallTime(time)}</span>
@@ -1005,7 +1045,9 @@ function HomeContent(props) {
                               <span className={isSuccess ? "text-green-600" : "text-destructive"}>{isSuccess ? "✅" : "❌"}</span>
                             </div>
                             {summary && (
-                              <p className="text-sm text-muted-foreground mt-1 truncate">{summary}</p>
+                              <p className={`text-sm text-muted-foreground mt-1 ${isExpanded ? "" : "truncate"}`}>
+                                {summary}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -1019,7 +1061,9 @@ function HomeContent(props) {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">📅 Upcoming Bookings</CardTitle>
                 {upcomingBookings.length > 0 && (
-                  <span className="text-sm text-muted-foreground">{upcomingBookings.length} upcoming</span>
+                  <span className="text-sm text-muted-foreground">
+                    {upcomingBookings.length} upcoming · next 30 days
+                  </span>
                 )}
               </CardHeader>
               <CardContent>
@@ -1032,7 +1076,7 @@ function HomeContent(props) {
                 ) : (
                   <div className="divide-y divide-border">
                     {upcomingBookings.map((booking, i) => {
-                      const service = booking.serviceId || booking.serviceName || "Appointment";
+                      const serviceName = servicesMap[booking.serviceId] || booking.serviceName || booking.serviceId || "Appointment";
                       const customer = booking.customer?.name || booking.customerName || "Unknown";
                       const phone = booking.customer?.phone || booking.customerPhone || "";
                       const start = booking.slot?.start || booking.startTime || booking.start;
@@ -1049,7 +1093,7 @@ function HomeContent(props) {
                             <span className="text-foreground">{customer}</span>
                           </div>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
-                            <span>{service}{durationMin ? ` (${durationMin} min)` : ""}</span>
+                            <span>{serviceName}{durationMin ? ` (${durationMin} min)` : ""}</span>
                             {phone && <span>📞 {formatPhone(phone)}</span>}
                           </div>
                         </div>
@@ -1205,25 +1249,35 @@ function HomeContent(props) {
                 <>
                   <div className="space-y-1">
                     <p>
-                      <span className="font-medium">Status:</span>{' '}
-                      {phoneSetup.numberSetupMethod || phoneSetup.forwardingEnabled || phoneSetup.assignedTwilioNumber ? (
-                        <span className="text-emerald-600 font-medium">Active</span>
+                      <span className="font-medium">Status:</span>{" "}
+                      {!!(
+                        phoneSetup.assignedTwilioNumber ||
+                        (phoneSetup.numberSetupMethod && phoneSetup.numberSetupMethod !== "pending")
+                      ) ? (
+                        <span className="text-emerald-600 font-medium">✅ Active</span>
                       ) : (
-                        <span className="text-amber-600 font-medium">Setup needed</span>
+                        <span className="text-amber-600 font-medium">⏳ Setup needed</span>
                       )}
                     </p>
                     <p>
-                      <span className="font-medium">Business:</span>{' '}
+                      <span className="font-medium">Business:</span>{" "}
                       {phoneSetup.name}
                     </p>
-                    <p>
-                      <span className="font-medium">Book8 number:</span>{' '}
-                      {phoneSetup.assignedTwilioNumber || 'Pending assignment'}
-                    </p>
-                    {Array.isArray(phoneSetup.forwardingFrom) && phoneSetup.forwardingFrom.length > 0 && (
+                    {phoneSetup.assignedTwilioNumber ? (
                       <p>
-                        <span className="font-medium">Forwarding from:</span>{' '}
-                        {phoneSetup.forwardingFrom.join(', ')}
+                        <span className="font-medium">Book8 number:</span>{" "}
+                        <span className="text-foreground">{formatPhone(phoneSetup.assignedTwilioNumber)}</span>
+                      </p>
+                    ) : (
+                      <p>
+                        <span className="font-medium">Book8 number:</span>{" "}
+                        <span className="text-muted-foreground">Pending assignment</span>
+                      </p>
+                    )}
+                    {Array.isArray(phoneSetup.forwardingFrom) && phoneSetup.forwardingFrom.length > 0 && (
+                      <p className="text-muted-foreground">
+                        <span className="font-medium text-foreground">Forwarding from:</span>{" "}
+                        {phoneSetup.forwardingFrom.map(formatPhone).join(", ")}
                       </p>
                     )}
                   </div>
@@ -1233,9 +1287,12 @@ function HomeContent(props) {
                       variant="outline"
                       onClick={() => router.push(`/setup?businessId=${encodeURIComponent(phoneSetup.businessId)}`)}
                     >
-                      {phoneSetup.numberSetupMethod || phoneSetup.forwardingEnabled || phoneSetup.assignedTwilioNumber
-                        ? 'Manage'
-                        : 'Complete Setup'}
+                      {!!(
+                        phoneSetup.assignedTwilioNumber ||
+                        (phoneSetup.numberSetupMethod && phoneSetup.numberSetupMethod !== "pending")
+                      )
+                        ? "Manage"
+                        : "Complete Setup"}
                     </Button>
                     {phoneSetup.assignedTwilioNumber && (
                       <Button
