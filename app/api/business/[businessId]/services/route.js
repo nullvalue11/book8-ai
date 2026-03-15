@@ -42,7 +42,7 @@ async function verifyAuthAndOwnership(request, database, businessId) {
 
 function getCoreApiConfig() {
   const baseUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
-  const apiKey = env.CORE_API_INTERNAL_SECRET || ''
+  const apiKey = env.BOOK8_CORE_API_KEY || ''
   return { baseUrl, apiKey }
 }
 

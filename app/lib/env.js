@@ -140,6 +140,7 @@ function loadConfig() {
     // Billing/Usage Reporting (uses existing CRON_SECRET for auth)
     const CORE_API_BASE_URL = getEnvVar('CORE_API_BASE_URL', false)
     const CORE_API_INTERNAL_SECRET = getEnvVar('CORE_API_INTERNAL_SECRET', false)
+    const BOOK8_CORE_API_KEY = getEnvVar('BOOK8_CORE_API_KEY', false)
     const BILLING_TIMEZONE = getEnvVar('BILLING_TIMEZONE', false, 'UTC')
     
     const hasStripe = STRIPE_SECRET_KEY && STRIPE_PUBLISHABLE_KEY && STRIPE_WEBHOOK_SECRET
@@ -248,6 +249,7 @@ function loadConfig() {
       // Billing/Usage Reporting
       CORE_API_BASE_URL,
       CORE_API_INTERNAL_SECRET,
+      BOOK8_CORE_API_KEY,
       BILLING_TIMEZONE,
       
       // Optional
