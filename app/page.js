@@ -1102,6 +1102,22 @@ function HomeContent(props) {
                   <Building2 className="w-4 h-4 mr-2" />
                   Manage Business
                 </Button>
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => router.push('/dashboard/services')}
+                  >
+                    Services
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => router.push('/dashboard/schedule')}
+                  >
+                    Business Hours
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

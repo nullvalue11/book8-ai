@@ -324,6 +324,12 @@ function BusinessPageContent() {
             <span className="hidden md:inline text-sm text-muted-foreground">Business Management</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
+            <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/services')}>
+              Services
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/schedule')}>
+              Business Hours
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Dashboard
