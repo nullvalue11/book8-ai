@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Input } from "./components/ui/input";
@@ -506,23 +506,25 @@ function HomeContent(props) {
     return () => { cancelled = true; };
   }, [token, phoneSetup?.businessId]);
 
-  function handleLogout() { 
+  function handleLogout() {
     // Abort any pending fetches
-    if (fetchAbort.current) try { fetchAbort.current.abort(); } catch {} 
-    // Clear local storage
-    localStorage.removeItem("book8_token"); 
-    localStorage.removeItem("book8_user"); 
-    // Clear all state
-    setToken(null); 
-    setUser(null); 
-    setBookings([]); 
+    if (fetchAbort.current) try { fetchAbort.current.abort(); } catch {}
+    // Clear credential storage so dashboard won't think we're logged in
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("book8_token");
+      localStorage.removeItem("book8_user");
+    }
+    // Clear local state
+    setToken(null);
+    setUser(null);
+    setBookings([]);
     setIsSubscribed(false);
-    setPlanTier('free');
-    setPlanName('Free');
+    setPlanTier("free");
+    setPlanName("Free");
     setFeatures({});
     setSubscriptionChecked(false);
-    // Immediately redirect to home
-    router.push('/');
+    // Clear NextAuth session and redirect home (otherwise syncOAuthSession on "/" can log us back in)
+    signOut({ callbackUrl: "/" });
   }
 
   async function handleLogin() {
