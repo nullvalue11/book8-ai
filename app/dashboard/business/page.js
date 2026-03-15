@@ -10,7 +10,7 @@
  * - Connect Google Calendar
  */
 
-import React, { useState, useEffect, Suspense } from 'react'
+import React, { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import Header from '@/components/Header'
 import HeaderLogo from '@/components/HeaderLogo'
+import { BUSINESS_CATEGORIES, CATEGORY_NAMES } from '@/lib/constants/businessCategories'
 import { 
   Building2, 
   CheckCircle2, 
@@ -34,7 +35,8 @@ import {
   Calendar,
   ExternalLink,
   Check,
-  Trash2
+  Trash2,
+  ChevronDown
 } from 'lucide-react'
 
 const STATUS_COLORS = {
@@ -70,6 +72,10 @@ function BusinessPageContent() {
   
   // Form state
   const [businessName, setBusinessName] = useState('')
+  const [category, setCategory] = useState('other')
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false)
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const categoryDropdownRef = useRef(null)
   const [businessId, setBusinessId] = useState('')
   const [autoGenerateId, setAutoGenerateId] = useState(true)
   const [skipVoiceTest, setSkipVoiceTest] = useState(false)
@@ -139,6 +145,18 @@ function BusinessPageContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
+
+  // Close category dropdown on click outside
+  useEffect(() => {
+    if (!categoryDropdownOpen) return
+    function handleClickOutside(e) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target)) {
+        setCategoryDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [categoryDropdownOpen])
   
   async function fetchBusinesses() {
     setLoadingBusinesses(true)
@@ -165,6 +183,7 @@ function BusinessPageContent() {
     try {
       const body = {
         name: businessName.trim(),
+        category: category || 'other',
         skipVoiceTest,
         skipBillingCheck
       }
@@ -297,6 +316,9 @@ function BusinessPageContent() {
   function resetForm() {
     setStep('list')
     setBusinessName('')
+    setCategory('other')
+    setCategoryFilter('')
+    setCategoryDropdownOpen(false)
     setBusinessId('')
     setPlan(null)
     setResult(null)
@@ -408,6 +430,9 @@ function BusinessPageContent() {
                           <div>
                             <p className="font-medium text-lg">{biz.name}</p>
                             <p className="text-sm text-muted-foreground font-mono">{biz.businessId}</p>
+                            {biz.category && biz.category !== 'other' && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{CATEGORY_NAMES[biz.category] || biz.category}</p>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[biz.status] || 'bg-gray-100'}`}>
@@ -541,6 +566,8 @@ function BusinessPageContent() {
                               onClick={() => {
                                 setCurrentBusinessId(biz.businessId)
                                 setBusinessName(biz.name)
+                                setCategory(biz.category || 'other')
+                                setCategoryFilter('')
                                 setStep('form')
                               }}
                             >
@@ -611,6 +638,51 @@ function BusinessPageContent() {
                     maxLength={100}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Business Type *</Label>
+                  <div className="relative" ref={categoryDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span>{CATEGORY_NAMES[category] || 'Other'}</span>
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </button>
+                    {categoryDropdownOpen && (
+                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-lg">
+                        <Input
+                          placeholder="Search business type..."
+                          value={categoryFilter}
+                          onChange={(e) => setCategoryFilter(e.target.value)}
+                          className="mb-1 h-8 border-0 bg-transparent focus-visible:ring-0"
+                          autoFocus
+                        />
+                        <ul className="max-h-60 overflow-auto">
+                          {BUSINESS_CATEGORIES.filter(c => {
+                            const q = (categoryFilter || '').toLowerCase()
+                            return !q || (c.name || '').toLowerCase().includes(q)
+                          }).map(c => (
+                            <li key={c.key}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCategory(c.key)
+                                  setCategoryDropdownOpen(false)
+                                  setCategoryFilter('')
+                                }}
+                                className={`w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent ${category === c.key ? 'bg-accent font-medium' : ''}`}
+                              >
+                                {c.name}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -669,7 +741,7 @@ function BusinessPageContent() {
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back
                   </Button>
-                  <Button type="submit" disabled={loading || !businessName.trim()} className="flex-1">
+                  <Button type="submit" disabled={loading || !businessName.trim() || !category} className="flex-1">
                     {loading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />

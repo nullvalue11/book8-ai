@@ -110,6 +110,7 @@ export async function POST(request) {
     const { 
       businessId: inputBusinessId,
       name, 
+      category = 'other',
       skipVoiceTest = false, 
       skipBillingCheck = false 
     } = body
@@ -187,11 +188,13 @@ export async function POST(request) {
       name: name.trim(),
       ownerUserId: userId,
       ownerEmail: userEmail,
+      category: category || 'other',
       skipVoiceTest,
       skipBillingCheck
     })
     
     businessData.name = name.trim()
+    businessData.category = category || 'other'
     businessData.provisioningOptions = { skipVoiceTest, skipBillingCheck }
     businessData.updatedAt = new Date()
     businessData.ops = updateBusinessOps(businessData, {
@@ -258,6 +261,7 @@ export async function GET(request) {
     const cleanedBusinesses = businesses.map(b => ({
       businessId: b.businessId,
       name: b.name,
+      category: b.category || 'other',
       status: b.status,
       statusReason: b.statusReason,
       subscription: { status: b.subscription?.status || 'none' },

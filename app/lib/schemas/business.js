@@ -49,6 +49,7 @@ export function createBusiness({
   name,
   ownerUserId,
   ownerEmail,
+  category = 'other',
   skipVoiceTest = false,
   skipBillingCheck = false
 }) {
@@ -58,6 +59,7 @@ export function createBusiness({
     // Core identity
     businessId: businessId || generateBusinessId(),
     name: name || 'Untitled Business',
+    category: category || 'other',
     
     // Ownership
     ownerUserId,
