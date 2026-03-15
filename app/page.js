@@ -20,6 +20,25 @@ import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditC
 import { QRCodeSVG } from "qrcode.react";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
+function formatDuration(seconds) {
+  if (seconds == null) return "—";
+  const min = Math.floor(Number(seconds) / 60);
+  const sec = Math.floor(Number(seconds) % 60);
+  return `${min}m ${sec.toString().padStart(2, "0")}s`;
+}
+function formatPhone(phone) {
+  if (!phone) return "Unknown";
+  const normalized = String(phone).replace(/\D/g, "");
+  const match = normalized.match(/^1?(\d{3})(\d{3})(\d{4})$/);
+  if (match) return `(${match[1]}) ${match[2]}-${match[3]}`;
+  return phone;
+}
+function formatCallTime(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  } catch { return "—"; }
+}
 
 // Confetti helper - dynamically import to avoid SSR issues
 async function fireConfetti() {
@@ -105,6 +124,11 @@ function HomeContent(props) {
 
   const [phoneSetup, setPhoneSetup] = useState(null);
   const [phoneSetupLoading, setPhoneSetupLoading] = useState(false);
+
+  const [recentCalls, setRecentCalls] = useState([]);
+  const [upcomingBookings, setUpcomingBookings] = useState([]);
+  const [callsLoading, setCallsLoading] = useState(false);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
 
   const [formData, setFormData] = useState({ email: "", password: "", name: "" });
   const [formError, setFormError] = useState("");
@@ -425,6 +449,62 @@ function HomeContent(props) {
       fetchPhoneSetupStatus();
     }
   }, [token]);
+
+  // Fetch recent calls for primary business
+  useEffect(() => {
+    const businessId = phoneSetup?.businessId;
+    if (!token || !businessId) {
+      setRecentCalls([]);
+      setCallsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setCallsLoading(true);
+    fetch(`/api/business/${encodeURIComponent(businessId)}/calls`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const list = data?.calls ?? (data?.ok ? [] : []);
+        const sorted = (Array.isArray(list) ? list : [])
+          .sort((a, b) => new Date(b.startTime || b.createdAt || 0) - new Date(a.startTime || a.createdAt || 0))
+          .slice(0, 10);
+        setRecentCalls(sorted);
+      })
+      .catch(() => { if (!cancelled) setRecentCalls([]); })
+      .finally(() => { if (!cancelled) setCallsLoading(false); });
+    return () => { cancelled = true; };
+  }, [token, phoneSetup?.businessId]);
+
+  // Fetch upcoming bookings for primary business
+  useEffect(() => {
+    const businessId = phoneSetup?.businessId;
+    if (!token || !businessId) {
+      setUpcomingBookings([]);
+      setBookingsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setBookingsLoading(true);
+    fetch(`/api/business/${encodeURIComponent(businessId)}/bookings`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const list = data?.bookings ?? (data?.ok ? [] : []);
+        const now = new Date();
+        const upcoming = (Array.isArray(list) ? list : [])
+          .filter((b) => (b.status === "confirmed" || !b.status) && new Date(b.slot?.start || b.startTime || 0) >= now)
+          .sort((a, b) => new Date(a.slot?.start || a.startTime || 0) - new Date(b.slot?.start || b.startTime || 0))
+          .slice(0, 10);
+        setUpcomingBookings(upcoming);
+      })
+      .catch(() => { if (!cancelled) setUpcomingBookings([]); })
+      .finally(() => { if (!cancelled) setBookingsLoading(false); });
+    return () => { cancelled = true; };
+  }, [token, phoneSetup?.businessId]);
 
   function handleLogout() { 
     // Abort any pending fetches
@@ -888,6 +968,98 @@ function HomeContent(props) {
       )}
 
       <div className="container mx-auto max-w-7xl p-6">
+        {/* Recent Activity — calls and bookings from AI booking line */}
+        {phoneSetup?.businessId && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <Card className="bg-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">📞 Recent Calls</CardTitle>
+                {recentCalls.length > 0 && (
+                  <span className="text-sm text-muted-foreground">{recentCalls.length} calls</span>
+                )}
+              </CardHeader>
+              <CardContent>
+                {callsLoading ? (
+                  <p className="text-muted-foreground text-sm">Loading calls...</p>
+                ) : recentCalls.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    No calls yet. When customers call your booking line, you&apos;ll see their calls here.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {recentCalls.map((call, i) => {
+                      const isSuccess = call.elevenLabs?.callSuccessful === "success" || call.status === "completed";
+                      const summary = call.elevenLabs?.transcriptSummary || call.summary || "";
+                      const callerPhone = call.fromNumber || call.callerPhone || "";
+                      const duration = call.durationSeconds ?? call.duration;
+                      const time = call.startTime || call.createdAt;
+                      return (
+                        <div key={call.callSid || call._id || i} className="flex items-start justify-between py-3 first:pt-0">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                              <span className="text-muted-foreground shrink-0">{formatCallTime(time)}</span>
+                              <span className="text-foreground">{formatPhone(callerPhone)}</span>
+                              <span className="text-muted-foreground">{formatDuration(duration)}</span>
+                              <span className={isSuccess ? "text-green-600" : "text-destructive"}>{isSuccess ? "✅" : "❌"}</span>
+                            </div>
+                            {summary && (
+                              <p className="text-sm text-muted-foreground mt-1 truncate">{summary}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="bg-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">📅 Upcoming Bookings</CardTitle>
+                {upcomingBookings.length > 0 && (
+                  <span className="text-sm text-muted-foreground">{upcomingBookings.length} upcoming</span>
+                )}
+              </CardHeader>
+              <CardContent>
+                {bookingsLoading ? (
+                  <p className="text-muted-foreground text-sm">Loading bookings...</p>
+                ) : upcomingBookings.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    No upcoming bookings yet. When customers book through your AI assistant, they&apos;ll appear here.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {upcomingBookings.map((booking, i) => {
+                      const service = booking.serviceId || booking.serviceName || "Appointment";
+                      const customer = booking.customer?.name || booking.customerName || "Unknown";
+                      const phone = booking.customer?.phone || booking.customerPhone || "";
+                      const start = booking.slot?.start || booking.startTime || booking.start;
+                      const durationMin = booking.slot?.start && booking.slot?.end
+                        ? Math.round((new Date(booking.slot.end) - new Date(booking.slot.start)) / 60000)
+                        : booking.durationMinutes ?? null;
+                      return (
+                        <div key={booking.id || booking._id || i} className="py-3 first:pt-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-foreground shrink-0">
+                              {start ? new Date(start).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"}
+                            </span>
+                            <span className="text-muted-foreground">│</span>
+                            <span className="text-foreground">{customer}</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
+                            <span>{service}{durationMin ? ` (${durationMin} min)` : ""}</span>
+                            {phone && <span>📞 {formatPhone(phone)}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 bg-card">
             <CardHeader><CardTitle>Create Booking</CardTitle></CardHeader>
