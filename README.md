@@ -271,7 +271,11 @@ We centralize base URL resolution in `lib/baseUrl.js`. API routes call this help
 The dashboard shows a small banner when any of these query flags are present.
 
 ## Webhook
-`POST /api/billing/stripe/webhook` uses `request.text()` to verify the Stripe signature with `STRIPE_WEBHOOK_SECRET` and updates the user’s `subscription` object.
+**Stripe webhook endpoint (use this in Stripe Dashboard):**
+- `POST /api/webhooks/stripe` — canonical handler (verify signature, update user + business subscription, provision tenant).
+- `POST /api/billing/webhook` — proxy that forwards to `/api/webhooks/stripe` (so either URL works).
+
+Configure Stripe to send events to `https://<your-domain>/api/webhooks/stripe` (or `/api/billing/webhook`). The handler uses `request.text()` to verify the Stripe signature with `STRIPE_WEBHOOK_SECRET` and updates the user’s and business’s `subscription` object when `checkout.session.completed` includes `userId` and optionally `businessId` in metadata.
 
 Events handled:
 - `checkout.session.completed`

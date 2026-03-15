@@ -99,9 +99,13 @@ function BusinessPageContent() {
     const googleConnected = searchParams.get('google_connected')
     
     if ((checkoutStatus === 'success' && checkoutBusinessId) || googleConnected === '1') {
-      // Refresh businesses to show updated status
+      // Refresh businesses immediately to show updated status
       if (token) {
         fetchBusinesses()
+        // Webhook may be processed a few seconds after redirect; refetch so subscription status appears
+        const t2 = setTimeout(() => { fetchBusinesses() }, 2500)
+        const t5 = setTimeout(() => { fetchBusinesses() }, 5500)
+        return () => { clearTimeout(t2); clearTimeout(t5) }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
