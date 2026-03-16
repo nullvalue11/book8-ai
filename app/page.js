@@ -124,6 +124,7 @@ function HomeContent(props) {
 
   const [phoneSetup, setPhoneSetup] = useState(null);
   const [phoneSetupLoading, setPhoneSetupLoading] = useState(false);
+  const [primaryBusinessId, setPrimaryBusinessId] = useState(null);
 
   const [recentCalls, setRecentCalls] = useState([]);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
@@ -425,11 +426,16 @@ function HomeContent(props) {
       const bizRes = await api(`/business/register`, { method: "GET" });
       const businesses = bizRes.businesses || [];
       if (!businesses.length) {
+        setPrimaryBusinessId(null);
         setPhoneSetup(null);
         return;
       }
       const primary = businesses[0];
-      const setupRes = await api(`/business/phone-setup?businessId=${encodeURIComponent(primary.businessId)}`, { method: "GET" });
+      setPrimaryBusinessId(primary.businessId);
+      const setupRes = await api(
+        `/business/phone-setup?businessId=${encodeURIComponent(primary.businessId)}`,
+        { method: "GET" }
+      );
       setPhoneSetup({
         businessId: primary.businessId,
         name: primary.name,
@@ -454,7 +460,7 @@ function HomeContent(props) {
 
   // Fetch recent calls for primary business
   useEffect(() => {
-    const businessId = phoneSetup?.businessId;
+    const businessId = primaryBusinessId;
     if (!token || !businessId) {
       setRecentCalls([]);
       setCallsLoading(false);
@@ -477,11 +483,11 @@ function HomeContent(props) {
       .catch(() => { if (!cancelled) setRecentCalls([]); })
       .finally(() => { if (!cancelled) setCallsLoading(false); });
     return () => { cancelled = true; };
-  }, [token, phoneSetup?.businessId]);
+  }, [token, primaryBusinessId]);
 
   // Fetch upcoming bookings and services together (servicesMap used for service names in booking cards)
   useEffect(() => {
-    const businessId = phoneSetup?.businessId;
+    const businessId = primaryBusinessId;
     if (!token || !businessId) {
       setUpcomingBookings([]);
       setServicesMap({});
@@ -524,7 +530,7 @@ function HomeContent(props) {
         if (!cancelled) setBookingsLoading(false);
       });
     return () => { cancelled = true; };
-  }, [token, phoneSetup?.businessId]);
+  }, [token, primaryBusinessId]);
 
   function handleLogout() {
     // Abort any pending fetches
