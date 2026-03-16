@@ -111,16 +111,18 @@ export async function GET(request) {
     }
 
     const data = await coreRes.json()
+    // Core-api may return { business: {...} } or the business object at top level
+    const biz = data.business ?? data.data ?? data
 
     return NextResponse.json({
       ok: true,
       businessId,
-      name: data.name,
-      forwardingEnabled: data.forwardingEnabled ?? false,
-      forwardingFrom: data.forwardingFrom ?? [],
-      assignedTwilioNumber: data.assignedTwilioNumber ?? null,
-      phoneNumber: data.phoneNumber ?? null,
-      numberSetupMethod: data.numberSetupMethod ?? null
+      name: biz.name ?? data.name,
+      forwardingEnabled: biz.forwardingEnabled ?? data.forwardingEnabled ?? false,
+      forwardingFrom: biz.forwardingFrom ?? data.forwardingFrom ?? [],
+      assignedTwilioNumber: biz.assignedTwilioNumber ?? data.assignedTwilioNumber ?? biz.assigned_twilio_number ?? null,
+      phoneNumber: biz.phoneNumber ?? data.phoneNumber ?? null,
+      numberSetupMethod: biz.numberSetupMethod ?? data.numberSetupMethod ?? null
     })
   } catch (error) {
     console.error('[business/phone-setup] GET error', error)

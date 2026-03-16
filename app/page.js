@@ -479,23 +479,34 @@ function HomeContent(props) {
     return () => { cancelled = true; };
   }, [token, phoneSetup?.businessId]);
 
-  // Fetch upcoming bookings for primary business
+  // Fetch upcoming bookings and services together (servicesMap used for service names in booking cards)
   useEffect(() => {
     const businessId = phoneSetup?.businessId;
     if (!token || !businessId) {
       setUpcomingBookings([]);
+      setServicesMap({});
       setBookingsLoading(false);
       return;
     }
     let cancelled = false;
     setBookingsLoading(true);
-    fetch(`/api/business/${encodeURIComponent(businessId)}/bookings`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then((res) => res.json())
-      .then((data) => {
+    const headers = { Authorization: `Bearer ${token}` };
+    Promise.all([
+      fetch(`/api/business/${encodeURIComponent(businessId)}/bookings`, { headers }).then((r) => r.json()),
+      fetch(`/api/business/${encodeURIComponent(businessId)}/services`, { headers }).then((r) => r.json())
+    ])
+      .then(([bookingsData, svcData]) => {
         if (cancelled) return;
-        const list = data?.bookings ?? (data?.ok ? [] : []);
+        const sMap = {};
+        const svcList = svcData?.services ?? (Array.isArray(svcData) ? svcData : []);
+        (Array.isArray(svcList) ? svcList : []).forEach((s) => {
+          if (s && (s.serviceId != null || s.slug != null)) {
+            const key = (s.serviceId ?? s.slug ?? "").toString();
+            sMap[key] = s.name || s.serviceId || s.slug || "Appointment";
+          }
+        });
+        setServicesMap(sMap);
+        const list = bookingsData?.bookings ?? (bookingsData?.ok ? [] : []);
         const now = new Date();
         const upcoming = (Array.isArray(list) ? list : [])
           .filter((b) => (b.status === "confirmed" || !b.status) && new Date(b.slot?.start || b.startTime || 0) >= now)
@@ -503,35 +514,15 @@ function HomeContent(props) {
           .slice(0, 10);
         setUpcomingBookings(upcoming);
       })
-      .catch(() => { if (!cancelled) setUpcomingBookings([]); })
-      .finally(() => { if (!cancelled) setBookingsLoading(false); });
-    return () => { cancelled = true; };
-  }, [token, phoneSetup?.businessId]);
-
-  // Fetch services for primary business (map serviceId → name for booking cards)
-  useEffect(() => {
-    const businessId = phoneSetup?.businessId;
-    if (!token || !businessId) {
-      setServicesMap({});
-      return;
-    }
-    let cancelled = false;
-    fetch(`/api/business/${encodeURIComponent(businessId)}/services`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled) return;
-        const list = data?.services ?? (Array.isArray(data) ? data : []);
-        const arr = Array.isArray(list) ? list : [];
-        const map = Object.fromEntries(
-          arr
-            .filter((s) => s && (s.serviceId != null || s.slug != null))
-            .map((s) => [(s.serviceId ?? s.slug ?? "").toString(), s.name || s.serviceId || s.slug || "Appointment"])
-        );
-        setServicesMap(map);
+      .catch(() => {
+        if (!cancelled) {
+          setUpcomingBookings([]);
+          setServicesMap({});
+        }
       })
-      .catch(() => { if (!cancelled) setServicesMap({}); });
+      .finally(() => {
+        if (!cancelled) setBookingsLoading(false);
+      });
     return () => { cancelled = true; };
   }, [token, phoneSetup?.businessId]);
 
@@ -1354,37 +1345,7 @@ function HomeContent(props) {
           </Card>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 bg-card">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Your Bookings</CardTitle>
-                <div className="flex items-center gap-2">
-                  {archivedCount > 0 && (<span className="text-xs text-muted-foreground">{archivedCount} archived</span>)}
-                  <Button size="sm" variant="outline" onClick={archiveBookings}>Clear</Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingBookings ? (
-                <p className="text-sm text-muted-foreground">Loading...</p>
-              ) : (
-                <div className="space-y-2 text-sm">
-                  {(bookings || []).length === 0 && <p className="text-muted-foreground">No bookings yet.</p>}
-                  {(bookings || []).map((b) => (
-                    <div key={b.id} className="grid grid-cols-1 md:grid-cols-6 gap-2 rounded border p-2">
-                      <div className="md:col-span-2 font-medium">{b.title}</div>
-                      <div>{b.customerName}</div>
-                      <div>{formatDT(b.startTime)}</div>
-                      <div>{formatDT(b.endTime)}</div>
-                      <div className="text-right"><Button size="sm" variant="destructive" onClick={() => cancelBooking(b.id)} disabled={b.status === 'canceled'}>Cancel</Button></div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
+        <div className="mt-6">
           <AnalyticsDashboard token={token} subscribed={isSubscribed} />
         </div>
       </div>
