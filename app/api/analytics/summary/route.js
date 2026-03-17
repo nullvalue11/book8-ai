@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env } from '@/lib/env'
 import { isSubscribed } from '@/lib/subscription'
+import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,7 +35,7 @@ async function requireAuth(request) {
   const auth = request.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
   if (!token) return { error: 'Missing Authorization header', status: 401 }
-  
+
   try {
     const payload = jwt.verify(token, env.JWT_SECRET)
     const database = await connect()
@@ -75,79 +76,89 @@ export async function GET(request) {
     const userId = auth.user.id
     const url = new URL(request.url)
     const range = url.searchParams.get('range') || '7d'
-    
+
     // Parse range (7d, 30d, etc.)
     const daysMatch = range.match(/(\d+)d/)
     const days = daysMatch ? parseInt(daysMatch[1]) : 7
-    
-    // Calculate date range
+
+    // Date range
     const now = new Date()
     const startDate = new Date(now)
     startDate.setDate(startDate.getDate() - days)
     startDate.setHours(0, 0, 0, 0)
-    
     const endDate = new Date(now)
     endDate.setHours(23, 59, 59, 999)
-    
-    // Ensure indexes exist
-    try {
-      await database.collection('bookings').createIndex({ userId: 1, startTime: 1 })
-      await database.collection('bookings').createIndex({ status: 1, startTime: 1 })
-      await database.collection('bookings').createIndex({ userId: 1, createdAt: 1 })
-      await database.collection('cron_logs').createIndex({ task: 1, startedAt: -1 })
-    } catch (e) {
-      // Indexes might already exist, ignore errors
-    }
-    
-    // Query all bookings in range
-    const bookings = await database.collection('bookings').find({
-      userId,
-      createdAt: {
-        $gte: startDate.toISOString(),
-        $lte: endDate.toISOString()
+    const startISO = startDate.toISOString()
+    const endISO = endDate.toISOString()
+
+    // Primary business for this user (source: local MongoDB)
+    const businesses = await database.collection(BUSINESS_COLLECTION).find({ ownerUserId: userId }).sort({ createdAt: -1 }).limit(1).toArray()
+    const businessId = businesses[0]?.businessId || null
+
+    let bookings = []
+    let calls = []
+    const baseUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
+    const apiKey = env.BOOK8_CORE_API_KEY || ''
+    const internalSecret = env.CORE_API_INTERNAL_SECRET || ''
+
+    if (businessId) {
+      try {
+        const [bookingsRes, callsRes] = await Promise.all([
+          fetch(`${baseUrl}/api/bookings?businessId=${encodeURIComponent(businessId)}`, {
+            headers: { 'Content-Type': 'application/json', ...(apiKey && { 'x-book8-api-key': apiKey }) },
+            cache: 'no-store'
+          }).then(r => r.json().catch(() => ({}))),
+          fetch(`${baseUrl}/internal/calls/by-business/${businessId}?limit=500`, {
+            headers: { 'Content-Type': 'application/json', ...(internalSecret && { 'x-book8-internal-secret': internalSecret }) },
+            cache: 'no-store'
+          }).then(r => r.json().catch(() => ({})))
+        ])
+        bookings = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : (Array.isArray(bookingsRes) ? bookingsRes : [])
+        calls = Array.isArray(callsRes?.calls) ? callsRes.calls : (Array.isArray(callsRes) ? callsRes : [])
+      } catch (e) {
+        console.error('[analytics/summary] core-api fetch error:', e)
       }
-    }).toArray()
-    
-    // Calculate KPIs
-    const totalBookings = bookings.length
-    const reschedules = bookings.filter(b => b.rescheduleCount > 0).length
-    const cancellations = bookings.filter(b => b.status === 'canceled').length
-    
-    // Calculate avg lead time (time between booking creation and start time)
+    }
+
+    // Filter bookings by created/slot date in range
+    const bookingsInRange = bookings.filter(b => {
+      const created = b.createdAt || b.slot?.start || b.startTime
+      if (!created) return false
+      const d = new Date(created).toISOString()
+      return d >= startISO && d <= endISO
+    })
+
+    const totalBookings = bookingsInRange.length
+    const reschedules = bookingsInRange.filter(b => (b.rescheduleCount || 0) > 0).length
+    const cancellations = bookingsInRange.filter(b => b.status === 'canceled').length
+    const callsInRange = calls.filter(c => {
+      const t = c.startTime || c.createdAt
+      if (!t) return false
+      const d = new Date(t).toISOString()
+      return d >= startISO && d <= endISO
+    })
+    const totalCalls = callsInRange.length
+
     let totalLeadTime = 0
     let leadTimeCount = 0
-    
-    bookings.forEach(booking => {
-      if (booking.createdAt && booking.startTime) {
-        const created = new Date(booking.createdAt)
-        const start = new Date(booking.startTime)
-        const diffMs = start - created
+    bookingsInRange.forEach(booking => {
+      const created = booking.createdAt || booking.slot?.start
+      const start = booking.slot?.start || booking.startTime
+      if (created && start) {
+        const createdD = new Date(created)
+        const startD = new Date(start)
+        const diffMs = startD - createdD
         if (diffMs > 0) {
-          totalLeadTime += diffMs / (1000 * 60) // Convert to minutes
+          totalLeadTime += diffMs / (1000 * 60)
           leadTimeCount++
         }
       }
     })
-    
-    const avgLeadTimeMinutes = leadTimeCount > 0 
-      ? Math.round(totalLeadTime / leadTimeCount) 
-      : 0
-    
-    // Get reminders sent from cron logs
-    const cronLogs = await database.collection('cron_logs').find({
-      task: 'reminders',
-      startedAt: {
-        $gte: startDate,
-        $lte: endDate
-      }
-    }).toArray()
-    
-    const remindersSent = cronLogs.reduce((sum, log) => sum + (log.successes || 0), 0)
-    
-    // Build daily series
+    const avgLeadTimeMinutes = leadTimeCount > 0 ? Math.round(totalLeadTime / leadTimeCount) : 0
+
+    const remindersSent = 0
+
     const seriesMap = new Map()
-    
-    // Initialize all days with zeros
     for (let i = 0; i < days; i++) {
       const date = new Date(startDate)
       date.setDate(date.getDate() + i)
@@ -160,44 +171,20 @@ export async function GET(request) {
         reminders_sent: 0
       })
     }
-    
-    // Populate series with actual data
-    bookings.forEach(booking => {
-      if (!booking.createdAt) return
-      
-      const date = new Date(booking.createdAt)
-      const dateStr = date.toISOString().split('T')[0]
-      
+
+    bookingsInRange.forEach(booking => {
+      const created = booking.createdAt || booking.slot?.start
+      if (!created) return
+      const dateStr = new Date(created).toISOString().split('T')[0]
       if (seriesMap.has(dateStr)) {
         const day = seriesMap.get(dateStr)
         day.bookings++
-        
-        if (booking.status === 'canceled') {
-          day.cancellations++
-        }
-        
-        if (booking.rescheduleCount > 0) {
-          day.reschedules++
-        }
+        if (booking.status === 'canceled') day.cancellations++
+        if ((booking.rescheduleCount || 0) > 0) day.reschedules++
       }
     })
-    
-    // Add reminder sends to series
-    cronLogs.forEach(log => {
-      if (!log.startedAt) return
-      
-      const date = new Date(log.startedAt)
-      const dateStr = date.toISOString().split('T')[0]
-      
-      if (seriesMap.has(dateStr)) {
-        const day = seriesMap.get(dateStr)
-        day.reminders_sent += (log.successes || 0)
-      }
-    })
-    
-    const series = Array.from(seriesMap.values()).sort((a, b) => 
-      a.date.localeCompare(b.date)
-    )
+
+    const series = Array.from(seriesMap.values()).sort((a, b) => a.date.localeCompare(b.date))
     
     const queryTime = Date.now() - startTime
     
@@ -209,7 +196,8 @@ export async function GET(request) {
         reschedules,
         cancellations,
         reminders_sent: remindersSent,
-        avg_lead_time_minutes: avgLeadTimeMinutes
+        avg_lead_time_minutes: avgLeadTimeMinutes,
+        calls: totalCalls
       },
       series,
       meta: {

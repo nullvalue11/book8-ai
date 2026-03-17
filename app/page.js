@@ -403,7 +403,62 @@ function HomeContent(props) {
   async function archiveBookings() { if (!confirm("Archive all completed and canceled bookings?")) return; try { const result = await api(`/bookings/archive`, { method: "POST" }); alert(`Archived ${result.archived || 0} booking(s)`); await fetchBookings(); await fetchArchivedCount(); } catch (err) { alert(err.message); } }
   async function fetchArchivedCount() { try { const items = await api(`/bookings/archived`, { method: "GET" }); setArchivedCount((items || []).length); } catch {} }
 
-  async function createBooking(e) { e.preventDefault(); try { const payload = { title, customerName, startTime: startTime ? new Date(startTime).toISOString() : null, endTime: endTime ? new Date(endTime).toISOString() : null, notes, timeZone, }; const created = await api(`/bookings`, { method: "POST", headers: { "x-client-timezone": timeZone }, body: JSON.stringify(payload), }); setTitle("Intro call"); setCustomerName(""); setStartTime(""); setEndTime(""); setNotes(""); await fetchBookings(); alert(`Booking created: ${created?.title || created?.id}`); } catch (err) { alert(err.message); } }
+  async function refetchUpcomingBookings() {
+    if (!token || !primaryBusinessId) return;
+    try {
+      const [bookingsRes, svcRes] = await Promise.all([
+        fetch(`/api/business/${encodeURIComponent(primaryBusinessId)}/bookings`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+        fetch(`/api/business/${encodeURIComponent(primaryBusinessId)}/services`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json())
+      ]);
+      const sMap = {};
+      const svcList = svcRes?.services ?? (Array.isArray(svcRes) ? svcRes : []);
+      (Array.isArray(svcList) ? svcList : []).forEach((s) => {
+        if (s && (s.serviceId != null || s.slug != null)) {
+          const key = (s.serviceId ?? s.slug ?? "").toString();
+          sMap[key] = s.name || s.serviceId || s.slug || "Appointment";
+        }
+      });
+      setServicesMap(sMap);
+      const list = bookingsRes?.bookings ?? (bookingsRes?.ok ? [] : []);
+      const now = new Date();
+      const upcoming = (Array.isArray(list) ? list : [])
+        .filter((b) => (b.status === "confirmed" || !b.status) && new Date(b.slot?.start || b.startTime || 0) >= now)
+        .sort((a, b) => new Date(a.slot?.start || a.startTime || 0) - new Date(b.slot?.start || b.startTime || 0))
+        .slice(0, 10);
+      setUpcomingBookings(upcoming);
+    } catch (err) {
+      console.error("[refetchUpcomingBookings]", err);
+    }
+  }
+
+  async function createBooking(e) {
+    e.preventDefault();
+    if (!primaryBusinessId) {
+      alert("No business selected. Set up a business first.");
+      return;
+    }
+    try {
+      const payload = {
+        businessId: primaryBusinessId,
+        serviceId: "manual-booking",
+        startTime: startTime ? new Date(startTime).toISOString() : null,
+        endTime: endTime ? new Date(endTime).toISOString() : null,
+        customerName: customerName || "Walk-in",
+        title: title || "Booking",
+        notes: notes || ""
+      };
+      const created = await api(`/bookings/create`, { method: "POST", body: JSON.stringify(payload) });
+      setTitle("Intro call");
+      setCustomerName("");
+      setStartTime("");
+      setEndTime("");
+      setNotes("");
+      await refetchUpcomingBookings();
+      alert(`Booking created: ${created?.title ?? created?.id ?? "Done"}`);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
 
   async function fetchGoogleStatus() { try { const status = await api(`/integrations/google/sync`, { method: "GET" }); setGoogleStatus(status || { connected: false, lastSyncedAt: null }); } catch { setGoogleStatus({ connected: false, lastSyncedAt: null }); } }
   async function connectGoogle() { 
@@ -1113,7 +1168,7 @@ function HomeContent(props) {
                 <div className="space-y-2"><Label htmlFor="start">Start</Label><Input id="start" type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} required /></div>
                 <div className="space-y-2"><Label htmlFor="end">End</Label><Input id="end" type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} required /></div>
                 <div className="space-y-2 md:col-span-2"><Label htmlFor="notes">Notes</Label><Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-                <div className="md:col-span-2 flex gap-3"><Button type="submit">Create</Button><Button type="button" variant="secondary" onClick={fetchBookings}>Refresh</Button></div>
+                <div className="md:col-span-2 flex gap-3"><Button type="submit">Create</Button><Button type="button" variant="secondary" onClick={refetchUpcomingBookings}>Refresh</Button></div>
               </form>
             </CardContent>
           </Card>
