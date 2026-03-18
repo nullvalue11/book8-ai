@@ -27,6 +27,7 @@ function ServicesContent() {
   const [businessId, setBusinessId] = useState(null);
   const [businessName, setBusinessName] = useState("");
   const [services, setServices] = useState([]);
+  const [planLimits, setPlanLimits] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -62,6 +63,9 @@ function ServicesContent() {
         const biz = bizData.businesses[0];
         setBusinessId(biz.businessId);
         setBusinessName(biz.name || biz.businessId);
+        if (biz.planLimits) {
+          setPlanLimits(biz.planLimits);
+        }
 
         const svcRes = await fetch(`/api/business/${biz.businessId}/services`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -80,8 +84,12 @@ function ServicesContent() {
     })();
   }, [token]);
 
+  const maxServices = typeof planLimits?.maxServices === "number" ? planLimits.maxServices : null;
+  const hasReachedServiceLimit = maxServices != null && services.length >= maxServices;
+
   async function handleAddService(e) {
     e.preventDefault();
+    if (hasReachedServiceLimit) return;
     if (!businessId || !newName.trim()) return;
     setSaving(true);
     setError(null);
@@ -179,9 +187,23 @@ function ServicesContent() {
           </Card>
 
           {!showAddForm ? (
-            <Button onClick={() => setShowAddForm(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Add Service
-            </Button>
+            <div className="space-y-2">
+              <Button onClick={() => setShowAddForm(true)} disabled={hasReachedServiceLimit}>
+                <Plus className="w-4 h-4 mr-2" /> Add Service
+              </Button>
+              {hasReachedServiceLimit && (
+                <p className="text-xs text-muted-foreground">
+                  You&apos;ve reached the maximum services for your plan.{" "}
+                  <button
+                    type="button"
+                    className="underline underline-offset-2"
+                    onClick={() => router.push("/pricing?paywall=1&feature=services")}
+                  >
+                    Upgrade to add more.
+                  </button>
+                </p>
+              )}
+            </div>
           ) : (
             <Card>
               <CardHeader>

@@ -132,6 +132,7 @@ function HomeContent(props) {
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [servicesMap, setServicesMap] = useState({});
   const [expandedCallId, setExpandedCallId] = useState(null);
+  const [planLimits, setPlanLimits] = useState(null);
 
   const [formData, setFormData] = useState({ email: "", password: "", name: "" });
   const [formError, setFormError] = useState("");
@@ -487,6 +488,9 @@ function HomeContent(props) {
       }
       const primary = businesses[0];
       setPrimaryBusinessId(primary.businessId);
+      if (primary.planLimits) {
+        setPlanLimits(primary.planLimits);
+      }
       const setupRes = await api(
         `/business/phone-setup?businessId=${encodeURIComponent(primary.businessId)}`,
         { method: "GET" }
@@ -1302,67 +1306,84 @@ function HomeContent(props) {
                 </p>
               ) : (
                 <>
-                  <div className="space-y-1">
-                    <p>
-                      <span className="font-medium">Status:</span>{" "}
-                      {!!(
-                        phoneSetup.assignedTwilioNumber ||
-                        (phoneSetup.numberSetupMethod && phoneSetup.numberSetupMethod !== "pending")
-                      ) ? (
-                        <span className="text-emerald-600 font-medium">✅ Active</span>
-                      ) : (
-                        <span className="text-amber-600 font-medium">⏳ Setup needed</span>
-                      )}
-                    </p>
-                    <p>
-                      <span className="font-medium">Business:</span>{" "}
-                      {phoneSetup.name}
-                    </p>
-                    {phoneSetup.assignedTwilioNumber ? (
-                      <p>
-                        <span className="font-medium">Book8 number:</span>{" "}
-                        <span className="text-foreground">{formatPhone(phoneSetup.assignedTwilioNumber)}</span>
+                  {planLimits && planLimits.aiPhoneAgent === false ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        AI Phone Agent is available on the Growth plan. Upgrade to let callers book by phone.
                       </p>
-                    ) : (
-                      <p>
-                        <span className="font-medium">Book8 number:</span>{" "}
-                        <span className="text-muted-foreground">Pending assignment</span>
-                      </p>
-                    )}
-                    {Array.isArray(phoneSetup.forwardingFrom) && phoneSetup.forwardingFrom.length > 0 && (
-                      <p className="text-muted-foreground">
-                        <span className="font-medium text-foreground">Forwarding from:</span>{" "}
-                        {phoneSetup.forwardingFrom.map(formatPhone).join(", ")}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => router.push(`/setup?businessId=${encodeURIComponent(phoneSetup.businessId)}`)}
-                    >
-                      {!!(
-                        phoneSetup.assignedTwilioNumber ||
-                        (phoneSetup.numberSetupMethod && phoneSetup.numberSetupMethod !== "pending")
-                      )
-                        ? "Manage"
-                        : "Complete Setup"}
-                    </Button>
-                    {phoneSetup.assignedTwilioNumber && (
                       <Button
                         size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          try {
-                            window.location.href = `tel:${phoneSetup.assignedTwilioNumber}`;
-                          } catch {}
-                        }}
+                        className="bg-white text-brand-600 hover:bg-gray-100 font-semibold"
+                        onClick={() => router.push("/pricing")}
                       >
-                        Test Call
+                        Upgrade
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <p>
+                          <span className="font-medium">Status:</span>{" "}
+                          {!!(
+                            phoneSetup.assignedTwilioNumber ||
+                            (phoneSetup.numberSetupMethod && phoneSetup.numberSetupMethod !== "pending")
+                          ) ? (
+                            <span className="text-emerald-600 font-medium">✅ Active</span>
+                          ) : (
+                            <span className="text-amber-600 font-medium">⏳ Setup needed</span>
+                          )}
+                        </p>
+                        <p>
+                          <span className="font-medium">Business:</span>{" "}
+                          {phoneSetup.name}
+                        </p>
+                        {phoneSetup.assignedTwilioNumber ? (
+                          <p>
+                            <span className="font-medium">Book8 number:</span>{" "}
+                            <span className="text-foreground">{formatPhone(phoneSetup.assignedTwilioNumber)}</span>
+                          </p>
+                        ) : (
+                          <p>
+                            <span className="font-medium">Book8 number:</span>{" "}
+                            <span className="text-muted-foreground">Pending assignment</span>
+                          </p>
+                        )}
+                        {Array.isArray(phoneSetup.forwardingFrom) && phoneSetup.forwardingFrom.length > 0 && (
+                          <p className="text-muted-foreground">
+                            <span className="font-medium text-foreground">Forwarding from:</span>{" "}
+                            {phoneSetup.forwardingFrom.map(formatPhone).join(", ")}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => router.push(`/setup?businessId=${encodeURIComponent(phoneSetup.businessId)}`)}
+                        >
+                          {!!(
+                            phoneSetup.assignedTwilioNumber ||
+                            (phoneSetup.numberSetupMethod && phoneSetup.numberSetupMethod !== "pending")
+                          )
+                            ? "Manage"
+                            : "Complete Setup"}
+                        </Button>
+                        {phoneSetup.assignedTwilioNumber && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              try {
+                                window.location.href = `tel:${phoneSetup.assignedTwilioNumber}`;
+                              } catch {}
+                            }}
+                          >
+                            Test Call
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </CardContent>
@@ -1410,7 +1431,7 @@ function HomeContent(props) {
         </div>
 
         <div className="mt-6">
-          <AnalyticsDashboard token={token} subscribed={isSubscribed} />
+          <AnalyticsDashboard token={token} subscribed={isSubscribed} planLimits={planLimits} />
         </div>
       </div>
     </main>

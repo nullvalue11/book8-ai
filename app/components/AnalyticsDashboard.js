@@ -6,7 +6,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { TrendingUp, Calendar, RotateCcw, XCircle, Bell, Lock, RefreshCw } from 'lucide-react'
 import { Button } from './ui/button'
 
-export default function AnalyticsDashboard({ token, subscribed = false, onSubscriptionRequired }) {
+export default function AnalyticsDashboard({ token, subscribed = false, planLimits = null, onSubscriptionRequired }) {
   const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -145,12 +145,18 @@ export default function AnalyticsDashboard({ token, subscribed = false, onSubscr
   const kpis = analytics.kpis || {}
   const series = analytics.series || []
 
-  const kpiCards = [
+  const hasAdvancedAnalytics = !planLimits || planLimits.advancedAnalytics !== false
+
+  const kpiCardsAll = [
     { title: 'Total Bookings', value: kpis.bookings || 0, icon: Calendar, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
     { title: 'Reschedules', value: kpis.reschedules || 0, icon: RotateCcw, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
     { title: 'Cancellations', value: kpis.cancellations || 0, icon: XCircle, color: 'text-red-500', bgColor: 'bg-red-500/10' },
     { title: 'Reminders Sent', value: kpis.reminders_sent || 0, icon: Bell, color: 'text-green-500', bgColor: 'bg-green-500/10' }
   ]
+
+  const kpiCards = hasAdvancedAnalytics
+    ? kpiCardsAll
+    : kpiCardsAll.filter(card => card.title === 'Total Bookings' || card.title === 'Cancellations')
 
   const lineChartData = series.map(day => ({
     date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -198,43 +204,67 @@ export default function AnalyticsDashboard({ token, subscribed = false, onSubscr
         })}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Bookings & Reminders Trend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={lineChartData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="date" className="text-xs" stroke="currentColor" />
-              <YAxis className="text-xs" stroke="currentColor" />
-              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-              <Legend />
-              <Line type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} name="Bookings" />
-              <Line type="monotone" dataKey="reminders" stroke="#10b981" strokeWidth={2} name="Reminders" />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {hasAdvancedAnalytics ? (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Bookings &amp; Reminders Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={lineChartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" className="text-xs" stroke="currentColor" />
+                  <YAxis className="text-xs" stroke="currentColor" />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                  <Legend />
+                  <Line type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} name="Bookings" />
+                  <Line type="monotone" dataKey="reminders" stroke="#10b981" strokeWidth={2} name="Reminders" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Changes & Cancellations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={barChartData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="date" className="text-xs" stroke="currentColor" />
-              <YAxis className="text-xs" stroke="currentColor" />
-              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-              <Legend />
-              <Bar dataKey="reschedules" fill="#a855f7" name="Reschedules" />
-              <Bar dataKey="cancellations" fill="#ef4444" name="Cancellations" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Changes &amp; Cancellations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={barChartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" className="text-xs" stroke="currentColor" />
+                  <YAxis className="text-xs" stroke="currentColor" />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                  <Legend />
+                  <Bar dataKey="reschedules" fill="#a855f7" name="Reschedules" />
+                  <Bar dataKey="cancellations" fill="#ef4444" name="Cancellations" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <Card className="border-dashed border-border bg-muted/10">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Lock className="w-4 h-4" />
+              Advanced analytics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Advanced analytics (trends, charts, and detailed breakdowns) are available on the Growth plan.
+            </p>
+            <Button
+              size="sm"
+              onClick={() => { window.location.href = '/pricing?paywall=1&feature=analytics'; }}
+            >
+              Upgrade to Growth
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {analytics.meta && (
         <div className="text-xs text-muted-foreground text-right">Query time: {analytics.meta.query_time_ms}ms</div>
