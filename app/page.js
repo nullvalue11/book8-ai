@@ -949,6 +949,9 @@ function HomeContent(props) {
                 <Link href="/privacy" className="text-white/60 hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
+                <Link href="/terms" className="text-white/60 hover:text-white transition-colors">
+                  Terms &amp; Conditions
+                </Link>
                 <Link href="#data-transparency" className="text-white/60 hover:text-white transition-colors">
                   Data Usage
                 </Link>
