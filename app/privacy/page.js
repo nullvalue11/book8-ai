@@ -32,7 +32,7 @@ export default function PrivacyPolicyPage() {
       <main className="max-w-4xl mx-auto px-4 py-12">
         <div className="prose prose-invert prose-zinc max-w-none">
           <h1 className="text-4xl font-bold text-white mb-2">Privacy Policy</h1>
-          <p className="text-zinc-400 text-sm mb-8">Last Updated: January 23, 2025</p>
+          <p className="text-zinc-400 text-sm mb-8">Last Updated: March 17, 2026</p>
 
           <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8">
             <p className="text-zinc-300 m-0">
@@ -68,13 +68,13 @@ export default function PrivacyPolicyPage() {
           <section id="company-info" className="mb-10">
             <h2 className="text-2xl font-bold text-white mb-4">1. Company Information</h2>
             <p className="text-zinc-300">
-              Book8 AI Inc. is a company incorporated in Canada, with its principal place of business in Ottawa, Ontario, Canada. 
+              11111221 Canada INC. (operating as Book8 AI) is a company incorporated in Canada, with its principal place of business in Ottawa, Ontario, Canada. 
               Our services are accessible globally to users worldwide.
             </p>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4 mt-4">
               <p className="text-zinc-300 m-0">
                 <strong className="text-white">Data Controller:</strong><br />
-                Book8 AI Inc.<br />
+                11111221 Canada INC. (operating as Book8 AI)<br />
                 Ottawa, Ontario, Canada<br />
                 Email: privacy@book8.io
               </p>
@@ -118,6 +118,20 @@ export default function PrivacyPolicyPage() {
               <li>Transcriptions are generated for booking confirmation</li>
               <li>Call metadata (duration, timestamp) is collected</li>
               <li>Voice data is processed in accordance with applicable laws and is not sold to third parties</li>
+            </ul>
+            
+            <h3 className="text-xl font-semibold text-white mt-6 mb-3">2.5 SMS and Email Communications</h3>
+            <p className="text-zinc-300">
+              When you book an appointment through a Book8-powered business and provide your contact information:
+            </p>
+            <ul className="list-disc list-inside text-zinc-300 space-y-2">
+              <li>Your phone number is used to send booking confirmation and appointment reminder SMS messages via Twilio</li>
+              <li>Your email address (if provided) is used to send booking confirmation and reminder emails via Resend</li>
+              <li>SMS reminders are sent at 24 hours, 1 hour, and 30 minutes before your appointment</li>
+              <li>You can reply CANCEL BOOKING to cancel your appointment</li>
+              <li>You can reply STOP to opt out of all SMS messages</li>
+              <li>Message and data rates may apply</li>
+              <li>Your contact information is not sold to third parties</li>
             </ul>
           </section>
 
@@ -177,12 +191,19 @@ export default function PrivacyPolicyPage() {
             </div>
 
             <h3 className="text-xl font-semibold text-white mt-6 mb-3">4.3 Voice and Communication Services</h3>
-            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-4">
               <p className="text-zinc-300 m-0">
                 <strong className="text-white">Twilio Inc.</strong><br />
                 We may use Twilio for voice AI and SMS notifications. Twilio&apos;s privacy policy is available at{" "}
                 <a href="https://www.twilio.com/legal/privacy" target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300">
                   twilio.com/legal/privacy
+                </a>
+              </p>
+              <p className="text-zinc-300 m-0">
+                <strong className="text-white">ElevenLabs Inc.</strong><br />
+                We use ElevenLabs for AI voice processing and conversation handling during phone bookings. When you call a Book8-powered business, your voice is processed by ElevenLabs to understand and respond to your booking request. ElevenLabs&apos; privacy policy is available at{" "}
+                <a href="https://elevenlabs.io/privacy" target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300">
+                  elevenlabs.io/privacy
                 </a>
               </p>
             </div>
@@ -196,6 +217,17 @@ export default function PrivacyPolicyPage() {
               <li>In connection with a merger, acquisition, or sale of assets</li>
               <li>With your consent or at your direction</li>
             </ul>
+
+            <h3 className="text-xl font-semibold text-white mt-6 mb-3">4.5 Email Services</h3>
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+              <p className="text-zinc-300 m-0">
+                <strong className="text-white">Resend Inc.</strong><br />
+                We use Resend to send booking confirmation emails and appointment reminder emails. Your email address is shared with Resend solely for the purpose of delivering these transactional messages. Resend&apos;s privacy policy is available at{" "}
+                <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300">
+                  resend.com/legal/privacy-policy
+                </a>
+              </p>
+            </div>
 
             <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mt-4">
               <p className="text-green-400 m-0 font-semibold">
