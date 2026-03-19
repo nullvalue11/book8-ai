@@ -66,7 +66,12 @@ function getSubscriptionStatus(business, user) {
     }
   }
   if (business?.subscription?.status === 'active' || business?.subscription?.status === 'trialing') {
-    return { status: 'active', plan: 'starter', label: 'Active' }
+    const plan = business?.plan || business?.subscription?.plan || 'starter'
+    return {
+      status: 'active',
+      plan,
+      label: plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'Active'
+    }
   }
   if (business?.plan && business.plan !== 'none') {
     const plan = business.plan
@@ -85,12 +90,16 @@ function getSubscriptionStatus(business, user) {
 /** Calendar status from user (Google OAuth) or business record */
 function getCalendarStatus(business, user) {
   if (user?.google?.connected || user?.googleAccessToken || user?.google?.accessToken) {
-    return { connected: true, label: 'Connected' }
+    return { connected: true, label: 'Connected (Google)', provider: 'google' }
   }
   if (business?.calendar?.connected || business?.calendarProvider || business?.googleCalendarConnected) {
-    return { connected: true, label: 'Connected' }
+    const provider = business?.calendar?.provider || business?.calendarProvider || (business?.googleCalendarConnected ? 'google' : null)
+    const label = provider === 'microsoft'
+      ? 'Connected (Outlook)'
+      : 'Connected (Google)'
+    return { connected: true, label, provider: provider || 'google' }
   }
-  return { connected: false, label: 'Not connected' }
+  return { connected: false, label: 'Not connected', provider: null }
 }
 
 /** Agent status from phone-setup (Twilio number assigned) or business fields */
@@ -141,6 +150,7 @@ function BusinessPageContent() {
   // Action states
   const [subscribing, setSubscribing] = useState(null)
   const [connectingCalendar, setConnectingCalendar] = useState(null)
+  const [disconnectingCalendar, setDisconnectingCalendar] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   
@@ -152,8 +162,13 @@ function BusinessPageContent() {
     const checkoutStatus = searchParams.get('checkout')
     const checkoutBusinessId = searchParams.get('businessId')
     const googleConnected = searchParams.get('google_connected')
+    const outlookConnected = searchParams.get('outlook_connected')
     
-    if ((checkoutStatus === 'success' && checkoutBusinessId) || googleConnected === '1') {
+    if (
+      (checkoutStatus === 'success' && checkoutBusinessId) ||
+      googleConnected === '1' ||
+      outlookConnected === '1'
+    ) {
       // Refresh businesses immediately to show updated status
       if (token) {
         fetchBusinesses()
@@ -338,14 +353,46 @@ function BusinessPageContent() {
     window.location.href = pricingUrl
   }
   
-  async function handleConnectCalendar(biz) {
+  async function handleConnectCalendar(biz, provider) {
     setConnectingCalendar(biz.businessId)
     try {
-      // Redirect to Google OAuth with business context
-      window.location.href = `/api/integrations/google/auth?jwt=${token}&businessId=${biz.businessId}`
+      const authBase =
+        provider === 'microsoft'
+          ? '/api/integrations/microsoft/auth'
+          : '/api/integrations/google/auth'
+
+      window.location.href = `${authBase}?jwt=${token}&businessId=${biz.businessId}`
     } catch (err) {
       setError(err.message)
       setConnectingCalendar(null)
+    }
+  }
+
+  async function handleDisconnectCalendar(biz, provider) {
+    setDisconnectingCalendar(biz.businessId)
+    setError(null)
+    try {
+      const res = await fetch(`/api/integrations/${provider}/disconnect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ businessId: biz.businessId })
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Failed to disconnect calendar')
+      }
+
+      // Refresh so UI shows updated provider connection state.
+      fetchBusinesses()
+    } catch (err) {
+      console.error('[Disconnect] Error:', err.message)
+      setError(err.message)
+    } finally {
+      setDisconnectingCalendar(null)
     }
   }
   
@@ -472,6 +519,14 @@ function BusinessPageContent() {
           <div className="mb-4 p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5" />
             <p>Google Calendar connected successfully!</p>
+          </div>
+        )}
+
+        {/* Success message for Outlook Calendar connection */}
+        {searchParams.get('outlook_connected') === '1' && (
+          <div className="mb-4 p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5" />
+            <p>Outlook Calendar connected successfully!</p>
           </div>
         )}
         
@@ -607,21 +662,49 @@ function BusinessPageContent() {
                                     {calStatus.label}
                                   </span>
                                   {!calStatus.connected && (subStatus.status === 'active' || subStatus.status === 'trialing') && (
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline"
-                                      onClick={() => handleConnectCalendar(biz)}
-                                      disabled={connectingCalendar === biz.businessId}
-                                    >
-                                      {connectingCalendar === biz.businessId ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                      ) : (
-                                        <>Connect</>
-                                      )}
-                                    </Button>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleConnectCalendar(biz, 'google')}
+                                        disabled={connectingCalendar === biz.businessId}
+                                      >
+                                        {connectingCalendar === biz.businessId ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          <>Google</>
+                                        )}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleConnectCalendar(biz, 'microsoft')}
+                                        disabled={connectingCalendar === biz.businessId}
+                                      >
+                                        {connectingCalendar === biz.businessId ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          <>Outlook</>
+                                        )}
+                                      </Button>
+                                    </div>
                                   )}
                                   {calStatus.connected && (
-                                    <Check className="w-4 h-4 text-green-500" />
+                                    <div className="flex items-center gap-2">
+                                      <Check className="w-4 h-4 text-green-500" />
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleDisconnectCalendar(biz, calStatus.provider || 'google')}
+                                        disabled={disconnectingCalendar === biz.businessId}
+                                      >
+                                        {disconnectingCalendar === biz.businessId ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          <>Disconnect</>
+                                        )}
+                                      </Button>
+                                    </div>
                                   )}
                                 </div>
                               </div>

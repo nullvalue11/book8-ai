@@ -170,8 +170,16 @@ function CalendarIntegrationsContent() {
         google: googleData.connected || false
       }))
       
-      // TODO: Add Microsoft status check when implemented
-      // const msRes = await fetch('/api/integrations/microsoft/status', ...)
+      // Fetch Microsoft status
+      const msRes = await fetch('/api/integrations/microsoft/status', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const msData = await msRes.json()
+      
+      setConnectedProviders(prev => ({
+        ...prev,
+        microsoft: msData.connected || false
+      }))
       
     } catch (err) {
       console.error('Failed to fetch connection status:', err)

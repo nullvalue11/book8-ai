@@ -82,6 +82,14 @@ function extractBillingFields(event) {
   return { type, customerId, subscriptionId, plan, status }
 }
 
+function planFromStripePriceId(priceId) {
+  if (!priceId || !env?.STRIPE) return null
+  if (priceId === env.STRIPE?.PRICE_ENTERPRISE) return 'enterprise'
+  if (priceId === env.STRIPE?.PRICE_GROWTH) return 'growth'
+  if (priceId === env.STRIPE?.PRICE_STARTER) return 'starter'
+  return null
+}
+
 /**
  * Handle subscription-related events
  * Updates the user's subscription record with billing fields including stripeCallMinutesItemId
@@ -109,6 +117,7 @@ async function handleSubscriptionEvent(event, stripe, database) {
       
       // Extract billing fields including call minutes item ID
       const billingFields = extractSubscriptionBillingFields(subscription)
+      const plan = planFromStripePriceId(billingFields.stripePriceId) || 'starter'
       
       // Update user's subscription record (using atomic update to handle subscription: null)
       await updateSubscriptionFields(database.collection('users'), userId, {
@@ -116,6 +125,7 @@ async function handleSubscriptionEvent(event, stripe, database) {
         stripeSubscriptionId: subscriptionId,
         stripeCallMinutesItemId: billingFields.stripeCallMinutesItemId,
         stripePriceId: billingFields.stripePriceId,
+        plan,
         status: subscription.status,
         currentPeriodStart: billingFields.currentPeriodStart,
         currentPeriodEnd: billingFields.currentPeriodEnd,
@@ -135,6 +145,8 @@ async function handleSubscriptionEvent(event, stripe, database) {
               'subscription.stripeCustomerId': customerId,
               'subscription.stripeSubscriptionId': subscriptionId,
               'subscription.stripePriceId': billingFields.stripePriceId,
+              'subscription.plan': plan,
+              plan,
               'subscription.currentPeriodStart': billingFields.currentPeriodStart,
               'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
               'subscription.activatedAt': new Date().toISOString(),
@@ -153,11 +165,11 @@ async function handleSubscriptionEvent(event, stripe, database) {
       // ──────────────────────────────────────────────────────────
       try {
         const session = event.data.object
-
-        const businessName = session.metadata?.businessName || session.customer_details?.name || null
-        const businessEmail = session.customer_email || session.customer_details?.email || null
-        const businessTimezone = session.metadata?.timezone || 'America/Toronto'
-        const businessCategory = session.metadata?.category || null
+ 
+        let businessName = session.metadata?.businessName || session.customer_details?.name || null
+        let businessEmail = session.customer_email || session.customer_details?.email || null
+        let businessTimezone = session.metadata?.timezone || 'America/Toronto'
+        let businessCategory = session.metadata?.category || null
 
         const provisionBusinessId = session.metadata?.businessId || (businessName
           ? businessName
@@ -169,12 +181,25 @@ async function handleSubscriptionEvent(event, stripe, database) {
               .replace(/^-+|-+$/g, '')
           : null)
 
+        // If Stripe metadata is incomplete, fall back to the business record.
+        // This helps when Stripe checkout doesn't include `businessName`/`businessEmail`.
+        if (provisionBusinessId && (!businessName || !businessEmail || !businessCategory)) {
+          try {
+            const biz = await database.collection(BUSINESS_COLLECTION).findOne({ businessId: provisionBusinessId })
+            if (biz) {
+              businessName = businessName || biz.name || null
+              businessEmail = businessEmail || biz.ownerEmail || null
+              businessTimezone = biz.timezone || businessTimezone
+              businessCategory = businessCategory || biz.category || null
+            }
+          } catch (fallbackErr) {
+            console.warn('[stripe-webhook] provisioning fallback lookup failed:', fallbackErr?.message || fallbackErr)
+          }
+        }
+
         const lineItems = session.line_items?.data || []
         const priceId = lineItems[0]?.price?.id || session.metadata?.priceId || null
-        let plan = session.metadata?.plan || 'starter'
-        if (priceId === env.STRIPE?.PRICE_ENTERPRISE) plan = 'enterprise'
-        else if (priceId === env.STRIPE?.PRICE_GROWTH) plan = 'growth'
-        else if (priceId === env.STRIPE?.PRICE_STARTER) plan = 'starter'
+        const provisionPlan = planFromStripePriceId(priceId) || session.metadata?.plan || 'starter'
 
         if (provisionBusinessId && businessName) {
           const coreApiUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
@@ -186,7 +211,9 @@ async function handleSubscriptionEvent(event, stripe, database) {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-book8-internal-secret': coreApiSecret
+                // Some deployments expect different header key names; sending both is harmless.
+                'x-book8-internal-secret': coreApiSecret,
+                'x-internal-secret': coreApiSecret
               },
               body: JSON.stringify({
                 businessId: provisionBusinessId,
@@ -196,7 +223,7 @@ async function handleSubscriptionEvent(event, stripe, database) {
                 timezone: businessTimezone,
                 stripeCustomerId: session.customer || null,
                 stripeSubscriptionId: session.subscription || null,
-                plan
+                plan: provisionPlan
               })
             }
           )
@@ -255,12 +282,14 @@ async function handleSubscriptionEvent(event, stripe, database) {
       
       // Extract billing fields
       const billingFields = extractSubscriptionBillingFields(subscription)
+      const plan = planFromStripePriceId(billingFields.stripePriceId) || 'starter'
       
       // Update user's subscription record (using atomic update)
       await updateSubscriptionFields(database.collection('users'), user.id, {
         stripeSubscriptionId: subscriptionId,
         stripeCallMinutesItemId: billingFields.stripeCallMinutesItemId,
         stripePriceId: billingFields.stripePriceId,
+        plan,
         status: subscription.status,
         currentPeriodStart: billingFields.currentPeriodStart,
         currentPeriodEnd: billingFields.currentPeriodEnd,
@@ -278,6 +307,8 @@ async function handleSubscriptionEvent(event, stripe, database) {
                                    subscription.status === 'past_due' ? 'past_due' : subscription.status,
             'subscription.stripeSubscriptionId': subscriptionId,
             'subscription.stripePriceId': billingFields.stripePriceId,
+            'subscription.plan': plan,
+            plan,
             'subscription.currentPeriodStart': billingFields.currentPeriodStart,
             'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
             updatedAt: new Date()
@@ -307,7 +338,11 @@ async function handleSubscriptionEvent(event, stripe, database) {
           $set: {
             'subscription.status': 'canceled',
             'subscription.canceledAt': new Date().toISOString(),
-            'subscription.updatedAt': new Date().toISOString()
+            'subscription.updatedAt': new Date().toISOString(),
+            // Keep history, but remove plan display so UI doesn't show stale tiers.
+            'subscription.plan': null,
+            // Also remove business plan display if present.
+            'subscription.planTier': null
           }
         }
       )
@@ -322,6 +357,8 @@ async function handleSubscriptionEvent(event, stripe, database) {
             'subscription.status': SUBSCRIPTION_STATUS.CANCELED,
             'subscription.canceledAt': new Date().toISOString(),
             'features.billingEnabled': false,
+            'subscription.plan': null,
+            plan: null,
             updatedAt: new Date()
           }
         }

@@ -1,0 +1,98 @@
+import { NextResponse } from 'next/server'
+import { MongoClient } from 'mongodb'
+import jwt from 'jsonwebtoken'
+import { env } from '@/lib/env'
+
+export const runtime = 'nodejs'
+
+let client, db
+
+async function connect() {
+  if (!client) {
+    client = new MongoClient(env.MONGO_URL)
+    await client.connect()
+    db = client.db(env.DB_NAME)
+  }
+  return db
+}
+
+function getJwtSecret() {
+  return env.JWT_SECRET || 'dev-secret-change-me'
+}
+
+async function requireAuth(request, database) {
+  const auth = request.headers.get('authorization') || ''
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
+  if (!token) return { error: 'Missing Authorization header', status: 401 }
+  try {
+    const payload = jwt.verify(token, getJwtSecret())
+    const user = await database.collection('users').findOne({ id: payload.sub })
+    if (!user) return { error: 'User not found', status: 401 }
+    return { payload, user }
+  } catch {
+    return { error: 'Invalid or expired token', status: 401 }
+  }
+}
+
+export async function POST(request) {
+  try {
+    const database = await connect()
+    const auth = await requireAuth(request, database)
+    if (auth.error) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+
+    const { payload } = auth
+    const userId = payload.sub
+
+    let body = {}
+    try {
+      body = await request.json()
+    } catch {
+      body = {}
+    }
+
+    const businessId = body?.businessId || null
+    const now = new Date()
+
+    // Clear tokens at user level
+    await database.collection('users').updateOne(
+      { id: userId },
+      {
+        $set: {
+          microsoft: {
+            refreshToken: null,
+            email: null,
+            scope: null,
+            connected: false,
+            calendarConnected: false,
+            needsReconnect: false,
+            connectedAt: null,
+            lastSyncedAt: null
+          },
+          updatedAt: now
+        }
+      }
+    )
+
+    // Clear provider info on business calendar
+    const bizFilter = {
+      ownerUserId: userId,
+      'calendar.provider': 'microsoft'
+    }
+    if (businessId) bizFilter.businessId = businessId
+
+    await database.collection('businesses').updateMany(bizFilter, {
+      $set: {
+        'calendar.connected': false,
+        'calendar.provider': null,
+        'calendar.calendarId': null,
+        updatedAt: now
+      }
+    })
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('[microsoft/disconnect] error', e)
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 })
+  }
+}
+

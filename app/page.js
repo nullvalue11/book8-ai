@@ -114,6 +114,7 @@ function HomeContent(props) {
   const [loadingBookings, setLoadingBookings] = useState(false);
 
   const [googleStatus, setGoogleStatus] = useState({ connected: false, lastSyncedAt: null });
+  const [outlookStatus, setOutlookStatus] = useState({ connected: false, lastSyncedAt: null });
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [calendars, setCalendars] = useState([]);
   const [savingCalendars, setSavingCalendars] = useState(false);
@@ -210,7 +211,7 @@ function HomeContent(props) {
   }, [appReady, token]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchArchivedCount(); checkSubscription(); } }, [token]);
+  useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchOutlookStatus(); fetchArchivedCount(); checkSubscription(); } }, [token]);
 
   // Check for checkout success (from pricing page redirect)
   useEffect(() => {
@@ -462,6 +463,7 @@ function HomeContent(props) {
   }
 
   async function fetchGoogleStatus() { try { const status = await api(`/integrations/google/sync`, { method: "GET" }); setGoogleStatus(status || { connected: false, lastSyncedAt: null }); } catch { setGoogleStatus({ connected: false, lastSyncedAt: null }); } }
+  async function fetchOutlookStatus() { try { const status = await api(`/integrations/microsoft/status`, { method: "GET" }); setOutlookStatus(status || { connected: false, lastSyncedAt: null }); } catch { setOutlookStatus({ connected: false, lastSyncedAt: null }); } }
   async function connectGoogle() { 
     if (!token) return alert("Please login first"); 
     if (!isSubscribed) {
@@ -469,6 +471,18 @@ function HomeContent(props) {
       return;
     }
     window.location.href = `/api/integrations/google/auth?jwt=${token}`; 
+  }
+  async function connectOutlook() { 
+    if (!token) return alert("Please login first"); 
+    if (!isSubscribed) {
+      router.push('/pricing?paywall=1&feature=calendar');
+      return;
+    }
+    if (!primaryBusinessId) {
+      alert('Set up a business first (need a businessId to connect Outlook for phone bookings).');
+      return;
+    }
+    window.location.href = `/api/integrations/microsoft/auth?jwt=${token}&businessId=${primaryBusinessId}`; 
   }
   async function openCalendars() { try { const res = await api(`/integrations/google/calendars`, { method: "GET" }); setCalendars(res?.calendars || []); setCalendarDialogOpen(true); } catch (err) { alert(err.message || "Failed to load calendars"); } }
   async function saveCalendars() { try { setSavingCalendars(true); const selected = calendars.filter((c) => c.selected).map((c) => c.id); await api(`/integrations/google/calendars`, { method: "POST", body: JSON.stringify({ selectedCalendarIds: selected }), }); setCalendarDialogOpen(false); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Failed to save selections"); } finally { setSavingCalendars(false); } }
@@ -1254,6 +1268,34 @@ function HomeContent(props) {
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div className="rounded-md border p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium flex items-center gap-2">
+                      Microsoft Outlook
+                      {!isSubscribed && <Lock className="w-3 h-3 text-muted-foreground" />}
+                    </p>
+                    <p className="text-xs text-muted-foreground break-words">
+                      {!isSubscribed
+                        ? "Subscribe to activate Outlook calendar"
+                        : outlookStatus?.connected
+                          ? `Connected • Last synced ${outlookStatus?.lastSyncedAt ? formatDT(outlookStatus.lastSyncedAt) : "never"}`
+                          : "Not connected"
+                      }
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={outlookStatus?.connected ? "secondary" : "default"}
+                    onClick={connectOutlook}
+                    className="shrink-0"
+                    disabled={!isSubscribed}
+                  >
+                    {!isSubscribed ? "Locked" : outlookStatus?.connected ? "Reconnect" : "Connect"}
+                  </Button>
+                </div>
               </div>
 
               <div className="rounded-md border p-3">

@@ -264,7 +264,12 @@ export async function GET(request) {
       category: b.category || 'other',
       status: b.status,
       statusReason: b.statusReason,
-      subscription: { status: b.subscription?.status || 'none' },
+      plan: b.plan || b.subscription?.plan || null,
+      subscription: {
+        status: b.subscription?.status || 'none',
+        plan: b.subscription?.plan || b.plan || null,
+        stripePriceId: b.subscription?.stripePriceId || null
+      },
       calendar: { connected: b.calendar?.connected || false },
       provisioningOptions: b.provisioningOptions,
       ops: {
