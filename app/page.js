@@ -126,6 +126,7 @@ function HomeContent(props) {
   const [phoneSetup, setPhoneSetup] = useState(null);
   const [phoneSetupLoading, setPhoneSetupLoading] = useState(false);
   const [primaryBusinessId, setPrimaryBusinessId] = useState(null);
+  const [primaryCalendarProvider, setPrimaryCalendarProvider] = useState(null);
 
   const [recentCalls, setRecentCalls] = useState([]);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
@@ -497,11 +498,14 @@ function HomeContent(props) {
       const businesses = bizRes.businesses || [];
       if (!businesses.length) {
         setPrimaryBusinessId(null);
+        setPrimaryCalendarProvider(null);
         setPhoneSetup(null);
         return;
       }
       const primary = businesses[0];
       setPrimaryBusinessId(primary.businessId);
+      const provider = primary?.calendar?.provider || (!primary?.calendar?.provider && primary?.calendar?.connected ? 'google' : null)
+      setPrimaryCalendarProvider(provider);
       if (primary.planLimits) {
         setPlanLimits(primary.planLimits);
       }
@@ -1223,13 +1227,13 @@ function HomeContent(props) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium flex items-center gap-2">
-                      Google Calendar
+                      Gmail
                       {!isSubscribed && <Lock className="w-3 h-3 text-muted-foreground" />}
                     </p>
                     <p className="text-xs text-muted-foreground break-words">
                       {!isSubscribed 
                         ? "Subscribe to activate calendar sync" 
-                        : googleStatus?.connected 
+                        : primaryCalendarProvider === "google" 
                           ? `Connected • Last synced ${googleStatus?.lastSyncedAt ? formatDT(googleStatus.lastSyncedAt) : "never"}` 
                           : "Not connected"
                       }
@@ -1237,15 +1241,15 @@ function HomeContent(props) {
                   </div>
                   <Button 
                     size="sm" 
-                    variant={googleStatus?.connected ? "secondary" : "default"} 
+                    variant={primaryCalendarProvider === "google" ? "secondary" : "default"} 
                     onClick={connectGoogle} 
                     className="shrink-0"
                     disabled={!isSubscribed}
                   >
-                    {!isSubscribed ? "Locked" : googleStatus?.connected ? "Reconnect" : "Connect"}
+                    {!isSubscribed ? "Locked" : primaryCalendarProvider === "google" ? "Reconnect" : "Connect"}
                   </Button>
                 </div>
-                {googleStatus?.connected && isSubscribed && (
+                {primaryCalendarProvider === "google" && isSubscribed && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     <Button size="sm" variant="secondary" onClick={openCalendars}>Choose calendars</Button>
                     <Button size="sm" onClick={syncGoogle}>Sync now</Button>
@@ -1280,7 +1284,7 @@ function HomeContent(props) {
                     <p className="text-xs text-muted-foreground break-words">
                       {!isSubscribed
                         ? "Subscribe to activate Outlook calendar"
-                        : outlookStatus?.connected
+                        : primaryCalendarProvider === "microsoft"
                           ? `Connected • Last synced ${outlookStatus?.lastSyncedAt ? formatDT(outlookStatus.lastSyncedAt) : "never"}`
                           : "Not connected"
                       }
@@ -1288,12 +1292,12 @@ function HomeContent(props) {
                   </div>
                   <Button
                     size="sm"
-                    variant={outlookStatus?.connected ? "secondary" : "default"}
+                    variant={primaryCalendarProvider === "microsoft" ? "secondary" : "default"}
                     onClick={connectOutlook}
                     className="shrink-0"
                     disabled={!isSubscribed}
                   >
-                    {!isSubscribed ? "Locked" : outlookStatus?.connected ? "Reconnect" : "Connect"}
+                    {!isSubscribed ? "Locked" : primaryCalendarProvider === "microsoft" ? "Reconnect" : "Connect"}
                   </Button>
                 </div>
               </div>

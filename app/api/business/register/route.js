@@ -270,7 +270,10 @@ export async function GET(request) {
         plan: b.subscription?.plan || b.plan || null,
         stripePriceId: b.subscription?.stripePriceId || null
       },
-      calendar: { connected: b.calendar?.connected || false },
+      calendar: { 
+        connected: b.calendar?.connected || false,
+        provider: b.calendar?.provider || null
+      },
       provisioningOptions: b.provisioningOptions,
       ops: {
         lastRequestId: b.ops?.lastRequestId,

@@ -55,10 +55,18 @@ const SUBSCRIPTION_COLORS = {
   canceled: 'bg-gray-100 text-gray-800'
 }
 
+const PLAN_BADGE_COLORS = {
+  none: 'bg-gray-100 text-gray-800',
+  starter: 'bg-green-100 text-green-800',
+  growth: 'bg-blue-100 text-blue-800',
+  enterprise: 'bg-purple-100 text-purple-800'
+}
+
 /** Subscription status from user (Stripe webhook) or business record */
 function getSubscriptionStatus(business, user) {
   if (user?.subscription?.status === 'active' || user?.subscription?.status === 'trialing') {
-    const plan = user.subscription?.plan || 'starter'
+    // Prefer explicit plan, but fall back to the business-level plan if the user record is missing it.
+    const plan = user.subscription?.plan || business?.subscription?.plan || business?.plan || 'starter'
     return {
       status: 'active',
       plan,
@@ -89,16 +97,24 @@ function getSubscriptionStatus(business, user) {
 
 /** Calendar status from user (Google OAuth) or business record */
 function getCalendarStatus(business, user) {
-  if (user?.google?.connected || user?.googleAccessToken || user?.google?.accessToken) {
-    return { connected: true, label: 'Connected (Google)', provider: 'google' }
+  // Source of truth for provider label should be the business calendar provider.
+  // This prevents showing "Google/Gmail" when Outlook is connected.
+  const provider =
+    business?.calendar?.provider ||
+    business?.calendarProvider ||
+    (business?.googleCalendarConnected ? 'google' : null) ||
+    null
+
+  // Back-compat: if calendar is marked connected but provider is missing, assume Google/Gmail.
+  const inferredProvider = !provider && business?.calendar?.connected ? 'google' : provider
+
+  if (inferredProvider === 'microsoft') {
+    return { connected: true, label: 'Connected (Outlook)', provider: 'microsoft' }
   }
-  if (business?.calendar?.connected || business?.calendarProvider || business?.googleCalendarConnected) {
-    const provider = business?.calendar?.provider || business?.calendarProvider || (business?.googleCalendarConnected ? 'google' : null)
-    const label = provider === 'microsoft'
-      ? 'Connected (Outlook)'
-      : 'Connected (Google)'
-    return { connected: true, label, provider: provider || 'google' }
+  if (inferredProvider === 'google') {
+    return { connected: true, label: 'Connected (Gmail)', provider: 'google' }
   }
+
   return { connected: false, label: 'Not connected', provider: null }
 }
 
@@ -518,7 +534,7 @@ function BusinessPageContent() {
         {searchParams.get('google_connected') === '1' && (
           <div className="mb-4 p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5" />
-            <p>Google Calendar connected successfully!</p>
+            <p>Gmail Calendar connected successfully!</p>
           </div>
         )}
 
@@ -534,7 +550,7 @@ function BusinessPageContent() {
         {searchParams.get('error') === 'subscription_required' && (
           <div className="mb-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5" />
-            <p>A subscription is required to connect Google Calendar. Please subscribe first.</p>
+            <p>A subscription is required to connect Gmail Calendar. Please subscribe first.</p>
           </div>
         )}
         
@@ -630,7 +646,7 @@ function BusinessPageContent() {
                                   <span className="text-sm font-medium">Subscription</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SUBSCRIPTION_COLORS[subStatus.status] || 'bg-gray-100'}`}>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PLAN_BADGE_COLORS[subStatus.plan || 'none'] || SUBSCRIPTION_COLORS[subStatus.status] || PLAN_BADGE_COLORS.none}`}>
                                     {subStatus.label}
                                   </span>
                                   {subStatus.status !== 'active' && subStatus.status !== 'trialing' && (
@@ -647,7 +663,15 @@ function BusinessPageContent() {
                                     </Button>
                                   )}
                                   {(subStatus.status === 'active' || subStatus.status === 'trialing') && (
-                                    <Check className="w-4 h-4 text-green-500" />
+                                    <Check
+                                      className={
+                                        subStatus.plan === 'growth'
+                                          ? 'w-4 h-4 text-blue-500'
+                                          : subStatus.plan === 'enterprise'
+                                            ? 'w-4 h-4 text-purple-500'
+                                            : 'w-4 h-4 text-green-500'
+                                      }
+                                    />
                                   )}
                                 </div>
                               </div>
@@ -672,7 +696,7 @@ function BusinessPageContent() {
                                         {connectingCalendar === biz.businessId ? (
                                           <Loader2 className="w-4 h-4 animate-spin" />
                                         ) : (
-                                          <>Google</>
+                                          <>Gmail</>
                                         )}
                                       </Button>
                                       <Button
@@ -1013,7 +1037,7 @@ function BusinessPageContent() {
                     <p className="text-sm font-medium">Next Steps:</p>
                     <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
                       <li>Subscribe to a plan to enable all features</li>
-                      <li>Connect your Google Calendar</li>
+                          <li>Connect your Gmail Calendar</li>
                       <li>Start using your AI phone agent</li>
                     </ol>
                   </div>
