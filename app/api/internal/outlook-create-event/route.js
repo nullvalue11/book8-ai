@@ -71,6 +71,23 @@ function formatDateTimeInZone(isoStr, timeZone) {
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`
 }
 
+function decodeJwtInfo(token) {
+  try {
+    if (!token || typeof token !== 'string') return null
+    const parts = token.split('.')
+    if (parts.length < 2) return null
+    const payloadJson = Buffer.from(parts[1], 'base64').toString('utf8')
+    const payload = JSON.parse(payloadJson)
+    return {
+      aud: payload?.aud,
+      iss: payload?.iss,
+      exp: payload?.exp
+    }
+  } catch {
+    return null
+  }
+}
+
 export async function POST(request) {
   try {
     if (!validateInternalSecret(request)) {
@@ -195,6 +212,7 @@ export async function POST(request) {
       })
 
       const tokenRes = await getMicrosoftAccessToken(ms.refreshToken)
+      const tokenInfo = decodeJwtInfo(tokenRes.accessToken)
       console.log(
         '[outlook-create-event] Using access token (first 20 chars):',
         tokenRes.accessToken ? `${tokenRes.accessToken.substring(0, 20)}…` : '(missing)'
@@ -263,7 +281,8 @@ export async function POST(request) {
           graphErrorCode: responseData?.error?.code,
           graphErrorMessage: responseData?.error?.message,
           // Include raw response so core-api logs can surface the real Graph error.
-          graphResponse: responseData
+          graphResponse: responseData,
+          tokenInfo
         })
       }
 
