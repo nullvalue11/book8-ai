@@ -150,8 +150,10 @@ export async function POST(request) {
     }
 
     const database = await connect()
+    const bizId = businessId.trim()
+    // Support both businessId (book8 schema) and id (core-api test schema)
     const business = await database.collection(BUSINESS_COLLECTION).findOne({
-      businessId: businessId.trim()
+      $or: [{ businessId: bizId }, { id: bizId }]
     })
     if (!business) return noConnection('business_not_found')
 
@@ -213,10 +215,21 @@ export async function POST(request) {
 
       const tokenRes = await getMicrosoftAccessToken(ms.refreshToken)
       const tokenInfo = decodeJwtInfo(tokenRes.accessToken)
-      console.log(
-        '[outlook-create-event] Using access token (first 20 chars):',
-        tokenRes.accessToken ? `${tokenRes.accessToken.substring(0, 20)}…` : '(missing)'
-      )
+      const tokenPayload = tokenRes.accessToken
+        ? (() => {
+            try {
+              return JSON.parse(Buffer.from(tokenRes.accessToken.split('.')[1], 'base64').toString())
+            } catch {
+              return null
+            }
+          })()
+        : null
+      console.log('[outlook-create-event] Token refresh result:', {
+        hasAccessToken: !!tokenRes.accessToken,
+        tokenLength: tokenRes.accessToken?.length,
+        tokenPrefix: tokenRes.accessToken ? `${tokenRes.accessToken.substring(0, 30)}...` : '(missing)',
+        tokenScopes: tokenPayload?.scp ?? tokenPayload?.roles ?? '(none)'
+      })
 
       if (tokenRes.refreshToken) {
         await database.collection('users').updateOne(
@@ -282,7 +295,8 @@ export async function POST(request) {
           graphErrorMessage: responseData?.error?.message,
           // Include raw response so core-api logs can surface the real Graph error.
           graphResponse: responseData,
-          tokenInfo
+          tokenInfo,
+          tokenScopes: tokenPayload?.scp ?? tokenPayload?.roles ?? null
         })
       }
 

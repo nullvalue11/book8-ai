@@ -7,13 +7,13 @@
 import { env } from '@/lib/env'
 
 function tokenUrl() {
-  const tenantId = env.AZURE_AD_TENANT_ID || 'common'
-  return `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`
+  // Use 'common' to support both org and personal Microsoft accounts (e.g. live.ca, outlook.com)
+  return 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
 }
 
 function getOAuthScopes() {
   // Keep in sync with the initial OAuth authorize request.
-  return 'openid profile email offline_access https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/User.Read'
+  return 'openid profile email offline_access Calendars.ReadWrite User.Read'
 }
 
 export function decodeEmailFromIdToken(idToken) {

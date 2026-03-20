@@ -27,7 +27,7 @@ function getJwtSecret() {
 }
 
 function getMicrosoftScopes() {
-  return 'openid profile email offline_access https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/User.Read'
+  return 'openid profile email offline_access Calendars.ReadWrite User.Read'
 }
 
 export async function GET(request) {
@@ -55,7 +55,8 @@ export async function GET(request) {
       return NextResponse.redirect(`${base}/?microsoft_error=not_configured`)
     }
 
-    const tenantId = env.AZURE_AD_TENANT_ID || 'common'
+    // Use 'common' to support both org and personal Microsoft accounts (e.g. live.ca, outlook.com)
+    const tenantId = 'common'
     const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`
     const redirectUri = `${base}/api/integrations/microsoft/callback`
 
