@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
 import { env } from '@/lib/env'
-import { syncCalendarToCore } from '@/lib/sync-calendar-to-core'
 
 export const runtime = 'nodejs'
 
@@ -112,7 +111,6 @@ export async function GET(request) {
       
       if (updateResult.matchedCount > 0) {
         console.info(`[Google Callback] Updated business ${businessId} with calendar connection`)
-        await syncCalendarToCore({ businessId, provider: 'google', connected: true })
         return NextResponse.redirect(`${base}/dashboard/business?google_connected=1&businessId=${businessId}`)
       } else {
         console.warn(`[Google Callback] Business ${businessId} not found for user ${uid}`)
