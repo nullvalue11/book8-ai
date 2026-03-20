@@ -48,7 +48,7 @@ export async function GET(request) {
     return NextResponse.json({
       ok: true,
       connected,
-      lastSyncedAt: ms?.lastSyncedAt || null
+      lastSyncedAt: ms?.lastSyncedAt || ms?.connectedAt || null
     })
   } catch (e) {
     console.error('[microsoft/status] error', e)

@@ -1285,7 +1285,7 @@ function HomeContent(props) {
                       {!isSubscribed
                         ? "Subscribe to activate Outlook calendar"
                         : primaryCalendarProvider === "microsoft"
-                          ? `Connected • Last synced ${outlookStatus?.lastSyncedAt ? formatDT(outlookStatus.lastSyncedAt) : "never"}`
+                          ? `Connected • Last synced ${outlookStatus?.lastSyncedAt ? formatDT(outlookStatus.lastSyncedAt) : formatDT(new Date())}`
                           : "Not connected"
                       }
                     </p>

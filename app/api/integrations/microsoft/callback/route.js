@@ -93,7 +93,7 @@ export async function GET(request) {
       connected: true,
       calendarConnected: true,
       needsReconnect: false,
-      lastSyncedAt: prev.lastSyncedAt || null
+      lastSyncedAt: prev.lastSyncedAt || new Date().toISOString()
     }
 
     if (!tokens.refresh_token && prev.refreshToken) {

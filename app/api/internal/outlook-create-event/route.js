@@ -307,6 +307,13 @@ export async function POST(request) {
           responseData && typeof responseData === 'object' ? Object.keys(responseData).join(',') : typeof responseData
         )
       }
+
+      if (eventId) {
+        await database.collection('users').updateOne(
+          { id: ownerUserId },
+          { $set: { 'microsoft.lastSyncedAt': new Date().toISOString(), updatedAt: new Date() } }
+        )
+      }
     } catch (err) {
       console.error('[internal/outlook-create-event] Microsoft error:', err?.message || err)
       const msg = err?.message || String(err)
