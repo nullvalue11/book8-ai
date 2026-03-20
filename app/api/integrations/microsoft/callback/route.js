@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
 import { env } from '@/lib/env'
 import { decodeEmailFromIdToken } from '@/lib/microsoft-calendar'
+import { syncCalendarToCore } from '@/app/lib/sync-calendar-to-core'
 
 export const runtime = 'nodejs'
 
@@ -123,6 +124,7 @@ export async function GET(request) {
 
       if (updateResult.matchedCount > 0) {
         console.info(`[Microsoft Callback] Updated business ${businessId} with calendar connection`)
+        await syncCalendarToCore({ businessId, provider: 'microsoft', connected: true })
         return NextResponse.redirect(`${base}/dashboard/business?outlook_connected=1&businessId=${businessId}`)
       }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env } from '@/lib/env'
+import { syncCalendarToCore } from '@/app/lib/sync-calendar-to-core'
 
 export const runtime = 'nodejs'
 
@@ -82,6 +83,10 @@ export async function POST(request) {
         updatedAt: now
       }
     })
+
+    if (businessId) {
+      await syncCalendarToCore({ businessId, provider: null, connected: false })
+    }
 
     return NextResponse.json({ ok: true })
   } catch (e) {
