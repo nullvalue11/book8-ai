@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env } from '@/lib/env'
+import { syncCalendarToCore } from '@/lib/sync-calendar-to-core'
 
 export const runtime = 'nodejs'
 
@@ -74,6 +75,12 @@ export async function POST(request) {
     }
     if (businessId) bizFilter.businessId = businessId
 
+    const affected = await database
+      .collection('businesses')
+      .find(bizFilter)
+      .project({ businessId: 1, id: 1 })
+      .toArray()
+
     await database.collection('businesses').updateMany(bizFilter, {
       $set: {
         'calendar.connected': false,
@@ -82,6 +89,17 @@ export async function POST(request) {
         updatedAt: now
       }
     })
+
+    for (const biz of affected) {
+      const bizId = biz.businessId || biz.id
+      if (bizId) {
+        await syncCalendarToCore({
+          businessId: bizId,
+          provider: null,
+          connected: false
+        })
+      }
+    }
 
     return NextResponse.json({ ok: true })
   } catch (e) {
