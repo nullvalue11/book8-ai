@@ -245,7 +245,9 @@ export async function POST(request) {
           reason: 'graph_error',
           graphStatus: graphRes.status,
           graphErrorCode: responseData?.error?.code,
-          graphErrorMessage: responseData?.error?.message
+          graphErrorMessage: responseData?.error?.message,
+          // Include raw response so core-api logs can surface the real Graph error.
+          graphResponse: responseData
         })
       }
 
