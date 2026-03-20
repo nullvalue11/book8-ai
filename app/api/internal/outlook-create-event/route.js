@@ -49,6 +49,28 @@ function noConnection(reason = 'no_microsoft_connection') {
   return NextResponse.json({ ok: true, eventId: null, reason })
 }
 
+/**
+ * Graph expects dateTime + timeZone; ISO strings with a trailing Z often fail validation.
+ * Format the instant as wall-clock time in the given IANA zone (e.g. America/Toronto).
+ */
+function formatDateTimeInZone(isoStr, timeZone) {
+  const d = new Date(isoStr)
+  if (Number.isNaN(d.getTime())) return isoStr.replace(/Z$/i, '').replace(/\.\d{3}$/, '')
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+  const parts = fmt.formatToParts(d)
+  const get = (t) => parts.find((p) => p.type === t)?.value || '00'
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`
+}
+
 export async function POST(request) {
   try {
     if (!validateInternalSecret(request)) {
@@ -134,14 +156,17 @@ export async function POST(request) {
 
     const resolvedTimezone = timezone && typeof timezone === 'string' ? timezone : 'America/Toronto'
 
+    const startGraph = formatDateTimeInZone(startStr, resolvedTimezone)
+    const endGraph = formatDateTimeInZone(endStr, resolvedTimezone)
+
     const eventPayload = {
       subject: String(title).trim(),
       start: {
-        dateTime: startStr,
+        dateTime: startGraph,
         timeZone: resolvedTimezone
       },
       end: {
-        dateTime: endStr,
+        dateTime: endGraph,
         timeZone: resolvedTimezone
       },
       body: {
@@ -156,10 +181,25 @@ export async function POST(request) {
       showAs: 'busy'
     }
 
-    // Fire-and-forget pattern: if Microsoft fails, still respond ok:true.
+    // Fire-and-forget pattern: if Microsoft fails, still respond ok:true (with reason when possible).
     let eventId = null
     try {
+      console.log('[outlook-create-event] Attempting to create event for business:', businessId.trim())
+      console.log('[outlook-create-event] ownerUserId:', ownerUserId, 'scheduleId:', scheduleId)
+      console.log('[outlook-create-event] Payload times:', {
+        startRaw: startStr,
+        endRaw: endStr,
+        startGraph,
+        endGraph,
+        timeZone: resolvedTimezone
+      })
+
       const tokenRes = await getMicrosoftAccessToken(ms.refreshToken)
+      console.log(
+        '[outlook-create-event] Using access token (first 20 chars):',
+        tokenRes.accessToken ? `${tokenRes.accessToken.substring(0, 20)}…` : '(missing)'
+      )
+
       if (tokenRes.refreshToken) {
         await database.collection('users').updateOne(
           { id: ownerUserId },
@@ -172,16 +212,50 @@ export async function POST(request) {
         )
       }
 
-      const created = await fetch('https://graph.microsoft.com/v1.0/me/events', {
+      const graphRes = await fetch('https://graph.microsoft.com/v1.0/me/events', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${tokenRes.accessToken}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(eventPayload)
-      }).then(r => r.json().catch(() => ({})))
+      })
 
-      eventId = created?.id || null
+      const responseText = await graphRes.text()
+      let responseData = {}
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {}
+      } catch {
+        responseData = { parseError: true, raw: responseText?.slice(0, 500) }
+      }
+
+      console.log('[outlook-create-event] Graph API response status:', graphRes.status)
+      console.log('[outlook-create-event] Graph API response:', JSON.stringify(responseData))
+
+      if (!graphRes.ok) {
+        console.error(
+          '[outlook-create-event] Graph API error:',
+          responseData?.error?.code,
+          responseData?.error?.message
+        )
+        return NextResponse.json({
+          ok: true,
+          eventId: null,
+          calendarId: scheduleId,
+          reason: 'graph_error',
+          graphStatus: graphRes.status,
+          graphErrorCode: responseData?.error?.code,
+          graphErrorMessage: responseData?.error?.message
+        })
+      }
+
+      eventId = responseData?.id || null
+      if (!eventId) {
+        console.warn(
+          '[outlook-create-event] Graph 200 but no id in body; keys:',
+          responseData && typeof responseData === 'object' ? Object.keys(responseData).join(',') : typeof responseData
+        )
+      }
     } catch (err) {
       console.error('[internal/outlook-create-event] Microsoft error:', err?.message || err)
       const msg = err?.message || String(err)
@@ -205,7 +279,8 @@ export async function POST(request) {
     return NextResponse.json({
       ok: true,
       eventId: eventId || null,
-      calendarId: scheduleId
+      calendarId: scheduleId,
+      ...(eventId ? {} : { reason: 'graph_missing_id' })
     })
   } catch (err) {
     console.error('[internal/outlook-create-event] Error:', err?.message || err)
