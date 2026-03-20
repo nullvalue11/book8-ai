@@ -6,9 +6,7 @@ import { env } from '@/lib/env'
  */
 export async function syncCalendarToCore({ businessId, provider, connected }) {
   const CORE_API_URL =
-    process.env.BOOK8_CORE_API_URL ||
-    env.CORE_API_BASE_URL ||
-    'https://book8-core-api.onrender.com'
+    env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
   const secret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET
 
   if (!secret) {
