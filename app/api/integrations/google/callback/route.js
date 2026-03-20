@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
 import { env } from '@/lib/env'
-import { syncCalendarToCore } from '@/app/lib/sync-calendar-to-core'
+import { syncCalendarToCore } from '@/lib/sync-calendar-to-core'
 
 export const runtime = 'nodejs'
 

@@ -5,7 +5,7 @@ import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
 import { env } from '@/lib/env'
 import { decodeEmailFromIdToken } from '@/lib/microsoft-calendar'
-import { syncCalendarToCore } from '@/app/lib/sync-calendar-to-core'
+import { syncCalendarToCore } from '@/lib/sync-calendar-to-core'
 
 export const runtime = 'nodejs'
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env } from '@/lib/env'
-import { syncCalendarToCore } from '@/app/lib/sync-calendar-to-core'
+import { syncCalendarToCore } from '@/lib/sync-calendar-to-core'
 
 export const runtime = 'nodejs'
 
