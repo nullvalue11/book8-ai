@@ -179,7 +179,7 @@ export async function POST(request) {
     const endGraph = formatDateTimeInZone(endStr, resolvedTimezone)
 
     const eventPayload = {
-      subject: String(title).trim(),
+      subject: String(title).trim() || 'Book8 Appointment',
       start: {
         dateTime: startGraph,
         timeZone: resolvedTimezone
@@ -192,11 +192,8 @@ export async function POST(request) {
         contentType: 'HTML',
         content: description && typeof description === 'string' ? description : ''
       },
-      reminders: {
-        isReminderOn: true,
-        reminderMinutesBeforeStart: 15
-      },
-      categories: ['Book8 Appointment'],
+      isReminderOn: true,
+      reminderMinutesBeforeStart: 15,
       showAs: 'busy'
     }
 
@@ -242,6 +239,8 @@ export async function POST(request) {
           }
         )
       }
+
+      console.log('[outlook-create-event] Request body:', JSON.stringify(eventPayload, null, 2))
 
       const graphRes = await fetch('https://graph.microsoft.com/v1.0/me/events', {
         method: 'POST',
