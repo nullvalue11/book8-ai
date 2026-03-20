@@ -238,6 +238,22 @@ export async function POST(request) {
           responseData?.error?.code,
           responseData?.error?.message
         )
+
+        // If Graph says Unauthorized, the stored refresh token likely no longer yields a usable access token.
+        // Mark as needing reconnect so the user can re-authorize with the correct scopes.
+        if (graphRes.status === 401) {
+          await database.collection('users').updateOne(
+            { id: ownerUserId },
+            {
+              $set: {
+                'microsoft.needsReconnect': true,
+                'microsoft.lastError': new Date().toISOString(),
+                updatedAt: new Date()
+              }
+            }
+          )
+        }
+
         return NextResponse.json({
           ok: true,
           eventId: null,

@@ -63,6 +63,10 @@ export async function getMicrosoftAccessToken(refreshToken) {
     throw new Error(msg)
   }
 
+  if (!data.access_token) {
+    throw new Error('Microsoft token refresh response missing access_token')
+  }
+
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token || null
