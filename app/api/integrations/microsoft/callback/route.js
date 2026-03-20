@@ -27,7 +27,7 @@ function getJwtSecret() {
 }
 
 function getMicrosoftScopes() {
-  return 'openid profile email offline_access Calendars.ReadWrite User.Read'
+  return 'openid profile email offline_access https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/User.Read'
 }
 
 export async function GET(request) {

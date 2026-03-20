@@ -13,7 +13,7 @@ function tokenUrl() {
 
 function getOAuthScopes() {
   // Keep in sync with the initial OAuth authorize request.
-  return 'openid profile email offline_access Calendars.ReadWrite User.Read'
+  return 'openid profile email offline_access https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/User.Read'
 }
 
 export function decodeEmailFromIdToken(idToken) {
