@@ -147,7 +147,7 @@ export default function PublicBookingPage({ params }) {
           start: selected.start,
           end: selected.end,
           guestTimezone: guestTz,
-          serviceId: selectedService?.id
+          serviceId: selectedService?.serviceId || selectedService?.id
         })
       })
       
@@ -389,10 +389,12 @@ export default function PublicBookingPage({ params }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {services.map((svc) => (
                         <button
-                          key={svc.id || svc.name}
+                          key={svc.serviceId || svc.id || svc.name}
                           onClick={() => setSelectedService(svc)}
                           className={`p-4 rounded-lg border-2 text-left transition-all ${
-                            selectedService?.id === svc.id || selectedService?.name === svc.name
+                            (selectedService?.serviceId && selectedService.serviceId === svc.serviceId) ||
+                            (selectedService?.id && selectedService.id === svc.id) ||
+                            (selectedService?.name === svc.name)
                               ? 'border-primary bg-primary/10'
                               : 'border-border hover:border-primary/50 bg-card'
                           }`}
