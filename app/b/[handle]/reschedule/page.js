@@ -73,7 +73,7 @@ export default function ReschedulePage({ params }) {
       setError('')
       setSelected(null)
       
-      const res = await fetch(`/api/public/${encodeURIComponent(handle)}/availability?date=${date}&tz=${encodeURIComponent(guestTz)}&duration=${settings?.defaultDurationMin || 30}`)
+      const res = await fetch(`/api/public/availability?handle=${encodeURIComponent(handle)}&date=${date}&tz=${encodeURIComponent(guestTz)}&duration=${settings?.defaultDurationMin || 30}`)
       const data = await res.json()
       
       if (!res.ok) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { verifyRescheduleToken } from '@/lib/security/rescheduleToken'
 import { env } from '@/lib/env'
+import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -54,9 +55,16 @@ export async function GET(request) {
       )
     }
 
-    // Get owner handle for availability lookup
+    // Get owner handle for availability lookup: user scheduling > first business
     const owner = await database.collection('users').findOne({ id: booking.userId })
-    const handle = owner?.scheduling?.handle || null
+    let handle = owner?.scheduling?.handle || null
+    if (!handle) {
+      const business = await database.collection(BUSINESS_COLLECTION).findOne(
+        { ownerUserId: booking.userId },
+        { sort: { createdAt: 1 } }
+      )
+      handle = business?.handle || business?.businessId || null
+    }
 
     if (!handle) {
       return NextResponse.json(

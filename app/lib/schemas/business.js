@@ -33,6 +33,22 @@ export const SUBSCRIPTION_STATUS = {
 }
 
 /**
+ * Generate a URL-friendly handle from business name
+ * "Ottawa Dental Clinic" → "ottawa-dental-clinic"
+ */
+export function generateHandle(name) {
+  if (!name || typeof name !== 'string') return ''
+  let handle = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .substring(0, 50)
+  return handle
+}
+
+/**
  * Generate a unique business ID
  */
 export function generateBusinessId(prefix = 'biz') {
@@ -59,6 +75,7 @@ export function createBusiness({
     // Core identity
     businessId: businessId || generateBusinessId(),
     name: name || 'Untitled Business',
+    handle: null, // Set at registration, URL-friendly (e.g. ottawa-dental-clinic)
     category: category || 'other',
     
     // Ownership
@@ -179,6 +196,7 @@ export function validateBusinessInput(input) {
  */
 export const BUSINESS_INDEXES = [
   { key: { businessId: 1 }, unique: true },
+  { key: { handle: 1 }, unique: true, sparse: true },
   { key: { ownerUserId: 1 } },
   { key: { ownerEmail: 1 } },
   { key: { status: 1 } },

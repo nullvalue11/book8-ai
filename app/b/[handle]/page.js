@@ -86,10 +86,8 @@ export default function PublicBookingPage({ params }) {
       }
       
       setSlots(data.slots || [])
-      if (data.slots && data.slots.length > 0 && ownerName === '') {
-        // Try to get owner name from somewhere if available
-        setOwnerName(handle)
-      }
+      if (data.ownerName) setOwnerName(data.ownerName)
+      else if (ownerName === '') setOwnerName(handle)
     } catch (err) {
       console.error('Load slots error:', err)
       // Network error or parsing error
@@ -341,7 +339,7 @@ export default function PublicBookingPage({ params }) {
     <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
       <div className="border-b bg-background/95 backdrop-blur">
-        <div className="container mx-auto max-w-4xl px-6 py-4">
+        <div className="container mx-auto max-w-4xl px-4 sm:px-6 py-4">
           <h1 className="text-2xl font-semibold">Book time with {ownerName || handle}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             All times shown in <span className="font-medium">{guestTz}</span>
@@ -371,7 +369,7 @@ export default function PublicBookingPage({ params }) {
                       value={date} 
                       onChange={e => setDate(e.target.value)}
                       min={new Date().toISOString().slice(0, 10)}
-                      className="book8-input"
+                      className="book8-input w-full min-h-[44px]"
                     />
                   </div>
                   
@@ -381,7 +379,7 @@ export default function PublicBookingPage({ params }) {
                       id="timezone"
                       value={guestTz}
                       onChange={e => setGuestTz(e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                      className="w-full min-h-[44px] px-3 rounded-md border border-input bg-background"
                     >
                       {['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo', 'UTC'].map(tz => (
                         <option key={tz} value={tz}>{tz}</option>
@@ -416,12 +414,12 @@ export default function PublicBookingPage({ params }) {
                     <p className="text-sm text-muted-foreground">Try another date or timezone</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     {slots.map(slot => (
                       <button
                         key={slot.start}
                         onClick={() => setSelected(slot)}
-                        className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                        className={`min-h-[44px] px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
                           selected?.start === slot.start
                             ? 'gradient-primary text-white border-transparent'
                             : 'border-border hover:border-primary bg-card'
@@ -450,7 +448,7 @@ export default function PublicBookingPage({ params }) {
                     placeholder="John Doe"
                     value={form.name}
                     onChange={e => setForm({...form, name: e.target.value})}
-                    className="book8-input"
+                    className="book8-input min-h-[44px]"
                   />
                 </div>
 
@@ -462,7 +460,7 @@ export default function PublicBookingPage({ params }) {
                     placeholder="john@example.com"
                     value={form.email}
                     onChange={e => setForm({...form, email: e.target.value})}
-                    className="book8-input"
+                    className="book8-input min-h-[44px]"
                   />
                 </div>
 

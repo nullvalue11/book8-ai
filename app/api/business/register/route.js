@@ -11,6 +11,7 @@ import {
   createBusiness, 
   validateBusinessInput, 
   generateBusinessId,
+  generateHandle,
   updateBusinessOps,
   BUSINESS_STATUS,
   COLLECTION_NAME 
@@ -195,6 +196,18 @@ export async function POST(request) {
     })
     
     businessData.name = name.trim()
+
+    // Auto-generate handle for new businesses (URL-friendly from name)
+    if (!existing) {
+      let handle = generateHandle(name.trim())
+      if (handle) {
+        const handleExists = await collection.findOne({ handle })
+        if (handleExists) {
+          handle = `${handle}-${Math.random().toString(36).substring(2, 6)}`
+        }
+        businessData.handle = handle
+      }
+    }
     businessData.category = category || 'other'
     businessData.provisioningOptions = { skipVoiceTest, skipBillingCheck }
     businessData.updatedAt = new Date()
@@ -317,6 +330,7 @@ export async function GET(request) {
     const cleanedBusinesses = businesses.map(b => ({
       businessId: b.businessId,
       name: b.name,
+      handle: b.handle || null,
       category: b.category || 'other',
       status: b.status,
       statusReason: b.statusReason,

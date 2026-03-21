@@ -78,7 +78,7 @@ export default function RescheduleBookingPage({ params }) {
       setSelectedSlot(null)
 
       const res = await fetch(
-        `/api/public/${encodeURIComponent(handle)}/availability?date=${date}&tz=${encodeURIComponent(timezone)}`
+        `/api/public/availability?handle=${encodeURIComponent(handle)}&date=${date}&tz=${encodeURIComponent(timezone)}`
       )
       const data = await res.json()
 

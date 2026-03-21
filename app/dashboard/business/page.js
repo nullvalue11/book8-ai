@@ -638,6 +638,7 @@ function BusinessPageContent() {
                           const calStatus = getCalendarStatus(biz, user)
                           const agentStatus = getAgentStatus(biz, phoneSetupByBiz[biz.businessId])
                           return (
+                            <>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                               {/* Subscription Status */}
                               <div className="p-3 rounded-lg bg-muted/50">
@@ -745,6 +746,38 @@ function BusinessPageContent() {
                                 </div>
                               </div>
                             </div>
+                            {/* Public Booking Link */}
+                            {(biz.handle || biz.businessId) && (
+                              <div className="p-3 rounded-lg bg-muted/50 flex flex-col gap-2 mt-3">
+                                <div className="flex items-center gap-2">
+                                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium">Public Booking Link</span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <code className="text-xs bg-background px-2 py-1 rounded break-all">
+                                    {typeof window !== 'undefined' ? window.location.origin : ''}/b/{biz.handle || biz.businessId}
+                                  </code>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/b/${biz.handle || biz.businessId}`
+                                      navigator.clipboard.writeText(url).then(() => {}).catch(() => {})
+                                    }}
+                                  >
+                                    Copy
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => window.open(`/b/${biz.handle || biz.businessId}`, '_blank')}
+                                  >
+                                    Preview
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            </>
                           )
                         })()}
                         

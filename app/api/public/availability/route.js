@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import { checkRateLimit } from '@/lib/rateLimiting'
 import { RateLimitTelemetry, logError } from '@/lib/telemetry'
 import { env } from '@/lib/env'
+import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -140,11 +141,42 @@ export async function GET(request) {
       )
     }
 
-    // Find user by handle
-    const owner = await database.collection('users').findOne({ 
-      'scheduling.handleLower': handle.toLowerCase() 
+    // Resolve by business first (handle, businessId, or id), then fall back to user
+    let owner = null
+    let business = null
+    let ownerName = ''
+
+    business = await database.collection(BUSINESS_COLLECTION).findOne({
+      $or: [
+        { handle: handle.toLowerCase() },
+        { businessId: handle },
+        { id: handle }
+      ]
     })
-    
+
+    if (business) {
+      ownerName = business.name || handle
+      const ownerUser = await database.collection('users').findOne({ id: business.ownerUserId })
+      if (!ownerUser) {
+        return NextResponse.json(
+          { ok: false, code: 'USER_NOT_FOUND', error: 'Booking page not found' },
+          { status: 404 }
+        )
+      }
+      owner = ownerUser
+      // For businesses: use owner's scheduling, or fetch schedule from core-api
+      if (!owner.scheduling) {
+        owner.scheduling = {}
+      }
+    }
+
+    if (!owner) {
+      owner = await database.collection('users').findOne({
+        'scheduling.handleLower': handle.toLowerCase()
+      })
+      if (owner?.scheduling?.handle) ownerName = owner.name || owner.scheduling.handle || handle
+    }
+
     if (!owner) {
       return NextResponse.json(
         { ok: false, code: 'USER_NOT_FOUND', error: 'Booking page not found' },
@@ -152,7 +184,7 @@ export async function GET(request) {
       )
     }
 
-    if (!owner.scheduling || !owner.scheduling.handle) {
+    if (!business && (!owner.scheduling || !owner.scheduling.handle)) {
       return NextResponse.json(
         { ok: false, code: 'SCHEDULING_NOT_CONFIGURED', error: '⚙️ This booking page is not configured yet. Please contact the owner.' },
         { status: 404 }
@@ -177,9 +209,57 @@ export async function GET(request) {
     }
 
     // Merge settings: event type overrides > user defaults
-    const settings = owner.scheduling || {}
+    let settings = owner.scheduling || {}
     const eventSettings = eventType?.scheduling || {}
-    
+
+    // For businesses: try to get schedule from core-api (services + weekly hours)
+    if (business && env.CORE_API_BASE_URL) {
+      try {
+        const baseUrl = (env.CORE_API_BASE_URL || '').replace(/\/$/, '')
+        const apiKey = env.BOOK8_CORE_API_KEY || ''
+        const scheduleRes = await fetch(
+          `${baseUrl}/api/businesses/${business.businessId}/schedule`,
+          {
+            headers: { ...(apiKey && { 'x-book8-api-key': apiKey }) },
+            cache: 'no-store'
+          }
+        )
+        if (scheduleRes.ok) {
+          const scheduleData = await scheduleRes.json()
+          const raw =
+            scheduleData?.schedule?.weeklyHours ||
+            scheduleData?.schedule ||
+            scheduleData?.workingHours ||
+            scheduleData
+          if (raw && typeof raw === 'object' && Object.keys(raw).length) {
+            const dayMap = {
+              sunday: 'sun', sun: 'sun', 0: 'sun',
+              monday: 'mon', mon: 'mon', 1: 'mon',
+              tuesday: 'tue', tue: 'tue', 2: 'tue',
+              wednesday: 'wed', wed: 'wed', 3: 'wed',
+              thursday: 'thu', thu: 'thu', 4: 'thu',
+              friday: 'fri', fri: 'fri', 5: 'fri',
+              saturday: 'sat', sat: 'sat', 6: 'sat'
+            }
+            const workingHours = {}
+            for (const [k, v] of Object.entries(raw)) {
+              const canon = dayMap[String(k).toLowerCase()] || k.toLowerCase().slice(0, 3)
+              if (Array.isArray(v) && v.length) workingHours[canon] = v
+            }
+            if (Object.keys(workingHours).length) {
+              settings = {
+                ...settings,
+                workingHours,
+                timeZone: scheduleData?.schedule?.timezone || scheduleData?.timezone || settings.timeZone || 'UTC'
+              }
+            }
+          }
+        }
+      } catch (e) {
+        if (env.DEBUG_LOGS) console.log('[availability] core-api schedule fetch failed:', e?.message)
+      }
+    }
+
     // Calendars to use for availability (fallback to primary)
     const selectedCalendarIds =
       Array.isArray(settings.selectedCalendarIds) && settings.selectedCalendarIds.length
@@ -313,6 +393,7 @@ export async function GET(request) {
       ok: true,
       slots: availableSlots,
       timezone: guestTz,
+      ownerName: ownerName || owner.name || handle,
       settings: {
         duration: durationMin,
         buffer: bufferMin,

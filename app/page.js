@@ -126,6 +126,7 @@ function HomeContent(props) {
   const [phoneSetup, setPhoneSetup] = useState(null);
   const [phoneSetupLoading, setPhoneSetupLoading] = useState(false);
   const [primaryBusinessId, setPrimaryBusinessId] = useState(null);
+  const [primaryBookingHandle, setPrimaryBookingHandle] = useState(null);
   const [primaryCalendarProvider, setPrimaryCalendarProvider] = useState(null);
 
   const [recentCalls, setRecentCalls] = useState([]);
@@ -498,12 +499,14 @@ function HomeContent(props) {
       const businesses = bizRes.businesses || [];
       if (!businesses.length) {
         setPrimaryBusinessId(null);
+        setPrimaryBookingHandle(null);
         setPrimaryCalendarProvider(null);
         setPhoneSetup(null);
         return;
       }
       const primary = businesses[0];
       setPrimaryBusinessId(primary.businessId);
+      setPrimaryBookingHandle(primary.handle || primary.businessId || null);
       const provider = primary?.calendar?.provider || (!primary?.calendar?.provider && primary?.calendar?.connected ? 'google' : null)
       setPrimaryCalendarProvider(provider);
       if (primary.planLimits) {
@@ -692,17 +695,18 @@ function HomeContent(props) {
     }
   }
 
+  const bookingHandle = user?.scheduling?.handle || primaryBookingHandle;
   function copyBookingLink() {
-    if (!user?.scheduling?.handle) return;
+    if (!bookingHandle) return;
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    const url = `${baseUrl}/b/${user.scheduling.handle}`;
+    const url = `${baseUrl}/b/${bookingHandle}`;
     navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(err => alert('Failed to copy: ' + err.message));
   }
 
   function shareBookingLink(platform) {
-    if (!user?.scheduling?.handle) return;
+    if (!bookingHandle) return;
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    const url = `${baseUrl}/b/${user.scheduling.handle}`;
+    const url = `${baseUrl}/b/${bookingHandle}`;
     const text = 'Book time with me';
     const urls = {
       twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
@@ -1305,30 +1309,31 @@ function HomeContent(props) {
               <div className="rounded-md border p-3">
                 <div className="flex items-center justify-between mb-3">
                   <p className="font-medium">Public Booking Link</p>
-                  {user?.scheduling?.handle && (
-                    <Button size="sm" variant="ghost" onClick={() => window.location.href = '/dashboard/settings/scheduling'}>
+                  {(user?.scheduling?.handle || bookingHandle) && (
+                    <Button size="sm" variant="ghost" onClick={() => window.location.href = user?.scheduling?.handle ? '/dashboard/settings/scheduling' : '/dashboard/business'}>
                       <Settings className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
-                {user?.scheduling?.handle ? (
+                {bookingHandle ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 p-2 bg-muted rounded-md break-all text-sm">
                       <ExternalLink className="h-4 w-4 shrink-0" />
-                      <span className="flex-1 min-w-0 break-all">{typeof window !== 'undefined' ? window.location.origin : ''}/b/{user.scheduling.handle}</span>
+                      <span className="flex-1 min-w-0 break-all">{typeof window !== 'undefined' ? window.location.origin : ''}/b/{bookingHandle}</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button size="sm" onClick={copyBookingLink} className="gap-2">{copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />} {copied ? 'Copied!' : 'Copy Link'}</Button>
-                      <Button size="sm" variant="outline" onClick={() => window.open(`/b/${user.scheduling.handle}`, '_blank')}>Preview</Button>
+                      <Button size="sm" variant="outline" onClick={() => window.open(`/b/${bookingHandle}`, '_blank')}>Preview</Button>
                     </div>
                     <div className="flex justify-center p-4 bg-white rounded-md">
-                      <QRCodeSVG value={`${typeof window !== 'undefined' ? window.location.origin : ''}/b/${user?.scheduling?.handle || ''}`} size={160} level="H" includeMargin={true} />
+                      <QRCodeSVG value={`${typeof window !== 'undefined' ? window.location.origin : ''}/b/${bookingHandle}`} size={160} level="H" includeMargin={true} />
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Set up your public booking page to accept bookings from anyone.</p>
-                    <Button size="sm" onClick={() => window.location.href = '/dashboard/settings/scheduling'}>Configure Scheduling</Button>
+                    <p className="text-sm text-muted-foreground">Set up your public booking page to accept bookings from anyone. Add a business or configure scheduling.</p>
+                    <Button size="sm" onClick={() => window.location.href = '/dashboard/business'}>Add Business</Button>
+                    <Button size="sm" variant="outline" onClick={() => window.location.href = '/dashboard/settings/scheduling'}>Configure Scheduling</Button>
                   </div>
                 )}
               </div>
