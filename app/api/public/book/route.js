@@ -140,7 +140,17 @@ export async function POST(request) {
 
     // When we have a business: call core-api for SMS + email + calendar (bypass local creation for those)
     const baseUrl = (env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com').replace(/\/$/, '')
-    const coreSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
+    const coreSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || process.env.OPS_INTERNAL_SECRET || ''
+
+    const willUseCoreApi = !!(business && coreSecret)
+    console.log('[public-book] Decision:', {
+      hasBusiness: !!business,
+      businessId: business?.businessId,
+      hasInternalSecret: !!coreSecret,
+      secretVarName: env.CORE_API_INTERNAL_SECRET ? 'env.CORE_API_INTERNAL_SECRET' : process.env.OPS_INTERNAL_SECRET ? 'OPS_INTERNAL_SECRET' : 'none',
+      condition: 'business && coreSecret',
+      willUseCoreApi
+    })
 
     if (business && coreSecret) {
       try {
