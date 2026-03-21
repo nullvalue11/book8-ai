@@ -163,18 +163,19 @@ export async function POST(request) {
 
     if (business && coreSecret) {
       try {
+        const slotStartISO = startTime.toISOString()
+        const slotEndISO = endTime.toISOString()
+
         const toolPayload = {
+          businessId: business.businessId,
           tool: 'booking.create',
           input: {
-            businessId: business.businessId,
             serviceId: serviceId || 'manual-booking',
-            slot: { start: startTime.toISOString(), end: endTime.toISOString() },
+            slot: { start: slotStartISO, end: slotEndISO },
             customerName: name,
-            customerPhone: phone || undefined,
+            customerPhone: phone || '',
             customerEmail: email,
-            notes: notes || undefined,
-            title: null,
-            source: 'web-booking'
+            notes: notes || ''
           }
         }
 
@@ -189,12 +190,7 @@ export async function POST(request) {
         })
 
         const coreData = await coreRes.json().catch(() => ({}))
-
-        console.log('[public-book] Core-api response:', {
-          status: coreRes.status,
-          ok: coreRes.ok,
-          body: JSON.stringify(coreData)
-        })
+        console.log('[public-book] Core-api response:', JSON.stringify(coreData))
 
         if (!coreRes.ok) {
           console.error('[public/book] core-api booking failed:', coreRes.status, coreData)
