@@ -145,7 +145,14 @@ async function handleSubscriptionEvent(event, stripe, database) {
         if (bizDoc) resolvedBizId = bizDoc.businessId || bizDoc.id
       }
       if (resolvedBizId) {
-        await database.collection(BUSINESS_COLLECTION).updateOne(
+        console.log('[stripe-webhook] Updating business subscription:', {
+          businessId: resolvedBizId,
+          plan,
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscriptionId
+        })
+
+        const updateResult = await database.collection(BUSINESS_COLLECTION).updateOne(
           { $or: [{ businessId: resolvedBizId }, { id: resolvedBizId }] },
           {
             $set: {
@@ -158,11 +165,17 @@ async function handleSubscriptionEvent(event, stripe, database) {
               'subscription.currentPeriodStart': billingFields.currentPeriodStart,
               'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
               'subscription.activatedAt': new Date().toISOString(),
+              'subscription.updatedAt': new Date(),
               'features.billingEnabled': true,
               updatedAt: new Date()
             }
           }
         )
+
+        console.log('[stripe-webhook] Business update result:', {
+          matchedCount: updateResult.matchedCount,
+          modifiedCount: updateResult.modifiedCount
+        })
         console.log(`[webhooks/stripe] checkout.session.completed: Updated business ${resolvedBizId} subscription to active`)
       }
 

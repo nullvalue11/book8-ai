@@ -99,8 +99,14 @@ export async function GET(request) {
         return NextResponse.redirect(`${base}/dashboard/business?error=business_not_found`)
       }
       
-      // For business calendar connections, check business subscription
-      if (business.subscription?.status !== 'active') {
+      // For business calendar connections, check business subscription.
+      // Accept subscription.status === 'active' OR a valid paid plan (webhook may set plan before status).
+      const hasActiveSubscription =
+        business.subscription?.status === 'active' ||
+        business.subscription?.status === 'trialing' ||
+        ['starter', 'growth', 'enterprise'].includes(business.plan)
+
+      if (!hasActiveSubscription) {
         console.log(`[Google Auth] Business ${businessId} has no active subscription`)
         return NextResponse.redirect(`${base}/dashboard/business?error=subscription_required&businessId=${businessId}`)
       }
