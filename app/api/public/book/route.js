@@ -37,6 +37,15 @@ export async function OPTIONS() {
 }
 
 export async function POST(request) {
+  /* eslint-disable no-restricted-syntax -- debug: check process.env at runtime (Vercel may not pass to env module) */
+  console.log('[public-book] ENV CHECK:', {
+    CORE_API_INTERNAL_SECRET: !!(process.env.CORE_API_INTERNAL_SECRET),
+    OPS_INTERNAL_SECRET: !!(process.env.OPS_INTERNAL_SECRET),
+    BOOK8_CORE_API_KEY: !!(process.env.BOOK8_CORE_API_KEY),
+    CORE_API_BASE_URL: process.env.CORE_API_BASE_URL || process.env.BOOK8_CORE_API_URL || 'not set'
+  })
+  /* eslint-enable no-restricted-syntax */
+
   try {
     const database = await connect()
     const url = new URL(request.url)
