@@ -165,19 +165,26 @@ export async function POST(request) {
       try {
         const slotStartISO = startTime.toISOString()
         const slotEndISO = endTime.toISOString()
+        const slot = { start: slotStartISO, end: slotEndISO }
+        const customer = {
+          name,
+          email,
+          phone: phone || ''
+        }
 
         const toolPayload = {
           businessId: business.businessId,
           tool: 'booking.create',
           input: {
+            businessId: business.businessId,
             serviceId: serviceId || 'manual-booking',
-            slot: { start: slotStartISO, end: slotEndISO },
-            customerName: name,
-            customerPhone: phone || '',
-            customerEmail: email,
+            slot,
+            customer,
             notes: notes || ''
           }
         }
+
+        console.log('[public-book] Sending to core-api:', JSON.stringify({ businessId: business.businessId, serviceId: serviceId || 'manual-booking', slot, customer }))
 
         const coreRes = await fetch(`${baseUrl}/internal/execute-tool`, {
           method: 'POST',
