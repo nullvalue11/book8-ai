@@ -244,7 +244,12 @@ export async function GET(request) {
             const workingHours = {}
             for (const [k, v] of Object.entries(raw)) {
               const canon = dayMap[String(k).toLowerCase()] || k.toLowerCase().slice(0, 3)
-              if (Array.isArray(v) && v.length) workingHours[canon] = v
+              if (Array.isArray(v) && v.length) {
+                workingHours[canon] = v
+              } else if (v && typeof v === 'object' && (v.enabled === true || v.enabled === undefined) && v.start && v.end) {
+                // Format: { enabled: true, start: "09:00", end: "17:00" }
+                workingHours[canon] = [{ start: v.start, end: v.end }]
+              }
             }
             if (Object.keys(workingHours).length) {
               settings = {

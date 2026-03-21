@@ -71,7 +71,7 @@ export async function POST(request, { params }) {
       throw new Error('Invalid JSON body')
     }
     
-    const { name, email, notes, start, end, guestTimezone } = body
+    const { name, email, phone, notes, start, end, guestTimezone, serviceId } = body
 
     if (!name || !email || !start || !end) {
       return NextResponse.json(
@@ -142,7 +142,50 @@ export async function POST(request, { params }) {
       )
     }
 
-    // Check availability (FreeBusy)
+    const baseUrl = (env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com').replace(/\/$/, '')
+    const coreSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
+
+    if (business && coreSecret) {
+      try {
+        const toolPayload = {
+          tool: 'booking.create',
+          input: {
+            businessId: business.businessId,
+            serviceId: serviceId || 'manual-booking',
+            slot: { start: startTime.toISOString(), end: endTime.toISOString() },
+            customerName: name,
+            customerPhone: phone || undefined,
+            customerEmail: email,
+            notes: notes || undefined,
+            title: null,
+            source: 'web-booking'
+          }
+        }
+        const coreRes = await fetch(`${baseUrl}/internal/execute-tool`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-book8-internal-secret': coreSecret },
+          body: JSON.stringify(toolPayload),
+          cache: 'no-store'
+        })
+        const coreData = await coreRes.json().catch(() => ({}))
+        if (!coreRes.ok) {
+          console.error('[public/[handle]/book] core-api failed:', coreRes.status, coreData)
+          return NextResponse.json(
+            { ok: false, error: coreData?.error || coreData?.message || 'Booking failed' },
+            { status: coreRes.status >= 400 ? coreRes.status : 502 }
+          )
+        }
+      } catch (coreErr) {
+        console.error('[public/[handle]/book] core-api error:', coreErr?.message)
+        return NextResponse.json(
+          { ok: false, error: 'Booking service unavailable' },
+          { status: 503 }
+        )
+      }
+    }
+
+    // Check availability (FreeBusy) — only when NOT using core-api
+    if (!business) {
     try {
       if (owner.google?.refreshToken) {
         const { google } = await import('googleapis')
@@ -184,6 +227,7 @@ export async function POST(request, { params }) {
     } catch (error) {
       console.error('[book] FreeBusy check error:', error.message)
     }
+    }
 
     // Create booking
     const bookingId = uuidv4()
@@ -205,9 +249,11 @@ export async function POST(request, { params }) {
     const booking = {
       id: bookingId,
       userId: owner.id,
+      businessId: business?.businessId || null,
       title: `Meeting with ${name}`,
       customerName: name,
       guestEmail: email,
+      guestPhone: phone || null,
       guestTimezone: guestTimezone || owner.scheduling.timeZone || 'UTC',
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
@@ -280,9 +326,11 @@ export async function POST(request, { params }) {
       console.error('[book] Google Calendar error:', error.message)
     }
 
-    // Send confirmation emails
+    // Send confirmation emails — skip when core-api did it
     try {
-      if (env.RESEND_API_KEY) {
+      if (skipLocalCalendarAndEmail) {
+        // core-api handles email for business bookings
+      } else if (env.RESEND_API_KEY) {
         const { Resend } = await import('resend')
         const resend = new Resend(env.RESEND_API_KEY)
         const baseUrl = env.BASE_URL

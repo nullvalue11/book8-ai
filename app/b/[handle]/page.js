@@ -10,46 +10,65 @@ import { Calendar, Clock, Check, X, Loader2, AlertCircle } from 'lucide-react'
 export default function PublicBookingPage({ params }) {
   const handle = params.handle
   
-  // Auto-detect timezone
   const [guestTz, setGuestTz] = useState('')
   const [date, setDate] = useState('')
   const [slots, setSlots] = useState([])
   const [loading, setLoading] = useState(false)
   const [booking, setBooking] = useState(false)
   const [selected, setSelected] = useState(null)
-  const [form, setForm] = useState({ name: '', email: '', notes: '' })
-  const [state, setState] = useState('form') // 'form' | 'success' | 'error'
+  const [selectedService, setSelectedService] = useState(null)
+  const [services, setServices] = useState([])
+  const [servicesLoading, setServicesLoading] = useState(true)
+  const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '' })
+  const [state, setState] = useState('form')
   const [error, setError] = useState('')
   const [ownerName, setOwnerName] = useState('')
   const [bookingResult, setBookingResult] = useState(null)
+  const [hasServices, setHasServices] = useState(false)
 
-  // Initialize
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
     setGuestTz(detected)
-    
-    // Set default date to tomorrow
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
     setDate(tomorrow.toISOString().slice(0, 10))
   }, [])
 
-  // Load slots when date or timezone changes
   useEffect(() => {
-    if (date && guestTz) {
+    let cancelled = false
+    async function load() {
+      try {
+        const res = await fetch(`/api/public/services?handle=${encodeURIComponent(handle)}`)
+        const data = await res.json()
+        if (!cancelled && res.ok && Array.isArray(data?.services) && data.services.length > 0) {
+          setServices(data.services)
+          setHasServices(true)
+        }
+      } catch (e) {
+        if (!cancelled) console.error('Load services:', e)
+      } finally {
+        if (!cancelled) setServicesLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [handle])
+
+  useEffect(() => {
+    if (date && guestTz && (!hasServices || selectedService)) {
       loadSlots()
     }
-    // loadSlots is defined below and doesn't change - safe to omit from deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, guestTz])
+  }, [date, guestTz, hasServices, selectedService])
 
   async function loadSlots() {
     try {
       setLoading(true)
       setError('')
       setSelected(null)
-      
-      const res = await fetch(`/api/public/availability?handle=${encodeURIComponent(handle)}&date=${date}&tz=${encodeURIComponent(guestTz)}`)
+      const duration = selectedService?.durationMinutes || selectedService?.duration || 30
+      const url = `/api/public/availability?handle=${encodeURIComponent(handle)}&date=${date}&tz=${encodeURIComponent(guestTz)}&duration=${duration}`
+      const res = await fetch(url)
       
       // Handle network errors
       if (!res) {
@@ -123,10 +142,12 @@ export default function PublicBookingPage({ params }) {
         body: JSON.stringify({
           name: form.name,
           email: form.email,
+          phone: form.phone || undefined,
           notes: form.notes,
           start: selected.start,
           end: selected.end,
-          guestTimezone: guestTz
+          guestTimezone: guestTz,
+          serviceId: selectedService?.id
         })
       })
       
@@ -347,11 +368,50 @@ export default function PublicBookingPage({ params }) {
         </div>
       </div>
 
-      <div className="container mx-auto max-w-4xl p-6">
+      <div className="container mx-auto max-w-4xl p-4 sm:p-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Date & Time Selection */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Date Picker */}
+            {/* Service Selection (when business has services) */}
+            {hasServices && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Choose a service
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {servicesLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {services.map((svc) => (
+                        <button
+                          key={svc.id || svc.name}
+                          onClick={() => setSelectedService(svc)}
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${
+                            selectedService?.id === svc.id || selectedService?.name === svc.name
+                              ? 'border-primary bg-primary/10'
+                              : 'border-border hover:border-primary/50 bg-card'
+                          }`}
+                        >
+                          <div className="font-medium">{svc.name}</div>
+                          <div className="text-sm text-muted-foreground mt-0.5">
+                            {(svc.durationMinutes || svc.duration || 30)} min
+                            {svc.price && ` · ${svc.price}`}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Date Picker - show after service selected when services exist */}
+            {(!hasServices || selectedService) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -389,8 +449,10 @@ export default function PublicBookingPage({ params }) {
                 </div>
               </CardContent>
             </Card>
+            )}
 
             {/* Available Slots */}
+            {(!hasServices || selectedService) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -465,6 +527,18 @@ export default function PublicBookingPage({ params }) {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="phone">Phone (optional, for SMS reminders)</Label>
+                  <Input 
+                    id="phone"
+                    type="tel"
+                    placeholder="+1 (613) 555-0123"
+                    value={form.phone}
+                    onChange={e => setForm({...form, phone: e.target.value})}
+                    className="book8-input min-h-[44px]"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="notes">Notes (optional)</Label>
                   <Textarea 
                     id="notes"
@@ -485,7 +559,7 @@ export default function PublicBookingPage({ params }) {
 
                 <Button 
                   onClick={handleBooking}
-                  disabled={!selected || booking || !form.name || !form.email}
+                  disabled={booking || !form.name || !form.email || (hasServices && !selectedService) || !selected}
                   className="w-full gradient-primary text-white btn-glow"
                 >
                   {booking ? (

@@ -43,7 +43,7 @@ export async function POST(request) {
     const handle = url.searchParams.get('handle')
     const eventSlug = url.searchParams.get('eventSlug')
     const body = await request.json()
-    const { name, email, notes, start, end, guestTimezone } = body
+    const { name, email, phone, notes, start, end, guestTimezone, serviceId } = body
 
     if (!handle) {
       return NextResponse.json(
@@ -138,9 +138,62 @@ export async function POST(request) {
       )
     }
 
-    // Check availability (FreeBusy)
+    // When we have a business: call core-api for SMS + email + calendar (bypass local creation for those)
+    const baseUrl = (env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com').replace(/\/$/, '')
+    const coreSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
+
+    if (business && coreSecret) {
+      try {
+        const toolPayload = {
+          tool: 'booking.create',
+          input: {
+            businessId: business.businessId,
+            serviceId: serviceId || 'manual-booking',
+            slot: { start: startTime.toISOString(), end: endTime.toISOString() },
+            customerName: name,
+            customerPhone: phone || undefined,
+            customerEmail: email,
+            notes: notes || undefined,
+            title: null,
+            source: 'web-booking'
+          }
+        }
+
+        const coreRes = await fetch(`${baseUrl}/internal/execute-tool`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-book8-internal-secret': coreSecret
+          },
+          body: JSON.stringify(toolPayload),
+          cache: 'no-store'
+        })
+
+        const coreData = await coreRes.json().catch(() => ({}))
+
+        if (!coreRes.ok) {
+          console.error('[public/book] core-api booking failed:', coreRes.status, coreData)
+          return NextResponse.json(
+            { ok: false, error: coreData?.error || coreData?.message || 'Booking failed. Please try again.' },
+            { status: coreRes.status >= 400 ? coreRes.status : 502 }
+          )
+        }
+
+        // core-api succeeded (SMS + email + calendar done). We still create local record for reschedule/cancel tokens.
+        // Fall through to create local booking with our tokens
+      } catch (coreErr) {
+        console.error('[public/book] core-api call error:', coreErr?.message || coreErr)
+        return NextResponse.json(
+          { ok: false, error: 'Booking service unavailable. Please try again later.' },
+          { status: 503 }
+        )
+      }
+    }
+
+    // Check availability (FreeBusy) — only when NOT using core-api (user-only flow)
+    if (!business) {
     try {
-      if (owner.google?.refreshToken) {
+      if (owner?.google?.refreshToken) {
         const { google } = await import('googleapis')
         const oauth = new google.auth.OAuth2(
           env.GOOGLE?.CLIENT_ID,
@@ -180,8 +233,9 @@ export async function POST(request) {
     } catch (error) {
       console.error('[book] FreeBusy check error:', error.message)
     }
+    }
 
-    // Create booking
+    // Create booking (local record for reschedule/cancel tokens)
     const bookingId = uuidv4()
     const cancelToken = generateCancelToken(bookingId, email)
     const rescheduleToken = isFeatureEnabled('RESCHEDULE') 
@@ -208,11 +262,13 @@ export async function POST(request) {
     const booking = {
       id: bookingId,
       userId: owner.id,
+      businessId: business?.businessId || null,
       eventTypeId: eventType?.id || null,
       eventTypeSlug: eventType?.slug || null,
       title: bookingTitle,
       customerName: name,
       guestEmail: email,
+      guestPhone: phone || null,
       guestTimezone: guestTimezone || owner.scheduling.timeZone || 'UTC',
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
@@ -231,12 +287,14 @@ export async function POST(request) {
 
     await database.collection('bookings').insertOne(booking)
 
-    // Insert Google Calendar event
+    // Insert Google Calendar event — skip when core-api already did it (business flow)
     let googleEventId = null
     let googleCalendarId = null
     
+    const skipLocalCalendarAndEmail = !!business && !!coreSecret
+
     try {
-      if (owner.google?.refreshToken) {
+      if (!skipLocalCalendarAndEmail && owner.google?.refreshToken) {
         const { google } = await import('googleapis')
         const oauth = new google.auth.OAuth2(
           env.GOOGLE?.CLIENT_ID,
@@ -285,10 +343,12 @@ export async function POST(request) {
       console.error('[book] Google Calendar error:', error.message)
     }
 
-    // Send confirmation emails
+    // Send confirmation emails — skip when core-api already sent (business flow)
     let emailDebug = { status: 'not_attempted', reason: 'unknown' }
     try {
-      if (!env.RESEND_API_KEY) {
+      if (skipLocalCalendarAndEmail) {
+        emailDebug = { status: 'skipped', reason: 'core-api handles email for business bookings' }
+      } else if (!env.RESEND_API_KEY) {
         emailDebug = { status: 'skipped', reason: 'RESEND_API_KEY not configured' }
         console.log('[booking/email] Skipping email - no API key configured')
       } else {
