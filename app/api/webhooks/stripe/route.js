@@ -134,11 +134,19 @@ async function handleSubscriptionEvent(event, stripe, database) {
       
       console.log(`[webhooks/stripe] checkout.session.completed: Updated user ${userId} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
       
-      // Also update business entity if businessId is in metadata
-      const businessId = obj.metadata?.businessId
-      if (businessId) {
+      // Also update business entity if businessId is in metadata.
+      // Resolve by businessId or id — metadata may have slug/handle from legacy checkouts.
+      const rawBusinessId = obj.metadata?.businessId
+      let resolvedBizId = rawBusinessId
+      if (rawBusinessId) {
+        const bizDoc = await database.collection(BUSINESS_COLLECTION).findOne({
+          $or: [{ businessId: rawBusinessId }, { id: rawBusinessId }]
+        })
+        if (bizDoc) resolvedBizId = bizDoc.businessId || bizDoc.id
+      }
+      if (resolvedBizId) {
         await database.collection(BUSINESS_COLLECTION).updateOne(
-          { businessId },
+          { $or: [{ businessId: resolvedBizId }, { id: resolvedBizId }] },
           {
             $set: {
               'subscription.status': SUBSCRIPTION_STATUS.ACTIVE,
@@ -155,7 +163,7 @@ async function handleSubscriptionEvent(event, stripe, database) {
             }
           }
         )
-        console.log(`[webhooks/stripe] checkout.session.completed: Updated business ${businessId} subscription to active`)
+        console.log(`[webhooks/stripe] checkout.session.completed: Updated business ${resolvedBizId} subscription to active`)
       }
 
       // ── TENANT PROVISIONING ──────────────────────────────────
@@ -165,35 +173,35 @@ async function handleSubscriptionEvent(event, stripe, database) {
       // ──────────────────────────────────────────────────────────
       try {
         const session = event.data.object
- 
-        let businessName = session.metadata?.businessName || session.customer_details?.name || null
-        let businessEmail = session.customer_email || session.customer_details?.email || null
+
+        let provisionBusinessId = session.metadata?.businessId || null
+        let businessName = session.metadata?.businessName || null
+        let businessEmail =
+          session.metadata?.ownerEmail ||
+          session.customer_email ||
+          session.customer_details?.email ||
+          null
         let businessTimezone = session.metadata?.timezone || 'America/Toronto'
         let businessCategory = session.metadata?.category || null
 
-        const provisionBusinessId = session.metadata?.businessId || (businessName
-          ? businessName
-              .toLowerCase()
-              .trim()
-              .replace(/[^\w\s-]/g, '')
-              .replace(/\s+/g, '-')
-              .replace(/-+/g, '-')
-              .replace(/^-+|-+$/g, '')
-          : null)
-
-        // If Stripe metadata is incomplete, fall back to the business record.
-        // This helps when Stripe checkout doesn't include `businessName`/`businessEmail`.
-        if (provisionBusinessId && (!businessName || !businessEmail || !businessCategory)) {
-          try {
-            const biz = await database.collection(BUSINESS_COLLECTION).findOne({ businessId: provisionBusinessId })
-            if (biz) {
-              businessName = businessName || biz.name || null
-              businessEmail = businessEmail || biz.ownerEmail || null
-              businessTimezone = biz.timezone || businessTimezone
-              businessCategory = businessCategory || biz.category || null
-            }
-          } catch (fallbackErr) {
-            console.warn('[stripe-webhook] provisioning fallback lookup failed:', fallbackErr?.message || fallbackErr)
+        // Resolve business from DB — use actual businessId (biz_xxx) and name.
+        // Handles legacy sessions with wrong metadata (slug/handle instead of biz_xxx).
+        if (provisionBusinessId) {
+          const biz = await database.collection(BUSINESS_COLLECTION).findOne({
+            $or: [
+              { businessId: provisionBusinessId },
+              { id: provisionBusinessId }
+            ]
+          })
+          if (biz) {
+            provisionBusinessId = biz.businessId || biz.id
+            businessName = businessName || biz.name || null
+            businessEmail = businessEmail || biz.ownerEmail || null
+            businessTimezone = biz.timezone || businessTimezone
+            businessCategory = businessCategory || biz.category || null
+          } else if (!businessName) {
+            // Fallback: customer_details.name is the checkout form — often wrong for business name
+            businessName = session.customer_details?.name || null
           }
         }
 
@@ -217,7 +225,9 @@ async function handleSubscriptionEvent(event, stripe, database) {
               },
               body: JSON.stringify({
                 businessId: provisionBusinessId,
+                businessName: businessName,
                 name: businessName,
+                ownerEmail: businessEmail,
                 email: businessEmail,
                 category: businessCategory,
                 timezone: businessTimezone,

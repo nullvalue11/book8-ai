@@ -145,18 +145,15 @@ export async function POST(request) {
       ? `${env.BASE_URL}/dashboard/business?checkout=canceled&businessId=${businessId}`
       : `${env.BASE_URL}/pricing?canceled=true`
     
-    // Enrich metadata for tenant provisioning in webhook (businessName, timezone, plan)
-    let businessName = null
-    let timezone = 'America/Toronto'
-    let category = null
+    // Resolve business and enrich metadata for tenant provisioning in webhook.
+    // CRITICAL: Use actual businessId (biz_xxx) and business name from DB, never raw input.
+    let resolvedBusiness = null
     let planName = 'starter'
-    if (businessId) {
-      const business = await database.collection('businesses').findOne({ businessId })
-      if (business) {
-        businessName = business.name
-        timezone = business.timezone || timezone
-        category = business.category || null
-      }
+    if (businessId && typeof businessId === 'string' && businessId.trim()) {
+      const bizId = businessId.trim()
+      resolvedBusiness = await database.collection('businesses').findOne({
+        $or: [{ businessId: bizId }, { id: bizId }]
+      })
       if (priceId === env.STRIPE?.PRICE_ENTERPRISE) planName = 'enterprise'
       else if (priceId === env.STRIPE?.PRICE_GROWTH) planName = 'growth'
       else if (priceId === env.STRIPE?.PRICE_STARTER) planName = 'starter'
@@ -171,11 +168,12 @@ export async function POST(request) {
       metadata: {
         userId: user.id,
         priceId: priceId,
-        ...(businessId && {
-          businessId,
-          ...(businessName && { businessName }),
-          timezone,
-          ...(category != null && { category }),
+        ...(resolvedBusiness && {
+          businessId: resolvedBusiness.businessId || resolvedBusiness.id,
+          businessName: resolvedBusiness.name || null,
+          ownerEmail: resolvedBusiness.ownerEmail || user.email || null,
+          timezone: resolvedBusiness.timezone || 'America/Toronto',
+          ...(resolvedBusiness.category != null && { category: resolvedBusiness.category }),
           plan: planName
         }),
         numberSetupMethod: 'pending'
@@ -184,7 +182,9 @@ export async function POST(request) {
         metadata: {
           userId: user.id,
           priceId: priceId,
-          ...(businessId && { businessId })
+          ...(resolvedBusiness && {
+            businessId: resolvedBusiness.businessId || resolvedBusiness.id
+          })
         }
       }
     }
