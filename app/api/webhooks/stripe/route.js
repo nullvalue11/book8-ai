@@ -5,6 +5,7 @@ import { env } from '@/lib/env'
 import { getCallMinutesItemId, extractSubscriptionBillingFields } from '@/lib/stripeSubscription'
 import { updateSubscriptionFields, updateSubscriptionByCustomerId } from '@/lib/subscriptionUpdate'
 import { COLLECTION_NAME as BUSINESS_COLLECTION, SUBSCRIPTION_STATUS } from '@/lib/schemas/business'
+import { provisionOnCoreApi } from '@/lib/provision-business'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -223,46 +224,26 @@ async function handleSubscriptionEvent(event, stripe, database) {
         const provisionPlan = planFromStripePriceId(priceId) || session.metadata?.plan || 'starter'
 
         if (provisionBusinessId && businessName) {
-          const coreApiUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
-          const coreApiSecret = env.CORE_API_INTERNAL_SECRET || ''
+          const provisionResult = await provisionOnCoreApi({
+            businessId: provisionBusinessId,
+            name: businessName,
+            plan: provisionPlan,
+            timezone: businessTimezone,
+            category: businessCategory,
+            email: businessEmail,
+            stripeCustomerId: session.customer || null,
+            stripeSubscriptionId: session.subscription || null
+          })
 
-          const provisionResponse = await fetch(
-            `${coreApiUrl}/internal/provision-from-stripe`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                // Some deployments expect different header key names; sending both is harmless.
-                'x-book8-internal-secret': coreApiSecret,
-                'x-internal-secret': coreApiSecret
-              },
-              body: JSON.stringify({
-                businessId: provisionBusinessId,
-                businessName: businessName,
-                name: businessName,
-                ownerEmail: businessEmail,
-                email: businessEmail,
-                category: businessCategory,
-                timezone: businessTimezone,
-                stripeCustomerId: session.customer || null,
-                stripeSubscriptionId: session.subscription || null,
-                plan: provisionPlan
-              })
-            }
-          )
-
-          const provisionResult = await provisionResponse.json().catch(() => ({}))
-
-          if (provisionResponse.ok && provisionResult.ok) {
+          if (provisionResult?.ok) {
             console.log('[stripe-webhook] Tenant provisioned:', {
               businessId: provisionResult.businessId,
               created: provisionResult.created,
               defaultsEnsured: provisionResult.defaultsEnsured
             })
-          } else {
+          } else if (provisionResult !== null) {
             console.error('[stripe-webhook] Tenant provisioning failed:', {
-              status: provisionResponse.status,
-              error: provisionResult.error || 'Unknown error',
+              error: provisionResult?.error || 'Unknown error',
               businessId: provisionBusinessId
             })
           }

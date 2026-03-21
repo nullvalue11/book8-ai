@@ -15,6 +15,7 @@ import {
   BUSINESS_STATUS,
   COLLECTION_NAME 
 } from '@/lib/schemas/business'
+import { provisionOnCoreApi } from '@/lib/provision-business'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -210,7 +211,62 @@ export async function POST(request) {
       { $set: businessData },
       { upsert: true }
     )
-    
+
+    // Auto-provision when user has existing subscription on another business
+    if (!existing) {
+      const existingBusinesses = await collection
+        .find({
+          ownerUserId: userId,
+          businessId: { $ne: businessId },
+          $or: [
+            { 'subscription.status': 'active' },
+            { plan: { $in: ['starter', 'growth', 'enterprise'] } }
+          ]
+        })
+        .limit(1)
+        .toArray()
+
+      if (existingBusinesses.length > 0) {
+        const source = existingBusinesses[0]
+        const inheritedPlan = source.plan || source.subscription?.plan || 'growth'
+
+        await collection.updateOne(
+          { businessId },
+          {
+            $set: {
+              plan: inheritedPlan,
+              'subscription.status': source.subscription?.status || 'active',
+              'subscription.plan': source.subscription?.plan || source.plan || inheritedPlan,
+              'subscription.stripeCustomerId': source.subscription?.stripeCustomerId ?? null,
+              'subscription.stripeSubscriptionId': source.subscription?.stripeSubscriptionId ?? null,
+              'subscription.stripePriceId': source.subscription?.stripePriceId ?? null,
+              'subscription.updatedAt': new Date(),
+              'features.billingEnabled': true,
+              updatedAt: new Date()
+            }
+          }
+        )
+
+        console.log(
+          '[business-register] Inherited subscription from:',
+          source.businessId,
+          'plan:',
+          inheritedPlan
+        )
+
+        await provisionOnCoreApi({
+          businessId,
+          name: name.trim(),
+          plan: inheritedPlan,
+          timezone: businessData.timezone || 'America/Toronto',
+          category: businessData.category || 'other',
+          email: userEmail,
+          stripeCustomerId: source.subscription?.stripeCustomerId ?? undefined,
+          stripeSubscriptionId: source.subscription?.stripeSubscriptionId ?? undefined
+        })
+      }
+    }
+
     const durationMs = Date.now() - startTime
     
     return NextResponse.json({
