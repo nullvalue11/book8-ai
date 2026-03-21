@@ -190,6 +190,12 @@ export async function POST(request) {
 
         const coreData = await coreRes.json().catch(() => ({}))
 
+        console.log('[public-book] Core-api response:', {
+          status: coreRes.status,
+          ok: coreRes.ok,
+          body: JSON.stringify(coreData)
+        })
+
         if (!coreRes.ok) {
           console.error('[public/book] core-api booking failed:', coreRes.status, coreData)
           return NextResponse.json(
