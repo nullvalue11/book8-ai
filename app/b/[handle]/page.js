@@ -1,16 +1,15 @@
-"use client";
-import React, { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
+"use client"
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
-import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
-import { Calendar, Clock, Check, X, Loader2, AlertCircle } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar as CalendarIcon } from 'lucide-react'
 
 export default function PublicBookingPage({ params }) {
   const handle = params.handle
-  
+
   const [guestTz, setGuestTz] = useState('')
+  const [currentMonth, setCurrentMonth] = useState(null)
   const [date, setDate] = useState('')
   const [slots, setSlots] = useState([])
   const [loading, setLoading] = useState(false)
@@ -20,20 +19,21 @@ export default function PublicBookingPage({ params }) {
   const [services, setServices] = useState([])
   const [servicesLoading, setServicesLoading] = useState(true)
   const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '' })
+  const [notesExpanded, setNotesExpanded] = useState(false)
   const [state, setState] = useState('form')
   const [error, setError] = useState('')
   const [ownerName, setOwnerName] = useState('')
+  const [businessMeta, setBusinessMeta] = useState({ category: '', city: '' })
   const [bookingResult, setBookingResult] = useState(null)
   const [hasServices, setHasServices] = useState(false)
 
+  // Detect timezone
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
     setGuestTz(detected)
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    setDate(tomorrow.toISOString().slice(0, 10))
   }, [])
 
+  // Load services (deduplicated by name)
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -41,8 +41,18 @@ export default function PublicBookingPage({ params }) {
         const res = await fetch(`/api/public/services?handle=${encodeURIComponent(handle)}`)
         const data = await res.json()
         if (!cancelled && res.ok && Array.isArray(data?.services) && data.services.length > 0) {
-          setServices(data.services)
-          setHasServices(true)
+          const seen = new Set()
+          const deduped = data.services.filter((s) => {
+            const key = (s.name || '').trim().toLowerCase()
+            if (!key || seen.has(key)) return false
+            seen.add(key)
+            return true
+          })
+          setServices(deduped)
+          setHasServices(deduped.length > 0)
+          if (deduped.length > 0 && !selectedService) {
+            setSelectedService(deduped[0])
+          }
         }
       } catch (e) {
         if (!cancelled) console.error('Load services:', e)
@@ -52,119 +62,161 @@ export default function PublicBookingPage({ params }) {
     }
     load()
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedService intentionally omitted to avoid loop
   }, [handle])
 
+  // Auto-select first service when services load
   useEffect(() => {
-    if (date && guestTz && (!hasServices || selectedService)) {
-      loadSlots()
+    if (services.length > 0 && !selectedService) {
+      setSelectedService(services[0])
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, guestTz, hasServices, selectedService])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- omit selectedService to avoid loop
+  }, [services])
 
-  async function loadSlots() {
+  // Initialize date to today
+  useEffect(() => {
+    const now = new Date()
+    setCurrentMonth({ year: now.getFullYear(), month: now.getMonth() })
+    setDate(now.toISOString().slice(0, 10))
+  }, [])
+
+  const loadSlots = useCallback(async () => {
+    if (!date || !guestTz) return
+    const duration = selectedService?.durationMinutes || selectedService?.duration || 30
+    if (hasServices && !selectedService) return
+
     try {
       setLoading(true)
       setError('')
       setSelected(null)
-      const duration = selectedService?.durationMinutes || selectedService?.duration || 30
       const url = `/api/public/availability?handle=${encodeURIComponent(handle)}&date=${date}&tz=${encodeURIComponent(guestTz)}&duration=${duration}`
       const res = await fetch(url)
-      
-      // Handle network errors
+
       if (!res) {
-        setError('Failed to connect. Please check your internet connection and try again.')
+        setError('Failed to connect. Please check your internet connection.')
         setSlots([])
         return
       }
-      
+
       const data = await res.json()
-      
+
       if (!res.ok) {
-        // Handle specific error codes
         if (data.code === 'GOOGLE_INVALID_GRANT') {
-          setError(data.hint || 'The calendar owner needs to reconnect their Google Calendar.')
+          setError(data.hint || 'Calendar needs to be reconnected.')
           setState('error')
         } else if (res.status === 404) {
           if (data.error?.includes('not configured')) {
-            setError('⚙️ This booking page is being set up. Please check back later or contact the owner.')
+            setError('This booking page is being set up. Please check back later.')
             setState('error')
           } else {
-            setError('Booking page not found. Please check the URL.')
+            setError('Booking page not found.')
             setState('error')
           }
         } else if (res.status === 429) {
-          setError('Too many requests. Please wait a moment and try again.')
-        } else if (res.status === 401 && data.code) {
-          // Structured error from API
-          setError(data.message || data.error || 'Authentication error')
+          setError('Too many requests. Please wait a moment.')
         } else {
-          setError(data.error || 'Failed to load availability. Please try again.')
+          setError(data.error || 'Failed to load availability.')
         }
         setSlots([])
         return
       }
-      
+
       setSlots(data.slots || [])
       if (data.ownerName) setOwnerName(data.ownerName)
       else if (ownerName === '') setOwnerName(handle)
+
+      // Auto-select today or next available: if no slots for today, try tomorrow
+      if (!date && data.slots?.length === 0) {
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        setDate(tomorrow.toISOString().slice(0, 10))
+      }
     } catch (err) {
       console.error('Load slots error:', err)
-      // Network error or parsing error
-      if (err.name === 'TypeError' || err.message?.includes('fetch')) {
-        setError('Unable to connect to the server. Please check your internet connection and try again.')
-      } else {
-        setError('An unexpected error occurred. Please refresh the page and try again.')
-      }
+      setError('Unable to connect. Please try again.')
       setSlots([])
     } finally {
       setLoading(false)
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ownerName used for fallback only
+  }, [handle, date, guestTz, hasServices, selectedService])
+
+  // Fetch slots when date, tz, and service are ready
+  useEffect(() => {
+    if (date && guestTz && (!hasServices || selectedService)) {
+      loadSlots()
+    }
+  }, [date, guestTz, hasServices, selectedService, loadSlots])
+
+  // Auto-select first available date when today has no slots (run after loadSlots)
+  useEffect(() => {
+    if (loading === false && slots.length === 0 && date) {
+      const todayStr = new Date().toISOString().slice(0, 10)
+      if (date === todayStr) {
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const nextStr = tomorrow.toISOString().slice(0, 10)
+        setDate(nextStr)
+        setCurrentMonth({ year: tomorrow.getFullYear(), month: tomorrow.getMonth() })
+      }
+    }
+  }, [loading, slots.length, date])
 
   async function handleBooking() {
     if (!selected) {
       setError('Please select a time slot')
       return
     }
-    
-    if (!form.name || !form.email) {
-      setError('Please fill in your name and email')
+    if (!form.name?.trim()) {
+      setError('Please enter your name')
+      return
+    }
+    if (!form.email?.trim()?.includes('@')) {
+      setError('Please enter your email')
       return
     }
 
     try {
       setBooking(true)
       setError('')
-      
+
+      const e = (form.email || '').trim()
+      const p = (form.phone || '').trim()
+      if (!e || !e.includes('@')) {
+        setError('Email is required for confirmation')
+        setBooking(false)
+        return
+      }
+
       const res = await fetch(`/api/public/book?handle=${encodeURIComponent(handle)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          phone: form.phone || undefined,
-          notes: form.notes,
+          name: form.name.trim(),
+          email: e,
+          phone: p || undefined,
+          notes: form.notes || undefined,
           start: selected.start,
           end: selected.end,
           guestTimezone: guestTz,
           serviceId: selectedService?.serviceId || selectedService?.id
         })
       })
-      
+
       const data = await res.json()
-      
+
       if (!res.ok) {
         if (res.status === 409) {
-          setError('Sorry, that slot was just taken. Please pick another.')
-          await loadSlots() // Refresh slots
+          setError('That slot was just taken. Please pick another.')
+          loadSlots()
         } else if (res.status === 429) {
-          setError('Too many booking attempts. Please wait a moment.')
+          setError('Too many attempts. Please wait a moment.')
         } else {
           setError(data.error || 'Booking failed. Please try again.')
         }
         return
       }
-      
+
       setBookingResult(data)
       setState('success')
     } catch (err) {
@@ -176,8 +228,8 @@ export default function PublicBookingPage({ params }) {
   }
 
   function formatTime(isoString) {
-    return new Date(isoString).toLocaleTimeString([], { 
-      hour: '2-digit', 
+    return new Date(isoString).toLocaleTimeString([], {
+      hour: '2-digit',
       minute: '2-digit',
       timeZone: guestTz
     })
@@ -194,393 +246,405 @@ export default function PublicBookingPage({ params }) {
     })
   }
 
-  // Error screen (not configured)
+  const canSubmit =
+    selected &&
+    form.name?.trim() &&
+    form.email?.trim()?.includes('@') &&
+    (!hasServices || selectedService) &&
+    !booking
+
+  // --- Calendar helpers ---
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  const calendarDays = useMemo(() => {
+    if (!currentMonth) return []
+    const { year, month } = currentMonth
+    const first = new Date(year, month, 1)
+    const last = new Date(year, month + 1, 0)
+    const startPad = first.getDay()
+    const days = []
+    for (let i = 0; i < startPad; i++) days.push(null)
+    for (let d = 1; d <= last.getDate(); d++) days.push(new Date(year, month, d))
+    return days
+  }, [currentMonth])
+
+  const todayStr = new Date().toISOString().slice(0, 10)
+
+  function goPrevMonth() {
+    if (!currentMonth) return
+    const d = new Date(currentMonth.year, currentMonth.month - 1, 1)
+    setCurrentMonth({ year: d.getFullYear(), month: d.getMonth() })
+  }
+
+  function goNextMonth() {
+    if (!currentMonth) return
+    const d = new Date(currentMonth.year, currentMonth.month + 1, 1)
+    setCurrentMonth({ year: d.getFullYear(), month: d.getMonth() })
+  }
+
+  function onDateClick(d) {
+    if (!d) return
+    const dStr = d.toISOString().slice(0, 10)
+    if (dStr < todayStr) return
+    setDate(dStr)
+  }
+
+  // --- Error screen ---
   if (state === 'error') {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-12 pb-8 text-center space-y-6">
-            <div className="flex justify-center">
-              <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-950/20 flex items-center justify-center">
-                <AlertCircle className="w-8 h-8 text-amber-600 dark:text-amber-500" />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <h1 className="text-2xl font-semibold">Booking Page Setup Required</h1>
-              <p className="text-muted-foreground">{error}</p>
-            </div>
-
-            <Button onClick={() => window.location.reload()} variant="outline">
-              Refresh Page
-            </Button>
-          </CardContent>
-        </Card>
+      <main className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-8 h-8 text-amber-500" />
+          </div>
+          <h1 className="text-2xl font-bold">Setup Required</h1>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Refresh Page
+          </Button>
+        </div>
       </main>
     )
   }
 
-  // Success screen
+  // --- Success screen ---
   if (state === 'success') {
-    const icsDownloadUrl = bookingResult?.bookingId 
-      ? `/api/public/bookings/ics?bookingId=${bookingResult.bookingId}&email=${encodeURIComponent(form.email)}`
-      : null
-    
-    const cancelUrl = bookingResult?.cancelToken 
-      ? `/bookings/cancel/${bookingResult.cancelToken}`
-      : null
-    
-    const rescheduleUrl = bookingResult?.rescheduleToken
-      ? `/bookings/reschedule/${bookingResult.rescheduleToken}`
-      : null
+    const icsDownloadUrl =
+      bookingResult?.bookingId && form.email
+        ? `/api/public/bookings/ics?bookingId=${bookingResult.bookingId}&email=${encodeURIComponent(form.email)}`
+        : null
+    const cancelUrl = bookingResult?.cancelToken ? `/bookings/cancel/${bookingResult.cancelToken}` : null
+    const rescheduleUrl = bookingResult?.rescheduleToken ? `/bookings/reschedule/${bookingResult.rescheduleToken}` : null
+    const contactDisplay = form.email || form.phone || ''
 
     return (
-      <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center p-6">
-        <Card className="max-w-2xl w-full animate-fade-in shadow-lg">
-          <CardContent className="pt-12 pb-8 space-y-8">
-            {/* Success Icon */}
-            <div className="flex justify-center">
-              <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center shadow-lg">
-                <Check className="w-10 h-10 text-white" />
-              </div>
+      <main className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-md w-full space-y-8">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
+              <Check className="w-10 h-10 text-white" strokeWidth={3} />
             </div>
-            
-            {/* Success Message */}
-            <div className="space-y-3 text-center">
-              <h1 className="text-4xl font-bold">You're all set! 🎉</h1>
-              <p className="text-lg text-muted-foreground">
-                Your meeting has been confirmed
+          </div>
+          <div className="space-y-2 text-center">
+            <h1 className="text-3xl font-bold">You&apos;re booked! ✓</h1>
+            {selectedService && (
+              <p className="text-muted-foreground font-medium">
+                {selectedService.name} • {selected && formatTime(selected.start)}
               </p>
-              <p className="text-sm text-muted-foreground">
-                A confirmation email has been sent to <span className="font-medium text-foreground">{form.email}</span>
-              </p>
-            </div>
-
-            {/* Meeting Details */}
-            {selected && (
-              <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl p-6 space-y-4 border border-border/50">
-                <h2 className="font-semibold text-lg mb-4">Meeting Details</h2>
-                
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-lg">{formatDate(selected.start)}</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {formatTime(selected.start)} - {formatTime(selected.end)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {guestTz}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Clock className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Meeting with {ownerName || handle}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{form.name}</p>
-                  </div>
-                </div>
-                
-                {form.notes && (
-                  <div className="pt-4 border-t border-border/50">
-                    <p className="text-sm font-medium mb-2">Your notes:</p>
-                    <p className="text-sm text-muted-foreground">{form.notes}</p>
-                  </div>
-                )}
-              </div>
             )}
+            {selected && (
+              <p className="text-sm text-muted-foreground">
+                {formatDate(selected.start)}
+              </p>
+            )}
+            {contactDisplay && (
+              <p className="text-sm text-muted-foreground">
+                Confirmation sent to {contactDisplay}
+              </p>
+            )}
+          </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-3">
-              {icsDownloadUrl && (
-                <Button 
-                  onClick={() => window.open(icsDownloadUrl, '_blank')}
-                  className="w-full gradient-primary text-white btn-glow h-12 text-base"
-                  size="lg"
-                >
-                  <Calendar className="w-5 h-5 mr-2" />
-                  Add to Calendar
+          <div className="space-y-3">
+            {icsDownloadUrl && (
+              <Button
+                onClick={() => window.open(icsDownloadUrl, '_blank')}
+                className="w-full gradient-primary text-white h-12"
+                size="lg"
+              >
+                <CalendarIcon className="w-5 h-5 mr-2" />
+                Add to Calendar
+              </Button>
+            )}
+            <div className="flex gap-3">
+              {rescheduleUrl && (
+                <Button onClick={() => (window.location.href = rescheduleUrl)} variant="outline" className="flex-1">
+                  Reschedule
                 </Button>
               )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {rescheduleUrl && (
-                  <Button 
-                    onClick={() => window.location.href = rescheduleUrl}
-                    variant="outline"
-                    className="h-11"
-                  >
-                    <Clock className="w-4 h-4 mr-2" />
-                    Reschedule
-                  </Button>
-                )}
-                
-                {cancelUrl && (
-                  <Button 
-                    onClick={() => window.location.href = cancelUrl}
-                    variant="outline"
-                    className="h-11 text-destructive hover:text-destructive"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Cancel Meeting
-                  </Button>
-                )}
-              </div>
-
-              <Button 
-                onClick={() => window.location.reload()} 
-                variant="ghost"
-                className="w-full"
-              >
-                Book another time
-              </Button>
+              {cancelUrl && (
+                <Button onClick={() => (window.location.href = cancelUrl)} variant="outline" className="flex-1 text-destructive hover:text-destructive">
+                  Cancel
+                </Button>
+              )}
             </div>
-
-            {/* Booking Reference */}
-            {bookingResult?.bookingId && (
-              <div className="pt-4 border-t border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">
-                  Booking ID: <span className="font-mono">{bookingResult.bookingId}</span>
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            <Button onClick={() => window.location.reload()} variant="ghost" className="w-full">
+              Book another time
+            </Button>
+          </div>
+          {bookingResult?.bookingId && (
+            <p className="text-xs text-muted-foreground text-center">
+              Booking ID: <span className="font-mono">{bookingResult.bookingId}</span>
+            </p>
+          )}
+        </div>
       </main>
     )
   }
 
-  // Main booking form
-  return (
-    <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur">
-        <div className="container mx-auto max-w-4xl px-4 sm:px-6 py-4">
-          <h1 className="text-2xl font-semibold">Book time with {ownerName || handle}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            All times shown in <span className="font-medium">{guestTz}</span>
-          </p>
-        </div>
-      </div>
+  // --- Main booking flow ---
+  const effectiveService = hasServices ? selectedService : { name: 'Appointment', durationMinutes: 30, duration: 30 }
 
-      <div className="container mx-auto max-w-4xl p-4 sm:p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            {/* Service Selection (when business has services) */}
+  return (
+    <main className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border px-4 py-4 md:px-6">
+        <div className="max-w-[900px] mx-auto">
+          <h1 className="text-2xl font-bold">{ownerName || handle}</h1>
+          {(businessMeta.category || businessMeta.city) && (
+            <p className="text-xs uppercase tracking-wide text-muted-foreground mt-0.5">
+              {[businessMeta.category, businessMeta.city].filter(Boolean).join(' • ')}
+            </p>
+          )}
+        </div>
+      </header>
+
+      <div className="max-w-[900px] mx-auto px-4 py-6 md:px-6 md:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          {/* Left: Services, Calendar, Slots */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Service pills */}
             {hasServices && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Clock className="w-5 h-5" />
-                    Choose a service
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {servicesLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {services.map((svc) => (
+              <section>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Service</p>
+                {servicesLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory md:flex-wrap">
+                    {services.map((svc) => {
+                      const isSelected =
+                        (selectedService?.serviceId && selectedService.serviceId === svc.serviceId) ||
+                        (selectedService?.id && selectedService.id === svc.id) ||
+                        selectedService?.name === svc.name
+                      return (
                         <button
                           key={svc.serviceId || svc.id || svc.name}
                           onClick={() => setSelectedService(svc)}
-                          className={`p-4 rounded-lg border-2 text-left transition-all ${
-                            (selectedService?.serviceId && selectedService.serviceId === svc.serviceId) ||
-                            (selectedService?.id && selectedService.id === svc.id) ||
-                            (selectedService?.name === svc.name)
-                              ? 'border-primary bg-primary/10'
-                              : 'border-border hover:border-primary/50 bg-card'
-                          }`}
+                          className={`
+                            shrink-0 snap-start px-4 py-2.5 rounded-full text-sm font-medium
+                            transition-all duration-150 ease-out cursor-pointer
+                            hover:scale-[1.02]
+                            ${isSelected
+                              ? 'bg-primary text-primary-foreground border-2 border-primary'
+                              : 'border-2 border-border bg-card hover:border-primary/50'
+                            }
+                          `}
                         >
-                          <div className="font-medium">{svc.name}</div>
-                          <div className="text-sm text-muted-foreground mt-0.5">
-                            {(svc.durationMinutes || svc.duration || 30)} min
-                            {svc.price && ` · ${svc.price}`}
-                          </div>
+                          {svc.name} • {svc.durationMinutes || svc.duration || 30} min
                         </button>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Date Picker - show after service selected when services exist */}
-            {(!hasServices || selectedService) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  Select a date
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input 
-                      id="date"
-                      type="date" 
-                      value={date} 
-                      onChange={e => setDate(e.target.value)}
-                      min={new Date().toISOString().slice(0, 10)}
-                      className="book8-input w-full min-h-[44px]"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="timezone">Your timezone</Label>
-                    <select 
-                      id="timezone"
-                      value={guestTz}
-                      onChange={e => setGuestTz(e.target.value)}
-                      className="w-full min-h-[44px] px-3 rounded-md border border-input bg-background"
-                    >
-                      {['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo', 'UTC'].map(tz => (
-                        <option key={tz} value={tz}>{tz}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            )}
-
-            {/* Available Slots */}
-            {(!hasServices || selectedService) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  Available times
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : error ? (
-                  <div className="text-center py-12 space-y-2">
-                    <X className="w-8 h-8 text-destructive mx-auto" />
-                    <p className="text-sm text-muted-foreground">{error}</p>
-                  </div>
-                ) : slots.length === 0 ? (
-                  <div className="text-center py-12 space-y-2">
-                    <p className="text-muted-foreground">No times available for this day</p>
-                    <p className="text-sm text-muted-foreground">Try another date or timezone</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {slots.map(slot => (
-                      <button
-                        key={slot.start}
-                        onClick={() => setSelected(slot)}
-                        className={`min-h-[44px] px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
-                          selected?.start === slot.start
-                            ? 'gradient-primary text-white border-transparent'
-                            : 'border-border hover:border-primary bg-card'
-                        }`}
-                      >
-                        {formatTime(slot.start)}
-                      </button>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </section>
             )}
 
+            {/* Calendar */}
+            {(!hasServices || selectedService) && (
+              <section>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Date</p>
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <button
+                      onClick={goPrevMonth}
+                      className="p-1 rounded hover:bg-muted transition-colors"
+                      aria-label="Previous month"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <span className="text-sm font-medium">
+                      {currentMonth && monthNames[currentMonth.month]} {currentMonth?.year}
+                    </span>
+                    <button
+                      onClick={goNextMonth}
+                      className="p-1 rounded hover:bg-muted transition-colors"
+                      aria-label="Next month"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1 text-center">
+                    {dayHeaders.map((h) => (
+                      <div key={h} className="text-xs text-muted-foreground py-1">
+                        {h}
+                      </div>
+                    ))}
+                    {calendarDays.map((d, i) => {
+                      if (!d) return <div key={`pad-${i}`} className="aspect-square" />
+                      const dStr = d.toISOString().slice(0, 10)
+                      const isPast = dStr < todayStr
+                      const isToday = dStr === todayStr
+                      const isSelected = dStr === date
+                      return (
+                        <button
+                          key={dStr}
+                          onClick={() => onDateClick(d)}
+                          disabled={isPast}
+                          className={`
+                            aspect-square rounded-full text-sm font-medium transition-all
+                            ${isPast ? 'text-muted-foreground/50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'}
+                            ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
+                            ${isSelected ? 'bg-primary text-primary-foreground' : ''}
+                          `}
+                        >
+                          {d.getDate()}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Time slots */}
+            {(!hasServices || selectedService) && (
+              <section>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Time</p>
+                {loading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : error && !slots.length ? (
+                  <div className="text-center py-8 text-muted-foreground">{error}</div>
+                ) : slots.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No availability on this date. Try another day.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                    {slots.map((slot) => {
+                      const isSelected = selected?.start === slot.start
+                      return (
+                        <button
+                          key={slot.start}
+                          onClick={() => setSelected(slot)}
+                          className={`
+                            min-h-[44px] px-3 py-2.5 rounded-lg text-sm font-medium
+                            transition-all duration-150
+                            ${isSelected
+                              ? 'bg-primary text-primary-foreground scale-[1.02]'
+                              : 'border border-border hover:border-primary bg-card'
+                            }
+                          `}
+                        >
+                          {formatTime(slot.start)}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+            )}
           </div>
 
-          {/* Booking Form */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-6">
-              <CardHeader>
-                <CardTitle className="text-lg">Your details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
-                  <Input 
+          {/* Right: Customer info */}
+          <div className="lg:col-span-2">
+            <div
+              className={`
+                sticky top-4 transition-all duration-200 ease-out
+                ${selected ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-60'}
+              `}
+            >
+              <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Your details</p>
+
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium mb-1.5">
+                    Your name *
+                  </label>
+                  <Input
                     id="name"
                     placeholder="John Doe"
                     value={form.name}
-                    onChange={e => setForm({...form, name: e.target.value})}
-                    className="book8-input min-h-[44px]"
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    className="min-h-[44px]"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input 
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium mb-1.5">
+                    Email *
+                  </label>
+                  <Input
                     id="email"
                     type="email"
                     placeholder="john@example.com"
                     value={form.email}
-                    onChange={e => setForm({...form, email: e.target.value})}
-                    className="book8-input min-h-[44px]"
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                    className="min-h-[44px]"
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone (optional, for SMS reminders)</Label>
-                  <Input 
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium mb-1.5">
+                    Phone <span className="text-muted-foreground font-normal">(optional, for SMS)</span>
+                  </label>
+                  <Input
                     id="phone"
                     type="tel"
-                    placeholder="+1 (613) 555-0123"
+                    placeholder="+1 613 555 0123"
                     value={form.phone}
-                    onChange={e => setForm({...form, phone: e.target.value})}
-                    className="book8-input min-h-[44px]"
+                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                    className="min-h-[44px]"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (optional)</Label>
-                  <Textarea 
-                    id="notes"
-                    placeholder="Anything you'd like to share..."
-                    value={form.notes}
-                    onChange={e => setForm({...form, notes: e.target.value})}
-                    rows={3}
-                    className="resize-none"
-                  />
-                </div>
-
-                {selected && (
-                  <div className="pt-4 border-t space-y-2">
-                    <p className="text-sm font-medium">Selected time</p>
-                    <p className="text-sm text-muted-foreground">{formatDate(selected.start)}</p>
+                {notesExpanded ? (
+                  <div>
+                    <label htmlFor="notes" className="block text-sm font-medium mb-1.5">
+                      Notes (optional)
+                    </label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Anything you&apos;d like to share..."
+                      value={form.notes}
+                      onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                      rows={3}
+                      className="resize-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNotesExpanded(false)}
+                      className="text-xs text-muted-foreground mt-1 hover:underline"
+                    >
+                      Collapse
+                    </button>
                   </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setNotesExpanded(true)}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Add notes +
+                  </button>
                 )}
 
-                <Button 
+                {selected && (
+                  <p className="text-xs text-muted-foreground">
+                    {effectiveService?.name} at {formatTime(selected.start)}
+                  </p>
+                )}
+
+                <Button
                   onClick={handleBooking}
-                  disabled={booking || !form.name || !form.email || (hasServices && !selectedService) || !selected}
-                  className="w-full gradient-primary text-white btn-glow"
+                  disabled={!canSubmit}
+                  className="w-full gradient-primary text-white h-12 text-base font-medium"
                 >
                   {booking ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Booking...
+                      Confirming...
                     </>
                   ) : (
-                    'Book meeting'
+                    `Confirm Booking`
                   )}
                 </Button>
 
-                {error && (
-                  <p className="text-sm text-destructive text-center">{error}</p>
-                )}
-              </CardContent>
-            </Card>
+                {error && <p className="text-sm text-destructive text-center">{error}</p>}
+              </div>
+            </div>
           </div>
         </div>
       </div>

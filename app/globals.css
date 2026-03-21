@@ -186,6 +186,15 @@
   .bg-brand { background-color: var(--brand); }
   .text-brand { color: var(--brand); }
   .ring-brand { --tw-ring-color: var(--brand); }
+
+  /* Hide scrollbar for horizontal pill scroll */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Reduced Motion Support */
