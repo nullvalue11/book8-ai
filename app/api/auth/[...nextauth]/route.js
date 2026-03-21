@@ -101,7 +101,7 @@ if (azureClientId && azureClientSecret) {
     AzureADProvider({
       clientId: azureClientId,
       clientSecret: azureClientSecret,
-      tenantId: azureTenantId,
+      tenantId: 'common', // Supports both org AND personal Microsoft accounts (outlook.com, live.com, etc.)
     })
   )
 } else {
@@ -181,9 +181,14 @@ const authOptions = {
 
           if (existingUser) {
             debugLog('[NextAuth] Updating existing user:', userEmail)
-            const updateField = account.provider === 'google' 
-              ? { 'oauthProviders.google': { id: user.id, connectedAt: new Date() } }
-              : { 'oauthProviders.microsoft': { id: user.id, connectedAt: new Date() } }
+            const providerId =
+              account.provider === 'azure-ad'
+                ? profile?.oid || profile?.sub || user?.id
+                : user?.id
+            const updateField =
+              account.provider === 'google'
+                ? { 'oauthProviders.google': { id: providerId, connectedAt: new Date() } }
+                : { 'oauthProviders.microsoft': { id: providerId, connectedAt: new Date() } }
             
             await database.collection('users').updateOne(
               { email: userEmail },
@@ -197,6 +202,10 @@ const authOptions = {
             )
           } else {
             debugLog('[NextAuth] Creating new user:', userEmail)
+            const providerId =
+              account.provider === 'azure-ad'
+                ? profile?.oid || profile?.sub || user?.id
+                : user?.id
             const newUser = {
               id: uuidv4(),
               email: userEmail,
@@ -208,7 +217,7 @@ const authOptions = {
               google: account.provider === 'google' ? { connected: false, refreshToken: null } : null,
               oauthProviders: {
                 [account.provider === 'google' ? 'google' : 'microsoft']: {
-                  id: user.id,
+                  id: providerId,
                   connectedAt: new Date()
                 }
               }
@@ -224,14 +233,18 @@ const authOptions = {
       }
       return true
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, profile }) {
       if (account && user) {
         debugLog('[NextAuth] JWT callback - new sign in from:', account.provider)
         token.provider = account.provider
         token.userId = user.id
         token.email = user.email
         token.name = user.name
-        
+        // v2 tokens: Azure AD uses oid instead of sub for some account types
+        if (account.provider === 'azure-ad' && profile) {
+          token.sub = profile.oid || profile.sub || token.sub
+        }
+
         if (account.provider === 'google' || account.provider === 'azure-ad') {
           try {
             const database = await connectToMongo()
