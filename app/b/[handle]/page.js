@@ -494,6 +494,8 @@ export default function PublicBookingPage({ params }) {
                 )}
               </CardContent>
             </Card>
+            )}
+
           </div>
 
           {/* Booking Form */}
