@@ -78,6 +78,14 @@ function emptyWeeklyHours() {
   return DAYS.reduce((acc, d) => ({ ...acc, [d]: [] }), {})
 }
 
+function getServiceName(svc) {
+  return svc?.name || svc?.serviceName || svc?.title || svc?.label || svc?.displayName || 'Service'
+}
+
+function getServiceDuration(svc) {
+  return svc?.durationMinutes ?? svc?.duration ?? 30
+}
+
 function SetupAuthScreen({ onAuthenticated }) {
   const [formData, setFormData] = useState({ email: '', password: '', name: '' })
   const [authMode, setAuthMode] = useState('login')
@@ -646,6 +654,7 @@ function WizardContent() {
           const r = await fetch(`/api/public/services?handle=${encodeURIComponent(wizardData.handle)}`, { cache: 'no-store' })
           const data = await r.json()
           if (data.ok && Array.isArray(data.services)) {
+            console.log('[setup] Services loaded:', JSON.stringify(data.services))
             setWizardData((prev) => ({ ...prev, services: data.services }))
             setServicesLoaded(true)
             return
@@ -659,6 +668,7 @@ function WizardContent() {
           const data = await r.json()
           const services = data.services ?? (Array.isArray(data) ? data : [])
           if (Array.isArray(services)) {
+            console.log('[setup] Services loaded:', JSON.stringify(services))
             setWizardData((prev) => ({ ...prev, services }))
           }
         }
@@ -1022,14 +1032,19 @@ function WizardContent() {
                     No services found. Default services will be created when your AI agent is set up. You can customize them from your dashboard.
                   </p>
                 ) : (
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {wizardData.services.map((svc, i) => (
                       <li
-                        key={svc.id || i}
-                        className="flex items-center justify-between rounded-lg border border-[#1e1e2e] px-3 py-2 text-sm"
+                        key={svc.serviceId || svc.id || i}
+                        className="flex items-center gap-3 rounded-lg border border-[#1e1e2e] px-4 py-3"
                       >
-                        <span className="text-white">{svc.name || svc.title || 'Service'}</span>
-                        <span className="text-[#64748B]">{svc.durationMinutes || 30} min</span>
+                        <Input
+                          className="flex-1 bg-[#0A0A0F] border-[#1e1e2e] text-white min-w-0"
+                          placeholder="Service name"
+                          value={getServiceName(svc)}
+                          readOnly
+                        />
+                        <span className="text-[#64748B] text-sm shrink-0">{getServiceDuration(svc)} min</span>
                       </li>
                     ))}
                   </ul>
