@@ -407,7 +407,7 @@ export async function POST(request) {
             from: 'Book8 AI <bookings@book8.io>',
             to: email,
             cc: owner.email,
-            subject: `Your Book8 meeting is confirmed – ${dateStr} (${guestTzLabel})`,
+            subject: `Your Book8 AI meeting is confirmed – ${dateStr} (${guestTzLabel})`,
             html: emailHtml,
             attachments: [
               {

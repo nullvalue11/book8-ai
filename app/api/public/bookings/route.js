@@ -74,7 +74,7 @@ export async function POST(req) {
     let eventId = null
     const calendarId = (Array.isArray(calIds) && calIds.length ? calIds[0] : 'primary')
     try {
-      const evt = { summary: `Book8 – ${booking.title}`, description: `Guest: ${guest.name || ''} (${guest.email})\nNotes: ${guest.notes || ''}`,
+      const evt = { summary: `Book8 AI – ${booking.title}`, description: `Guest: ${guest.name || ''} (${guest.email})\nNotes: ${guest.notes || ''}`,
         start: { dateTime: booking.startTime, timeZone: booking.timeZone }, end: { dateTime: booking.endTime, timeZone: booking.timeZone }, attendees: [{ email: user.email }, { email: guest.email }] }
       const ins = await cg.cal.events.insert({ calendarId, requestBody: evt })
       eventId = ins?.data?.id || null
@@ -94,7 +94,7 @@ export async function POST(req) {
       const { Resend } = await import('resend')
       const resend = new Resend(env.RESEND_API_KEY)
       const ics = buildICS({ uid: booking.id, start: booking.startTime, end: booking.endTime, summary: booking.title, description: booking.notes, organizer: user.email, attendees: [{ email: user.email }, { email: guest.email }] })
-      await resend.emails.send({ from: env.EMAIL_FROM, to: guest.email, cc: user.email, reply_to: env.EMAIL_REPLY_TO, subject: 'Your Book8 meeting is confirmed', html: `<p>Hi ${guest.name || ''},</p><p>Your meeting is confirmed.</p><p>${new Date(booking.startTime).toLocaleString()} – ${new Date(booking.endTime).toLocaleString()} (${booking.timeZone})</p><p><a href="${cancelLink}">Cancel meeting</a> (reschedule coming soon)</p>`, attachments: [{ filename: 'invite.ics', content: Buffer.from(ics).toString('base64') }] })
+      await resend.emails.send({ from: env.EMAIL_FROM, to: guest.email, cc: user.email, reply_to: env.EMAIL_REPLY_TO, subject: 'Your Book8 AI meeting is confirmed', html: `<p>Hi ${guest.name || ''},</p><p>Your meeting is confirmed.</p><p>${new Date(booking.startTime).toLocaleString()} – ${new Date(booking.endTime).toLocaleString()} (${booking.timeZone})</p><p><a href="${cancelLink}">Cancel meeting</a> (reschedule coming soon)</p>`, attachments: [{ filename: 'invite.ics', content: Buffer.from(ics).toString('base64') }] })
     } catch (e) { console.error('[public/bookings] email failed', e?.message || e) }
 
     return NextResponse.json({ ok: true, bookingId: booking.id, eventId })

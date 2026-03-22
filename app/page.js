@@ -1415,12 +1415,12 @@ function HomeContent(props) {
                         </p>
                         {phoneSetup.assignedTwilioNumber ? (
                           <p>
-                            <span className="font-medium">Book8 number:</span>{" "}
+                            <span className="font-medium">Book8 AI number:</span>{" "}
                             <span className="text-foreground">{formatPhone(phoneSetup.assignedTwilioNumber)}</span>
                           </p>
                         ) : (
                           <p>
-                            <span className="font-medium">Book8 number:</span>{" "}
+                            <span className="font-medium">Book8 AI number:</span>{" "}
                             <span className="text-muted-foreground">Pending assignment</span>
                           </p>
                         )}

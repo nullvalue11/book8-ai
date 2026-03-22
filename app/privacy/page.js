@@ -122,7 +122,7 @@ export default function PrivacyPolicyPage() {
             
             <h3 className="text-xl font-semibold text-white mt-6 mb-3">2.5 SMS and Email Communications</h3>
             <p className="text-zinc-300">
-              When you book an appointment through a Book8-powered business and provide your contact information:
+              When you book an appointment through a Book8 AI-powered business and provide your contact information:
             </p>
             <ul className="list-disc list-inside text-zinc-300 space-y-2">
               <li>Your phone number is used to send booking confirmation and appointment reminder SMS messages via Twilio</li>
@@ -201,7 +201,7 @@ export default function PrivacyPolicyPage() {
               </p>
               <p className="text-zinc-300 m-0">
                 <strong className="text-white">ElevenLabs Inc.</strong><br />
-                We use ElevenLabs for AI voice processing and conversation handling during phone bookings. When you call a Book8-powered business, your voice is processed by ElevenLabs to understand and respond to your booking request. ElevenLabs&apos; privacy policy is available at{" "}
+                We use ElevenLabs for AI voice processing and conversation handling during phone bookings. When you call a Book8 AI-powered business, your voice is processed by ElevenLabs to understand and respond to your booking request. ElevenLabs&apos; privacy policy is available at{" "}
                 <a href="https://elevenlabs.io/privacy" target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300">
                   elevenlabs.io/privacy
                 </a>

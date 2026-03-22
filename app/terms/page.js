@@ -200,7 +200,7 @@ export default function TermsPage() {
               If you have questions about these Terms, contact us:
             </p>
             <p className="text-zinc-300">
-              <strong className="text-white">Book8-AI Inc.</strong><br />
+              <strong className="text-white">Book8 AI Inc.</strong><br />
               Email: <a href="mailto:support@book8.io" className="text-brand-400 hover:text-brand-300">support@book8.io</a><br />
               Mailing Address:<br />
               Book8 AI<br />

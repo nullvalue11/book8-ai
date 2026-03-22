@@ -207,7 +207,7 @@ const BookingsTable = ({ token, items, refresh }) => {
                   <td className="p-3">{formatInTz(b?.startTime, b?.timeZone)}</td>
                   <td className="p-3">{formatInTz(b?.endTime, b?.timeZone)}</td>
                   <td className="p-3"><span className="text-xs rounded bg-muted px-2 py-0.5">{b?.timeZone || '—'}</span></td>
-                  <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs ${b?.source === 'google' ? 'bg-secondary text-secondary-foreground' : 'bg-muted'}`}>{b?.source === 'google' ? 'Google' : 'Book8'}</span></td>
+                  <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs ${b?.source === 'google' ? 'bg-secondary text-secondary-foreground' : 'bg-muted'}`}>{b?.source === 'google' ? 'Google' : 'Book8 AI'}</span></td>
                   <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs ${b?.status === 'canceled' ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-secondary-foreground'}`}>{b?.status}</span></td>
                   <td className="p-3">{b?.source === 'google' ? (b?.htmlLink ? <a className="underline" href={b.htmlLink} target="_blank" rel="noreferrer">Open</a> : <span className="text-muted-foreground">—</span>) : (b?.status !== 'canceled' ? (<button className="px-3 py-1 rounded-md bg-primary text-primary-foreground hover:opacity-90" onClick={() => cancelBooking(b?.id)}>Cancel</button>) : (<span className="text-muted-foreground">—</span>))}</td>
                 </tr>

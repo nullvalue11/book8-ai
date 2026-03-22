@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 const faqItems = [
   {
     q: 'How does the AI voice agent work?',
-    a: 'When a customer calls your Book8 number, our AI answers using natural speech. It knows your services, hours, and availability. It has a natural conversation, finds a time that works, and books the appointment.',
+    a: 'When a customer calls your Book8 AI number, our AI answers using natural speech. It knows your services, hours, and availability. It has a natural conversation, finds a time that works, and books the appointment.',
   },
   {
     q: 'Do I need any special equipment?',
@@ -29,7 +29,7 @@ const faqItems = [
   },
   {
     q: 'Can I use my existing phone number?',
-    a: 'Currently we provide a dedicated Book8 number. Number porting is coming soon.',
+    a: 'Currently we provide a dedicated Book8 AI number. Number porting is coming soon.',
   },
   {
     q: 'What calendars do you support?',
@@ -104,7 +104,7 @@ export default function LandingPage() {
                 className={`text-lg text-[#94A3B8] max-w-xl leading-relaxed transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 style={{ transitionDelay: '200ms' }}
               >
-                Customers call your business number. Book8&apos;s AI answers, checks your calendar,
+                Customers call your business number. Book8 AI answers, checks your calendar,
                 books the appointment, and sends confirmations — automatically, 24/7.
               </p>
               <div
@@ -243,7 +243,7 @@ export default function LandingPage() {
                 num: 1,
                 icon: Calendar,
                 title: 'Connect Your Calendar',
-                desc: 'Link your Google or Outlook calendar. Book8 reads your availability in real-time.',
+                desc: 'Link your Google or Outlook calendar. Book8 AI reads your availability in real-time.',
               },
               {
                 num: 2,

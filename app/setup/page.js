@@ -167,7 +167,7 @@ function SetupAuthScreen({ onAuthenticated }) {
       <div className="w-full max-w-md mx-auto bg-gray-900/50 backdrop-blur border border-gray-800 rounded-xl p-8 shadow-xl">
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-white">Get Started with Book8</h1>
+            <h1 className="text-3xl font-bold text-white">Get Started with Book8 AI</h1>
             <p className="text-[#94A3B8] text-sm">
               Create your AI receptionist in under 5 minutes.
             </p>

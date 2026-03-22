@@ -351,7 +351,7 @@ export async function POST(request) {
           from: 'Book8 AI <bookings@book8.io>',
           to: booking.guestEmail,
           cc: owner.email,
-          subject: `Your Book8 meeting was rescheduled – ${dateStr} (${guestTzLabel})`,
+          subject: `Your Book8 AI meeting was rescheduled – ${dateStr} (${guestTzLabel})`,
           html: emailHtml,
           attachments: [
             {
