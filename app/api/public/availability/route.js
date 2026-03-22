@@ -226,12 +226,19 @@ export async function GET(request) {
         )
         if (scheduleRes.ok) {
           const scheduleData = await scheduleRes.json()
+          // Core-api uses weeklySchedule.weeklyHours; fallbacks for other formats
           const raw =
+            scheduleData?.weeklySchedule?.weeklyHours ||
+            scheduleData?.weeklyHours ||
             scheduleData?.schedule?.weeklyHours ||
             scheduleData?.schedule ||
             scheduleData?.workingHours ||
             scheduleData
+          if (env.DEBUG_LOGS) {
+            console.log('[availability] Schedule data:', JSON.stringify(scheduleData))
+          }
           if (raw && typeof raw === 'object' && Object.keys(raw).length) {
+            // Map full day names (core-api: "monday") and abbreviations to canonical
             const dayMap = {
               sunday: 'sun', sun: 'sun', 0: 'sun',
               monday: 'mon', mon: 'mon', 1: 'mon',
@@ -240,6 +247,13 @@ export async function GET(request) {
               thursday: 'thu', thu: 'thu', 4: 'thu',
               friday: 'fri', fri: 'fri', 5: 'fri',
               saturday: 'sat', sat: 'sat', 6: 'sat'
+            }
+            if (env.DEBUG_LOGS) {
+              const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+              const reqDate = new Date(date + 'T12:00:00')
+              const dayName = dayNames[reqDate.getDay()]
+              const dayHours = raw[dayName] ?? raw[dayMap[dayName] ?? dayName.slice(0, 3)]
+              console.log('[availability] Day:', dayName, 'Hours:', dayHours, 'rawKeys:', Object.keys(raw))
             }
             const workingHours = {}
             for (const [k, v] of Object.entries(raw)) {
@@ -304,9 +318,10 @@ export async function GET(request) {
     const daySlots = workingHours[dayOfWeek] || []
 
     if (daySlots.length === 0) {
-      return NextResponse.json({ 
-        ok: true, 
-        slots: []
+      return NextResponse.json({
+        ok: true,
+        slots: [],
+        message: business ? 'Business is closed on this day' : undefined
       }, {
         headers: {
           'X-RateLimit-Limit': '10',

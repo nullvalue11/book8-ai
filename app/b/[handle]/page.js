@@ -122,8 +122,11 @@ export default function PublicBookingPage({ params }) {
       }
 
       setSlots(data.slots || [])
-      if (data.ownerName) setOwnerName(data.ownerName)
-      else if (ownerName === '') setOwnerName(handle)
+      if (data.ownerName || data.businessName) {
+        setOwnerName(data.ownerName || data.businessName)
+      } else if (ownerName === '') {
+        setOwnerName(handle)
+      }
 
       // Auto-select today or next available: if no slots for today, try tomorrow
       if (!date && data.slots?.length === 0) {
@@ -132,8 +135,8 @@ export default function PublicBookingPage({ params }) {
         setDate(tomorrow.toISOString().slice(0, 10))
       }
     } catch (err) {
-      console.error('Load slots error:', err)
-      setError('Unable to connect. Please try again.')
+      console.error('[booking] Failed to load slots:', err)
+      setError('Unable to load available times. Please try again.')
       setSlots([])
     } finally {
       setLoading(false)
@@ -293,13 +296,13 @@ export default function PublicBookingPage({ params }) {
   // --- Error screen ---
   if (state === 'error') {
     return (
-      <main className="min-h-screen bg-background flex items-center justify-center p-6">
+      <main className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
         <div className="max-w-md w-full text-center space-y-6">
           <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto">
             <AlertCircle className="w-8 h-8 text-amber-500" />
           </div>
-          <h1 className="text-2xl font-bold">Setup Required</h1>
-          <p className="text-muted-foreground">{error}</p>
+          <h1 className="text-2xl font-bold text-white">Setup Required</h1>
+          <p className="text-gray-400">{error}</p>
           <Button onClick={() => window.location.reload()} variant="outline">
             Refresh Page
           </Button>
@@ -319,7 +322,7 @@ export default function PublicBookingPage({ params }) {
     const contactDisplay = form.email || form.phone || ''
 
     return (
-      <main className="min-h-screen bg-background flex items-center justify-center p-6">
+      <main className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
         <div className="max-w-md w-full space-y-8">
           <div className="flex justify-center">
             <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
@@ -327,19 +330,19 @@ export default function PublicBookingPage({ params }) {
             </div>
           </div>
           <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bold">You&apos;re booked! ✓</h1>
+            <h1 className="text-3xl font-bold text-white">You&apos;re booked! ✓</h1>
             {selectedService && (
-              <p className="text-muted-foreground font-medium">
+              <p className="text-gray-300 font-medium">
                 {selectedService.name} • {selected && formatTime(selected.start)}
               </p>
             )}
             {selected && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-400">
                 {formatDate(selected.start)}
               </p>
             )}
             {contactDisplay && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-400">
                 Confirmation sent to {contactDisplay}
               </p>
             )}
@@ -349,7 +352,7 @@ export default function PublicBookingPage({ params }) {
             {icsDownloadUrl && (
               <Button
                 onClick={() => window.open(icsDownloadUrl, '_blank')}
-                className="w-full gradient-primary text-white h-12"
+                className="w-full bg-violet-600 hover:bg-violet-500 text-white h-12"
                 size="lg"
               >
                 <CalendarIcon className="w-5 h-5 mr-2" />
@@ -373,7 +376,7 @@ export default function PublicBookingPage({ params }) {
             </Button>
           </div>
           {bookingResult?.bookingId && (
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-xs text-gray-500 text-center">
               Booking ID: <span className="font-mono">{bookingResult.bookingId}</span>
             </p>
           )}
@@ -386,11 +389,11 @@ export default function PublicBookingPage({ params }) {
   const effectiveService = hasServices ? selectedService : { name: 'Appointment', durationMinutes: 30, duration: 30 }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-gray-950 text-white dark">
       {/* Header */}
-      <header className="border-b border-border px-4 py-4 md:px-6">
+      <header className="border-b border-gray-800 px-4 py-4 md:px-6">
         <div className="max-w-[900px] mx-auto">
-          <h1 className="text-2xl font-bold">{ownerName || handle}</h1>
+          <h1 className="text-2xl font-bold text-white">{ownerName || handle}</h1>
           {(businessMeta.category || businessMeta.city) && (
             <p className="text-xs uppercase tracking-wide text-muted-foreground mt-0.5">
               {[businessMeta.category, businessMeta.city].filter(Boolean).join(' • ')}
@@ -406,36 +409,37 @@ export default function PublicBookingPage({ params }) {
             {/* Service pills */}
             {hasServices && (
               <section>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Service</p>
+                <p className="text-xs uppercase tracking-wide text-gray-400 mb-3">Service</p>
                 {servicesLoading ? (
                   <div className="flex items-center justify-center py-6">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
                   </div>
                 ) : (
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory md:flex-wrap">
-                    {services.map((svc) => {
-                      const isSelected =
-                        (selectedService?.serviceId && selectedService.serviceId === svc.serviceId) ||
-                        (selectedService?.id && selectedService.id === svc.id) ||
-                        selectedService?.name === svc.name
-                      return (
-                        <button
-                          key={svc.serviceId || svc.id || svc.name}
-                          onClick={() => setSelectedService(svc)}
-                          className={`
-                            shrink-0 snap-start px-4 py-2.5 rounded-full text-sm font-medium
-                            transition-all duration-150 ease-out cursor-pointer
-                            hover:scale-[1.02]
-                            ${isSelected
-                              ? 'bg-primary text-primary-foreground border-2 border-primary'
-                              : 'border-2 border-border bg-card hover:border-primary/50'
-                            }
-                          `}
-                        >
-                          {svc.name} • {svc.durationMinutes || svc.duration || 30} min
-                        </button>
-                      )
-                    })}
+                  <div className="w-full overflow-x-auto scrollbar-hide">
+                    <div className="flex gap-2 pb-2" style={{ minWidth: 'min-content' }}>
+                      {services.map((svc) => {
+                        const isSelected =
+                          (selectedService?.serviceId && selectedService.serviceId === svc.serviceId) ||
+                          (selectedService?.id && selectedService.id === svc.id) ||
+                          selectedService?.name === svc.name
+                        return (
+                          <button
+                            key={svc.serviceId || svc.id || svc.name}
+                            onClick={() => setSelectedService(svc)}
+                            className={`
+                              whitespace-nowrap flex-shrink-0 px-4 py-2.5 rounded-full text-sm font-medium
+                              transition-all duration-150 cursor-pointer
+                              ${isSelected
+                                ? 'bg-violet-600 text-white border-2 border-violet-400 scale-105'
+                                : 'bg-gray-800 text-gray-300 border border-gray-600 hover:border-gray-400'
+                              }
+                            `}
+                          >
+                            {svc.name} • {svc.durationMinutes || svc.duration || 30} min
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
               </section>
@@ -444,12 +448,12 @@ export default function PublicBookingPage({ params }) {
             {/* Calendar */}
             {(!hasServices || selectedService) && (
               <section>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Date</p>
-                <div className="bg-card border border-border rounded-lg p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-400 mb-3">Date</p>
+                <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <button
                       onClick={goPrevMonth}
-                      className="p-1 rounded hover:bg-muted transition-colors"
+                      className="p-1 rounded hover:bg-gray-800 transition-colors text-white"
                       aria-label="Previous month"
                     >
                       <ChevronLeft className="w-5 h-5" />
@@ -459,7 +463,7 @@ export default function PublicBookingPage({ params }) {
                     </span>
                     <button
                       onClick={goNextMonth}
-                      className="p-1 rounded hover:bg-muted transition-colors"
+                      className="p-1 rounded hover:bg-gray-800 transition-colors text-white"
                       aria-label="Next month"
                     >
                       <ChevronRight className="w-5 h-5" />
@@ -467,7 +471,7 @@ export default function PublicBookingPage({ params }) {
                   </div>
                   <div className="grid grid-cols-7 gap-1 text-center">
                     {dayHeaders.map((h) => (
-                      <div key={h} className="text-xs text-muted-foreground py-1">
+                      <div key={h} className="text-xs text-gray-400 py-1">
                         {h}
                       </div>
                     ))}
@@ -484,9 +488,9 @@ export default function PublicBookingPage({ params }) {
                           disabled={isPast}
                           className={`
                             aspect-square rounded-full text-sm font-medium transition-all
-                            ${isPast ? 'text-muted-foreground/50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'}
-                            ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
-                            ${isSelected ? 'bg-primary text-primary-foreground' : ''}
+                            ${isPast ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-gray-800 cursor-pointer'}
+                            ${isToday ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-gray-950' : ''}
+                            ${isSelected ? 'bg-violet-600 text-white' : ''}
                           `}
                         >
                           {d.getDate()}
@@ -501,15 +505,15 @@ export default function PublicBookingPage({ params }) {
             {/* Time slots */}
             {(!hasServices || selectedService) && (
               <section>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Time</p>
+                <p className="text-xs uppercase tracking-wide text-gray-400 mb-3">Time</p>
                 {loading ? (
                   <div className="flex justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
                   </div>
                 ) : error && !slots.length ? (
-                  <div className="text-center py-8 text-muted-foreground">{error}</div>
+                  <div className="text-center py-8 text-gray-400">{error}</div>
                 ) : slots.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-center py-8 text-gray-400">
                     No availability on this date. Try another day.
                   </div>
                 ) : (
@@ -524,8 +528,8 @@ export default function PublicBookingPage({ params }) {
                             min-h-[44px] px-3 py-2.5 rounded-lg text-sm font-medium
                             transition-all duration-150
                             ${isSelected
-                              ? 'bg-primary text-primary-foreground scale-[1.02]'
-                              : 'border border-border hover:border-primary bg-card'
+                              ? 'bg-violet-600 text-white scale-[1.02]'
+                              : 'border border-gray-700 hover:border-violet-500 bg-gray-900'
                             }
                           `}
                         >
@@ -539,19 +543,20 @@ export default function PublicBookingPage({ params }) {
             )}
           </div>
 
-          {/* Right: Customer info */}
+          {/* Right: Customer info - only visible after slot selected */}
           <div className="lg:col-span-2">
-            <div
-              className={`
-                sticky top-4 transition-all duration-200 ease-out
-                ${selected ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-60'}
-              `}
-            >
-              <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Your details</p>
+            {!selected && (
+              <div className="sticky top-4 rounded-xl p-6 border border-dashed border-gray-700 bg-gray-900/50 text-center text-gray-400 text-sm">
+                Select a time above to continue
+              </div>
+            )}
+            {selected && (
+            <div className="sticky top-4 animate-in slide-in-from-bottom-4 duration-200">
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
+                <p className="text-xs uppercase tracking-wide text-gray-400">Your details</p>
 
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium mb-1.5">
+                  <label htmlFor="name" className="block text-sm font-medium mb-1.5 text-gray-300">
                     Your name *
                   </label>
                   <Input
@@ -559,12 +564,12 @@ export default function PublicBookingPage({ params }) {
                     placeholder="John Doe"
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    className="min-h-[44px]"
+                    className="min-h-[44px] bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium mb-1.5">
+                  <label htmlFor="email" className="block text-sm font-medium mb-1.5 text-gray-300">
                     Email *
                   </label>
                   <Input
@@ -573,12 +578,12 @@ export default function PublicBookingPage({ params }) {
                     placeholder="john@example.com"
                     value={form.email}
                     onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                    className="min-h-[44px]"
+                    className="min-h-[44px] bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                   />
                 </div>
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium mb-1.5">
-                    Phone <span className="text-muted-foreground font-normal">(optional, for SMS)</span>
+                  <label htmlFor="phone" className="block text-sm font-medium mb-1.5 text-gray-300">
+                    Phone <span className="text-gray-500 font-normal">(optional, for SMS)</span>
                   </label>
                   <Input
                     id="phone"
@@ -586,13 +591,13 @@ export default function PublicBookingPage({ params }) {
                     placeholder="+1 613 555 0123"
                     value={form.phone}
                     onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                    className="min-h-[44px]"
+                    className="min-h-[44px] bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                   />
                 </div>
 
                 {notesExpanded ? (
                   <div>
-                    <label htmlFor="notes" className="block text-sm font-medium mb-1.5">
+                    <label htmlFor="notes" className="block text-sm font-medium mb-1.5 text-gray-300">
                       Notes (optional)
                     </label>
                     <Textarea
@@ -601,12 +606,12 @@ export default function PublicBookingPage({ params }) {
                       value={form.notes}
                       onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                       rows={3}
-                      className="resize-none"
+                      className="resize-none bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                     />
                     <button
                       type="button"
                       onClick={() => setNotesExpanded(false)}
-                      className="text-xs text-muted-foreground mt-1 hover:underline"
+                      className="text-xs text-gray-500 mt-1 hover:underline"
                     >
                       Collapse
                     </button>
@@ -615,14 +620,14 @@ export default function PublicBookingPage({ params }) {
                   <button
                     type="button"
                     onClick={() => setNotesExpanded(true)}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
                   >
                     Add notes +
                   </button>
                 )}
 
                 {selected && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-gray-400">
                     {effectiveService?.name} at {formatTime(selected.start)}
                   </p>
                 )}
@@ -630,7 +635,7 @@ export default function PublicBookingPage({ params }) {
                 <Button
                   onClick={handleBooking}
                   disabled={!canSubmit}
-                  className="w-full gradient-primary text-white h-12 text-base font-medium"
+                  className="w-full bg-violet-600 hover:bg-violet-500 text-white h-12 text-base font-medium"
                 >
                   {booking ? (
                     <>
@@ -642,9 +647,10 @@ export default function PublicBookingPage({ params }) {
                   )}
                 </Button>
 
-                {error && <p className="text-sm text-destructive text-center">{error}</p>}
+                {error && <p className="text-sm text-red-400 text-center">{error}</p>}
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>
