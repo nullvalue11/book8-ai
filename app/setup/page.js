@@ -86,6 +86,18 @@ function getServiceDuration(svc) {
   return svc?.durationMinutes ?? svc?.duration ?? 30
 }
 
+function formatPhone(num) {
+  if (!num || typeof num !== 'string') return null
+  const digits = num.replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  }
+  if (digits.length === 10) {
+    return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+  return num
+}
+
 function SetupAuthScreen({ onAuthenticated }) {
   const [formData, setFormData] = useState({ email: '', password: '', name: '' })
   const [authMode, setAuthMode] = useState('login')
@@ -343,12 +355,14 @@ function WizardContent() {
   const [businesses, setBusinesses] = useState([])
   const [growthPriceId, setGrowthPriceId] = useState(null)
   const [servicesLoaded, setServicesLoaded] = useState(false)
+  const [bookingHost, setBookingHost] = useState('book8.io')
 
   // Auth token
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const t = localStorage.getItem('book8_token')
       setToken(t)
+      setBookingHost(window.location.host || 'book8.io')
     }
     setAppReady(true)
   }, [])
@@ -468,6 +482,49 @@ function WizardContent() {
       loadInitialState()
     }
   }, [searchParams, wizardData.businessId, loadInitialState])
+
+  // Step 6: Ensure phone and handle are loaded (fetch if missing)
+  useEffect(() => {
+    if (currentStep !== 6 || !token) return
+    const needsPhone = !wizardData.phoneNumber && wizardData.businessId
+    const needsHandle = !wizardData.bookingHandle && !wizardData.handle && wizardData.businessId
+    if (!needsPhone && !needsHandle) return
+
+    ;(async () => {
+      const updates = {}
+      if (needsPhone) {
+        try {
+          const r = await fetch(
+            `/api/business/phone-setup?businessId=${encodeURIComponent(wizardData.businessId)}`,
+            { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
+          )
+          const data = await r.json()
+          if (r.ok && data.ok) {
+            const num = data.assignedTwilioNumber ?? data.phoneNumber ?? null
+            if (num) updates.phoneNumber = num
+          }
+        } catch {}
+      }
+      if (needsHandle) {
+        try {
+          const r = await fetch('/api/business/register', {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store'
+          })
+          const data = await r.json()
+          if (r.ok && data.ok && data.businesses?.length) {
+            const biz = data.businesses[0]
+            const h = biz.handle ?? biz.bookingHandle ?? null
+            if (h) updates.handle = h
+            if (h && !updates.bookingHandle) updates.bookingHandle = h
+          }
+        } catch {}
+      }
+      if (Object.keys(updates).length) {
+        setWizardData((prev) => ({ ...prev, ...updates }))
+      }
+    })()
+  }, [currentStep, token, wizardData.businessId, wizardData.phoneNumber, wizardData.handle, wizardData.bookingHandle])
 
   const updateWizard = (updates) => {
     setWizardData((prev) => ({ ...prev, ...updates }))
@@ -1089,7 +1146,7 @@ function WizardContent() {
                     <span className="font-semibold">Your Booking Line</span>
                   </div>
                   <p className="text-xl font-mono text-white">
-                    {wizardData.phoneNumber || '+1 (XXX) XXX-XXXX'}
+                    {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber || '+1 (XXX) XXX-XXXX'}
                   </p>
                   <p className="text-sm text-[#94A3B8] mt-1">
                     Customers can call or text this number to book appointments.
@@ -1101,7 +1158,7 @@ function WizardContent() {
                     <span className="font-semibold">Your Booking Page</span>
                   </div>
                   <p className="text-lg font-mono text-white break-all">
-                    book8.io/b/{wizardData.bookingHandle || wizardData.handle || 'your-business'}
+                    {bookingHost}/b/{wizardData.bookingHandle || wizardData.handle || 'your-business'}
                   </p>
                   <Button
                     variant="outline"
