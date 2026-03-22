@@ -83,6 +83,10 @@ module.exports = {
                         'hero-radial': 'radial-gradient(1200px 600px at 80% 10%, rgba(124,77,255,0.20), rgba(0,0,0,0))',
                         'brand-gradient': 'linear-gradient(90deg, #7C4DFF 0%, #9867FF 100%)',
                 },
+                fontFamily: {
+                        landing: ['Sora', 'sans-serif'],
+                        'landing-body': ['DM Sans', 'sans-serif'],
+                },
                 borderRadius: {
                         lg: 'var(--radius)',
                         md: 'calc(var(--radius) - 2px)',

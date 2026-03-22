@@ -13,7 +13,7 @@ import { Textarea } from "./components/ui/textarea";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
-import HomeHero from "./(home)/HomeHero";
+import LandingPage from "./(home)/LandingPage";
 import DataPrivacy from "./(home)/DataPrivacy";
 import { useTheme } from "next-themes";
 import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone } from "lucide-react";
@@ -741,12 +741,12 @@ function HomeContent(props) {
 
   if (!token && !forceDashboard) {
     return (
-      <main className="min-h-screen bg-[#0A0F14] text-white">
-        <Header />
-        <HomeHero />
+      <main className="min-h-screen bg-[#0A0A0F] text-white">
+        <Header variant="landing" />
+        <LandingPage />
 
-        <section id="auth" className="container mx-auto max-w-md px-6 py-16">
-          <Card className="bg-card/50 backdrop-blur border-white/10">
+        <section id="auth" className="container mx-auto max-w-md px-6 py-16" style={{ background: '#0A0A0F' }}>
+          <Card className="bg-[#12121A] backdrop-blur border-[#1e1e2e]">
             <CardHeader className="space-y-1 pb-4">
               <CardTitle className="text-2xl font-bold text-center">
                 {authMode === "login" ? "Welcome Back" : "Create Account"}
