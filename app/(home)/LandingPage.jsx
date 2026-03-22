@@ -111,7 +111,7 @@ export default function LandingPage() {
                 className={`flex flex-wrap gap-4 transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 style={{ transitionDelay: '300ms' }}
               >
-                <Link href="/pricing">
+                <Link href="/setup">
                   <Button
                     className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-12 px-6 rounded-lg font-medium"
                     size="lg"
@@ -412,7 +412,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/pricing">
+              <Link href="/setup">
                 <Button className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-12 rounded-lg font-medium" size="lg">
                   Get Started →
                 </Button>
@@ -468,7 +468,7 @@ export default function LandingPage() {
           >
             Stop Missing Calls. Start Booking 24/7.
           </h2>
-          <Link href="/pricing">
+          <Link href="/setup">
             <Button
               className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-14 px-10 text-lg rounded-lg font-medium"
               size="lg"
@@ -503,7 +503,7 @@ export default function LandingPage() {
                 <Link href="/#auth" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
                   Sign In
                 </Link>
-                <Link href="/pricing" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
+                <Link href="/setup" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
                   Get Started
                 </Link>
               </div>

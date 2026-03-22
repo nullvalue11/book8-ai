@@ -191,8 +191,8 @@ function HomeContent(props) {
             setToken(syncData.token);
             setUser(syncData.user);
             
-            // Redirect to dashboard
-            window.location.replace('/dashboard');
+            const redirect = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') : null;
+            window.location.replace(redirect || '/dashboard');
           }
         }
       } catch (err) {
@@ -205,12 +205,15 @@ function HomeContent(props) {
     }
   }, [appReady, token]);
 
-  // Redirect away from marketing when logged in
+  // Redirect away from marketing when logged in (or to redirect param if coming from sign-in flow)
   useEffect(() => {
     if (appReady && token && typeof window !== 'undefined' && window.location.pathname === '/') {
-      try { window.location.replace('/dashboard'); } catch {}
+      try {
+        const redirect = searchParams.get('redirect');
+        window.location.replace(redirect || '/dashboard');
+      } catch {}
     }
-  }, [appReady, token]);
+  }, [appReady, token, searchParams]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchOutlookStatus(); fetchArchivedCount(); checkSubscription(); } }, [token]);
@@ -766,9 +769,9 @@ function HomeContent(props) {
                   onClick={async () => {
                     setIsLoading(true);
                     try {
-                      // Use NextAuth signIn function for proper OAuth flow
+                      const redirect = searchParams.get('redirect');
                       await signIn('google', { 
-                        callbackUrl: '/auth/oauth-callback',
+                        callbackUrl: redirect ? `/auth/oauth-callback?redirect=${encodeURIComponent(redirect)}` : '/auth/oauth-callback',
                         redirect: true
                       });
                     } catch (err) {
@@ -793,9 +796,9 @@ function HomeContent(props) {
                   onClick={async () => {
                     setIsLoading(true);
                     try {
-                      // Use NextAuth signIn function for proper OAuth flow
+                      const redirect = searchParams.get('redirect');
                       await signIn('azure-ad', { 
-                        callbackUrl: '/auth/oauth-callback',
+                        callbackUrl: redirect ? `/auth/oauth-callback?redirect=${encodeURIComponent(redirect)}` : '/auth/oauth-callback',
                         redirect: true
                       });
                     } catch (err) {

@@ -41,11 +41,11 @@ export default function OAuthCallbackPage() {
             localStorage.setItem('book8_token', syncData.token);
             localStorage.setItem('book8_user', JSON.stringify(syncData.user));
             
-            setStatus('Success! Redirecting to dashboard...');
+            const redirect = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') : null;
+            setStatus(redirect ? 'Success! Redirecting to setup...' : 'Success! Redirecting to dashboard...');
             
-            // Step 4: Redirect to dashboard
             setTimeout(() => {
-              router.replace('/dashboard');
+              router.replace(redirect || '/dashboard');
             }, 500);
           } else {
             throw new Error(syncData.error || 'Failed to sync OAuth session');

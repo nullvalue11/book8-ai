@@ -116,10 +116,10 @@ function WizardContent() {
     setAppReady(true)
   }, [])
 
-  // Redirect if not logged in
+  // Redirect if not logged in - send to sign-in with redirect back to setup
   useEffect(() => {
     if (appReady && !token) {
-      router.push('/?redirect=/setup')
+      router.push('/?redirect=/setup#auth')
     }
   }, [appReady, token, router])
 
