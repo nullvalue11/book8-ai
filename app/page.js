@@ -141,6 +141,7 @@ function HomeContent(props) {
   const [formError, setFormError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [authMode, setAuthMode] = useState("login"); // "login" or "register"
+  const [showAuth, setShowAuth] = useState(false);
 
   const fetchAbort = useRef(null);
 
@@ -204,6 +205,25 @@ function HomeContent(props) {
       syncOAuthSession();
     }
   }, [appReady, token]);
+
+  // Show auth section only when Sign In clicked (#auth) or redirect with #auth
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkHash = () => {
+      if (window.location.hash === '#auth') setShowAuth(true);
+    };
+    checkHash();
+    window.addEventListener('hashchange', checkHash);
+    return () => window.removeEventListener('hashchange', checkHash);
+  }, []);
+
+  // When showAuth becomes true, scroll to sign-in section
+  useEffect(() => {
+    if (showAuth && !token && typeof window !== 'undefined') {
+      const el = document.getElementById('auth');
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+  }, [showAuth, token]);
 
   // Redirect away from marketing when logged in (or to redirect param if coming from sign-in flow)
   useEffect(() => {
@@ -748,6 +768,7 @@ function HomeContent(props) {
         <Header variant="landing" />
         <LandingPage />
 
+        {showAuth && (
         <section id="auth" className="container mx-auto max-w-md px-6 py-16" style={{ background: '#0A0A0F' }}>
           <Card className="bg-[#12121A] backdrop-blur border-[#1e1e2e]">
             <CardHeader className="space-y-1 pb-4">
@@ -957,6 +978,7 @@ function HomeContent(props) {
             </CardContent>
           </Card>
         </section>
+        )}
 
         {/* Data Privacy Section - after login */}
         <DataPrivacy />

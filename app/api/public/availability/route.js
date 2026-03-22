@@ -235,9 +235,6 @@ export async function GET(request) {
             scheduleData?.schedule ||
             scheduleData?.workingHours ||
             scheduleData
-          if (env.DEBUG_LOGS) {
-            console.log('[availability] Schedule data:', JSON.stringify(scheduleData))
-          }
           if (raw && typeof raw === 'object' && Object.keys(raw).length) {
             // Map full day names (core-api: "monday") and abbreviations to canonical
             const dayMap = {
@@ -248,13 +245,6 @@ export async function GET(request) {
               thursday: 'thu', thu: 'thu', 4: 'thu',
               friday: 'fri', fri: 'fri', 5: 'fri',
               saturday: 'sat', sat: 'sat', 6: 'sat'
-            }
-            if (env.DEBUG_LOGS) {
-              const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-              const reqDate = new Date(date + 'T12:00:00')
-              const dayName = dayNames[reqDate.getDay()]
-              const dayHours = raw[dayName] ?? raw[dayMap[dayName] ?? dayName.slice(0, 3)]
-              console.log('[availability] Day:', dayName, 'Hours:', dayHours, 'rawKeys:', Object.keys(raw))
             }
             const workingHours = {}
             for (const [k, v] of Object.entries(raw)) {
@@ -346,10 +336,6 @@ export async function GET(request) {
       // Create start/end in host timezone, convert to UTC for correct slot times
       let currentTime = zonedTimeToUtc(`${date}T${pad2(openH)}:${pad2(openM)}:00`, hostTz)
       const endTime = zonedTimeToUtc(`${date}T${pad2(closeH)}:${pad2(closeM)}:00`, hostTz)
-
-      if (env.DEBUG_LOGS) {
-        console.log('[availability] Generating slots from', openTime, 'to', closeTime, 'duration:', durationMin, 'tz:', hostTz)
-      }
 
       while (currentTime.getTime() + durationMin * 60000 <= endTime.getTime()) {
         if (currentTime >= minStartTime) {

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -77,6 +78,223 @@ function emptyWeeklyHours() {
   return DAYS.reduce((acc, d) => ({ ...acc, [d]: [] }), {})
 }
 
+function SetupAuthScreen({ onAuthenticated }) {
+  const [formData, setFormData] = useState({ email: '', password: '', name: '' })
+  const [authMode, setAuthMode] = useState('login')
+  const [formError, setFormError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  async function handleLogin() {
+    if (!formData.email || !formData.password) {
+      setFormError('Please enter both email and password')
+      return
+    }
+    try {
+      setFormError('')
+      setIsLoading(true)
+      const res = await fetch('/api/credentials/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, password: formData.password })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Login failed')
+      localStorage.setItem('book8_token', data.token)
+      localStorage.setItem('book8_user', JSON.stringify(data.user))
+      onAuthenticated?.()
+    } catch (err) {
+      setFormError(err.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function handleRegister() {
+    if (!formData.email || !formData.password) {
+      setFormError('Please enter both email and password')
+      return
+    }
+    if (formData.password.length < 6) {
+      setFormError('Password must be at least 6 characters')
+      return
+    }
+    try {
+      setFormError('')
+      setIsLoading(true)
+      const res = await fetch('/api/credentials/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name || ''
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Registration failed')
+      localStorage.setItem('book8_token', data.token)
+      localStorage.setItem('book8_user', JSON.stringify(data.user))
+      onAuthenticated?.()
+    } catch (err) {
+      setFormError(err.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0A0A0F] flex items-center justify-center p-4">
+      <Card className="w-full max-w-md border-[#1e1e2e] bg-[#12121A]">
+        <CardHeader className="space-y-1 pb-4">
+          <CardTitle className="text-2xl font-bold text-center text-white">
+            Sign in to get started
+          </CardTitle>
+          <CardDescription className="text-center text-[#94A3B8]">
+            Create your AI receptionist in under 5 minutes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="outline"
+              className="h-12 border-[#1e1e2e] bg-[#0A0A0F] text-white hover:bg-[#1e1e2e]"
+              onClick={async () => {
+                setIsLoading(true)
+                try {
+                  await signIn('google', {
+                    callbackUrl: '/auth/oauth-callback?redirect=%2Fsetup',
+                    redirect: true
+                  })
+                } catch (err) {
+                  setFormError('Failed to initiate Google sign-in.')
+                  setIsLoading(false)
+                }
+              }}
+              disabled={isLoading}
+            >
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+              Google
+            </Button>
+            <Button
+              variant="outline"
+              className="h-12 border-[#1e1e2e] bg-[#0A0A0F] text-white hover:bg-[#1e1e2e]"
+              onClick={async () => {
+                setIsLoading(true)
+                try {
+                  await signIn('azure-ad', {
+                    callbackUrl: '/auth/oauth-callback?redirect=%2Fsetup',
+                    redirect: true
+                  })
+                } catch (err) {
+                  setFormError('Failed to initiate Microsoft sign-in.')
+                  setIsLoading(false)
+                }
+              }}
+              disabled={isLoading}
+            >
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 23 23">
+                <path fill="#f3f3f3" d="M0 0h23v23H0z" />
+                <path fill="#f35325" d="M1 1h10v10H1z" />
+                <path fill="#81bc06" d="M12 1h10v10H12z" />
+                <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                <path fill="#ffba08" d="M12 12h10v10H12z" />
+              </svg>
+              Microsoft
+            </Button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#1e1e2e]" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-2 bg-[#12121A] text-[#64748B]">or continue with email</span>
+            </div>
+          </div>
+
+          <div className="flex gap-1 p-1 bg-[#0A0A0F]/50 rounded-lg">
+            <button
+              type="button"
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${authMode === 'login' ? 'bg-[#1e1e2e] text-white' : 'text-[#94A3B8] hover:text-white'}`}
+              onClick={() => { setAuthMode('login'); setFormError('') }}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${authMode === 'register' ? 'bg-[#1e1e2e] text-white' : 'text-[#94A3B8] hover:text-white'}`}
+              onClick={() => { setAuthMode('register'); setFormError('') }}
+            >
+              Register
+            </button>
+          </div>
+
+          {authMode === 'register' && (
+            <div>
+              <Label className="text-[#F8FAFC]">Full Name</Label>
+              <Input
+                className="mt-1 bg-[#0A0A0F] border-[#1e1e2e] text-white"
+                placeholder="John Doe"
+                value={formData.name}
+                onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+          )}
+
+          <div>
+            <Label className="text-[#F8FAFC]">Email</Label>
+            <Input
+              type="email"
+              className="mt-1 bg-[#0A0A0F] border-[#1e1e2e] text-white"
+              placeholder="you@example.com"
+              value={formData.email}
+              onChange={(e) => setFormData((f) => ({ ...f, email: e.target.value }))}
+              autoComplete="email"
+            />
+          </div>
+
+          <div>
+            <Label className="text-[#F8FAFC]">Password</Label>
+            <Input
+              type="password"
+              className="mt-1 bg-[#0A0A0F] border-[#1e1e2e] text-white"
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={(e) => setFormData((f) => ({ ...f, password: e.target.value }))}
+              autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+            />
+            {authMode === 'register' && (
+              <p className="text-xs text-[#64748B] mt-1">Must be at least 6 characters</p>
+            )}
+          </div>
+
+          {formError && (
+            <div className="p-3 rounded-md bg-red-500/10 border border-red-500/20">
+              <p className="text-sm text-red-300">{formError}</p>
+            </div>
+          )}
+
+          <Button
+            className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-12"
+            onClick={authMode === 'login' ? handleLogin : handleRegister}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : null}
+            {authMode === 'login' ? 'Sign In' : 'Create Account'}
+          </Button>
+        </CardContent>
+      </Card>
+    </main>
+  )
+}
+
 function WizardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -106,6 +324,7 @@ function WizardContent() {
   const [error, setError] = useState('')
   const [businesses, setBusinesses] = useState([])
   const [growthPriceId, setGrowthPriceId] = useState(null)
+  const [servicesLoaded, setServicesLoaded] = useState(false)
 
   // Auth token
   useEffect(() => {
@@ -115,13 +334,6 @@ function WizardContent() {
     }
     setAppReady(true)
   }, [])
-
-  // Redirect if not logged in - send to sign-in with redirect back to setup
-  useEffect(() => {
-    if (appReady && !token) {
-      router.push('/?redirect=/setup#auth')
-    }
-  }, [appReady, token, router])
 
   // Detect timezone on mount
   useEffect(() => {
@@ -415,19 +627,39 @@ function WizardContent() {
     }
   }
 
-  // Step 5: Services - load and continue
+  // Step 5: Services - load and continue (try handle first, then businessId as fallback)
   useEffect(() => {
-    if (currentStep === 5 && wizardData.handle && !wizardData.services?.length) {
-      fetch(`/api/public/services?handle=${encodeURIComponent(wizardData.handle)}`, { cache: 'no-store' })
-        .then((r) => r.json())
-        .then((data) => {
+    if (currentStep !== 5 || servicesLoaded) return
+    const loadServices = async () => {
+      try {
+        if (wizardData.handle) {
+          const r = await fetch(`/api/public/services?handle=${encodeURIComponent(wizardData.handle)}`, { cache: 'no-store' })
+          const data = await r.json()
           if (data.ok && Array.isArray(data.services)) {
             setWizardData((prev) => ({ ...prev, services: data.services }))
+            setServicesLoaded(true)
+            return
           }
-        })
-        .catch(() => {})
+        }
+        if (wizardData.businessId) {
+          const r = await fetch(`/api/business/${wizardData.businessId}/services`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store'
+          })
+          const data = await r.json()
+          const services = data.services ?? (Array.isArray(data) ? data : [])
+          if (Array.isArray(services)) {
+            setWizardData((prev) => ({ ...prev, services }))
+          }
+        }
+      } catch (err) {
+        console.error('[setup] Failed to load services:', err)
+      } finally {
+        setServicesLoaded(true)
+      }
     }
-  }, [currentStep, wizardData.handle, wizardData.services?.length])
+    loadServices()
+  }, [currentStep, wizardData.handle, wizardData.businessId, servicesLoaded, token])
 
   function handleStep5Submit() {
     setCurrentStep(6)
@@ -469,7 +701,13 @@ function WizardContent() {
     )
   }
 
-  if (!token) return null
+  // Show sign-in form when not logged in (Option A: keep user on setup page)
+  if (!token) {
+    return <SetupAuthScreen onAuthenticated={() => {
+      const t = localStorage.getItem('book8_token')
+      setToken(t)
+    }} />
+  }
 
   const progressPct = (currentStep / 6) * 100
 
@@ -767,8 +1005,12 @@ function WizardContent() {
             </div>
             <Card className="border-[#1e1e2e] bg-[#12121A]">
               <CardContent className="pt-6 space-y-4">
-                {wizardData.services.length === 0 ? (
+                {!servicesLoaded ? (
                   <p className="text-[#94A3B8] text-sm">Loading services...</p>
+                ) : wizardData.services.length === 0 ? (
+                  <p className="text-[#94A3B8] text-sm">
+                    No services found. Default services will be created when your AI agent is set up. You can customize them from your dashboard.
+                  </p>
                 ) : (
                   <ul className="space-y-2">
                     {wizardData.services.map((svc, i) => (

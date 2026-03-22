@@ -545,7 +545,7 @@ export default function PublicBookingPage({ params }) {
 
           {/* Right: Customer info - ONLY show when slot selected */}
           <div className="lg:col-span-2">
-            {selected && (
+            {selected ? (
             <div className="sticky top-4 animate-in slide-in-from-bottom-4 duration-200">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
                 <p className="text-xs uppercase tracking-wide text-gray-400">Your details</p>
@@ -645,6 +645,10 @@ export default function PublicBookingPage({ params }) {
                 {error && <p className="text-sm text-red-400 text-center">{error}</p>}
               </div>
             </div>
+            ) : (
+              <div className="sticky top-4 flex items-center justify-center min-h-[200px] text-gray-500 text-sm border border-dashed border-gray-700 rounded-xl">
+                Select a time to continue
+              </div>
             )}
           </div>
         </div>
