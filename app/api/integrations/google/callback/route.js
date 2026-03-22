@@ -52,10 +52,12 @@ export async function GET(request) {
 
     let uid = null
     let businessId = null
+    let returnTo = null
     try {
       const payload = jwt.verify(state, getJwtSecret())
       uid = payload.sub
-      businessId = payload.businessId || null  // Extract businessId if present
+      businessId = payload.businessId || null
+      returnTo = payload.returnTo || null
     } catch (err) {
       return NextResponse.redirect(`${base}/?google_error=invalid_state`)
     }
@@ -113,7 +115,8 @@ export async function GET(request) {
       if (updateResult.matchedCount > 0) {
         console.info(`[Google Callback] Updated business ${businessId} with calendar connection`)
         await syncCalendarToCore({ businessId, provider: 'google', connected: true })
-        return NextResponse.redirect(`${base}/dashboard/business?google_connected=1&businessId=${businessId}`)
+        const redirectUrl = returnTo || `${base}/dashboard/business?google_connected=1&businessId=${businessId}`
+        return NextResponse.redirect(redirectUrl)
       } else {
         console.warn(`[Google Callback] Business ${businessId} not found for user ${uid}`)
         // Still redirect to business page, calendar is connected at user level
@@ -121,7 +124,8 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.redirect(`${base}/?google_connected=1`)
+    const redirectUrl = returnTo || `${base}/?google_connected=1`
+    return NextResponse.redirect(redirectUrl)
   } catch (e) {
     console.error('google/callback error', e)
     return NextResponse.redirect(`${base}/?google_error=token_exchange_failed`)

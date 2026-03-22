@@ -33,6 +33,7 @@ export async function GET(request) {
     const url = new URL(request.url)
     const jwtParam = url.searchParams.get('jwt') || url.searchParams.get('token')
     const businessId = url.searchParams.get('businessId')
+    const returnTo = url.searchParams.get('returnTo')
 
     let userId = null
     if (jwtParam) {
@@ -115,6 +116,7 @@ export async function GET(request) {
 
     const statePayload = { sub: userId }
     if (businessId) statePayload.businessId = businessId
+    if (returnTo) statePayload.returnTo = returnTo
 
     const state = jwt.sign(statePayload, getJwtSecret(), { expiresIn: '10m' })
     const redirectUri = `${base}/api/integrations/microsoft/callback`

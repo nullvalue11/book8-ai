@@ -44,10 +44,12 @@ export async function GET(request) {
 
     let uid = null
     let businessId = null
+    let returnTo = null
     try {
       const payload = jwt.verify(state, getJwtSecret())
       uid = payload.sub
       businessId = payload.businessId || null
+      returnTo = payload.returnTo || null
     } catch {
       return NextResponse.redirect(`${base}/?microsoft_error=invalid_state`)
     }
@@ -125,7 +127,8 @@ export async function GET(request) {
       if (updateResult.matchedCount > 0) {
         console.info(`[Microsoft Callback] Updated business ${businessId} with calendar connection`)
         await syncCalendarToCore({ businessId, provider: 'microsoft', connected: true })
-        return NextResponse.redirect(`${base}/dashboard/business?outlook_connected=1&businessId=${businessId}`)
+        const redirectUrl = returnTo || `${base}/dashboard/business?outlook_connected=1&businessId=${businessId}`
+        return NextResponse.redirect(redirectUrl)
       }
 
       console.warn(`[Microsoft Callback] Business ${businessId} not found for user ${uid}`)

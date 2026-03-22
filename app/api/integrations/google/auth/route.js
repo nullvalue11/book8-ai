@@ -50,6 +50,7 @@ export async function GET(request) {
     
     // Optional: businessId for business-context calendar connections
     const businessId = url.searchParams.get('businessId')
+    const returnTo = url.searchParams.get('returnTo')
 
     let userId = null
     if (jwtParam) {
@@ -131,10 +132,13 @@ export async function GET(request) {
       }
     }
 
-    // Include businessId in state if provided
+    // Include businessId and returnTo in state if provided
     const statePayload = { sub: userId }
     if (businessId) {
       statePayload.businessId = businessId
+    }
+    if (returnTo) {
+      statePayload.returnTo = returnTo
     }
     
     const state = jwt.sign(statePayload, getJwtSecret(), { expiresIn: '10m' })
