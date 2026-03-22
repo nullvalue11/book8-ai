@@ -543,13 +543,8 @@ export default function PublicBookingPage({ params }) {
             )}
           </div>
 
-          {/* Right: Customer info - only visible after slot selected */}
+          {/* Right: Customer info - ONLY show when slot selected */}
           <div className="lg:col-span-2">
-            {!selected && (
-              <div className="sticky top-4 rounded-xl p-6 border border-dashed border-gray-700 bg-gray-900/50 text-center text-gray-400 text-sm">
-                Select a time above to continue
-              </div>
-            )}
             {selected && (
             <div className="sticky top-4 animate-in slide-in-from-bottom-4 duration-200">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">

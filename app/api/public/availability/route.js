@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/rateLimiting'
 import { RateLimitTelemetry, logError } from '@/lib/telemetry'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
+import { zonedTimeToUtc } from 'date-fns-tz'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -330,30 +331,29 @@ export async function GET(request) {
       })
     }
 
-    // Generate time slots in host timezone
+    // Generate time slots using business hours (openTime/closeTime) in host timezone
     const slots = []
     const now = new Date()
     const minStartTime = new Date(now.getTime() + minNoticeMin * 60000)
 
     for (const block of daySlots) {
-      // Create datetime in host timezone
-      let currentTime = new Date(`${date}T${block.start}:00`)
-      
-      // Handle end time
-      let endTime
-      if (block.end === '23:59') {
-        endTime = new Date(`${date}T23:59:59`)
-      } else {
-        endTime = new Date(`${date}T${block.end}:00`)
+      const openTime = block.start
+      const closeTime = block.end === '23:59' ? '23:59' : block.end
+      const pad2 = (n) => String(n).padStart(2, '0')
+      const [openH, openM] = openTime.split(':').map(Number)
+      const [closeH, closeM] = closeTime.split(':').map(Number)
+
+      // Create start/end in host timezone, convert to UTC for correct slot times
+      let currentTime = zonedTimeToUtc(`${date}T${pad2(openH)}:${pad2(openM)}:00`, hostTz)
+      const endTime = zonedTimeToUtc(`${date}T${pad2(closeH)}:${pad2(closeM)}:00`, hostTz)
+
+      if (env.DEBUG_LOGS) {
+        console.log('[availability] Generating slots from', openTime, 'to', closeTime, 'duration:', durationMin, 'tz:', hostTz)
       }
 
-      // Generate slots for this time block
       while (currentTime.getTime() + durationMin * 60000 <= endTime.getTime()) {
-        // Only add slots that meet minimum notice requirement
         if (currentTime >= minStartTime) {
           const slotEnd = new Date(currentTime.getTime() + durationMin * 60000)
-          
-          // Make sure the slot end doesn't go past the block end
           if (slotEnd <= endTime) {
             slots.push({
               start: currentTime.toISOString(),
