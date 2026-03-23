@@ -202,7 +202,7 @@ export default function LandingPage() {
       >
         <div className="mx-auto max-w-6xl px-4">
           <p className="text-center text-[#94A3B8] text-sm">
-            Trusted by barbers, dental clinics, spas, and fitness studios across Canada
+            Trusted by barbers, dental clinics, spas, and fitness studios worldwide
           </p>
           <div className="flex flex-wrap justify-center gap-8 mt-4">
             {[
@@ -300,7 +300,7 @@ export default function LandingPage() {
               { icon: Phone, title: 'Voice AI Booking', desc: 'AI answers calls 24/7. Books real appointments. Sounds natural.' },
               { icon: Calendar, title: 'Calendar Sync', desc: 'Google Calendar & Outlook. Real-time availability. Never double-book.' },
               { icon: MessageSquare, title: 'SMS & Email', desc: 'Instant confirmations to customers via text and email.' },
-              { icon: Globe, title: 'Online Booking Page', desc: 'Shareable link: book8.io/your-business. Customers book online anytime.' },
+              { icon: Globe, title: 'Online Booking Page', desc: 'Shareable link: book8.io/dental-clinic. Customers book online anytime.' },
               { icon: Building2, title: 'Multi-Business', desc: 'Manage multiple locations under one account. Up to 5 businesses.' },
               { icon: BarChart3, title: 'Dashboard & Analytics', desc: 'See all bookings, calls, and customer data in one place.' },
             ].map(({ icon: Icon, title, desc }, i) => (
@@ -338,7 +338,7 @@ export default function LandingPage() {
             Your Booking Page, Ready to Share
           </h2>
           <p className="text-center text-[#94A3B8] max-w-2xl mx-auto mb-12">
-            Every business gets a custom booking page at book8.io/your-business. Share it on Instagram, text it to clients, or add it to your website.
+            Every business gets a custom booking page at book8.io/dental-clinic. Share it on Instagram, text it to clients, or add it to your website.
           </p>
           <div className="max-w-2xl mx-auto rounded-xl overflow-hidden border border-[#1e1e2e] shadow-2xl" style={{ background: '#12121A' }}>
             <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e1e2e] bg-[#0d0d12]">
@@ -349,7 +349,7 @@ export default function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <span className="text-xs text-[#64748B] bg-[#1e1e2e] px-4 py-1 rounded">
-                  book8.io/ottawa-dental-clinic
+                  book8.io/dental-clinic
                 </span>
               </div>
             </div>

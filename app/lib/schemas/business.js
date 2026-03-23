@@ -34,7 +34,7 @@ export const SUBSCRIPTION_STATUS = {
 
 /**
  * Generate a URL-friendly handle from business name
- * "Ottawa Dental Clinic" → "ottawa-dental-clinic"
+ * "Dental Clinic" → "dental-clinic"
  */
 export function generateHandle(name) {
   if (!name || typeof name !== 'string') return ''
@@ -75,7 +75,7 @@ export function createBusiness({
     // Core identity
     businessId: businessId || generateBusinessId(),
     name: name || 'Untitled Business',
-    handle: null, // Set at registration, URL-friendly (e.g. ottawa-dental-clinic)
+    handle: null, // Set at registration, URL-friendly (e.g. dental-clinic)
     category: category || 'other',
     
     // Ownership
