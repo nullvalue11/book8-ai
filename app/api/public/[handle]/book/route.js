@@ -272,12 +272,15 @@ export async function POST(request, { params }) {
 
     await database.collection('bookings').insertOne(booking)
 
-    // Insert Google Calendar event
+    // Skip local calendar + email when core-api handles booking (business flow)
+    const skipLocalCalendarAndEmail = !!business && !!coreSecret
+
+    // Insert Google Calendar event — skip when core-api already did it
     let googleEventId = null
     let googleCalendarId = null
     
     try {
-      if (owner.google?.refreshToken) {
+      if (!skipLocalCalendarAndEmail && owner.google?.refreshToken) {
         const { google } = await import('googleapis')
         const oauth = new google.auth.OAuth2(
           env.GOOGLE?.CLIENT_ID,
@@ -341,7 +344,8 @@ export async function POST(request, { params }) {
           baseUrl,
           rescheduleToken,
           cancelToken,
-          guestTimezone
+          guestTimezone,
+          handle
         )
 
         // Generate ICS

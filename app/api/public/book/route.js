@@ -377,7 +377,8 @@ export async function POST(request) {
           baseUrl,
           rescheduleToken,
           cancelToken,
-          guestTimezone
+          guestTimezone,
+          handle
         )
 
         // Generate ICS

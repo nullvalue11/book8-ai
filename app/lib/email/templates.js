@@ -83,26 +83,42 @@ function formatDateTime(dateTime, timezone) {
 }
 
 /**
- * Calendar button helper
+ * Calendar button helper — Google + Outlook "Add to Calendar" links
  */
 function calendarButtons(booking, baseUrl) {
-  const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.title)}&dates=${new Date(booking.startTime).toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${new Date(booking.endTime).toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(booking.notes || '')}`
+  const title = encodeURIComponent(booking.title)
+  const startUTC = new Date(booking.startTime).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+  const endUTC = new Date(booking.endTime).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+  const details = encodeURIComponent((booking.notes || '') + '\n\nBooked via Book8 AI')
+  
+  const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startUTC}/${endUTC}&details=${details}`
+  const outlookUrl = `https://outlook.live.com/calendar/0/action/compose?subject=${title}&startdt=${encodeURIComponent(booking.startTime)}&enddt=${encodeURIComponent(booking.endTime)}&body=${details}`
   
   return `
     <div style="margin: 24px 0; text-align: center;">
-      <a href="${googleUrl}" target="_blank" style="display: inline-block; margin: 0 8px; padding: 12px 24px; background-color: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
-        Add to Google Calendar
-      </a>
+      <p style="margin: 0 0 12px 0; font-size: 14px; color: #6b7280;">Add to your calendar:</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
+        <a href="${googleUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; background-color: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+          Add to Google Calendar
+        </a>
+        <a href="${outlookUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; background-color: ${ACCENT_COLOR}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+          Add to Outlook
+        </a>
+      </div>
     </div>
   `
 }
 
 /**
  * Booking confirmation email
+ * @param {string} [handle] - Booking page handle for reschedule URL (e.g. from /b/{handle}/reschedule)
  */
-export function bookingConfirmationEmail(booking, owner, baseUrl, rescheduleToken, cancelToken, guestTz = null) {
+export function bookingConfirmationEmail(booking, owner, baseUrl, rescheduleToken, cancelToken, guestTz = null, handle = null) {
   const hostTz = owner.scheduling?.timeZone || 'UTC'
   const displayTz = guestTz || booking.timeZone || 'UTC'
+  const guestName = booking.customerName || booking.guestEmail || 'there'
+  const rescheduleHandle = handle || owner.scheduling?.handle || ''
+  const rescheduleUrl = rescheduleHandle ? `${baseUrl}/b/${rescheduleHandle}/reschedule?token=${rescheduleToken}` : (rescheduleToken ? `${baseUrl}/bookings/reschedule/${rescheduleToken}` : '')
   
   const content = `
     <h1 style="margin: 0 0 24px 0; font-size: 28px; font-weight: 700; color: #111827;">
@@ -111,6 +127,10 @@ export function bookingConfirmationEmail(booking, owner, baseUrl, rescheduleToke
     
     <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
       Your booking with <strong>${owner.name || owner.email}</strong> has been confirmed.
+    </p>
+    
+    <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+      See you then, ${guestName}!
     </p>
     
     <div style="background-color: #f9fafb; border-left: 4px solid ${BRAND_COLOR}; padding: 20px; margin: 24px 0; border-radius: 8px;">
@@ -151,9 +171,10 @@ export function bookingConfirmationEmail(booking, owner, baseUrl, rescheduleToke
         Need to make changes?
       </p>
       
+      <p style="margin: 0 0 12px 0; font-size: 14px; color: #6b7280;">Need to cancel? Use the link below, or text CANCEL BOOKING to your booking number, or call to reschedule.</p>
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-        ${rescheduleToken ? `
-          <a href="${baseUrl}/reschedule?token=${rescheduleToken}" style="display: inline-block; padding: 10px 20px; background-color: ${ACCENT_COLOR}; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;">
+        ${rescheduleToken && rescheduleUrl ? `
+          <a href="${rescheduleUrl}" style="display: inline-block; padding: 10px 20px; background-color: ${ACCENT_COLOR}; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;">
             Reschedule
           </a>
         ` : ''}
