@@ -151,6 +151,14 @@ function loadConfig() {
     // Optional Services
     const TAVILY_API_KEY = getEnvVar('TAVILY_API_KEY', false)
     const CRON_SECRET = getEnvVar('CRON_SECRET', false)
+
+    // n8n provisioning retry (dashboard → webhook, not core-api)
+    const N8N_PROVISIONING_CHECK_URL = getEnvVar(
+      'N8N_PROVISIONING_CHECK_URL',
+      false,
+      'https://n8n.book8.io/webhook/provisioning-check'
+    )
+    const N8N_OPS_SECRET = getEnvVar('N8N_OPS_SECRET', false)
     
     // Feature Flags
     const FEATURE_RESCHEDULE = getEnvVar('FEATURE_RESCHEDULE', false, 'true') === 'true'
@@ -245,6 +253,8 @@ function loadConfig() {
       
       // n8n Webhooks
       N8N_BUSINESS_PROVISIONED_WEBHOOK_URL: getEnvVar('N8N_BUSINESS_PROVISIONED_WEBHOOK_URL', false),
+      N8N_PROVISIONING_CHECK_URL,
+      N8N_OPS_SECRET,
       
       // Billing/Usage Reporting
       CORE_API_BASE_URL,
