@@ -17,7 +17,7 @@ const UPDATES = [
 ]
 
 async function migrate() {
-  const { MongoClient } = await import('mongodb')
+  const { MongoClient } = require('mongodb')
   const url = process.env.MONGO_URL
   if (!url) {
     console.error('MONGO_URL required')

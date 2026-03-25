@@ -26,6 +26,10 @@ async function connectToMongo() {
     try {
       await db.collection('billing_logs').createIndex({ eventId: 1 }, { unique: true })
       await db.collection('billing_logs').createIndex({ customerId: 1, createdAt: -1 })
+      await db
+        .collection('provisioningAlerts')
+        .createIndex({ timestamp: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 })
+      await db.collection('provisioningAlerts').createIndex({ businessId: 1, resolved: 1 })
     } catch {}
     indexesEnsured = true
   }
@@ -241,6 +245,57 @@ async function handleSubscriptionEvent(event, stripe, database) {
               created: provisionResult.created,
               defaultsEnsured: provisionResult.defaultsEnsured
             })
+
+            const coreSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET
+            const coreBase = (env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com').replace(
+              /\/$/,
+              ''
+            )
+            if (coreSecret && provisionBusinessId) {
+              try {
+                await new Promise((r) => setTimeout(r, 3000))
+                const hcController = new AbortController()
+                const hcT = setTimeout(() => hcController.abort(), 10000)
+                const healthRes = await fetch(
+                  `${coreBase}/api/health/business/${encodeURIComponent(provisionBusinessId)}`,
+                  {
+                    headers: {
+                      'x-book8-internal-secret': coreSecret,
+                      'x-internal-secret': coreSecret
+                    },
+                    signal: hcController.signal
+                  }
+                )
+                clearTimeout(hcT)
+
+                if (healthRes.ok) {
+                  const health = await healthRes.json().catch(() => ({}))
+                  if (health.status === 'NOT_FOUND' || health.ok === false) {
+                    console.error(
+                      `[PROVISIONING ALERT] Business ${provisionBusinessId} failed health check after provisioning:`,
+                      health
+                    )
+                    await database.collection('provisioningAlerts').insertOne({
+                      businessId: provisionBusinessId,
+                      timestamp: new Date(),
+                      status: health.status || 'UNKNOWN',
+                      checks: health.checks || null,
+                      resolved: false
+                    })
+                  } else {
+                    console.log(
+                      `[stripe-webhook] Post-provision health OK for ${provisionBusinessId}:`,
+                      health.status
+                    )
+                  }
+                }
+              } catch (healthErr) {
+                console.error(
+                  `[stripe-webhook] Post-provision health check error for ${provisionBusinessId}:`,
+                  healthErr?.message || healthErr
+                )
+              }
+            }
           } else if (provisionResult !== null) {
             console.error('[stripe-webhook] Tenant provisioning failed:', {
               error: provisionResult?.error || 'Unknown error',

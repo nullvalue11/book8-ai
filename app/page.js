@@ -16,7 +16,7 @@ import HeaderLogo from "./components/HeaderLogo";
 import LandingPage from "./(home)/LandingPage";
 import DataPrivacy from "./(home)/DataPrivacy";
 import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Activity } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
@@ -38,6 +38,42 @@ function formatCallTime(iso) {
   try {
     return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   } catch { return "—"; }
+}
+
+function ProvisioningAlertBanner({ token, show }) {
+  const [needsAttention, setNeedsAttention] = React.useState(false);
+  React.useEffect(() => {
+    if (!show || !token) return;
+    let cancelled = false;
+    fetch("/api/admin/provisioning-status", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.businessId && data.overallStatus === "NEEDS_ATTENTION") setNeedsAttention(true);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [show, token]);
+  if (!needsAttention) return null;
+  return (
+    <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3">
+      <div>
+        <span className="font-semibold text-red-600 dark:text-red-400">Provisioning incomplete</span>
+        <span className="text-muted-foreground text-sm ml-2">
+          Some systems need attention before your phone line is fully operational.
+        </span>
+      </div>
+      <Link
+        href="/dashboard/provisioning"
+        className="text-sm font-semibold text-red-600 dark:text-red-400 shrink-0 hover:underline"
+      >
+        View status →
+      </Link>
+    </div>
+  );
 }
 
 // Confetti helper - dynamically import to avoid SSR issues
@@ -1105,6 +1141,9 @@ function HomeContent(props) {
       )}
 
       <div className="container mx-auto max-w-7xl p-6">
+        {forceDashboard && (
+          <ProvisioningAlertBanner token={token} show={!!token} />
+        )}
         {/* Recent Activity — calls and bookings from AI booking line */}
         {phoneSetup?.businessId && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -1499,6 +1538,14 @@ function HomeContent(props) {
                     onClick={() => router.push('/dashboard/schedule')}
                   >
                     Business Hours
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => router.push('/dashboard/provisioning')}
+                  >
+                    <Activity className="w-4 h-4 mr-2" />
+                    System status
                   </Button>
                 </div>
               </div>
