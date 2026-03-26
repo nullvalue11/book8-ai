@@ -1180,18 +1180,19 @@ function HomeContent(props) {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
-                  className="text-white border-white/50 hover:bg-white/10 text-xs"
+                  className="text-xs !border-white/60 !bg-black/30 !text-white hover:!bg-black/45 hover:!text-white"
                   onClick={syncSubscription}
                   disabled={isSyncingSubscription}
                 >
                   {isSyncingSubscription ? 'Syncing...' : 'Already paid? Sync'}
                 </Button>
-                <Button 
-                  size="sm" 
-                  className="bg-white text-brand-600 hover:bg-gray-100 font-semibold shrink-0 shadow-sm"
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 font-semibold shadow-md !border-white/90 !bg-white !text-neutral-900 hover:!bg-neutral-100 hover:!text-neutral-950 dark:!bg-white dark:!text-neutral-950 dark:hover:!bg-neutral-100"
                   onClick={() => router.push('/pricing?paywall=1')}
                 >
                   Subscribe Now
