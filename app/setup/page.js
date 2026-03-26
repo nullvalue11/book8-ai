@@ -26,6 +26,7 @@ import {
   Building2
 } from 'lucide-react'
 import TimeZonePicker from '@/components/TimeZonePicker'
+import { cn } from '@/lib/utils'
 
 const CATEGORIES = [
   { value: 'barber', label: 'Barber' },
@@ -618,6 +619,21 @@ function WizardContent() {
     })()
   }, [currentStep, token, wizardData.businessId, wizardData.handle, wizardData.bookingHandle])
 
+  /** Force dark surfaces + light copy so theme tokens (e.g. light Card) never wash out labels. */
+  const WIZARD_CARD = '!bg-[#12121A] !text-slate-200 !border-[#1e1e2e]'
+  const WIZARD_LABEL = '!text-slate-100'
+  const WIZARD_INPUT =
+    '!mt-1 !bg-[#0A0A0F] !text-white !border-[#1e1e2e] placeholder:!text-slate-500'
+  const WIZARD_INPUT_INLINE =
+    '!bg-[#0A0A0F] !text-white !border-[#1e1e2e] placeholder:!text-slate-500'
+  const WIZARD_SELECT_TRIGGER = '!bg-[#0A0A0F] !border-[#1e1e2e] !text-white'
+  const WIZARD_SELECT_CONTENT = '!bg-[#12121A] !border-[#1e1e2e]'
+  const WIZARD_SELECT_ITEM = '!text-white focus:!bg-[#1e1e2e]'
+  const WIZARD_OUTLINE_BTN =
+    '!border-[#2a2a3d] !bg-[#0A0A0F] !text-white hover:!bg-[#1e1e2e]'
+  const WIZARD_OUTLINE_MUTED =
+    '!border-[#1e1e2e] !text-[#94A3B8] hover:!text-white hover:!bg-[#1e1e2e] !bg-transparent'
+
   const updateWizard = (updates) => {
     setWizardData((prev) => ({ ...prev, ...updates }))
     setError('')
@@ -918,29 +934,29 @@ function WizardContent() {
                 Let&apos;s set up your AI receptionist in under 5 minutes.
               </p>
             </div>
-            <Card className="border-[#1e1e2e] bg-[#12121A]">
+            <Card className={WIZARD_CARD}>
               <CardContent className="pt-6 space-y-4">
                 <div>
-                  <Label className="text-[#F8FAFC]">Business name *</Label>
+                  <Label className={WIZARD_LABEL}>Business name *</Label>
                   <Input
-                    className="bg-[#0A0A0F] border-[#1e1e2e] text-white mt-1"
+                    className={WIZARD_INPUT}
                     placeholder="e.g. Ottawa Dental Clinic"
                     value={wizardData.businessName}
                     onChange={(e) => updateWizard({ businessName: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label className="text-[#F8FAFC]">Category *</Label>
+                  <Label className={WIZARD_LABEL}>Category *</Label>
                   <Select
                     value={wizardData.category}
                     onValueChange={(v) => updateWizard({ category: v })}
                   >
-                    <SelectTrigger className="bg-[#0A0A0F] border-[#1e1e2e] text-white">
+                    <SelectTrigger className={WIZARD_SELECT_TRIGGER}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#12121A] border-[#1e1e2e]">
+                    <SelectContent className={WIZARD_SELECT_CONTENT}>
                       {CATEGORIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value} className="text-white">
+                        <SelectItem key={c.value} value={c.value} className={WIZARD_SELECT_ITEM}>
                           {c.label}
                         </SelectItem>
                       ))}
@@ -948,9 +964,9 @@ function WizardContent() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-[#F8FAFC]">City (optional)</Label>
+                  <Label className={WIZARD_LABEL}>City (optional)</Label>
                   <Input
-                    className="bg-[#0A0A0F] border-[#1e1e2e] text-white mt-1"
+                    className={WIZARD_INPUT}
                     placeholder="e.g. Ottawa"
                     value={wizardData.city}
                     onChange={(e) => updateWizard({ city: e.target.value })}
@@ -960,9 +976,10 @@ function WizardContent() {
                   <TimeZonePicker
                     value={wizardData.timezone}
                     onChange={(tz) => updateWizard({ timezone: tz })}
-                    className="[&_label]:text-[#F8FAFC]"
-                    selectClassName="bg-[#0A0A0F] border-[#1e1e2e] text-white"
-                    inputClassName="bg-[#0A0A0F] border-[#1e1e2e] text-white"
+                    labelClassName={WIZARD_LABEL}
+                    hintClassName="!text-[#94A3B8]"
+                    selectClassName="!bg-[#0A0A0F] !border-[#1e1e2e] !text-white"
+                    inputClassName="!bg-[#0A0A0F] !border-[#1e1e2e] !text-white placeholder:!text-slate-500"
                     idPrefix="setup-wizard"
                   />
                 </div>
@@ -991,9 +1008,9 @@ function WizardContent() {
               </p>
             </div>
             {wizardData.planActive ? (
-              <Card className="border-[#1e1e2e] bg-[#12121A]">
+              <Card className={WIZARD_CARD}>
                 <CardContent className="pt-6">
-                  <p className="text-[#94A3B8] mb-4">You already have an active plan. Continue to the next step.</p>
+                  <p className="!text-[#94A3B8] mb-4">You already have an active plan. Continue to the next step.</p>
                   <Button
                     className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
                     onClick={() => setCurrentStep(3)}
@@ -1004,22 +1021,22 @@ function WizardContent() {
                 </CardContent>
               </Card>
             ) : step2CheckoutPhase === 'confirm' ? (
-              <Card className="border-[#8B5CF6]/40 bg-[#12121A] max-w-xl mx-auto">
+              <Card className={cn(WIZARD_CARD, 'max-w-xl mx-auto !border-[#8B5CF6]/40')}>
                 <CardContent className="pt-6 space-y-4">
-                  <p className="text-white font-semibold">You&apos;re starting a 14-day free trial of the Growth plan.</p>
-                  <ul className="text-sm text-[#94A3B8] space-y-2 list-disc pl-5">
+                  <p className="!text-white font-semibold">You&apos;re starting a 14-day free trial of the Growth plan.</p>
+                  <ul className="text-sm !text-[#94A3B8] space-y-2 list-disc pl-5">
                     <li>Full access to all features immediately</li>
                     <li>
                       Your card is required but won&apos;t be charged until{' '}
-                      <span className="text-[#F8FAFC] font-medium">{trialChargeDateLabel}</span>
+                      <span className="!text-[#F8FAFC] font-medium">{trialChargeDateLabel}</span>
                     </li>
                     <li>Cancel anytime before then and pay nothing</li>
                   </ul>
-                  <p className="text-xs text-[#64748B]">💳 Card required for verification. No charge for 14 days.</p>
+                  <p className="text-xs !text-[#64748B]">💳 Card required for verification. No charge for 14 days.</p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       variant="outline"
-                      className="border-[#1e1e2e] text-[#94A3B8] hover:text-white"
+                      className={WIZARD_OUTLINE_MUTED}
                       onClick={() => setStep2CheckoutPhase('choose')}
                       disabled={saving}
                     >
@@ -1027,7 +1044,7 @@ function WizardContent() {
                       Back
                     </Button>
                     <Button
-                      className="flex-1 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
+                      className="flex-1 bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
                       onClick={() => handleStep2Submit(planPriceIds.growth)}
                       disabled={saving || !planPriceIds.growth}
                     >
@@ -1041,9 +1058,9 @@ function WizardContent() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 md:items-center">
                 {/* Starter */}
-                <Card className="border-[#1e1e2e] bg-[#12121A] order-1 md:order-1 h-full flex flex-col">
+                <Card className={cn(WIZARD_CARD, 'order-1 md:order-1 h-full flex flex-col')}>
                   <CardContent className="pt-6 flex flex-col flex-1 space-y-4">
-                    <div className="rounded-lg border border-[#1e1e2e] p-4 bg-[#0A0A0F] flex-1">
+                    <div className="rounded-lg !border-[#1e1e2e] !bg-[#0A0A0F] border p-4 flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <Zap className="w-5 h-5 text-[#06B6D4]" />
                         <span className="font-semibold text-white">Starter</span>
@@ -1059,7 +1076,7 @@ function WizardContent() {
                     </div>
                     <Button
                       variant="outline"
-                      className="w-full border-[#2a2a3d] bg-[#0A0A0F] text-white hover:bg-[#1e1e2e]"
+                      className={cn('w-full', WIZARD_OUTLINE_BTN)}
                       onClick={() => handleStep2Submit(planPriceIds.starter)}
                       disabled={saving || !planPriceIds.starter}
                     >
@@ -1071,9 +1088,14 @@ function WizardContent() {
                 </Card>
 
                 {/* Growth — center, visually prominent */}
-                <Card className="border-2 border-[#8B5CF6]/70 bg-[#12121A] order-2 md:order-2 h-full flex flex-col shadow-[0_0_48px_-12px_rgba(139,92,246,0.55)] md:scale-[1.07] z-10 relative">
+                <Card
+                  className={cn(
+                    WIZARD_CARD,
+                    'border-2 !border-[#8B5CF6]/70 order-2 md:order-2 h-full flex flex-col shadow-[0_0_48px_-12px_rgba(139,92,246,0.55)] md:scale-[1.07] z-10 relative'
+                  )}
+                >
                   <CardContent className="pt-6 flex flex-col flex-1 space-y-4">
-                    <div className="rounded-lg border border-[#8B5CF6]/35 p-4 bg-[#0A0A0F] relative overflow-hidden flex-1">
+                    <div className="rounded-lg !border-[#8B5CF6]/35 !bg-[#0A0A0F] border p-4 relative overflow-hidden flex-1">
                       <span className="absolute top-2 right-2 text-[10px] font-semibold uppercase tracking-wide text-[#A78BFA] bg-[#8B5CF6]/25 px-2 py-0.5 rounded">
                         14-day trial
                       </span>
@@ -1092,23 +1114,23 @@ function WizardContent() {
                       </ul>
                     </div>
                     <Button
-                      className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
+                      className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
                       onClick={() => setStep2CheckoutPhase('confirm')}
                       disabled={saving || !planPriceIds.growth}
                     >
                       Start Free Trial
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
-                    <p className="text-[10px] text-[#64748B] text-center leading-snug">
+                    <p className="text-[10px] !text-[#64748B] text-center leading-snug">
                       No charge for 14 days. Cancel anytime. Card required.
                     </p>
                   </CardContent>
                 </Card>
 
                 {/* Enterprise */}
-                <Card className="border-[#1e1e2e] bg-[#12121A] order-3 md:order-3 h-full flex flex-col">
+                <Card className={cn(WIZARD_CARD, 'order-3 md:order-3 h-full flex flex-col')}>
                   <CardContent className="pt-6 flex flex-col flex-1 space-y-4">
-                    <div className="rounded-lg border border-[#1e1e2e] p-4 bg-[#0A0A0F] flex-1">
+                    <div className="rounded-lg !border-[#1e1e2e] !bg-[#0A0A0F] border p-4 flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <Building2 className="w-5 h-5 text-amber-500/90" />
                         <span className="font-semibold text-white">Enterprise</span>
@@ -1124,7 +1146,7 @@ function WizardContent() {
                     </div>
                     <Button
                       variant="outline"
-                      className="w-full border-[#2a2a3d] bg-[#0A0A0F] text-white hover:bg-[#1e1e2e]"
+                      className={cn('w-full', WIZARD_OUTLINE_BTN)}
                       onClick={() => handleStep2Submit(planPriceIds.enterprise)}
                       disabled={saving || !planPriceIds.enterprise}
                     >
@@ -1148,12 +1170,12 @@ function WizardContent() {
                 We&apos;ll check your availability in real-time and add bookings directly to your calendar.
               </p>
             </div>
-            <Card className="border-[#1e1e2e] bg-[#12121A]">
+            <Card className={WIZARD_CARD}>
               <CardContent className="pt-6 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     variant="outline"
-                    className="h-14 border-[#1e1e2e] bg-[#0A0A0F] text-white hover:bg-[#1e1e2e]"
+                    className={cn('h-14', WIZARD_OUTLINE_BTN)}
                     onClick={handleConnectGoogle}
                   >
                     <Calendar className="w-5 h-5 mr-2" />
@@ -1161,7 +1183,7 @@ function WizardContent() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="h-14 border-[#1e1e2e] bg-[#0A0A0F] text-white hover:bg-[#1e1e2e]"
+                    className={cn('h-14', WIZARD_OUTLINE_BTN)}
                     onClick={handleConnectOutlook}
                   >
                     <Calendar className="w-5 h-5 mr-2" />
@@ -1170,7 +1192,7 @@ function WizardContent() {
                 </div>
                 <Button
                   variant="ghost"
-                  className="w-full text-[#94A3B8] hover:text-white"
+                  className="w-full !text-[#94A3B8] hover:!text-white"
                   onClick={handleStep3Skip}
                 >
                   Skip for now
@@ -1187,12 +1209,12 @@ function WizardContent() {
               <h1 className="text-2xl font-bold text-white">When is your business open?</h1>
               <p className="text-[#94A3B8] mt-1">Set your weekly availability. You can change this anytime.</p>
             </div>
-            <Card className="border-[#1e1e2e] bg-[#12121A]">
+            <Card className={WIZARD_CARD}>
               <CardContent className="pt-6 space-y-4">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-[#1e1e2e] text-[#94A3B8] hover:text-white"
+                  className={WIZARD_OUTLINE_MUTED}
                   onClick={applyWeekdaysSame}
                 >
                   Apply same hours to all weekdays
@@ -1200,7 +1222,7 @@ function WizardContent() {
                 <div className="space-y-3">
                   {DAYS.map((day) => (
                     <div key={day} className="flex items-center gap-3 flex-wrap">
-                      <div className="w-12 text-sm text-[#94A3B8]">{DAY_LABELS[day]}</div>
+                      <div className="w-12 text-sm !text-[#94A3B8]">{DAY_LABELS[day]}</div>
                       <Switch
                         checked={isDayOpen(day)}
                         onCheckedChange={(open) => setDayOpen(day, open)}
@@ -1209,7 +1231,7 @@ function WizardContent() {
                       {isDayOpen(day) && (
                         <>
                           <select
-                            className="h-9 rounded-md border border-[#1e1e2e] bg-[#0A0A0F] text-white text-sm px-2"
+                            className="h-9 rounded-md !border-[#1e1e2e] !bg-[#0A0A0F] !text-white text-sm px-2 border"
                             value={wizardData.businessHours[day]?.[0]?.start || '09:00'}
                             onChange={(e) => setDayBlock(day, 0, 'start', e.target.value)}
                           >
@@ -1217,9 +1239,9 @@ function WizardContent() {
                               <option key={t} value={t}>{t}</option>
                             ))}
                           </select>
-                          <span className="text-[#64748B]">—</span>
+                          <span className="!text-[#64748B]">—</span>
                           <select
-                            className="h-9 rounded-md border border-[#1e1e2e] bg-[#0A0A0F] text-white text-sm px-2"
+                            className="h-9 rounded-md !border-[#1e1e2e] !bg-[#0A0A0F] !text-white text-sm px-2 border"
                             value={wizardData.businessHours[day]?.[0]?.end || '17:00'}
                             onChange={(e) => setDayBlock(day, 0, 'end', e.target.value)}
                           >
@@ -1229,21 +1251,21 @@ function WizardContent() {
                           </select>
                         </>
                       )}
-                      {!isDayOpen(day) && <span className="text-[#64748B] text-sm">Closed</span>}
+                      {!isDayOpen(day) && <span className="!text-[#64748B] text-sm">Closed</span>}
                     </div>
                   ))}
                 </div>
                 <div className="flex gap-2 pt-4">
                   <Button
                     variant="outline"
-                    className="border-[#1e1e2e] text-[#94A3B8]"
+                    className={WIZARD_OUTLINE_MUTED}
                     onClick={() => setCurrentStep(3)}
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back
                   </Button>
                   <Button
-                    className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white flex-1"
+                    className="bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white flex-1"
                     onClick={handleStep4Submit}
                     disabled={saving}
                   >
@@ -1266,12 +1288,12 @@ function WizardContent() {
                 We&apos;ve created default services based on your category. Customize from your dashboard later.
               </p>
             </div>
-            <Card className="border-[#1e1e2e] bg-[#12121A]">
+            <Card className={WIZARD_CARD}>
               <CardContent className="pt-6 space-y-4">
                 {!servicesLoaded ? (
-                  <p className="text-[#94A3B8] text-sm">Loading services...</p>
+                  <p className="!text-[#94A3B8] text-sm">Loading services...</p>
                 ) : wizardData.services.length === 0 ? (
-                  <p className="text-[#94A3B8] text-sm">
+                  <p className="!text-[#94A3B8] text-sm">
                     No services found. Default services will be created when your AI agent is set up. You can customize them from your dashboard.
                   </p>
                 ) : (
@@ -1279,15 +1301,15 @@ function WizardContent() {
                     {wizardData.services.map((svc, i) => (
                       <li
                         key={svc.serviceId || svc.id || i}
-                        className="flex items-center gap-3 rounded-lg border border-[#1e1e2e] px-4 py-3"
+                        className="flex items-center gap-3 rounded-lg !border-[#1e1e2e] border px-4 py-3"
                       >
                         <Input
-                          className="flex-1 bg-[#0A0A0F] border-[#1e1e2e] text-white min-w-0"
+                          className={cn('flex-1 min-w-0', WIZARD_INPUT_INLINE)}
                           placeholder="Service name"
                           value={getServiceName(svc)}
                           readOnly
                         />
-                        <span className="text-[#64748B] text-sm shrink-0">{getServiceDuration(svc)} min</span>
+                        <span className="!text-[#64748B] text-sm shrink-0">{getServiceDuration(svc)} min</span>
                       </li>
                     ))}
                   </ul>
@@ -1295,14 +1317,14 @@ function WizardContent() {
                 <div className="flex gap-2 pt-4">
                   <Button
                     variant="outline"
-                    className="border-[#1e1e2e] text-[#94A3B8]"
+                    className={WIZARD_OUTLINE_MUTED}
                     onClick={() => setCurrentStep(4)}
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back
                   </Button>
                   <Button
-                    className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white flex-1"
+                    className="bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white flex-1"
                     onClick={handleStep5Submit}
                   >
                     Continue
@@ -1324,7 +1346,7 @@ function WizardContent() {
               <h1 className="text-2xl font-bold text-white">You&apos;re Live! 🎉</h1>
               <p className="text-[#94A3B8] mt-1">Your AI receptionist is ready.</p>
             </div>
-            <Card className="border-[#1e1e2e] bg-[#12121A]">
+            <Card className={WIZARD_CARD}>
               <CardContent className="pt-6 space-y-6">
                 <div>
                   <div className="flex items-center gap-2 text-[#8B5CF6] mb-2">
@@ -1333,10 +1355,10 @@ function WizardContent() {
                   </div>
                   {wizardData.phoneNumber ? (
                     <>
-                      <p className="text-xl font-mono text-white">
+                      <p className="text-xl font-mono !text-white">
                         {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber}
                       </p>
-                      <p className="text-sm text-[#94A3B8] mt-1">
+                      <p className="text-sm !text-[#94A3B8] mt-1">
                         Customers can call or text this number to book appointments.
                       </p>
                     </>
@@ -1360,8 +1382,8 @@ function WizardContent() {
                     <div className="rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-4 py-4 flex items-start gap-3">
                       <Loader2 className="w-5 h-5 text-[#8B5CF6] shrink-0 animate-spin mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-white">Setting up your phone line…</p>
-                        <p className="text-xs text-[#94A3B8] mt-1">
+                        <p className="text-sm font-medium !text-white">Setting up your phone line…</p>
+                        <p className="text-xs !text-[#94A3B8] mt-1">
                           Provisioning can take a minute after checkout. We&apos;ll check automatically every 15 seconds
                           until your number is ready.
                         </p>
@@ -1374,21 +1396,21 @@ function WizardContent() {
                     <Globe className="w-5 h-5" />
                     <span className="font-semibold">Your Booking Page</span>
                   </div>
-                  <p className="text-lg font-mono text-white break-all">
+                  <p className="text-lg font-mono !text-white break-all">
                     {bookingHost}/b/{wizardData.bookingHandle || wizardData.handle || 'your-business'}
                   </p>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-2 border-[#1e1e2e] text-[#94A3B8]"
+                    className={cn('mt-2', WIZARD_OUTLINE_MUTED)}
                     onClick={copyBookingLink}
                   >
                     <Copy className="w-4 h-4 mr-2" />
                     Copy Link
                   </Button>
                 </div>
-                <div className="rounded-lg bg-[#0A0A0F] border border-[#1e1e2e] p-4 text-sm text-[#94A3B8]">
-                  <p className="font-medium text-white mb-2">Try it now!</p>
+                <div className="rounded-lg !bg-[#0A0A0F] !border-[#1e1e2e] border p-4 text-sm !text-[#94A3B8]">
+                  <p className="font-medium !text-white mb-2">Try it now!</p>
                   <ul className="space-y-1">
                     <li>→ Call your number to hear the AI agent</li>
                     <li>→ Text your number: &quot;Book a cleaning tomorrow at 2pm&quot;</li>
@@ -1396,7 +1418,7 @@ function WizardContent() {
                   </ul>
                 </div>
                 <Button
-                  className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
+                  className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
                   onClick={handleGoToDashboard}
                 >
                   Go to Dashboard

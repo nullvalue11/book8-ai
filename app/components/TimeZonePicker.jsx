@@ -18,6 +18,8 @@ export default function TimeZonePicker({
   idPrefix,
   selectClassName = '',
   inputClassName = '',
+  labelClassName = '',
+  hintClassName = '',
   className = ''
 }) {
   const reactId = useId()
@@ -30,12 +32,15 @@ export default function TimeZonePicker({
   return (
     <div className={cn('space-y-4', className)}>
       <div>
-        <Label htmlFor={`${base}-quick`} className="text-foreground">
+        <Label htmlFor={`${base}-quick`} className={cn('text-foreground', labelClassName)}>
           {labelQuick}
         </Label>
         <select
           id={`${base}-quick`}
-          className={`mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selectClassName}`}
+          className={cn(
+            'mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            selectClassName
+          )}
           value={quickValue}
           onChange={(e) => {
             const v = e.target.value
@@ -70,7 +75,7 @@ export default function TimeZonePicker({
             </option>
           ))}
         </datalist>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className={cn('text-xs text-muted-foreground mt-1', hintClassName)}>
           Pick from suggestions or enter a valid IANA timezone name.
         </p>
       </div>
