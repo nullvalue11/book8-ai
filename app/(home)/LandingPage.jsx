@@ -29,7 +29,7 @@ const faqItems = [
   },
   {
     q: 'Can I use my existing phone number?',
-    a: 'Currently we provide a dedicated Book8 AI number. Number porting is coming soon.',
+    a: 'Yes, you can absolutely use your existing business phone number.',
   },
   {
     q: 'What calendars do you support?',
