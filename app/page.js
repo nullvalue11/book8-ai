@@ -1525,6 +1525,14 @@ function HomeContent(props) {
                   Manage Business
                 </Button>
                 <div className="flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => router.push('/dashboard/settings')}
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    Business settings
+                  </Button>
                   <Button 
                     variant="outline" 
                     className="w-full"

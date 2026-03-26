@@ -23,6 +23,7 @@ import {
   Package,
   Sparkles
 } from 'lucide-react'
+import TimeZonePicker from '@/components/TimeZonePicker'
 
 const CATEGORIES = [
   { value: 'barber', label: 'Barber' },
@@ -879,11 +880,13 @@ function WizardContent() {
                   />
                 </div>
                 <div>
-                  <Label className="text-[#F8FAFC]">Timezone</Label>
-                  <Input
-                    className="bg-[#0A0A0F] border-[#1e1e2e] text-white mt-1"
+                  <TimeZonePicker
                     value={wizardData.timezone}
-                    onChange={(e) => updateWizard({ timezone: e.target.value })}
+                    onChange={(tz) => updateWizard({ timezone: tz })}
+                    className="[&_label]:text-[#F8FAFC]"
+                    selectClassName="bg-[#0A0A0F] border-[#1e1e2e] text-white"
+                    inputClassName="bg-[#0A0A0F] border-[#1e1e2e] text-white"
+                    idPrefix="setup-wizard"
                   />
                 </div>
                 <Button

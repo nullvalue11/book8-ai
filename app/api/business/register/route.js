@@ -17,6 +17,7 @@ import {
   COLLECTION_NAME 
 } from '@/lib/schemas/business'
 import { provisionOnCoreApi } from '@/lib/provision-business'
+import { isValidIanaTimeZone } from '@/lib/timezones'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -114,7 +115,8 @@ export async function POST(request) {
       name, 
       category = 'other',
       skipVoiceTest = false, 
-      skipBillingCheck = false 
+      skipBillingCheck = false,
+      timezone: bodyTimezone
     } = body
     
     const validation = validateBusinessInput({ name, businessId: inputBusinessId })
@@ -330,6 +332,7 @@ export async function GET(request) {
     const cleanedBusinesses = businesses.map(b => ({
       businessId: b.businessId,
       name: b.name,
+      timezone: b.timezone || null,
       handle: b.handle || null,
       category: b.category || 'other',
       status: b.status,
