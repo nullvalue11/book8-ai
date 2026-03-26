@@ -100,6 +100,20 @@ export async function GET(request) {
 
     if (!coreRes.ok) {
       const text = await coreRes.text().catch(() => '')
+      // Business not in core yet (e.g. pre-Stripe / pre-provision) — avoid 5xx so wizard Steps 1–5 still load.
+      if (coreRes.status === 404) {
+        return NextResponse.json({
+          ok: true,
+          businessId,
+          name: business?.name ?? null,
+          forwardingEnabled: false,
+          forwardingFrom: [],
+          assignedTwilioNumber: null,
+          phoneNumber: null,
+          numberSetupMethod: null,
+          provisioningPending: true
+        })
+      }
       console.error('[business/phone-setup] Core API GET failed', {
         status: coreRes.status,
         body: text
@@ -117,6 +131,7 @@ export async function GET(request) {
     return NextResponse.json({
       ok: true,
       businessId,
+      provisioningPending: false,
       name: biz.name ?? data.name,
       forwardingEnabled: biz.forwardingEnabled ?? data.forwardingEnabled ?? false,
       forwardingFrom: biz.forwardingFrom ?? data.forwardingFrom ?? [],

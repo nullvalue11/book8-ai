@@ -356,7 +356,14 @@ function WizardContent() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [businesses, setBusinesses] = useState([])
-  const [growthPriceId, setGrowthPriceId] = useState(null)
+  const [planPriceIds, setPlanPriceIds] = useState({
+    starter: null,
+    growth: null,
+    enterprise: null
+  })
+  /** Step 6 only: idle | loading | live | provisioning | error — avoids relying on core during Steps 1–5 */
+  const [step6LineState, setStep6LineState] = useState('idle')
+  const [step6RetryKey, setStep6RetryKey] = useState(0)
   const [step2CheckoutPhase, setStep2CheckoutPhase] = useState('choose')
   const trialChargeDateLabel = useMemo(() => {
     const d = new Date()
@@ -500,48 +507,116 @@ function WizardContent() {
     }
   }, [searchParams, wizardData.businessId, loadInitialState])
 
-  // Step 6: Ensure phone and handle are loaded (fetch if missing)
+  // Step 6 only: poll phone-setup from core (lazy; graceful when business not provisioned yet)
   useEffect(() => {
-    if (currentStep !== 6 || !token) return
-    const needsPhone = !wizardData.phoneNumber && wizardData.businessId
-    const needsHandle = !wizardData.bookingHandle && !wizardData.handle && wizardData.businessId
-    if (!needsPhone && !needsHandle) return
+    if (currentStep !== 6) {
+      setStep6LineState('idle')
+      return
+    }
+    if (!token || !wizardData.businessId) return
+
+    if (wizardData.phoneNumber) {
+      setStep6LineState('live')
+      return
+    }
+
+    let cancelled = false
+    let intervalId = null
+    let pollCount = 0
+    const maxPolls = 24
+    let firstPhoneFetch = true
+
+    const clearPoll = () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+        intervalId = null
+      }
+    }
+
+    const fetchPhoneLine = async () => {
+      try {
+        setStep6LineState((prev) => {
+          if (prev === 'live') return 'live'
+          if (!firstPhoneFetch && prev === 'provisioning') return 'provisioning'
+          return 'loading'
+        })
+        const r = await fetch(
+          `/api/business/phone-setup?businessId=${encodeURIComponent(wizardData.businessId)}`,
+          { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
+        )
+        let data = {}
+        try {
+          data = await r.json()
+        } catch {
+          data = {}
+        }
+        if (cancelled) return
+        firstPhoneFetch = false
+
+        if (!r.ok || !data.ok) {
+          setStep6LineState('error')
+          clearPoll()
+          return
+        }
+
+        const num = data.assignedTwilioNumber ?? data.phoneNumber ?? null
+        if (num) {
+          setWizardData((prev) => ({ ...prev, phoneNumber: num }))
+          setStep6LineState('live')
+          clearPoll()
+          return
+        }
+
+        setStep6LineState('provisioning')
+      } catch {
+        firstPhoneFetch = false
+        if (!cancelled) {
+          setStep6LineState('error')
+          clearPoll()
+        }
+      }
+    }
+
+    fetchPhoneLine()
+
+    intervalId = setInterval(() => {
+      if (cancelled) return
+      pollCount += 1
+      if (pollCount >= maxPolls) {
+        clearPoll()
+        return
+      }
+      fetchPhoneLine()
+    }, 15000)
+
+    return () => {
+      cancelled = true
+      clearPoll()
+    }
+  }, [currentStep, token, wizardData.businessId, wizardData.phoneNumber, step6RetryKey])
+
+  // Step 6: load handle from our DB only (no core-api)
+  useEffect(() => {
+    if (currentStep !== 6 || !token || !wizardData.businessId) return
+    if (wizardData.bookingHandle || wizardData.handle) return
 
     ;(async () => {
-      const updates = {}
-      if (needsPhone) {
-        try {
-          const r = await fetch(
-            `/api/business/phone-setup?businessId=${encodeURIComponent(wizardData.businessId)}`,
-            { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
-          )
-          const data = await r.json()
-          if (r.ok && data.ok) {
-            const num = data.assignedTwilioNumber ?? data.phoneNumber ?? null
-            if (num) updates.phoneNumber = num
-          }
-        } catch {}
-      }
-      if (needsHandle) {
-        try {
-          const r = await fetch('/api/business/register', {
-            headers: { Authorization: `Bearer ${token}` },
-            cache: 'no-store'
-          })
-          const data = await r.json()
-          if (r.ok && data.ok && data.businesses?.length) {
-            const biz = data.businesses[0]
-            const h = biz.handle ?? biz.bookingHandle ?? null
-            if (h) updates.handle = h
-            if (h && !updates.bookingHandle) updates.bookingHandle = h
-          }
-        } catch {}
-      }
-      if (Object.keys(updates).length) {
-        setWizardData((prev) => ({ ...prev, ...updates }))
+      try {
+        const r = await fetch('/api/business/register', {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store'
+        })
+        const data = await r.json()
+        if (!r.ok || !data.ok || !data.businesses?.length) return
+        const biz =
+          data.businesses.find((b) => b.businessId === wizardData.businessId) || data.businesses[0]
+        const h = biz.handle ?? biz.bookingHandle ?? null
+        if (h) setWizardData((prev) => ({ ...prev, handle: h, bookingHandle: h }))
+      } catch {
+        /* ignore */
       }
     })()
-  }, [currentStep, token, wizardData.businessId, wizardData.phoneNumber, wizardData.handle, wizardData.bookingHandle])
+  }, [currentStep, token, wizardData.businessId, wizardData.handle, wizardData.bookingHandle])
 
   const updateWizard = (updates) => {
     setWizardData((prev) => ({ ...prev, ...updates }))
@@ -758,22 +833,7 @@ function WizardContent() {
 
   function handleStep5Submit() {
     setCurrentStep(6)
-    if (wizardData.businessId) {
-      fetch(`/api/business/phone-setup?businessId=${encodeURIComponent(wizardData.businessId)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store'
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.ok) {
-            updateWizard({
-              phoneNumber: data.assignedTwilioNumber,
-              bookingHandle: wizardData.handle
-            })
-          }
-        })
-        .catch(() => {})
-    }
+    setStep6LineState('idle')
   }
 
   function handleGoToDashboard() {
@@ -1271,12 +1331,43 @@ function WizardContent() {
                     <Phone className="w-5 h-5" />
                     <span className="font-semibold">Your Booking Line</span>
                   </div>
-                  <p className="text-xl font-mono text-white">
-                    {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber || '+1 (XXX) XXX-XXXX'}
-                  </p>
-                  <p className="text-sm text-[#94A3B8] mt-1">
-                    Customers can call or text this number to book appointments.
-                  </p>
+                  {wizardData.phoneNumber ? (
+                    <>
+                      <p className="text-xl font-mono text-white">
+                        {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber}
+                      </p>
+                      <p className="text-sm text-[#94A3B8] mt-1">
+                        Customers can call or text this number to book appointments.
+                      </p>
+                    </>
+                  ) : step6LineState === 'error' ? (
+                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 space-y-2">
+                      <p className="text-sm text-red-200">
+                        Couldn&apos;t load your line from our systems yet. You can try again, or continue from the
+                        dashboard later.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-red-500/40 text-red-200 hover:bg-red-500/20"
+                        onClick={() => setStep6RetryKey((k) => k + 1)}
+                      >
+                        Try again
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-4 py-4 flex items-start gap-3">
+                      <Loader2 className="w-5 h-5 text-[#8B5CF6] shrink-0 animate-spin mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-white">Setting up your phone line…</p>
+                        <p className="text-xs text-[#94A3B8] mt-1">
+                          Provisioning can take a minute after checkout. We&apos;ll check automatically every 15 seconds
+                          until your number is ready.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 text-[#8B5CF6] mb-2">
