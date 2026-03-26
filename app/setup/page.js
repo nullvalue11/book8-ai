@@ -21,7 +21,9 @@ import {
   Calendar,
   Clock,
   Package,
-  Sparkles
+  Sparkles,
+  Zap,
+  Building2
 } from 'lucide-react'
 import TimeZonePicker from '@/components/TimeZonePicker'
 
@@ -468,8 +470,12 @@ function WizardContent() {
         cache: 'no-store'
       })
       const plansData = await plansRes.json()
-      if (plansRes.ok && plansData.plans?.growth) {
-        setGrowthPriceId(plansData.plans.growth)
+      if (plansRes.ok && plansData.plans) {
+        setPlanPriceIds({
+          starter: plansData.plans.starter ?? null,
+          growth: plansData.plans.growth ?? null,
+          enterprise: plansData.plans.enterprise ?? null
+        })
       }
     } catch (err) {
       console.error('[setup] Load error', err)
@@ -605,8 +611,8 @@ function WizardContent() {
   }
 
   // Step 2: Plan selection -> Stripe checkout
-  function handleStep2Submit() {
-    if (!growthPriceId || !wizardData.businessId) {
+  function handleStep2Submit(priceId) {
+    if (!priceId || !wizardData.businessId) {
       setError('Plan or business not available')
       return
     }
@@ -620,7 +626,7 @@ function WizardContent() {
         Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({
-        priceId: growthPriceId,
+        priceId,
         businessId: wizardData.businessId
       })
     })
@@ -920,8 +926,8 @@ function WizardContent() {
             <div>
               <h1 className="text-2xl font-bold text-white">Choose your plan</h1>
               <p className="text-[#94A3B8] mt-1">
-                Growth includes a 14-day free trial. Card required at checkout; you won&apos;t be charged until the
-                trial ends.
+                Compare Starter, Growth, and Enterprise. Growth includes a 14-day free trial — card required at checkout;
+                you won&apos;t be charged until the trial ends.
               </p>
             </div>
             {wizardData.planActive ? (
@@ -938,7 +944,7 @@ function WizardContent() {
                 </CardContent>
               </Card>
             ) : step2CheckoutPhase === 'confirm' ? (
-              <Card className="border-[#8B5CF6]/40 bg-[#12121A]">
+              <Card className="border-[#8B5CF6]/40 bg-[#12121A] max-w-xl mx-auto">
                 <CardContent className="pt-6 space-y-4">
                   <p className="text-white font-semibold">You&apos;re starting a 14-day free trial of the Growth plan.</p>
                   <ul className="text-sm text-[#94A3B8] space-y-2 list-disc pl-5">
@@ -962,8 +968,8 @@ function WizardContent() {
                     </Button>
                     <Button
                       className="flex-1 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
-                      onClick={handleStep2Submit}
-                      disabled={saving}
+                      onClick={() => handleStep2Submit(planPriceIds.growth)}
+                      disabled={saving || !planPriceIds.growth}
                     >
                       {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                       Continue to Checkout
@@ -973,40 +979,102 @@ function WizardContent() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="border-[#1e1e2e] bg-[#12121A]">
-                <CardContent className="pt-6 space-y-4">
-                  <div className="rounded-lg border border-[#8B5CF6]/35 p-4 bg-[#0A0A0F] relative overflow-hidden">
-                    <span className="absolute top-2 right-2 text-[10px] font-semibold uppercase tracking-wide text-[#A78BFA] bg-[#8B5CF6]/20 px-2 py-0.5 rounded">
-                      14-day trial
-                    </span>
-                    <div className="flex items-center gap-2 mb-2 pr-16">
-                      <Package className="w-5 h-5 text-[#8B5CF6]" />
-                      <span className="font-semibold text-white">Growth</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 md:items-center">
+                {/* Starter */}
+                <Card className="border-[#1e1e2e] bg-[#12121A] order-1 md:order-1 h-full flex flex-col">
+                  <CardContent className="pt-6 flex flex-col flex-1 space-y-4">
+                    <div className="rounded-lg border border-[#1e1e2e] p-4 bg-[#0A0A0F] flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="w-5 h-5 text-[#06B6D4]" />
+                        <span className="font-semibold text-white">Starter</span>
+                      </div>
+                      <p className="text-lg font-semibold text-white mb-1">$29/mo</p>
+                      <p className="text-xs text-[#64748B] mb-3">Billed monthly</p>
+                      <ul className="text-sm text-[#94A3B8] space-y-1.5">
+                        <li>✓ Calendar sync &amp; booking page</li>
+                        <li>✓ Email reminders</li>
+                        <li>✓ Core analytics</li>
+                        <li>✓ Metered call minutes</li>
+                      </ul>
                     </div>
-                    <p className="text-sm text-[#94A3B8] mb-1">Start your 14-day free trial</p>
-                    <p className="text-lg font-semibold text-white mb-3">$99/mo after trial</p>
-                    <ul className="text-sm text-[#94A3B8] space-y-1">
-                      <li>✓ AI voice booking 24/7</li>
-                      <li>✓ SMS booking</li>
-                      <li>✓ Online booking page</li>
-                      <li>✓ Google & Outlook calendar sync</li>
-                      <li>✓ Unlimited bookings</li>
-                      <li>✓ Up to 5 businesses</li>
-                    </ul>
-                  </div>
-                  <Button
-                    className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
-                    onClick={() => setStep2CheckoutPhase('confirm')}
-                    disabled={saving}
-                  >
-                    Start Free Trial
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                  <p className="text-xs text-[#64748B] text-center">
-                    No charge for 14 days. Cancel anytime. Card required at checkout.
-                  </p>
-                </CardContent>
-              </Card>
+                    <Button
+                      variant="outline"
+                      className="w-full border-[#2a2a3d] bg-[#0A0A0F] text-white hover:bg-[#1e1e2e]"
+                      onClick={() => handleStep2Submit(planPriceIds.starter)}
+                      disabled={saving || !planPriceIds.starter}
+                    >
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Get Started
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Growth — center, visually prominent */}
+                <Card className="border-2 border-[#8B5CF6]/70 bg-[#12121A] order-2 md:order-2 h-full flex flex-col shadow-[0_0_48px_-12px_rgba(139,92,246,0.55)] md:scale-[1.07] z-10 relative">
+                  <CardContent className="pt-6 flex flex-col flex-1 space-y-4">
+                    <div className="rounded-lg border border-[#8B5CF6]/35 p-4 bg-[#0A0A0F] relative overflow-hidden flex-1">
+                      <span className="absolute top-2 right-2 text-[10px] font-semibold uppercase tracking-wide text-[#A78BFA] bg-[#8B5CF6]/25 px-2 py-0.5 rounded">
+                        14-day trial
+                      </span>
+                      <div className="flex items-center gap-2 mb-2 pr-14">
+                        <Package className="w-5 h-5 text-[#8B5CF6]" />
+                        <span className="font-semibold text-white">Growth</span>
+                      </div>
+                      <p className="text-xs font-medium text-[#A78BFA] mb-1">Most popular</p>
+                      <p className="text-sm text-[#94A3B8] mb-1">Start your 14-day free trial</p>
+                      <p className="text-lg font-semibold text-white mb-3">$99/mo after trial</p>
+                      <ul className="text-sm text-[#94A3B8] space-y-1">
+                        <li>✓ Everything in Starter</li>
+                        <li>✓ AI voice booking 24/7</li>
+                        <li>✓ Multi-calendar &amp; SMS</li>
+                        <li>✓ Up to 5 businesses</li>
+                      </ul>
+                    </div>
+                    <Button
+                      className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
+                      onClick={() => setStep2CheckoutPhase('confirm')}
+                      disabled={saving || !planPriceIds.growth}
+                    >
+                      Start Free Trial
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                    <p className="text-[10px] text-[#64748B] text-center leading-snug">
+                      No charge for 14 days. Cancel anytime. Card required.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Enterprise */}
+                <Card className="border-[#1e1e2e] bg-[#12121A] order-3 md:order-3 h-full flex flex-col">
+                  <CardContent className="pt-6 flex flex-col flex-1 space-y-4">
+                    <div className="rounded-lg border border-[#1e1e2e] p-4 bg-[#0A0A0F] flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Building2 className="w-5 h-5 text-amber-500/90" />
+                        <span className="font-semibold text-white">Enterprise</span>
+                      </div>
+                      <p className="text-lg font-semibold text-white mb-1">$299/mo</p>
+                      <p className="text-xs text-[#64748B] mb-3">Billed monthly</p>
+                      <ul className="text-sm text-[#94A3B8] space-y-1.5">
+                        <li>✓ Everything in Growth</li>
+                        <li>✓ Advanced seat &amp; org needs</li>
+                        <li>✓ Priority support</li>
+                        <li>✓ SLA &amp; custom options</li>
+                      </ul>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="w-full border-[#2a2a3d] bg-[#0A0A0F] text-white hover:bg-[#1e1e2e]"
+                      onClick={() => handleStep2Submit(planPriceIds.enterprise)}
+                      disabled={saving || !planPriceIds.enterprise}
+                    >
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Get Started
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
         )}
