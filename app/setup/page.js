@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useCallback, Suspense } from 'react'
+import React, { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -355,6 +355,12 @@ function WizardContent() {
   const [error, setError] = useState('')
   const [businesses, setBusinesses] = useState([])
   const [growthPriceId, setGrowthPriceId] = useState(null)
+  const [step2CheckoutPhase, setStep2CheckoutPhase] = useState('choose')
+  const trialChargeDateLabel = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 14)
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  }, [])
   const [servicesLoaded, setServicesLoaded] = useState(false)
   const [bookingHost, setBookingHost] = useState('book8.io')
 
@@ -375,6 +381,10 @@ function WizardContent() {
       setWizardData((prev) => (prev.timezone ? prev : { ...prev, timezone: tz }))
     }
   }, [])
+
+  useEffect(() => {
+    if (currentStep !== 2) setStep2CheckoutPhase('choose')
+  }, [currentStep])
 
   // Load existing state for returning users
   const loadInitialState = useCallback(async () => {
@@ -602,6 +612,7 @@ function WizardContent() {
     }
     setSaving(true)
     setError('')
+    setStep2CheckoutPhase('choose')
     fetch('/api/billing/checkout', {
       method: 'POST',
       headers: {
@@ -908,7 +919,10 @@ function WizardContent() {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-bold text-white">Choose your plan</h1>
-              <p className="text-[#94A3B8] mt-1">Start with a 14-day free trial. No credit card required.</p>
+              <p className="text-[#94A3B8] mt-1">
+                Growth includes a 14-day free trial. Card required at checkout; you won&apos;t be charged until the
+                trial ends.
+              </p>
             </div>
             {wizardData.planActive ? (
               <Card className="border-[#1e1e2e] bg-[#12121A]">
@@ -923,14 +937,54 @@ function WizardContent() {
                   </Button>
                 </CardContent>
               </Card>
+            ) : step2CheckoutPhase === 'confirm' ? (
+              <Card className="border-[#8B5CF6]/40 bg-[#12121A]">
+                <CardContent className="pt-6 space-y-4">
+                  <p className="text-white font-semibold">You&apos;re starting a 14-day free trial of the Growth plan.</p>
+                  <ul className="text-sm text-[#94A3B8] space-y-2 list-disc pl-5">
+                    <li>Full access to all features immediately</li>
+                    <li>
+                      Your card is required but won&apos;t be charged until{' '}
+                      <span className="text-[#F8FAFC] font-medium">{trialChargeDateLabel}</span>
+                    </li>
+                    <li>Cancel anytime before then and pay nothing</li>
+                  </ul>
+                  <p className="text-xs text-[#64748B]">💳 Card required for verification. No charge for 14 days.</p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      variant="outline"
+                      className="border-[#1e1e2e] text-[#94A3B8] hover:text-white"
+                      onClick={() => setStep2CheckoutPhase('choose')}
+                      disabled={saving}
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back
+                    </Button>
+                    <Button
+                      className="flex-1 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
+                      onClick={handleStep2Submit}
+                      disabled={saving}
+                    >
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Continue to Checkout
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ) : (
               <Card className="border-[#1e1e2e] bg-[#12121A]">
                 <CardContent className="pt-6 space-y-4">
-                  <div className="rounded-lg border border-[#1e1e2e] p-4 bg-[#0A0A0F]">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="rounded-lg border border-[#8B5CF6]/35 p-4 bg-[#0A0A0F] relative overflow-hidden">
+                    <span className="absolute top-2 right-2 text-[10px] font-semibold uppercase tracking-wide text-[#A78BFA] bg-[#8B5CF6]/20 px-2 py-0.5 rounded">
+                      14-day trial
+                    </span>
+                    <div className="flex items-center gap-2 mb-2 pr-16">
                       <Package className="w-5 h-5 text-[#8B5CF6]" />
-                      <span className="font-semibold text-white">Growth — $99/mo</span>
+                      <span className="font-semibold text-white">Growth</span>
                     </div>
+                    <p className="text-sm text-[#94A3B8] mb-1">Start your 14-day free trial</p>
+                    <p className="text-lg font-semibold text-white mb-3">$99/mo after trial</p>
                     <ul className="text-sm text-[#94A3B8] space-y-1">
                       <li>✓ AI voice booking 24/7</li>
                       <li>✓ SMS booking</li>
@@ -942,14 +996,15 @@ function WizardContent() {
                   </div>
                   <Button
                     className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
-                    onClick={handleStep2Submit}
+                    onClick={() => setStep2CheckoutPhase('confirm')}
                     disabled={saving}
                   >
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Start 14-day Free Trial
+                    Start Free Trial
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
-                  <p className="text-xs text-[#64748B] text-center">No credit card required for trial</p>
+                  <p className="text-xs text-[#64748B] text-center">
+                    No charge for 14 days. Cancel anytime. Card required at checkout.
+                  </p>
                 </CardContent>
               </Card>
             )}

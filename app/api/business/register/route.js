@@ -235,6 +235,7 @@ export async function POST(request) {
           businessId: { $ne: businessId },
           $or: [
             { 'subscription.status': 'active' },
+            { 'subscription.status': 'trialing' },
             { plan: { $in: ['starter', 'growth', 'enterprise'] } }
           ]
         })

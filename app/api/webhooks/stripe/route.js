@@ -4,7 +4,17 @@ import { v4 as uuidv4 } from 'uuid'
 import { env } from '@/lib/env'
 import { getCallMinutesItemId, extractSubscriptionBillingFields } from '@/lib/stripeSubscription'
 import { updateSubscriptionFields, updateSubscriptionByCustomerId } from '@/lib/subscriptionUpdate'
-import { COLLECTION_NAME as BUSINESS_COLLECTION, SUBSCRIPTION_STATUS } from '@/lib/schemas/business'
+import {
+  COLLECTION_NAME as BUSINESS_COLLECTION,
+  SUBSCRIPTION_STATUS,
+  stripeStatusToBusinessSubscriptionStatus
+} from '@/lib/schemas/business'
+import {
+  sendTrialStartedEmail,
+  sendTrialEndingEmail,
+  sendTrialConvertedEmail,
+  sendPaymentFailedEmail
+} from '@/lib/trialLifecycleEmail'
 import { provisionOnCoreApi } from '@/lib/provision-business'
 
 export const runtime = 'nodejs'
@@ -79,6 +89,12 @@ function extractBillingFields(event) {
       plan = obj?.lines?.data?.[0]?.price?.id || null
       status = obj.status || (type === 'invoice.payment_failed' ? 'failed' : 'paid')
       break
+    case 'customer.subscription.trial_will_end':
+      subscriptionId = obj.id || null
+      customerId = obj.customer || null
+      plan = obj?.items?.data?.[0]?.price?.id || null
+      status = obj.status || 'trialing'
+      break
     default:
       // keep best-effort fields
       break
@@ -134,6 +150,8 @@ async function handleSubscriptionEvent(event, stripe, database) {
         status: subscription.status,
         currentPeriodStart: billingFields.currentPeriodStart,
         currentPeriodEnd: billingFields.currentPeriodEnd,
+        trialStart: billingFields.trialStart,
+        trialEnd: billingFields.trialEnd,
         updatedAt: new Date().toISOString()
       })
       
@@ -157,11 +175,12 @@ async function handleSubscriptionEvent(event, stripe, database) {
           stripeSubscriptionId: subscriptionId
         })
 
+        const bizSubStatus = stripeStatusToBusinessSubscriptionStatus(subscription.status)
         const updateResult = await database.collection(BUSINESS_COLLECTION).updateOne(
           { $or: [{ businessId: resolvedBizId }, { id: resolvedBizId }] },
           {
             $set: {
-              'subscription.status': SUBSCRIPTION_STATUS.ACTIVE,
+              'subscription.status': bizSubStatus,
               'subscription.stripeCustomerId': customerId,
               'subscription.stripeSubscriptionId': subscriptionId,
               'subscription.stripePriceId': billingFields.stripePriceId,
@@ -169,6 +188,8 @@ async function handleSubscriptionEvent(event, stripe, database) {
               plan,
               'subscription.currentPeriodStart': billingFields.currentPeriodStart,
               'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
+              'subscription.trialStart': billingFields.trialStart,
+              'subscription.trialEnd': billingFields.trialEnd,
               'subscription.activatedAt': new Date().toISOString(),
               'subscription.updatedAt': new Date(),
               'features.billingEnabled': true,
@@ -181,7 +202,38 @@ async function handleSubscriptionEvent(event, stripe, database) {
           matchedCount: updateResult.matchedCount,
           modifiedCount: updateResult.modifiedCount
         })
-        console.log(`[webhooks/stripe] checkout.session.completed: Updated business ${resolvedBizId} subscription to active`)
+        console.log(
+          `[webhooks/stripe] checkout.session.completed: Updated business ${resolvedBizId} subscription to ${bizSubStatus}`
+        )
+      }
+
+      // Trial started email (Growth checkout with trial)
+      if (subscription.status === 'trialing' && billingFields.trialEnd) {
+        try {
+          const owner = await database.collection('users').findOne({ id: userId })
+          const bizForEmail = resolvedBizId
+            ? await database.collection(BUSINESS_COLLECTION).findOne({
+                $or: [{ businessId: resolvedBizId }, { id: resolvedBizId }]
+              })
+            : null
+          const trialEndFormatted = new Date(billingFields.trialEnd).toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric'
+          })
+          if (owner?.email) {
+            await sendTrialStartedEmail({
+              to: owner.email,
+              businessName: bizForEmail?.name || obj.customer_details?.name || 'your business',
+              trialEndDate: trialEndFormatted,
+              phoneNumber: bizForEmail?.phone || bizForEmail?.assignedTwilioNumber || null,
+              handle: bizForEmail?.handle || null,
+              calendarProvider: bizForEmail?.calendar?.provider || null
+            })
+          }
+        } catch (emailErr) {
+          console.error('[webhooks/stripe] trial started email failed:', emailErr?.message || emailErr)
+        }
       }
 
       // ── TENANT PROVISIONING ──────────────────────────────────
@@ -315,6 +367,103 @@ async function handleSubscriptionEvent(event, stripe, database) {
       
       return
     }
+
+    if (type === 'customer.subscription.trial_will_end') {
+      try {
+        const subscription = obj
+        const rawBizId = subscription.metadata?.businessId
+        const trialEnd = subscription.trial_end
+          ? new Date(subscription.trial_end * 1000)
+          : null
+        let business = null
+        if (rawBizId) {
+          business = await database.collection(BUSINESS_COLLECTION).findOne({
+            $or: [{ businessId: rawBizId }, { id: rawBizId }]
+          })
+        }
+        if (!business && subscription.customer) {
+          business = await database.collection(BUSINESS_COLLECTION).findOne({
+            'subscription.stripeCustomerId': subscription.customer
+          })
+        }
+        const ownerId = business?.ownerUserId
+        const owner = ownerId
+          ? await database.collection('users').findOne({ id: ownerId })
+          : await database.collection('users').findOne({
+              'subscription.stripeCustomerId': subscription.customer
+            })
+        if (owner?.email && trialEnd) {
+          const trialEndFormatted = trialEnd.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric'
+          })
+          await sendTrialEndingEmail({
+            to: owner.email,
+            businessName: business?.name || owner.name || 'your business',
+            trialEndDate: trialEndFormatted
+          })
+        }
+      } catch (e) {
+        console.error('[webhooks/stripe] trial_will_end email failed:', e?.message || e)
+      }
+      return
+    }
+
+    if (type === 'invoice.payment_failed') {
+      try {
+        const invoice = obj
+        const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+        if (!customerId) return
+        const user = await database.collection('users').findOne({
+          'subscription.stripeCustomerId': customerId
+        })
+        if (user?.email) {
+          await sendPaymentFailedEmail({
+            to: user.email,
+            businessName: user.name || 'your business'
+          })
+        }
+      } catch (e) {
+        console.error('[webhooks/stripe] payment_failed email failed:', e?.message || e)
+      }
+      return
+    }
+
+    if (type === 'invoice.payment_succeeded') {
+      try {
+        const invoice = obj
+        if (!invoice.amount_paid || invoice.amount_paid <= 0) return
+        const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+        if (!customerId) return
+        const user = await database.collection('users').findOne({
+          'subscription.stripeCustomerId': customerId
+        })
+        if (!user?.email || user.subscription?.trialConvertedEmailSent) return
+        const subId =
+          typeof invoice.subscription === 'string'
+            ? invoice.subscription
+            : invoice.subscription?.id || null
+        if (!subId) return
+        const stripeSub = await stripe.subscriptions.retrieve(subId, { expand: ['items.data.price'] })
+        if (!stripeSub.trial_end) return
+        if (stripeSub.status !== 'active') return
+        const bf = extractSubscriptionBillingFields(stripeSub)
+        const plan = planFromStripePriceId(bf.stripePriceId)
+        if (plan !== 'growth') return
+        await sendTrialConvertedEmail({
+          to: user.email,
+          businessName: user.name || 'your business'
+        })
+        await updateSubscriptionFields(database.collection('users'), user.id, {
+          trialConvertedEmailSent: true,
+          updatedAt: new Date().toISOString()
+        })
+      } catch (e) {
+        console.error('[webhooks/stripe] payment_succeeded trial-converted email failed:', e?.message || e)
+      }
+      return
+    }
     
     // Handle subscription created/updated
     if (type === 'customer.subscription.created' || type === 'customer.subscription.updated') {
@@ -352,24 +501,28 @@ async function handleSubscriptionEvent(event, stripe, database) {
         status: subscription.status,
         currentPeriodStart: billingFields.currentPeriodStart,
         currentPeriodEnd: billingFields.currentPeriodEnd,
+        trialStart: billingFields.trialStart,
+        trialEnd: billingFields.trialEnd,
         updatedAt: new Date().toISOString()
       })
       
       console.log(`[webhooks/stripe] ${type}: Updated user ${user.id} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
       
       // Also update any business linked to this customer
+      const mappedStatus = stripeStatusToBusinessSubscriptionStatus(subscription.status)
       await database.collection(BUSINESS_COLLECTION).updateMany(
         { 'subscription.stripeCustomerId': customerId },
         {
           $set: {
-            'subscription.status': subscription.status === 'active' ? SUBSCRIPTION_STATUS.ACTIVE : 
-                                   subscription.status === 'past_due' ? 'past_due' : subscription.status,
+            'subscription.status': mappedStatus,
             'subscription.stripeSubscriptionId': subscriptionId,
             'subscription.stripePriceId': billingFields.stripePriceId,
             'subscription.plan': plan,
             plan,
             'subscription.currentPeriodStart': billingFields.currentPeriodStart,
             'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
+            'subscription.trialStart': billingFields.trialStart,
+            'subscription.trialEnd': billingFields.trialEnd,
             updatedAt: new Date()
           }
         }

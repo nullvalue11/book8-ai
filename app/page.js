@@ -133,6 +133,7 @@ function HomeContent(props) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [planTier, setPlanTier] = useState('free');
   const [planName, setPlanName] = useState('Free');
+  const [billingSubscription, setBillingSubscription] = useState(null);
   const [features, setFeatures] = useState({});
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
   const [isSyncingSubscription, setIsSyncingSubscription] = useState(false);
@@ -304,6 +305,7 @@ function HomeContent(props) {
               setPlanTier(syncData.planTier || 'starter');
               setPlanName(syncData.planName || 'Starter');
               setFeatures(syncData.features || {});
+              setBillingSubscription(syncData.subscription || null);
               setSubscriptionChecked(true);
               setShowSubscriptionSuccess(true);
               fireConfetti();
@@ -334,6 +336,7 @@ function HomeContent(props) {
                 setPlanTier(retryData.planTier || 'starter');
                 setPlanName(retryData.planName || 'Starter');
                 setFeatures(retryData.features || {});
+                setBillingSubscription(retryData.subscription || null);
                 setSubscriptionChecked(true);
                 setShowSubscriptionSuccess(true);
                 fireConfetti();
@@ -395,10 +398,12 @@ function HomeContent(props) {
         setPlanTier(data.planTier || 'starter');
         setPlanName(data.planName || 'Starter');
         setFeatures(data.features || {});
+        setBillingSubscription(data.subscription || null);
         setShowSubscriptionSuccess(true);
         fireConfetti();
         setTimeout(() => setShowSubscriptionSuccess(false), 5000);
       } else if (data.ok) {
+        setBillingSubscription(null);
         alert(data.message || 'No active subscription found');
       } else {
         alert(data.error || 'Sync failed');
@@ -424,6 +429,7 @@ function HomeContent(props) {
         setPlanTier(data.planTier || 'free');
         setPlanName(data.planName || 'Free');
         setFeatures(data.features || {});
+        setBillingSubscription(data.subscription || null);
         
         // Show success message and confetti if just subscribed
         if (showSuccessOnActive && data.subscribed) {
@@ -1063,14 +1069,26 @@ function HomeContent(props) {
             <span className="hidden md:inline text-sm text-muted-foreground">Dashboard</span>
             {/* Plan badge for subscribed users */}
             {subscriptionChecked && isSubscribed && (
-              <span className={`hidden md:inline px-2 py-0.5 rounded-full text-xs font-medium ${
-                planTier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
-                planTier === 'growth' ? 'bg-blue-100 text-blue-800' :
-                'bg-green-100 text-green-800'
-              }`}>
-                {planTier === 'enterprise' && <Crown className="w-3 h-3 inline mr-1" />}
-                {planName}
-              </span>
+              billingSubscription?.status === 'trialing' && billingSubscription?.trialDaysLeft != null ? (
+                <span className={`hidden md:inline px-2 py-0.5 rounded-full text-xs font-medium ${
+                  billingSubscription.trialDaysLeft > 6
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+                    : billingSubscription.trialDaysLeft > 2
+                      ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100'
+                      : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
+                }`}>
+                  Trial — {billingSubscription.trialDaysLeft} day{billingSubscription.trialDaysLeft !== 1 ? 's' : ''} left
+                </span>
+              ) : (
+                <span className={`hidden md:inline px-2 py-0.5 rounded-full text-xs font-medium ${
+                  planTier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
+                  planTier === 'growth' ? 'bg-blue-100 text-blue-800' :
+                  'bg-green-100 text-green-800'
+                }`}>
+                  {planTier === 'enterprise' && <Crown className="w-3 h-3 inline mr-1" />}
+                  {planName}
+                </span>
+              )
             )}
           </div>
           <div className="flex items-center gap-3 text-sm">
@@ -1080,6 +1098,50 @@ function HomeContent(props) {
           </div>
         </div>
       </header>
+
+      {billingSubscription?.status === 'trialing' && billingSubscription?.trialEnd && (
+        <div className="border-b border-purple-500/30 bg-gradient-to-r from-purple-500/10 via-background to-cyan-500/10">
+          <div className="mx-auto max-w-6xl px-4 md:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-purple-600 dark:text-purple-300">
+                Free Trial — {billingSubscription.trialDaysLeft ?? '—'} day
+                {billingSubscription.trialDaysLeft !== 1 ? 's' : ''} remaining
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xl">
+                Your Growth plan trial ends on{' '}
+                {new Date(billingSubscription.trialEnd).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+                . You won&apos;t be charged until then.
+              </p>
+            </div>
+            <Button variant="secondary" size="sm" className="shrink-0" asChild>
+              <Link href="/dashboard/settings/billing">View billing</Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {billingSubscription?.status === 'past_due' && (
+        <div className="border-b border-red-500/30 bg-red-500/10">
+          <div className="mx-auto max-w-6xl px-4 md:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className="text-sm text-foreground">
+              <span className="font-semibold text-red-600 dark:text-red-400">Payment failed</span>
+              <span className="text-muted-foreground ml-2">
+                We couldn&apos;t charge your card. Update your payment method so your AI receptionist keeps running.
+              </span>
+            </p>
+            <Link
+              href="/dashboard/settings/billing"
+              className="text-sm font-semibold text-red-600 dark:text-red-400 shrink-0 hover:underline"
+            >
+              Update payment →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Subscription Success Modal */}
       {showSubscriptionSuccess && (

@@ -133,7 +133,7 @@ export default function LandingPage() {
               >
                 <span className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-[#06B6D4]" />
-                  No credit card required
+                  14-day Growth trial (card on file)
                 </span>
                 <span className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-[#06B6D4]" />
@@ -141,7 +141,7 @@ export default function LandingPage() {
                 </span>
                 <span className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-[#06B6D4]" />
-                  Free 14-day trial
+                  Cancel anytime
                 </span>
               </div>
             </div>
@@ -402,10 +402,24 @@ export default function LandingPage() {
             Simple Pricing
           </h2>
           <div className="max-w-md mx-auto mt-12">
-            <div className="rounded-2xl border-2 border-[#8B5CF6]/50 p-8" style={{ background: '#12121A' }}>
-              <h3 className="text-2xl font-bold text-[#F8FAFC] mb-2">Growth — $99/mo</h3>
-              <ul className="space-y-3 text-[#94A3B8] mb-8">
-                {['AI voice booking', 'Unlimited bookings', 'Google & Outlook calendar', 'SMS & email confirmations', 'Custom booking page', 'Up to 5 businesses'].map((f) => (
+            <div className="rounded-2xl border-2 border-[#8B5CF6]/50 p-8 relative" style={{ background: '#12121A' }}>
+              <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wide text-[#A78BFA] bg-[#8B5CF6]/20 px-2 py-1 rounded">
+                Most popular
+              </span>
+              <h3 className="text-2xl font-bold text-[#F8FAFC] mb-1 pr-24">Growth</h3>
+              <p className="text-sm text-[#94A3B8] mb-3">Start your 14-day free trial</p>
+              <p className="text-3xl font-bold text-[#F8FAFC] mb-1">
+                $99<span className="text-lg font-medium text-[#94A3B8]">/mo after trial</span>
+              </p>
+              <ul className="space-y-3 text-[#94A3B8] mb-6 mt-6">
+                {[
+                  'All 3 booking channels',
+                  '200 AI calls/month',
+                  'Google + Outlook calendar sync',
+                  'SMS + Email confirmations',
+                  'Full analytics dashboard',
+                  'Priority support',
+                ].map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-[#06B6D4] shrink-0" />
                     {f}
@@ -414,9 +428,13 @@ export default function LandingPage() {
               </ul>
               <Link href="/setup">
                 <Button className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-12 rounded-lg font-medium" size="lg">
-                  Get Started →
+                  Start Free Trial →
                 </Button>
               </Link>
+              <p className="text-xs text-[#64748B] text-center mt-3">
+                No charge for 14 days. Cancel anytime.
+              </p>
+              <p className="text-xs text-[#64748B] text-center mt-1">💳 Card required</p>
             </div>
           </div>
         </div>

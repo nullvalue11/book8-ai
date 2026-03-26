@@ -46,6 +46,34 @@ function subscriptionOk(business, user) {
   return false
 }
 
+function subscriptionDetailString(business, user) {
+  const bSub = business?.subscription
+  if (bSub?.status) {
+    let line = `${bSub.plan || business?.plan || 'unknown'} plan — ${bSub.status}`
+    if (bSub.status === 'trialing' && bSub.trialEnd) {
+      const end = new Date(bSub.trialEnd)
+      if (!Number.isNaN(end.getTime())) {
+        const days = Math.max(0, Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+        line += ` (${days} day${days !== 1 ? 's' : ''} left)`
+      }
+    }
+    return line
+  }
+  if (user?.subscription?.status) {
+    let line = `User subscription — ${user.subscription.status}`
+    const te = user.subscription.trialEnd
+    if (user.subscription.status === 'trialing' && te) {
+      const end = new Date(te)
+      if (!Number.isNaN(end.getTime())) {
+        const days = Math.max(0, Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+        line += ` (${days} day${days !== 1 ? 's' : ''} left)`
+      }
+    }
+    return line
+  }
+  return 'No active subscription on business'
+}
+
 function calendarOk(business, user) {
   if (business?.calendar?.connected) return true
   if (user?.google?.refreshToken) return true
@@ -88,11 +116,7 @@ export async function GET(request) {
       },
       subscription: {
         ok: subscriptionOk(business, user),
-        detail: business.subscription?.status
-          ? `${business.subscription.plan || business.plan || 'unknown'} plan — ${business.subscription.status}`
-          : user?.subscription?.status
-            ? `User subscription — ${user.subscription.status}`
-            : 'No active subscription on business'
+        detail: subscriptionDetailString(business, user)
       },
       calendar_connection: {
         ok: calendarOk(business, user),

@@ -33,6 +33,9 @@ const plans = [
     name: "Growth",
     price: "$99",
     period: "/month",
+    /** Shown under title for trial plan */
+    trialHeadline: "Start your 14-day free trial",
+    priceSecondary: "after trial",
     description: "For growing teams that need more power and flexibility",
     icon: Rocket,
     features: [
@@ -45,7 +48,8 @@ const plans = [
       "Team collaboration"
     ],
     popular: true,
-    color: "from-brand-500 to-purple-500"
+    color: "from-brand-500 to-purple-500",
+    trial: true
   },
   {
     id: "enterprise",
@@ -272,15 +276,22 @@ function PricingContent() {
                       <Icon className="w-6 h-6 text-white" />
                     </div>
                     <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                    {plan.trial && plan.trialHeadline && (
+                      <p className="text-sm font-medium text-brand-600 dark:text-brand-400 mt-1">{plan.trialHeadline}</p>
+                    )}
                     <CardDescription>
                       {plan.description}
                     </CardDescription>
                   </CardHeader>
 
                   <CardContent className="space-y-6">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                      <span className="text-muted-foreground">{plan.period}</span>
+                    <div>
+                      <div className="flex items-baseline gap-1 flex-wrap">
+                        <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+                        <span className="text-muted-foreground">
+                          {plan.trial && plan.priceSecondary ? `/mo ${plan.priceSecondary}` : plan.period}
+                        </span>
+                      </div>
                     </div>
 
                     <ul className="space-y-3">
@@ -292,17 +303,39 @@ function PricingContent() {
                       ))}
                     </ul>
 
-                    <Link href={isLoggedIn ? `/setup?plan=${plan.id}` : "/setup"}>
+                    {plan.id === "growth" && isLoggedIn && isPaywall ? (
                       <Button
-                        className={`w-full ${
-                          plan.popular
-                            ? "bg-gradient-to-r from-brand-500 to-purple-500 hover:from-brand-600 hover:to-purple-600 text-white"
-                            : "bg-muted hover:bg-muted/80 text-foreground border border-border"
-                        }`}
+                        className="w-full bg-gradient-to-r from-brand-500 to-purple-500 hover:from-brand-600 hover:to-purple-600 text-white"
+                        disabled={!!isLoading[plan.id]}
+                        onClick={() => handleSelectPlan(plan.id)}
                       >
-                        {isPaywall && isLoggedIn ? `Subscribe to ${plan.name}` : "Get Started"} <ArrowRight className="w-4 h-4" />
+                        {isLoading[plan.id] ? "Loading…" : "Start Free Trial"}{" "}
+                        <ArrowRight className="w-4 h-4 inline" />
                       </Button>
-                    </Link>
+                    ) : (
+                      <Link href={isLoggedIn ? `/setup?plan=${plan.id}` : "/setup"} className="block">
+                        <Button
+                          className={`w-full ${
+                            plan.popular
+                              ? "bg-gradient-to-r from-brand-500 to-purple-500 hover:from-brand-600 hover:to-purple-600 text-white"
+                              : "bg-muted hover:bg-muted/80 text-foreground border border-border"
+                          }`}
+                        >
+                          {plan.trial && plan.id === "growth"
+                            ? "Start Free Trial"
+                            : isPaywall && isLoggedIn
+                              ? `Subscribe to ${plan.name}`
+                              : "Get Started"}{" "}
+                          <ArrowRight className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    )}
+
+                    {plan.trial && (
+                      <p className="text-xs text-muted-foreground text-center -mt-2">
+                        No charge for 14 days. Cancel anytime. 💳 Card required.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               );

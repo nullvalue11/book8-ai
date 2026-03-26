@@ -153,6 +153,12 @@ export function extractSubscriptionBillingFields(subscription) {
       : null,
     currentPeriodEnd: subscription.current_period_end 
       ? new Date(subscription.current_period_end * 1000).toISOString() 
+      : null,
+    trialStart: subscription.trial_start
+      ? new Date(subscription.trial_start * 1000).toISOString()
+      : null,
+    trialEnd: subscription.trial_end
+      ? new Date(subscription.trial_end * 1000).toISOString()
       : null
   }
 }

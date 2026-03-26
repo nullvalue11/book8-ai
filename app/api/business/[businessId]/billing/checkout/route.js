@@ -247,6 +247,17 @@ export async function POST(request, { params }) {
     else if (basePriceId === env.STRIPE?.PRICE_GROWTH) planName = 'growth'
     else if (basePriceId === env.STRIPE?.PRICE_STARTER) planName = 'starter'
 
+    const subMeta = {
+      userId: user.id,
+      businessId: business.businessId
+    }
+    const subscriptionData = { metadata: subMeta }
+    if (basePriceId === env.STRIPE?.PRICE_GROWTH) {
+      subscriptionData.trial_period_days = env.TRIAL_PERIOD_DAYS ?? 14
+      subMeta.plan = 'growth'
+      subMeta.trialStart = new Date().toISOString()
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',
@@ -263,12 +274,7 @@ export async function POST(request, { params }) {
         plan: planName,
         numberSetupMethod: 'pending'
       },
-      subscription_data: {
-        metadata: {
-          userId: user.id,
-          businessId: business.businessId
-        }
-      }
+      subscription_data: subscriptionData
     })
     
     debugLog('[business/billing/checkout] Session created:', session.id)

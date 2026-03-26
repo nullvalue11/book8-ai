@@ -178,15 +178,22 @@ export async function POST(request) {
         }),
         numberSetupMethod: 'pending'
       },
-      subscription_data: {
-        metadata: {
+      subscription_data: (() => {
+        const meta = {
           userId: user.id,
           priceId: priceId,
           ...(resolvedBusiness && {
             businessId: resolvedBusiness.businessId || resolvedBusiness.id
           })
         }
-      }
+        const sub = { metadata: meta }
+        if (priceId === env.STRIPE?.PRICE_GROWTH) {
+          sub.trial_period_days = env.TRIAL_PERIOD_DAYS ?? 14
+          meta.plan = 'growth'
+          meta.trialStart = new Date().toISOString()
+        }
+        return sub
+      })()
     }
 
     let session

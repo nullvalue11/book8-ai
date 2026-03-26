@@ -59,6 +59,14 @@ export function getPlanName(priceId, env) {
   return names[tier] || 'Free';
 }
 
+/** Days until trial end (ceil); null if no trial end */
+export function trialDaysRemaining(trialEndIso) {
+  if (!trialEndIso) return null;
+  const end = new Date(trialEndIso).getTime();
+  if (Number.isNaN(end)) return null;
+  return Math.max(0, Math.ceil((end - Date.now()) / (1000 * 60 * 60 * 24)));
+}
+
 /**
  * Get features available for a plan tier
  * 
@@ -123,7 +131,10 @@ export function getSubscriptionDetails(user, env = null) {
   const subscription = user?.subscription || {};
   const priceId = subscription.stripePriceId || null;
   const tier = env ? getPlanTier(priceId, env) : (priceId ? 'starter' : 'free');
-  
+  const trialEnd = subscription.trialEnd || null;
+  const trialDaysLeft =
+    subscription.status === 'trialing' && trialEnd ? trialDaysRemaining(trialEnd) : null;
+
   return {
     subscribed: isSubscribed(user),
     status: subscription.status || null,
@@ -135,6 +146,9 @@ export function getSubscriptionDetails(user, env = null) {
     stripeCallMinutesItemId: subscription.stripeCallMinutesItemId || null,
     stripePriceId: priceId,
     currentPeriodStart: subscription.currentPeriodStart || null,
-    currentPeriodEnd: subscription.currentPeriodEnd || null
+    currentPeriodEnd: subscription.currentPeriodEnd || null,
+    trialStart: subscription.trialStart || null,
+    trialEnd,
+    trialDaysLeft
   };
 }

@@ -32,6 +32,16 @@ export const SUBSCRIPTION_STATUS = {
   UNPAID: 'unpaid'
 }
 
+/** Map Stripe subscription.status to business.subscription.status values we store */
+export function stripeStatusToBusinessSubscriptionStatus(stripeStatus) {
+  const s = String(stripeStatus || '').toLowerCase()
+  if (s === 'active') return SUBSCRIPTION_STATUS.ACTIVE
+  if (s === 'trialing') return SUBSCRIPTION_STATUS.TRIALING
+  if (s === 'past_due') return SUBSCRIPTION_STATUS.PAST_DUE
+  if (s === 'canceled' || s === 'unpaid' || s === 'incomplete_expired') return SUBSCRIPTION_STATUS.CANCELED
+  return s || SUBSCRIPTION_STATUS.NONE
+}
+
 /**
  * Generate a URL-friendly handle from business name
  * "Dental Clinic" → "dental-clinic"

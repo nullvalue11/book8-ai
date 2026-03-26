@@ -125,6 +125,8 @@ export async function POST(request) {
         status: activeSubscription.status,
         currentPeriodStart: billingFields.currentPeriodStart,
         currentPeriodEnd: billingFields.currentPeriodEnd,
+        trialStart: billingFields.trialStart,
+        trialEnd: billingFields.trialEnd,
         updatedAt: new Date().toISOString(),
         syncedAt: new Date().toISOString()
       })

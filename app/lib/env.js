@@ -142,6 +142,8 @@ function loadConfig() {
     const CORE_API_INTERNAL_SECRET = getEnvVar('CORE_API_INTERNAL_SECRET', false)
     const BOOK8_CORE_API_KEY = getEnvVar('BOOK8_CORE_API_KEY', false)
     const BILLING_TIMEZONE = getEnvVar('BILLING_TIMEZONE', false, 'UTC')
+    const TRIAL_PERIOD_DAYS_RAW = getEnvVar('TRIAL_PERIOD_DAYS', false, '14')
+    const TRIAL_PERIOD_DAYS = Math.max(1, Math.min(90, parseInt(TRIAL_PERIOD_DAYS_RAW, 10) || 14))
     
     const hasStripe = STRIPE_SECRET_KEY && STRIPE_PUBLISHABLE_KEY && STRIPE_WEBHOOK_SECRET
     if (!hasStripe && NODE_ENV === 'production') {
@@ -261,6 +263,7 @@ function loadConfig() {
       CORE_API_INTERNAL_SECRET,
       BOOK8_CORE_API_KEY,
       BILLING_TIMEZONE,
+      TRIAL_PERIOD_DAYS,
       
       // Optional
       TAVILY_API_KEY,
