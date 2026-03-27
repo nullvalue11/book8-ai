@@ -917,7 +917,12 @@ function WizardContent() {
         </div>
       </div>
 
-      <div className="max-w-xl mx-auto px-4 py-8 sm:py-12">
+      <div
+        className={cn(
+          'mx-auto px-4 py-8 sm:py-12 w-full',
+          currentStep === 2 ? 'max-w-6xl' : 'max-w-xl'
+        )}
+      >
         {error && (
           <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-start gap-2">
             <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
@@ -1056,42 +1061,49 @@ function WizardContent() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 md:items-stretch">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5 lg:items-stretch w-full max-w-full">
                 {/* Starter */}
-                <Card className={cn(WIZARD_CARD, 'order-1 md:order-1 h-full flex flex-col overflow-hidden')}>
-                  <CardContent className="p-0 flex flex-col flex-1">
-                    <div className="px-5 pt-5 pb-4 !bg-[#18182b] border-b !border-[#1e1e2e]">
-                      <div className="flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-[#06B6D4] shrink-0" aria-hidden />
-                        <h3 className="text-base font-semibold !text-white">Starter</h3>
+                <Card
+                  className={cn(
+                    WIZARD_CARD,
+                    'order-1 lg:order-1 min-w-[280px] w-full max-w-full h-full flex flex-col overflow-hidden'
+                  )}
+                >
+                  <CardContent className="p-0 flex flex-col h-full min-h-0 flex-1 justify-between">
+                    <div className="flex flex-col flex-1 min-h-0">
+                      <div className="px-5 pt-5 pb-4 !bg-[#18182b] border-b !border-[#1e1e2e]">
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-5 h-5 text-[#06B6D4] shrink-0" aria-hidden />
+                          <h3 className="text-base font-semibold !text-white">Starter</h3>
+                        </div>
+                        <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                          <span className="text-3xl font-bold tabular-nums !text-white">$29</span>
+                          <span className="text-sm !text-[#94A3B8]">USD / monthly</span>
+                        </div>
+                        <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
+                          One location: calendar sync, booking page, reminders.
+                        </p>
                       </div>
-                      <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                        <span className="text-3xl font-bold tabular-nums !text-white">$29</span>
-                        <span className="text-sm !text-[#94A3B8]">USD / monthly</span>
+                      <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] lg:min-h-[10.5rem]">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider !text-[#64748B] mb-3">
+                          Includes:
+                        </p>
+                        <ul className="space-y-2 text-sm leading-snug !text-[#94A3B8]">
+                          {[
+                            'Calendar sync and booking page',
+                            'Email reminders',
+                            'Core analytics',
+                            'Metered call minutes'
+                          ].map((line) => (
+                            <li key={line} className="flex gap-2.5">
+                              <Check className="w-4 h-4 shrink-0 text-[#8B5CF6] mt-0.5" aria-hidden />
+                              <span>{line}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
-                        For a single location ready to sync calendars and take bookings online.
-                      </p>
                     </div>
-                    <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] min-h-[11rem]">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider !text-[#64748B] mb-3">
-                        Includes:
-                      </p>
-                      <ul className="space-y-2.5 text-sm !text-[#94A3B8]">
-                        {[
-                          'Calendar sync & booking page',
-                          'Email reminders',
-                          'Core analytics',
-                          'Metered call minutes'
-                        ].map((line) => (
-                          <li key={line} className="flex gap-2.5">
-                            <Check className="w-4 h-4 shrink-0 text-[#8B5CF6] mt-0.5" aria-hidden />
-                            <span>{line}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="px-5 pb-5 pt-1 mt-auto !bg-[#0A0A0F]">
+                    <div className="px-5 pb-5 pt-4 shrink-0 !bg-[#0A0A0F] border-t !border-[#1e1e2e]/80">
                       <Button
                         variant="outline"
                         className={cn('w-full', WIZARD_OUTLINE_BTN)}
@@ -1106,59 +1118,54 @@ function WizardContent() {
                   </CardContent>
                 </Card>
 
-                {/* Growth — highlighted; badges in header row (no overlap) */}
+                {/* Growth — lg: glow + scale; mobile: purple border only */}
                 <Card
                   className={cn(
                     WIZARD_CARD,
-                    'border-2 !border-[#8B5CF6]/70 order-2 md:order-2 h-full flex flex-col overflow-hidden shadow-[0_0_48px_-12px_rgba(139,92,246,0.55)] z-10 relative'
+                    'border-2 !border-[#8B5CF6]/70 order-2 lg:order-2 min-w-[280px] w-full max-w-full h-full flex flex-col overflow-hidden lg:shadow-[0_0_48px_-12px_rgba(139,92,246,0.55)] lg:scale-[1.07] lg:z-10 relative'
                   )}
                 >
-                  <CardContent className="p-0 flex flex-col flex-1">
-                    <div className="px-5 pt-5 pb-4 !bg-[#1e1a2e] border-b !border-[#8B5CF6]/25">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2 min-w-0">
+                  <CardContent className="p-0 flex flex-col h-full min-h-0 flex-1 justify-between">
+                    <div className="flex flex-col flex-1 min-h-0">
+                      <div className="px-5 pt-5 pb-4 !bg-[#1e1a2e] border-b !border-[#8B5CF6]/25">
+                        <div className="flex items-center gap-2">
                           <Package className="w-5 h-5 text-[#8B5CF6] shrink-0" aria-hidden />
                           <h3 className="text-base font-semibold !text-white">Growth</h3>
                         </div>
-                        <div className="flex flex-col items-end gap-1.5 shrink-0">
-                          <span className="text-[10px] font-semibold uppercase tracking-wide rounded px-2 py-0.5 !bg-[#8B5CF6]/35 !text-white border border-[#A78BFA]/50">
-                            Best Value
-                          </span>
-                          <span className="text-[10px] font-semibold uppercase tracking-wide rounded px-2 py-0.5 !bg-[#8B5CF6]/25 !text-[#A78BFA] border border-[#8B5CF6]/35">
-                            14-day trial
-                          </span>
+                        <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide !text-[#A78BFA]">
+                          Best value · 14-day trial
+                        </p>
+                        <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                          <span className="text-3xl font-bold tabular-nums !text-white">$99</span>
+                          <span className="text-sm !text-[#94A3B8]">USD / monthly</span>
                         </div>
+                        <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
+                          After trial: AI voice, SMS, multi-calendar, up to 5 businesses.
+                        </p>
+                        <p className="mt-2 text-xs !text-[#A78BFA] leading-snug">
+                          Card on file; no charge until trial ends.
+                        </p>
                       </div>
-                      <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                        <span className="text-3xl font-bold tabular-nums !text-white">$99</span>
-                        <span className="text-sm !text-[#94A3B8]">USD / monthly</span>
+                      <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] lg:min-h-[10.5rem] border-t !border-[#8B5CF6]/10">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider !text-[#64748B] mb-3">
+                          Includes:
+                        </p>
+                        <ul className="space-y-2 text-sm leading-snug !text-[#94A3B8]">
+                          {[
+                            'Everything in Starter',
+                            'AI voice booking 24/7',
+                            'Multi-calendar and SMS',
+                            'Up to 5 businesses'
+                          ].map((line) => (
+                            <li key={line} className="flex gap-2.5">
+                              <Check className="w-4 h-4 shrink-0 text-[#8B5CF6] mt-0.5" aria-hidden />
+                              <span>{line}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
-                        After your 14-day free trial. AI voice booking 24/7, SMS, multi-calendar, and up to 5 businesses.
-                      </p>
-                      <p className="mt-2 text-xs !text-[#A78BFA] leading-snug">
-                        Card required at signup; you won&apos;t be charged until the trial ends.
-                      </p>
                     </div>
-                    <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] min-h-[11rem] border-t !border-[#8B5CF6]/10">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider !text-[#64748B] mb-3">
-                        Includes:
-                      </p>
-                      <ul className="space-y-2.5 text-sm !text-[#94A3B8]">
-                        {[
-                          'Everything in Starter',
-                          'AI voice booking 24/7',
-                          'Multi-calendar & SMS',
-                          'Up to 5 businesses'
-                        ].map((line) => (
-                          <li key={line} className="flex gap-2.5">
-                            <Check className="w-4 h-4 shrink-0 text-[#8B5CF6] mt-0.5" aria-hidden />
-                            <span>{line.replace('&', '&amp;')}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="px-5 pb-5 pt-1 mt-auto !bg-[#0A0A0F]">
+                    <div className="px-5 pb-5 pt-4 shrink-0 !bg-[#0A0A0F] border-t !border-[#8B5CF6]/10">
                       <Button
                         className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
                         onClick={() => setStep2CheckoutPhase('confirm')}
@@ -1175,40 +1182,47 @@ function WizardContent() {
                 </Card>
 
                 {/* Enterprise */}
-                <Card className={cn(WIZARD_CARD, 'order-3 md:order-3 h-full flex flex-col overflow-hidden')}>
-                  <CardContent className="p-0 flex flex-col flex-1">
-                    <div className="px-5 pt-5 pb-4 !bg-[#18182b] border-b !border-[#1e1e2e]">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-5 h-5 text-amber-500/90 shrink-0" aria-hidden />
-                        <h3 className="text-base font-semibold !text-white">Enterprise</h3>
+                <Card
+                  className={cn(
+                    WIZARD_CARD,
+                    'order-3 lg:order-3 min-w-[280px] w-full max-w-full h-full flex flex-col overflow-hidden'
+                  )}
+                >
+                  <CardContent className="p-0 flex flex-col h-full min-h-0 flex-1 justify-between">
+                    <div className="flex flex-col flex-1 min-h-0">
+                      <div className="px-5 pt-5 pb-4 !bg-[#18182b] border-b !border-[#1e1e2e]">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-5 h-5 text-amber-500/90 shrink-0" aria-hidden />
+                          <h3 className="text-base font-semibold !text-white">Enterprise</h3>
+                        </div>
+                        <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                          <span className="text-3xl font-bold tabular-nums !text-white">$299</span>
+                          <span className="text-sm !text-[#94A3B8]">USD / monthly</span>
+                        </div>
+                        <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
+                          Seats, priority support, SLA options.
+                        </p>
                       </div>
-                      <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                        <span className="text-3xl font-bold tabular-nums !text-white">$299</span>
-                        <span className="text-sm !text-[#94A3B8]">USD / monthly</span>
+                      <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] lg:min-h-[10.5rem]">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider !text-[#64748B] mb-3">
+                          Includes:
+                        </p>
+                        <ul className="space-y-2 text-sm leading-snug !text-[#94A3B8]">
+                          {[
+                            'Everything in Growth',
+                            'Advanced seats and org tools',
+                            'Priority support',
+                            'SLA and custom options'
+                          ].map((line) => (
+                            <li key={line} className="flex gap-2.5">
+                              <Check className="w-4 h-4 shrink-0 text-[#8B5CF6] mt-0.5" aria-hidden />
+                              <span>{line}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
-                        For organizations that need seats, priority support, and SLA-level options.
-                      </p>
                     </div>
-                    <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] min-h-[11rem]">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider !text-[#64748B] mb-3">
-                        Includes:
-                      </p>
-                      <ul className="space-y-2.5 text-sm !text-[#94A3B8]">
-                        {[
-                          'Everything in Growth',
-                          'Advanced seat & org needs',
-                          'Priority support',
-                          'SLA & custom options'
-                        ].map((line) => (
-                          <li key={line} className="flex gap-2.5">
-                            <Check className="w-4 h-4 shrink-0 text-[#8B5CF6] mt-0.5" aria-hidden />
-                            <span>{line}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="px-5 pb-5 pt-1 mt-auto !bg-[#0A0A0F]">
+                    <div className="px-5 pb-5 pt-4 shrink-0 !bg-[#0A0A0F] border-t !border-[#1e1e2e]/80">
                       <Button
                         variant="outline"
                         className={cn('w-full', WIZARD_OUTLINE_BTN)}
