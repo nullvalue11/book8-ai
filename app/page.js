@@ -15,6 +15,7 @@ import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
 import LandingPage from "./(home)/LandingPage";
 import DataPrivacy from "./(home)/DataPrivacy";
+import SocialMediaLinks from "./components/SocialMediaLinks";
 import { useTheme } from "next-themes";
 import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Activity } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -1028,28 +1029,35 @@ function HomeContent(props) {
         {/* Footer */}
         <footer className="border-t border-white/10 mt-16">
           <div className="container mx-auto max-w-6xl px-6 py-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">B8</span>
+            <div className="flex flex-col gap-8">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">B8</span>
+                  </div>
+                  <span className="text-white/80 font-medium">Book8 AI</span>
                 </div>
-                <span className="text-white/80 font-medium">Book8 AI</span>
+                <nav
+                  aria-label="Footer"
+                  className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 text-sm"
+                >
+                  <Link href="/pricing" className="text-white/60 hover:text-white transition-colors">
+                    Pricing
+                  </Link>
+                  <Link href="/privacy" className="text-white/60 hover:text-white transition-colors">
+                    Privacy Policy
+                  </Link>
+                  <Link href="/terms" className="text-white/60 hover:text-white transition-colors">
+                    Terms &amp; Conditions
+                  </Link>
+                  <Link href="#data-transparency" className="text-white/60 hover:text-white transition-colors">
+                    Data Usage
+                  </Link>
+                  <span className="hidden sm:block w-px h-4 bg-white/20 shrink-0" aria-hidden />
+                  <SocialMediaLinks />
+                </nav>
               </div>
-              <nav className="flex items-center gap-6 text-sm">
-                <Link href="/pricing" className="text-white/60 hover:text-white transition-colors">
-                  Pricing
-                </Link>
-                <Link href="/privacy" className="text-white/60 hover:text-white transition-colors">
-                  Privacy Policy
-                </Link>
-                <Link href="/terms" className="text-white/60 hover:text-white transition-colors">
-                  Terms &amp; Conditions
-                </Link>
-                <Link href="#data-transparency" className="text-white/60 hover:text-white transition-colors">
-                  Data Usage
-                </Link>
-              </nav>
-              <p className="text-white/40 text-sm">
+              <p className="text-white/40 text-sm text-center border-t border-white/5 pt-6">
                 © {new Date().getFullYear()} Book8 AI Inc. All rights reserved.
               </p>
             </div>
