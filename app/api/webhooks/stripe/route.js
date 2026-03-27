@@ -253,6 +253,7 @@ async function handleSubscriptionEvent(event, stripe, database) {
           null
         let businessTimezone = session.metadata?.timezone || 'America/Toronto'
         let businessCategory = session.metadata?.category || null
+        let businessCustomCategory = session.metadata?.customCategory || null
 
         // Resolve business from DB — use actual businessId (biz_xxx) and name.
         // Handles legacy sessions with wrong metadata (slug/handle instead of biz_xxx).
@@ -286,6 +287,7 @@ async function handleSubscriptionEvent(event, stripe, database) {
             plan: provisionPlan,
             timezone: businessTimezone,
             category: businessCategory,
+            customCategory: businessCustomCategory,
             email: businessEmail,
             stripeCustomerId: session.customer || null,
             stripeSubscriptionId: session.subscription || null

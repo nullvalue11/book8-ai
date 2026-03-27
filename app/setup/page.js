@@ -23,7 +23,9 @@ import {
   Package,
   Sparkles,
   Zap,
-  Building2
+  Building2,
+  X,
+  Plus
 } from 'lucide-react'
 import TimeZonePicker from '@/components/TimeZonePicker'
 import { cn } from '@/lib/utils'
@@ -59,6 +61,30 @@ const TIME_OPTIONS = (() => {
   return opts
 })()
 
+const SERVICE_DURATION_OPTIONS = [15, 30, 45, 60, 90, 120]
+
+function generateServiceDraftRowKey() {
+  return `sr-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+function generateServiceIdForCore(name, durationMinutes) {
+  const slug = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'service'
+  return `${slug}-${durationMinutes}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function getServicesContextLabel(category, customCategory) {
+  if (category === 'other' && customCategory?.trim()) return customCategory.trim()
+  const c = CATEGORIES.find((x) => x.value === category)
+  return c?.label || 'Your business'
+}
+
 const DEFAULT_HOURS = {
   monday: [{ start: '09:00', end: '17:00' }],
   tuesday: [{ start: '09:00', end: '17:00' }],
@@ -80,14 +106,6 @@ const STEP_LABELS = [
 
 function emptyWeeklyHours() {
   return DAYS.reduce((acc, d) => ({ ...acc, [d]: [] }), {})
-}
-
-function getServiceName(svc) {
-  return svc?.name || svc?.serviceName || svc?.title || svc?.label || svc?.displayName || 'Service'
-}
-
-function getServiceDuration(svc) {
-  return svc?.durationMinutes ?? svc?.duration ?? 30
 }
 
 function formatPhone(num) {
@@ -338,7 +356,8 @@ function WizardContent() {
   const [currentStep, setCurrentStep] = useState(1)
   const [wizardData, setWizardData] = useState({
     businessName: '',
-    category: 'other',
+    category: 'barber',
+    customCategory: '',
     city: '',
     timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'America/Toronto',
     businessId: null,
@@ -348,7 +367,6 @@ function WizardContent() {
     calendarProvider: null,
     calendarSkipped: false,
     businessHours: { ...DEFAULT_HOURS },
-    services: [],
     phoneNumber: null,
     bookingHandle: null
   })
@@ -371,8 +389,33 @@ function WizardContent() {
     d.setDate(d.getDate() + 14)
     return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
   }, [])
-  const [servicesLoaded, setServicesLoaded] = useState(false)
   const [bookingHost, setBookingHost] = useState('book8.io')
+  /** Step 5: core service IDs to remove when saving (e.g. provisioned defaults) */
+  const [step5CoreServiceIds, setStep5CoreServiceIds] = useState([])
+  const [step5Rows, setStep5Rows] = useState([
+    { rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30 }
+  ])
+  const [step5Ready, setStep5Ready] = useState(false)
+  const step5ContinueState = useMemo(() => {
+    if (!step5Ready) return { canContinue: false, hint: '' }
+    if (saving) return { canContinue: false, hint: '' }
+    const named = step5Rows.map((r) => r.name.trim()).filter(Boolean)
+    if (named.length === 0) {
+      return {
+        canContinue: false,
+        hint: 'Add at least one service with a name to continue.'
+      }
+    }
+    const seen = new Set()
+    for (const n of named) {
+      const k = n.toLowerCase()
+      if (seen.has(k)) {
+        return { canContinue: false, hint: 'Each service name must be unique.' }
+      }
+      seen.add(k)
+    }
+    return { canContinue: true, hint: '' }
+  }, [step5Ready, saving, step5Rows])
 
   // Auth token
   useEffect(() => {
@@ -437,6 +480,8 @@ function WizardContent() {
             handle: primary.handle,
             businessName: primary.name,
             category: primary.category || 'other',
+            customCategory: primary.customCategory || '',
+            city: primary.city || prev.city || '',
             planActive,
             calendarConnected,
             calendarProvider
@@ -651,6 +696,14 @@ function WizardContent() {
       setError('Business name is required')
       return
     }
+    if (wizardData.category === 'other' && !wizardData.customCategory?.trim()) {
+      setError('Please describe what type of business you run')
+      return
+    }
+    if (wizardData.category === 'other' && wizardData.customCategory.trim().length < 2) {
+      setError('Business type must be at least 2 characters')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -663,6 +716,9 @@ function WizardContent() {
         body: JSON.stringify({
           name: wizardData.businessName.trim(),
           category: wizardData.category,
+          customCategory:
+            wizardData.category === 'other' ? wizardData.customCategory.trim() : undefined,
+          city: wizardData.city?.trim() || undefined,
           timezone: wizardData.timezone
         })
       })
@@ -818,45 +874,160 @@ function WizardContent() {
     }
   }
 
-  // Step 5: Services - load and continue (try handle first, then businessId as fallback)
   useEffect(() => {
-    if (currentStep !== 5 || servicesLoaded) return
-    const loadServices = async () => {
+    if (currentStep !== 5) {
+      setStep5Ready(false)
+      setStep5CoreServiceIds([])
+      setStep5Rows([{ rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30 }])
+    }
+  }, [currentStep])
+
+  // Step 5: load existing core service IDs (defaults to delete on save); UI starts with one empty row
+  useEffect(() => {
+    if (currentStep !== 5 || !token) return
+    let cancelled = false
+    setStep5Ready(false)
+    ;(async () => {
+      const ids = []
       try {
+        let list = []
         if (wizardData.handle) {
-          const r = await fetch(`/api/public/services?handle=${encodeURIComponent(wizardData.handle)}`, { cache: 'no-store' })
+          const r = await fetch(`/api/public/services?handle=${encodeURIComponent(wizardData.handle)}`, {
+            cache: 'no-store'
+          })
           const data = await r.json()
-          if (data.ok && Array.isArray(data.services)) {
-            console.log('[setup] Services loaded:', JSON.stringify(data.services))
-            setWizardData((prev) => ({ ...prev, services: data.services }))
-            setServicesLoaded(true)
-            return
-          }
+          if (data.ok && Array.isArray(data.services)) list = data.services
         }
-        if (wizardData.businessId) {
+        if (!list.length && wizardData.businessId) {
           const r = await fetch(`/api/business/${wizardData.businessId}/services`, {
             headers: { Authorization: `Bearer ${token}` },
             cache: 'no-store'
           })
           const data = await r.json()
-          const services = data.services ?? (Array.isArray(data) ? data : [])
-          if (Array.isArray(services)) {
-            console.log('[setup] Services loaded:', JSON.stringify(services))
-            setWizardData((prev) => ({ ...prev, services }))
+          list = data.services ?? (Array.isArray(data) ? data : [])
+        }
+        if (Array.isArray(list)) {
+          for (const s of list) {
+            const id = s.serviceId || s.id
+            if (id) ids.push(String(id))
           }
         }
       } catch (err) {
-        console.error('[setup] Failed to load services:', err)
-      } finally {
-        setServicesLoaded(true)
+        console.error('[setup] Step 5 load service ids:', err)
       }
+      if (!cancelled) {
+        setStep5CoreServiceIds(ids)
+        setStep5Rows([{ rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30 }])
+        setStep5Ready(true)
+      }
+    })()
+    return () => {
+      cancelled = true
     }
-    loadServices()
-  }, [currentStep, wizardData.handle, wizardData.businessId, servicesLoaded, token])
+  }, [currentStep, wizardData.handle, wizardData.businessId, token])
 
-  function handleStep5Submit() {
-    setCurrentStep(6)
-    setStep6LineState('idle')
+  function updateStep5Row(rowKey, patch) {
+    setError('')
+    setStep5Rows((rows) => rows.map((r) => (r.rowKey === rowKey ? { ...r, ...patch } : r)))
+  }
+
+  function addStep5Row() {
+    setError('')
+    setStep5Rows((rows) => [
+      ...rows,
+      { rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30 }
+    ])
+  }
+
+  function removeStep5Row(rowKey) {
+    setError('')
+    setStep5Rows((rows) => {
+      if (rows.length <= 1) return rows
+      return rows.filter((r) => r.rowKey !== rowKey)
+    })
+  }
+
+  async function handleStep5Submit() {
+    if (!wizardData.businessId) return
+    const trimmedRows = step5Rows
+      .map((r) => ({
+        rowKey: r.rowKey,
+        name: (r.name || '').trim(),
+        durationMinutes: Number(r.durationMinutes) || 30
+      }))
+      .filter((r) => r.name.length > 0)
+    if (trimmedRows.length === 0) {
+      setError('Add at least one service with a name')
+      return
+    }
+    const seen = new Set()
+    for (const r of trimmedRows) {
+      const k = r.name.toLowerCase()
+      if (seen.has(k)) {
+        setError(`Duplicate service name: "${r.name}"`)
+        return
+      }
+      seen.add(k)
+    }
+    setSaving(true)
+    setError('')
+    try {
+      for (const serviceId of step5CoreServiceIds) {
+        try {
+          const dr = await fetch(
+            `/api/business/${encodeURIComponent(wizardData.businessId)}/services/${encodeURIComponent(serviceId)}`,
+            { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+          )
+          if (!dr.ok && dr.status !== 404) {
+            const errBody = await dr.json().catch(() => ({}))
+            console.warn('[setup] DELETE service', serviceId, errBody)
+          }
+        } catch (e) {
+          console.warn('[setup] DELETE service failed', serviceId, e)
+        }
+      }
+      for (const r of trimmedRows) {
+        const serviceId = generateServiceIdForCore(r.name, r.durationMinutes)
+        const pr = await fetch(`/api/business/${wizardData.businessId}/services`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            serviceId,
+            name: r.name,
+            durationMinutes: r.durationMinutes,
+            active: true
+          })
+        })
+        const pdata = await pr.json().catch(() => ({}))
+        if (!pr.ok) {
+          throw new Error(pdata.error || `Could not save service: ${r.name}`)
+        }
+      }
+      const catalogPayload = {
+        businessId: wizardData.businessId,
+        category: wizardData.category,
+        customCategory: wizardData.category === 'other' ? wizardData.customCategory?.trim() || null : null,
+        services: trimmedRows.map((r) => ({ name: r.name, durationMinutes: r.durationMinutes }))
+      }
+      await fetch(`/api/business/${encodeURIComponent(wizardData.businessId)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ onboardingServicesCatalog: catalogPayload })
+      }).catch(() => {})
+
+      setCurrentStep(6)
+      setStep6LineState('idle')
+    } catch (err) {
+      setError(err.message || 'Failed to save services')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function handleGoToDashboard() {
@@ -961,7 +1132,12 @@ function WizardContent() {
                   <Label className={WIZARD_LABEL}>Category *</Label>
                   <Select
                     value={wizardData.category}
-                    onValueChange={(v) => updateWizard({ category: v })}
+                    onValueChange={(v) =>
+                      updateWizard({
+                        category: v,
+                        ...(v !== 'other' ? { customCategory: '' } : {})
+                      })
+                    }
                   >
                     <SelectTrigger className={WIZARD_SELECT_TRIGGER}>
                       <SelectValue />
@@ -975,6 +1151,17 @@ function WizardContent() {
                     </SelectContent>
                   </Select>
                 </div>
+                {wizardData.category === 'other' && (
+                  <div>
+                    <Label className={WIZARD_LABEL}>What type of business do you run? *</Label>
+                    <Input
+                      className={WIZARD_INPUT}
+                      placeholder="e.g. Tattoo Shop, Dog Grooming, Acupuncture"
+                      value={wizardData.customCategory}
+                      onChange={(e) => updateWizard({ customCategory: e.target.value })}
+                    />
+                  </div>
+                )}
                 <div>
                   <Label className={WIZARD_LABEL}>City (optional)</Label>
                   <Input
@@ -998,7 +1185,11 @@ function WizardContent() {
                 <Button
                   className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white mt-4"
                   onClick={handleStep1Submit}
-                  disabled={saving || !wizardData.businessName?.trim()}
+                  disabled={
+                    saving ||
+                    !wizardData.businessName?.trim() ||
+                    (wizardData.category === 'other' && !wizardData.customCategory?.trim())
+                  }
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   Continue
@@ -1370,42 +1561,91 @@ function WizardContent() {
         {currentStep === 5 && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">Your services</h1>
+              <h1 className="text-2xl font-bold text-white">Add your services</h1>
               <p className="text-[#94A3B8] mt-1">
-                We&apos;ve created default services based on your category. Customize from your dashboard later.
+                What do your customers book? Add at least one service.
+              </p>
+              <p className="text-sm !text-[#64748B] mt-3">
+                Services for:{' '}
+                <span className="!text-white font-medium">
+                  {getServicesContextLabel(wizardData.category, wizardData.customCategory)}
+                </span>
               </p>
             </div>
             <Card className={WIZARD_CARD}>
               <CardContent className="pt-6 space-y-4">
-                {!servicesLoaded ? (
-                  <p className="!text-[#94A3B8] text-sm">Loading services...</p>
-                ) : wizardData.services.length === 0 ? (
-                  <p className="!text-[#94A3B8] text-sm">
-                    No services found. Default services will be created when your AI agent is set up. You can customize them from your dashboard.
-                  </p>
+                {!step5Ready ? (
+                  <div className="flex items-center gap-2 text-sm !text-[#94A3B8]">
+                    <Loader2 className="w-4 h-4 shrink-0 animate-spin text-[#8B5CF6]" />
+                    Preparing…
+                  </div>
                 ) : (
-                  <ul className="space-y-3">
-                    {wizardData.services.map((svc, i) => (
-                      <li
-                        key={svc.serviceId || svc.id || i}
-                        className="flex items-center gap-3 rounded-lg !border-[#1e1e2e] border px-4 py-3"
-                      >
-                        <Input
-                          className={cn('flex-1 min-w-0', WIZARD_INPUT_INLINE)}
-                          placeholder="Service name"
-                          value={getServiceName(svc)}
-                          readOnly
-                        />
-                        <span className="!text-[#64748B] text-sm shrink-0">{getServiceDuration(svc)} min</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    <ul className="space-y-3">
+                      {step5Rows.map((row) => (
+                        <li
+                          key={row.rowKey}
+                          className="flex flex-wrap items-center gap-3 rounded-lg !border-[#1e1e2e] border px-4 py-3"
+                        >
+                          <Input
+                            className={cn('flex-1 min-w-[12rem]', WIZARD_INPUT_INLINE)}
+                            placeholder="e.g. Haircut, Deep Tissue Massage, Oil Change..."
+                            value={row.name}
+                            onChange={(e) => updateStep5Row(row.rowKey, { name: e.target.value })}
+                            aria-label="Service name"
+                          />
+                          <div className="flex items-center gap-2 shrink-0">
+                            <select
+                              className="h-9 rounded-md !border-[#1e1e2e] !bg-[#0A0A0F] !text-white text-sm px-2 border min-w-[5.5rem]"
+                              value={String(row.durationMinutes)}
+                              onChange={(e) =>
+                                updateStep5Row(row.rowKey, {
+                                  durationMinutes: Number(e.target.value)
+                                })
+                              }
+                              aria-label="Duration"
+                            >
+                              {SERVICE_DURATION_OPTIONS.map((m) => (
+                                <option key={m} value={m}>
+                                  {m} min
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="!text-[#94A3B8] hover:!text-white hover:!bg-[#1e1e2e] shrink-0"
+                              onClick={() => removeStep5Row(row.rowKey)}
+                              disabled={step5Rows.length <= 1}
+                              aria-label="Remove service"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn('w-full sm:w-auto', WIZARD_OUTLINE_MUTED)}
+                      onClick={addStep5Row}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add another service
+                    </Button>
+                    {step5ContinueState.hint ? (
+                      <p className="text-sm text-amber-200/90">{step5ContinueState.hint}</p>
+                    ) : null}
+                  </>
                 )}
                 <div className="flex gap-2 pt-4">
                   <Button
                     variant="outline"
                     className={WIZARD_OUTLINE_MUTED}
                     onClick={() => setCurrentStep(4)}
+                    disabled={saving}
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back
@@ -1413,7 +1653,9 @@ function WizardContent() {
                   <Button
                     className="bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white flex-1"
                     onClick={handleStep5Submit}
+                    disabled={saving || !step5ContinueState.canContinue}
                   >
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     Continue
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>

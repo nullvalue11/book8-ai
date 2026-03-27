@@ -190,6 +190,9 @@ export async function POST(request) {
           ownerEmail: resolvedBusiness.ownerEmail || user.email || null,
           timezone: resolvedBusiness.timezone || 'America/Toronto',
           ...(resolvedBusiness.category != null && { category: resolvedBusiness.category }),
+          ...(resolvedBusiness.customCategory && {
+            customCategory: String(resolvedBusiness.customCategory).slice(0, 120)
+          }),
           plan: planName
         }),
         numberSetupMethod: 'pending'

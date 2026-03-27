@@ -114,11 +114,32 @@ export async function POST(request) {
       businessId: inputBusinessId,
       name, 
       category = 'other',
+      customCategory: bodyCustomCategory,
+      city: bodyCity,
       skipVoiceTest = false, 
       skipBillingCheck = false,
       timezone: bodyTimezone
     } = body
-    
+
+    const cat = typeof category === 'string' ? category.trim() || 'other' : 'other'
+    let customCategory = null
+    if (cat === 'other') {
+      const cc = typeof bodyCustomCategory === 'string' ? bodyCustomCategory.trim() : ''
+      if (cc.length < 2) {
+        return NextResponse.json(
+          { ok: false, error: 'Please describe your business type (at least 2 characters).' },
+          { status: 400 }
+        )
+      }
+      if (cc.length > 120) {
+        return NextResponse.json(
+          { ok: false, error: 'Business type description is too long (max 120 characters).' },
+          { status: 400 }
+        )
+      }
+      customCategory = cc
+    }
+
     const validation = validateBusinessInput({ name, businessId: inputBusinessId })
     if (!validation.valid) {
       return NextResponse.json(
@@ -192,12 +213,23 @@ export async function POST(request) {
       name: name.trim(),
       ownerUserId: userId,
       ownerEmail: userEmail,
-      category: category || 'other',
+      category: cat,
       skipVoiceTest,
       skipBillingCheck
     })
     
     businessData.name = name.trim()
+    businessData.category = cat
+    businessData.customCategory = customCategory
+    if (cat !== 'other') {
+      businessData.customCategory = null
+    }
+    if (bodyCity != null && typeof bodyCity === 'string' && bodyCity.trim()) {
+      businessData.city = bodyCity.trim().slice(0, 120)
+    }
+    if (bodyTimezone && typeof bodyTimezone === 'string' && isValidIanaTimeZone(bodyTimezone.trim())) {
+      businessData.timezone = bodyTimezone.trim()
+    }
 
     // Auto-generate handle for new businesses (URL-friendly from name)
     if (!existing) {
@@ -210,7 +242,6 @@ export async function POST(request) {
         businessData.handle = handle
       }
     }
-    businessData.category = category || 'other'
     businessData.provisioningOptions = { skipVoiceTest, skipBillingCheck }
     businessData.updatedAt = new Date()
     businessData.ops = updateBusinessOps(businessData, {
@@ -276,6 +307,7 @@ export async function POST(request) {
           plan: inheritedPlan,
           timezone: businessData.timezone || 'America/Toronto',
           category: businessData.category || 'other',
+          customCategory: businessData.customCategory ?? undefined,
           email: userEmail,
           stripeCustomerId: source.subscription?.stripeCustomerId ?? undefined,
           stripeSubscriptionId: source.subscription?.stripeSubscriptionId ?? undefined
@@ -336,6 +368,8 @@ export async function GET(request) {
       timezone: b.timezone || null,
       handle: b.handle || null,
       category: b.category || 'other',
+      customCategory: b.customCategory || null,
+      city: b.city || null,
       status: b.status,
       statusReason: b.statusReason,
       plan: b.plan || b.subscription?.plan || null,

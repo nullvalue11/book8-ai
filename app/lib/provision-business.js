@@ -14,7 +14,8 @@ import { env } from '@/lib/env'
  * @param {string} opts.name - Business name
  * @param {string} opts.plan - starter | growth | enterprise
  * @param {string} [opts.timezone] - IANA timezone, default America/Toronto
- * @param {string} [opts.category] - Business category
+ * @param {string} [opts.category] - Business category key
+ * @param {string} [opts.customCategory] - Free-text type when category is other
  * @param {string} [opts.email] - Owner email (alias for ownerEmail)
  * @param {string} [opts.stripeCustomerId] - From Stripe session.customer
  * @param {string} [opts.stripeSubscriptionId] - From Stripe session.subscription
@@ -49,6 +50,8 @@ export async function provisionOnCoreApi({
       plan: plan || 'starter',
       timezone,
       ...(category != null && { category }),
+      ...(customCategory != null &&
+        String(customCategory).trim() && { customCategory: String(customCategory).trim() }),
       ...(email && { email, ownerEmail: email }),
       ...(stripeCustomerId != null && { stripeCustomerId }),
       ...(stripeSubscriptionId != null && { stripeSubscriptionId })

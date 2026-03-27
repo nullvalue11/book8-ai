@@ -82,6 +82,8 @@ export async function GET(request, { params }) {
       business: {
         businessId: business.businessId,
         name: business.name,
+        category: business.category || null,
+        customCategory: business.customCategory || null,
         status: business.status,
         statusReason: business.statusReason,
         subscription: {
@@ -118,5 +120,68 @@ export async function GET(request, { params }) {
       ok: false,
       error: error.message || 'Internal server error'
     }, { status: 500 })
+  }
+}
+
+/**
+ * PATCH — minimal owner updates (onboarding service catalog snapshot for analytics / future suggestions).
+ */
+export async function PATCH(request, { params }) {
+  try {
+    const { businessId } = params
+    if (!businessId) {
+      return NextResponse.json({ ok: false, error: 'businessId is required' }, { status: 400 })
+    }
+
+    const database = await connect()
+    const { payload: authPayload } = await verifyAuth(request, database)
+
+    if (!authPayload?.sub) {
+      return NextResponse.json({ ok: false, error: 'Authentication required' }, { status: 401 })
+    }
+
+    const userId = authPayload.sub
+    const business = await database.collection(COLLECTION_NAME).findOne({ businessId })
+
+    if (!business) {
+      return NextResponse.json({ ok: false, error: 'Business not found' }, { status: 404 })
+    }
+
+    if (business.ownerUserId !== userId) {
+      return NextResponse.json({ ok: false, error: 'Access denied' }, { status: 403 })
+    }
+
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 })
+    }
+
+    const { onboardingServicesCatalog } = body || {}
+    if (!onboardingServicesCatalog || typeof onboardingServicesCatalog !== 'object') {
+      return NextResponse.json(
+        { ok: false, error: 'onboardingServicesCatalog object is required' },
+        { status: 400 }
+      )
+    }
+
+    const snapshot = {
+      ...onboardingServicesCatalog,
+      savedAt: new Date().toISOString()
+    }
+
+    await database.collection(COLLECTION_NAME).updateOne(
+      { businessId },
+      { $set: { onboardingServicesCatalog: snapshot, updatedAt: new Date() } }
+    )
+
+    return NextResponse.json({ ok: true, onboardingServicesCatalog: snapshot })
+  } catch (error) {
+    console.error('[business/[businessId] PATCH] Error:', error)
+    return NextResponse.json(
+      { ok: false, error: error.message || 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
