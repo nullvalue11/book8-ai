@@ -1,4 +1,5 @@
 {
+  "installCommand": "bash scripts/vercel-install.sh",
   "crons": [
     { "path": "/api/billing/usage/run-daily", "schedule": "0 2 * * *" }
   ]
