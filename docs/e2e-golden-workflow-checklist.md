@@ -88,7 +88,7 @@ Verify these are set in **Vercel → Project book8-ai → Settings → Environme
 
 ---
 
-### Step D: Stripe Subscription (Test Mode)
+### Step D: Stripe Subscription (Test Mode) — Dashboard Path
 **WHERE:** https://book8.io/dashboard/business
 
 1. [ ] On the business page, find your business
@@ -100,9 +100,25 @@ Verify these are set in **Vercel → Project book8-ai → Settings → Environme
 4. [ ] Return to dashboard
 
 **Expected Result:**
-- [ ] Redirect back to `/dashboard/business?checkout=success`
+- [ ] Redirect back to `/dashboard/business?checkout=success&businessId=...`
 - [ ] Business shows "Subscription: active"
 - [ ] Green checkmark appears next to subscription status
+
+---
+
+### Step D2: Stripe Checkout from Setup Wizard (Self-Serve Onboarding)
+**WHERE:** https://book8.io/setup (logged in, after business profile saved — Step 2 Plan)
+
+1. [ ] Start at `/setup`, complete Step 1 (business info), reach Step 2 (plan selection)
+2. [ ] Choose a paid plan (e.g. Growth trial / Starter / Enterprise) and complete Stripe test checkout
+3. [ ] After payment, Stripe redirects back to the app
+
+**Expected Result:**
+- [ ] Redirect to `/setup?step=3&businessId=<biz_id>&checkout=success` (not `/dashboard/business`)
+- [ ] Wizard shows **Step 3 — Connect your calendar**
+- [ ] Continuing through Steps 3–6 works (hours, services, Live)
+
+**Implementation note:** `/api/billing/checkout` must receive `returnTo: "setup"` from the setup page so `success_url` targets the wizard; other callers (pricing paywall with `businessId` but no `returnTo`) still return to the dashboard.
 
 ---
 

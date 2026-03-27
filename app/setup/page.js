@@ -414,7 +414,14 @@ function WizardContent() {
       setBusinesses(bizList)
 
       if (bizList.length > 0) {
-        const primary = bizList[0]
+        const urlBizId = searchParams.get('businessId')
+        let primary = bizList[0]
+        if (urlBizId) {
+          const match = bizList.find(
+            (b) => b.businessId === urlBizId || b.id === urlBizId
+          )
+          if (match) primary = match
+        }
         const planActive =
           primary.subscription?.status === 'active' ||
           primary.subscription?.status === 'trialing' ||
@@ -497,13 +504,12 @@ function WizardContent() {
     loadInitialState()
   }, [loadInitialState])
 
-  // Handle return from OAuth or checkout
+  // Re-sync after OAuth return (same-tab navigation); checkout uses full redirect — loadInitialState already runs on mount
   useEffect(() => {
     const googleConnected = searchParams.get('google_connected')
     const outlookConnected = searchParams.get('outlook_connected')
-    const checkoutSuccess = searchParams.get('checkout') === 'success'
     const bizId = searchParams.get('businessId')
-    if ((googleConnected || outlookConnected || checkoutSuccess) && bizId && wizardData.businessId === bizId) {
+    if ((googleConnected || outlookConnected) && bizId && wizardData.businessId === bizId) {
       loadInitialState()
     }
   }, [searchParams, wizardData.businessId, loadInitialState])
@@ -718,7 +724,8 @@ function WizardContent() {
       },
       body: JSON.stringify({
         priceId,
-        businessId: wizardData.businessId
+        businessId: wizardData.businessId,
+        returnTo: 'setup'
       })
     })
       .then((r) => r.json())

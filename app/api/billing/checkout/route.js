@@ -89,7 +89,7 @@ export async function POST(request) {
     
     const user = auth.user
     const body = await request.json()
-    const { priceId, businessId } = body
+    const { priceId, businessId, returnTo } = body
     requestPriceId = priceId // Store for error handling
     
     if (!priceId) {
@@ -137,13 +137,29 @@ export async function POST(request) {
     // Build line items (base plan + metered minutes)
     const lineItems = buildSubscriptionLineItems(priceId)
 
-    // Determine success/cancel URLs - go to dashboard with checkout success
-    const successUrl = businessId 
-      ? `${env.BASE_URL}/dashboard/business?checkout=success&businessId=${businessId}`
-      : `${env.BASE_URL}/?checkout=success`
-    const cancelUrl = businessId
-      ? `${env.BASE_URL}/dashboard/business?checkout=canceled&businessId=${businessId}`
-      : `${env.BASE_URL}/pricing?canceled=true`
+    // Success/cancel URLs: setup wizard vs dashboard vs anonymous checkout
+    const baseRoot = String(env.BASE_URL || '').replace(/\/$/, '')
+    let successUrl
+    let cancelUrl
+    if (returnTo === 'setup' && businessId && typeof businessId === 'string') {
+      const bid = businessId.trim()
+      const ok = new URL(`${baseRoot}/setup`)
+      ok.searchParams.set('step', '3')
+      ok.searchParams.set('businessId', bid)
+      ok.searchParams.set('checkout', 'success')
+      successUrl = ok.toString()
+      const cancel = new URL(`${baseRoot}/setup`)
+      cancel.searchParams.set('step', '2')
+      cancel.searchParams.set('businessId', bid)
+      cancel.searchParams.set('checkout', 'canceled')
+      cancelUrl = cancel.toString()
+    } else if (businessId) {
+      successUrl = `${baseRoot}/dashboard/business?checkout=success&businessId=${encodeURIComponent(businessId)}`
+      cancelUrl = `${baseRoot}/dashboard/business?checkout=canceled&businessId=${encodeURIComponent(businessId)}`
+    } else {
+      successUrl = `${baseRoot}/?checkout=success`
+      cancelUrl = `${baseRoot}/pricing?canceled=true`
+    }
     
     // Resolve business and enrich metadata for tenant provisioning in webhook.
     // CRITICAL: Use actual businessId (biz_xxx) and business name from DB, never raw input.
