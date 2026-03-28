@@ -12,7 +12,9 @@
         "test": "jest",
         "test:env": "jest tests/env.test.js",
         "check:env": "bash scripts/check-env-usage.sh",
-        "ci:checks": "npm run check:env && npm run lint"
+        "ci:checks": "npm run check:env && npm run lint",
+        "purge:dashboard:dry": "node scripts/purgeDashboardData.js --dry-run",
+        "purge:dashboard": "node scripts/purgeDashboardData.js"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",
