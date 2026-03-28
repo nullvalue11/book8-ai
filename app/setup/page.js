@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import TimeZonePicker from '@/components/TimeZonePicker'
 import { cn } from '@/lib/utils'
+import { PRIMARY_LANGUAGE_OPTIONS } from '@/lib/primary-languages'
 
 const CATEGORIES = [
   { value: 'barber', label: 'Barber' },
@@ -359,7 +360,9 @@ function WizardContent() {
     category: 'barber',
     customCategory: '',
     city: '',
-    timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'America/Toronto',
+    timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+    primaryLanguage: 'en',
+    multilingualEnabled: true,
     businessId: null,
     handle: null,
     planActive: false,
@@ -482,6 +485,11 @@ function WizardContent() {
             category: primary.category || 'other',
             customCategory: primary.customCategory || '',
             city: primary.city || prev.city || '',
+            primaryLanguage: primary.primaryLanguage || prev.primaryLanguage || 'en',
+            multilingualEnabled:
+              primary.multilingualEnabled !== undefined
+                ? primary.multilingualEnabled
+                : prev.multilingualEnabled !== false,
             planActive,
             calendarConnected,
             calendarProvider
@@ -719,7 +727,9 @@ function WizardContent() {
           customCategory:
             wizardData.category === 'other' ? wizardData.customCategory.trim() : undefined,
           city: wizardData.city?.trim() || undefined,
-          timezone: wizardData.timezone
+          timezone: wizardData.timezone,
+          primaryLanguage: wizardData.primaryLanguage,
+          multilingualEnabled: wizardData.multilingualEnabled
         })
       })
       const regData = await regRes.json()
@@ -1123,7 +1133,7 @@ function WizardContent() {
                   <Label className={WIZARD_LABEL}>Business name *</Label>
                   <Input
                     className={WIZARD_INPUT}
-                    placeholder="e.g. Ottawa Dental Clinic"
+                    placeholder="e.g. Riverside Dental Studio"
                     value={wizardData.businessName}
                     onChange={(e) => updateWizard({ businessName: e.target.value })}
                   />
@@ -1166,7 +1176,7 @@ function WizardContent() {
                   <Label className={WIZARD_LABEL}>City (optional)</Label>
                   <Input
                     className={WIZARD_INPUT}
-                    placeholder="e.g. Ottawa"
+                    placeholder="e.g. Chicago"
                     value={wizardData.city}
                     onChange={(e) => updateWizard({ city: e.target.value })}
                   />
@@ -1181,6 +1191,44 @@ function WizardContent() {
                     inputClassName="!bg-[#0A0A0F] !border-[#1e1e2e] !text-white placeholder:!text-slate-500"
                     idPrefix="setup-wizard"
                   />
+                </div>
+                <div>
+                  <Label className={WIZARD_LABEL}>Primary language</Label>
+                  <Select
+                    value={wizardData.primaryLanguage}
+                    onValueChange={(v) => updateWizard({ primaryLanguage: v })}
+                  >
+                    <SelectTrigger className={cn('mt-1', WIZARD_SELECT_TRIGGER)}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className={WIZARD_SELECT_CONTENT}>
+                      {PRIMARY_LANGUAGE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.code} value={opt.code} className={WIZARD_SELECT_ITEM}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs !text-[#94A3B8] mt-2">
+                    Your AI receptionist greets callers in this language by default. It automatically switches
+                    to your customer&apos;s language during the call when multilingual is on.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/60 p-4">
+                  <Switch
+                    id="setup-multilingual"
+                    checked={wizardData.multilingualEnabled}
+                    onCheckedChange={(on) => updateWizard({ multilingualEnabled: on })}
+                    className="data-[state=checked]:bg-[#8B5CF6] mt-0.5"
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="setup-multilingual" className={cn(WIZARD_LABEL, '!text-white cursor-pointer')}>
+                      Enable multilingual (recommended)
+                    </Label>
+                    <p className="text-xs !text-[#94A3B8]">
+                      Automatically detect and respond fluently in 70+ languages — no extra setup.
+                    </p>
+                  </div>
                 </div>
                 <Button
                   className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white mt-4"
@@ -1689,6 +1737,10 @@ function WizardContent() {
                       </p>
                       <p className="text-sm !text-[#94A3B8] mt-1">
                         Customers can call or text this number to book appointments.
+                      </p>
+                      <p className="text-xs !text-[#64748B] mt-3 border border-[#1e1e2e] rounded-lg px-3 py-2 bg-[#0A0A0F]/50">
+                        Your AI receptionist speaks 70+ languages. Try calling in French or Spanish to hear it in
+                        action.
                       </p>
                     </>
                   ) : step6LineState === 'error' ? (

@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 import { isValidIanaTimeZone } from '@/lib/timezones'
+import { normalizePrimaryLanguage } from '@/lib/primary-languages'
 import { syncTimezoneToCore } from '@/lib/sync-calendar-to-core'
 
 export const runtime = 'nodejs'
@@ -49,7 +50,12 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 })
     }
 
-    const { businessId: inputBusinessId, timezone } = body || {}
+    const {
+      businessId: inputBusinessId,
+      timezone,
+      primaryLanguage: bodyPrimaryLanguage,
+      multilingualEnabled: bodyMultilingual
+    } = body || {}
     if (!timezone || typeof timezone !== 'string') {
       return NextResponse.json({ ok: false, error: 'timezone is required' }, { status: 400 })
     }
@@ -83,20 +89,44 @@ export async function POST(request) {
 
     const bid = business.businessId || business.id
 
+    const primaryLanguage = normalizePrimaryLanguage(
+      typeof bodyPrimaryLanguage === 'string' && bodyPrimaryLanguage.trim()
+        ? bodyPrimaryLanguage
+        : business.primaryLanguage
+    )
+    const multilingualEnabled =
+      typeof bodyMultilingual === 'boolean'
+        ? bodyMultilingual
+        : business.multilingualEnabled !== false
+
     await database.collection(BUSINESS_COLLECTION).updateOne(
       {
         $or: [{ businessId: bid }, { id: bid }],
         ownerUserId: payload.sub
       },
-      { $set: { timezone: tz, updatedAt: new Date() } }
+      {
+        $set: {
+          timezone: tz,
+          primaryLanguage,
+          multilingualEnabled,
+          updatedAt: new Date()
+        }
+      }
     )
 
-    const coreSync = await syncTimezoneToCore({ businessId: bid, timezone: tz })
+    const coreSync = await syncTimezoneToCore({
+      businessId: bid,
+      timezone: tz,
+      primaryLanguage,
+      multilingualEnabled
+    })
 
     return NextResponse.json({
       ok: true,
       businessId: bid,
       timezone: tz,
+      primaryLanguage,
+      multilingualEnabled,
       coreApiSync: coreSync
     })
   } catch (err) {

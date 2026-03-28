@@ -19,6 +19,7 @@ const plans = [
     icon: Zap,
     features: [
       "Unlimited bookings",
+      "Multilingual AI voice (English + auto-detect for many languages)",
       "Google Calendar sync",
       "Public booking page",
       "Email reminders",
@@ -40,6 +41,7 @@ const plans = [
     icon: Rocket,
     features: [
       "Everything in Starter",
+      "Multilingual AI voice (70+ languages)",
       "Multiple event types",
       "AI phone agent integration",
       "Advanced analytics",
@@ -60,6 +62,8 @@ const plans = [
     icon: Building2,
     features: [
       "Everything in Growth",
+      "Multilingual AI voice (70+ languages)",
+      "Custom voice per language (where supported)",
       "Unlimited team members",
       "Custom integrations",
       "Dedicated account manager",

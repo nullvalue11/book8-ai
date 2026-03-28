@@ -50,9 +50,15 @@ export async function syncCalendarToCore({ businessId, provider, connected }) {
 }
 
 /**
- * Push business timezone to core-api (same internal route as calendar; core may merge fields).
+ * Push business timezone (and optional voice/language fields) to core-api.
+ * Uses /internal/business/update-calendar — core merges fields on the business record.
  */
-export async function syncTimezoneToCore({ businessId, timezone }) {
+export async function syncTimezoneToCore({
+  businessId,
+  timezone,
+  primaryLanguage,
+  multilingualEnabled
+}) {
   const CORE_API_URL =
     env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
   const secret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET
@@ -69,6 +75,16 @@ export async function syncTimezoneToCore({ businessId, timezone }) {
 
   try {
     const baseUrl = CORE_API_URL.replace(/\/$/, '')
+    const payload = {
+      businessId,
+      timezone,
+      ...(primaryLanguage != null && primaryLanguage !== ''
+        ? { primaryLanguage }
+        : {}),
+      ...(multilingualEnabled != null
+        ? { multilingualEnabled: !!multilingualEnabled }
+        : {})
+    }
     const response = await fetch(`${baseUrl}/internal/business/update-calendar`, {
       method: 'POST',
       headers: {
@@ -76,10 +92,7 @@ export async function syncTimezoneToCore({ businessId, timezone }) {
         'x-book8-internal-secret': secret,
         'x-internal-secret': secret
       },
-      body: JSON.stringify({
-        businessId,
-        timezone
-      })
+      body: JSON.stringify(payload)
     })
 
     if (!response.ok) {

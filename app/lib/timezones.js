@@ -4,7 +4,7 @@
 
 /** North American zones shown first with friendly labels */
 export const PRIORITY_TIMEZONES = [
-  { value: 'America/Toronto', label: 'Eastern — Toronto' },
+  { value: 'America/Toronto', label: 'Eastern Time (ET)' },
   { value: 'America/New_York', label: 'Eastern — New York' },
   { value: 'America/Chicago', label: 'Central — Chicago' },
   { value: 'America/Winnipeg', label: 'Central — Winnipeg' },

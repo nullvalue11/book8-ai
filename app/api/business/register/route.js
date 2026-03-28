@@ -18,6 +18,7 @@ import {
 } from '@/lib/schemas/business'
 import { provisionOnCoreApi } from '@/lib/provision-business'
 import { isValidIanaTimeZone } from '@/lib/timezones'
+import { normalizePrimaryLanguage } from '@/lib/primary-languages'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -118,7 +119,9 @@ export async function POST(request) {
       city: bodyCity,
       skipVoiceTest = false, 
       skipBillingCheck = false,
-      timezone: bodyTimezone
+      timezone: bodyTimezone,
+      primaryLanguage: bodyPrimaryLanguage,
+      multilingualEnabled: bodyMultilingual
     } = body
 
     const cat = typeof category === 'string' ? category.trim() || 'other' : 'other'
@@ -308,6 +311,8 @@ export async function POST(request) {
           timezone: businessData.timezone || 'America/Toronto',
           category: businessData.category || 'other',
           customCategory: businessData.customCategory ?? undefined,
+          primaryLanguage: businessData.primaryLanguage,
+          multilingualEnabled: businessData.multilingualEnabled,
           email: userEmail,
           stripeCustomerId: source.subscription?.stripeCustomerId ?? undefined,
           stripeSubscriptionId: source.subscription?.stripeSubscriptionId ?? undefined
@@ -370,6 +375,8 @@ export async function GET(request) {
       category: b.category || 'other',
       customCategory: b.customCategory || null,
       city: b.city || null,
+      primaryLanguage: b.primaryLanguage || 'en',
+      multilingualEnabled: b.multilingualEnabled !== false,
       status: b.status,
       statusReason: b.statusReason,
       plan: b.plan || b.subscription?.plan || null,

@@ -16,6 +16,7 @@ import {
   Sparkles,
   Zap,
   Rocket,
+  Languages,
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,10 @@ const faqItems = [
   {
     q: 'Is there a contract?',
     a: 'No. Monthly billing, cancel anytime.',
+  },
+  {
+    q: 'What languages does the AI support?',
+    a: "Book8 AI automatically detects your customer's language and responds in that language. We currently support 70+ languages including English, French, Spanish, Arabic, Mandarin, Hindi, Portuguese, German, Japanese, Korean, and many more. No configuration needed — it just works.",
   },
 ];
 
@@ -106,8 +111,8 @@ export default function LandingPage() {
                 className={`text-lg text-[#94A3B8] max-w-xl leading-relaxed transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 style={{ transitionDelay: '200ms' }}
               >
-                Customers call your business number. Book8 AI answers, checks your calendar,
-                books the appointment, and sends confirmations — automatically, 24/7.
+                Your AI receptionist answers calls, books appointments, and speaks your customer&apos;s language —
+                automatically.
               </p>
               <div
                 className={`flex flex-wrap gap-4 transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
@@ -130,20 +135,24 @@ export default function LandingPage() {
                 </a>
               </div>
               <div
-                className={`flex flex-wrap gap-6 text-sm text-[#94A3B8] transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                className={`flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-x-6 sm:gap-y-2 text-sm text-[#94A3B8] transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 style={{ transitionDelay: '400ms' }}
               >
                 <span className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#06B6D4]" />
-                  14-day Growth trial (card on file)
+                  <Check className="w-4 h-4 text-[#06B6D4] shrink-0" />
+                  Answers calls 24/7
                 </span>
                 <span className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#06B6D4]" />
-                  5-minute setup
+                  <Check className="w-4 h-4 text-[#06B6D4] shrink-0" />
+                  Books appointments in real time
                 </span>
                 <span className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#06B6D4]" />
-                  Cancel anytime
+                  <Check className="w-4 h-4 text-[#06B6D4] shrink-0" />
+                  Speaks 70+ languages automatically
+                </span>
+                <span className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-[#06B6D4] shrink-0" />
+                  SMS + email confirmations
                 </span>
               </div>
             </div>
@@ -251,7 +260,7 @@ export default function LandingPage() {
                 num: 2,
                 icon: Phone,
                 title: 'Get Your AI Phone Number',
-                desc: 'We assign a local phone number with an AI agent trained on your services, hours, and booking rules.',
+                desc: 'We assign a dedicated phone number with an AI agent trained on your services, hours, and booking rules.',
               },
               {
                 num: 3,
@@ -300,9 +309,10 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-16">
             {[
               { icon: Phone, title: 'Voice AI Booking', desc: 'AI answers calls 24/7. Books real appointments. Sounds natural.' },
+              { icon: Languages, title: 'Speaks 70+ languages', desc: "Your AI receptionist automatically detects what language your customer speaks and responds fluently — English, French, Spanish, Arabic, Mandarin, and dozens more. No setup needed." },
               { icon: Calendar, title: 'Calendar Sync', desc: 'Google Calendar & Outlook. Real-time availability. Never double-book.' },
               { icon: MessageSquare, title: 'SMS & Email', desc: 'Instant confirmations to customers via text and email.' },
-              { icon: Globe, title: 'Online Booking Page', desc: 'Shareable link: book8.io/dental-clinic. Customers book online anytime.' },
+              { icon: Globe, title: 'Online Booking Page', desc: 'Shareable booking link on your domain. Customers book online anytime.' },
               { icon: Building2, title: 'Multi-Business', desc: 'Manage multiple locations under one account. Up to 5 businesses.' },
               { icon: BarChart3, title: 'Dashboard & Analytics', desc: 'See all bookings, calls, and customer data in one place.' },
             ].map(({ icon: Icon, title, desc }, i) => (
@@ -324,6 +334,12 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          <p
+            className={`text-center text-[#94A3B8] text-sm max-w-2xl mx-auto mt-14 transition-all duration-700 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          >
+            <span className="text-[#F8FAFC] font-medium">Available worldwide.</span>{' '}
+            From barber shops to dental clinics, fitness studios to spas — Book8 AI runs wherever your business is.
+          </p>
         </div>
       </section>
 
@@ -340,7 +356,7 @@ export default function LandingPage() {
             Your Booking Page, Ready to Share
           </h2>
           <p className="text-center text-[#94A3B8] max-w-2xl mx-auto mb-12">
-            Every business gets a custom booking page at book8.io/dental-clinic. Share it on Instagram, text it to clients, or add it to your website.
+            Every business gets a custom booking link. Share it on social, text it to clients, or embed it on your website.
           </p>
           <div className="max-w-2xl mx-auto rounded-xl overflow-hidden border border-[#1e1e2e] shadow-2xl" style={{ background: '#12121A' }}>
             <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e1e2e] bg-[#0d0d12]">
@@ -351,7 +367,7 @@ export default function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <span className="text-xs text-[#64748B] bg-[#1e1e2e] px-4 py-1 rounded">
-                  book8.io/dental-clinic
+                  book8.io/your-business
                 </span>
               </div>
             </div>
@@ -417,7 +433,13 @@ export default function LandingPage() {
                 price: '$29',
                 sub: '/month',
                 desc: 'Individuals & small businesses',
-                features: ['Unlimited bookings', 'Google Calendar sync', 'Public booking page', 'Email reminders'],
+                features: [
+                'Unlimited bookings',
+                'Multilingual AI voice (English + core languages; 70+ on Growth)',
+                'Google Calendar sync',
+                'Public booking page',
+                'Email reminders',
+              ],
                 cta: 'Get started',
                 href: '/setup',
                 highlight: false,
@@ -430,6 +452,7 @@ export default function LandingPage() {
                 desc: '14-day free trial · For growing teams',
                 features: [
                   'Everything in Starter',
+                  'Multilingual AI voice (70+ languages)',
                   'AI phone agent',
                   'Outlook + Google',
                   'SMS + Email confirmations',
@@ -446,7 +469,14 @@ export default function LandingPage() {
                 price: '$299',
                 sub: '/month',
                 desc: 'Large teams & custom needs',
-                features: ['Everything in Growth', 'Dedicated support', 'SLA options', 'API access'],
+                features: [
+                  'Everything in Growth',
+                  'Multilingual AI voice (70+ languages)',
+                  'Custom voice per language (where supported)',
+                  'Dedicated support',
+                  'SLA options',
+                  'API access',
+                ],
                 cta: 'Get started',
                 href: '/setup',
                 highlight: false,

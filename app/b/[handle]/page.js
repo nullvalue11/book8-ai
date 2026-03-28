@@ -446,13 +446,21 @@ export default function PublicBookingPage({ params }) {
     <main className="min-h-screen bg-gray-950 text-white dark">
       {/* Header */}
       <header className="border-b border-gray-800 px-4 py-4 md:px-6">
-        <div className="max-w-[900px] mx-auto">
-          <h1 className="text-2xl font-bold text-white">{ownerName || handle}</h1>
-          {(businessMeta.category || businessMeta.city) && (
-            <p className="text-xs uppercase tracking-wide text-muted-foreground mt-0.5">
-              {[businessMeta.category, businessMeta.city].filter(Boolean).join(' • ')}
-            </p>
-          )}
+        <div className="max-w-[900px] mx-auto flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              {ownerName?.trim() || formatHandleAsDisplayName(handle)}
+            </h1>
+            {(businessMeta.category || businessMeta.city) && (
+              <p className="text-xs uppercase tracking-wide text-muted-foreground mt-0.5">
+                {[businessMeta.category, businessMeta.city].filter(Boolean).join(' • ')}
+              </p>
+            )}
+          </div>
+          <span className="inline-flex items-center gap-1.5 shrink-0 text-xs font-medium text-violet-300 bg-violet-500/10 border border-violet-500/25 rounded-full px-2.5 py-1 self-start">
+            <span aria-hidden>🌐</span>
+            70+ languages supported
+          </span>
         </div>
       </header>
 
@@ -707,6 +715,12 @@ export default function PublicBookingPage({ params }) {
           </div>
         </div>
       </div>
+      <footer className="max-w-[900px] mx-auto px-4 md:px-6 pb-10 pt-2 text-center text-xs text-gray-500">
+        <p>
+          Our AI receptionist speaks 70+ languages.{' '}
+          <span className="text-gray-400">Call to book — we speak your language.</span>
+        </p>
+      </footer>
     </main>
   )
 }

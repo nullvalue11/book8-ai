@@ -41,6 +41,24 @@ function formatCallTime(iso) {
   } catch { return "—"; }
 }
 
+/** ElevenLabs / core-api may expose detected language on call payloads */
+function callDetectedLanguageCode(call) {
+  const raw =
+    call.detectedLanguage ||
+    call.language ||
+    call.elevenLabs?.detectedLanguage ||
+    call.elevenLabs?.language ||
+    call.elevenLabs?.conversationLanguage ||
+    call.transcription?.language ||
+    call.metadata?.language;
+  if (raw == null || typeof raw !== "string") return null;
+  const s = raw.trim();
+  if (!s) return null;
+  const code = s.replace(/_/g, "-").split("-")[0].toLowerCase().slice(0, 8);
+  if (!/^[a-z]{2,8}$/.test(code)) return null;
+  return code;
+}
+
 function ProvisioningAlertBanner({ token, show }) {
   const [needsAttention, setNeedsAttention] = React.useState(false);
   React.useEffect(() => {
@@ -1252,6 +1270,7 @@ function HomeContent(props) {
                       const duration = call.durationSeconds ?? call.duration;
                       const time = call.startTime || call.createdAt;
                       const isExpanded = expandedCallId === callId;
+                      const langCode = callDetectedLanguageCode(call);
                       return (
                         <div
                           key={callId}
@@ -1267,6 +1286,11 @@ function HomeContent(props) {
                               <span className="text-foreground">{formatPhone(callerPhone)}</span>
                               <span className="text-muted-foreground">{formatDuration(duration)}</span>
                               <span className={isSuccess ? "text-green-600" : "text-destructive"}>{isSuccess ? "✅" : "❌"}</span>
+                              {langCode ? (
+                                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/25">
+                                  {langCode.toUpperCase()}
+                                </span>
+                              ) : null}
                             </div>
                             {summary && (
                               <p className={`text-sm text-muted-foreground mt-1 ${isExpanded ? "" : "truncate"}`}>

@@ -26,6 +26,9 @@ export async function provisionOnCoreApi({
   plan,
   timezone = 'America/Toronto',
   category,
+  customCategory,
+  primaryLanguage,
+  multilingualEnabled,
   email,
   stripeCustomerId,
   stripeSubscriptionId
@@ -52,6 +55,8 @@ export async function provisionOnCoreApi({
       ...(category != null && { category }),
       ...(customCategory != null &&
         String(customCategory).trim() && { customCategory: String(customCategory).trim() }),
+      ...(primaryLanguage && { primaryLanguage }),
+      ...(multilingualEnabled != null && { multilingualEnabled: !!multilingualEnabled }),
       ...(email && { email, ownerEmail: email }),
       ...(stripeCustomerId != null && { stripeCustomerId }),
       ...(stripeSubscriptionId != null && { stripeSubscriptionId })

@@ -7,8 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import Header from '@/components/Header'
 import TimeZonePicker from '@/components/TimeZonePicker'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { ArrowLeft, Loader2, Settings, Calendar, CreditCard } from 'lucide-react'
 import { isValidIanaTimeZone } from '@/lib/timezones'
+import { PRIMARY_LANGUAGE_OPTIONS } from '@/lib/primary-languages'
 
 function SettingsContent() {
   const router = useRouter()
@@ -16,6 +20,8 @@ function SettingsContent() {
   const [businesses, setBusinesses] = useState([])
   const [selectedBusinessId, setSelectedBusinessId] = useState('')
   const [timezone, setTimezone] = useState('')
+  const [primaryLanguage, setPrimaryLanguage] = useState('en')
+  const [multilingualEnabled, setMultilingualEnabled] = useState(true)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
@@ -64,12 +70,14 @@ function SettingsContent() {
       const tz =
         biz.timezone ||
         (typeof Intl !== 'undefined' && Intl.DateTimeFormat().resolvedOptions().timeZone) ||
-        'America/Toronto'
+        'UTC'
       setTimezone(tz)
+      setPrimaryLanguage(biz.primaryLanguage || 'en')
+      setMultilingualEnabled(biz.multilingualEnabled !== false)
     }
   }, [selectedBusinessId, businesses])
 
-  const saveTimezone = async () => {
+  const saveSettings = async () => {
     if (!token || !selectedBusinessId) return
     const tz = (timezone || '').trim()
     if (!isValidIanaTimeZone(tz)) {
@@ -85,14 +93,32 @@ function SettingsContent() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ businessId: selectedBusinessId, timezone: tz })
+        body: JSON.stringify({
+          businessId: selectedBusinessId,
+          timezone: tz,
+          primaryLanguage,
+          multilingualEnabled
+        })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Save failed')
-      setMessage({ type: 'success', text: 'Timezone saved. Core API sync attempted in the background.' })
+      setMessage({
+        type: 'success',
+        text: 'Settings saved. Core API sync attempted in the background.'
+      })
       setBusinesses((prev) =>
         prev.map((b) =>
-          b.businessId === selectedBusinessId ? { ...b, timezone: tz } : b
+          b.businessId === selectedBusinessId
+            ? {
+                ...b,
+                timezone: tz,
+                primaryLanguage: data.primaryLanguage ?? primaryLanguage,
+                multilingualEnabled:
+                  data.multilingualEnabled !== undefined
+                    ? data.multilingualEnabled
+                    : multilingualEnabled
+              }
+            : b
         )
       )
     } catch (e) {
@@ -128,7 +154,8 @@ function SettingsContent() {
             Business settings
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Timezone is used for availability and booking display. It syncs to the core engine after you save.
+            Timezone and voice language apply to your AI receptionist and availability. They sync to the core engine
+            after you save.
           </p>
         </div>
 
@@ -155,9 +182,10 @@ function SettingsContent() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Business timezone</CardTitle>
+            <CardTitle>Timezone &amp; language</CardTitle>
             <CardDescription>
-              Set the primary timezone for your business. Required for accurate slots and provisioning checks.
+              Set your business timezone, default greeting language, and multilingual detection for the AI voice
+              agent.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -198,6 +226,42 @@ function SettingsContent() {
                   idPrefix="dash-settings"
                 />
 
+                <div className="space-y-2">
+                  <Label htmlFor="dash-primary-language">Primary language</Label>
+                  <Select value={primaryLanguage} onValueChange={setPrimaryLanguage}>
+                    <SelectTrigger id="dash-primary-language" className="w-full">
+                      <SelectValue placeholder="Language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIMARY_LANGUAGE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.code} value={opt.code}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Default language for greetings; the agent still switches when multilingual is enabled.
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
+                  <Switch
+                    id="dash-multilingual"
+                    checked={multilingualEnabled}
+                    onCheckedChange={setMultilingualEnabled}
+                    className="mt-0.5"
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="dash-multilingual" className="font-medium cursor-pointer">
+                      Multilingual enabled
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically detect and respond fluently in 70+ languages (recommended).
+                    </p>
+                  </div>
+                </div>
+
                 {message.text && (
                   <p
                     className={`text-sm ${
@@ -208,13 +272,13 @@ function SettingsContent() {
                   </p>
                 )}
 
-                <Button onClick={saveTimezone} disabled={saving}>
+                <Button onClick={saveSettings} disabled={saving}>
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…
                     </>
                   ) : (
-                    'Save timezone'
+                    'Save settings'
                   )}
                 </Button>
               </>
