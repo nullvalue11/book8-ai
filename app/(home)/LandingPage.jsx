@@ -21,6 +21,7 @@ import {
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import PricingPlanFeatureList from '@/components/PricingPlanFeatureList';
+import { PRICING_CALL_MINUTES_FOOTNOTE } from '@/lib/pricing-plan-features';
 
 const faqItems = [
   {
@@ -429,55 +430,35 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mt-8">
             {[
               {
+                planId: 'starter',
                 icon: Zap,
                 name: 'Starter',
                 price: '$29',
                 sub: '/month',
                 desc: 'Individuals & small businesses',
-                features: [
-                'Unlimited bookings',
-                'Multilingual AI voice (English + core languages; 70+ on Growth)',
-                'Google Calendar sync',
-                'Public booking page',
-                'Email reminders',
-              ],
                 cta: 'Get started',
                 href: '/setup',
                 highlight: false,
               },
               {
+                planId: 'growth',
                 icon: Rocket,
                 name: 'Growth',
                 price: '$99',
                 sub: '/month after trial',
                 desc: '14-day free trial · For growing teams',
-                features: [
-                  'Everything in Starter',
-                  'Multilingual AI voice (70+ languages)',
-                  'AI phone agent',
-                  'Outlook + Google',
-                  'SMS + Email confirmations',
-                  'Full analytics',
-                ],
                 cta: 'Start free trial →',
                 href: '/setup',
                 highlight: true,
                 badge: 'Most popular',
               },
               {
+                planId: 'enterprise',
                 icon: Building2,
                 name: 'Enterprise',
                 price: '$299',
                 sub: '/month',
                 desc: 'Large teams & custom needs',
-                features: [
-                  'Everything in Growth',
-                  'Multilingual AI voice (70+ languages)',
-                  'Custom voice per language (where supported)',
-                  'Dedicated support',
-                  'SLA options',
-                  'API access',
-                ],
                 cta: 'Get started',
                 href: '/setup',
                 highlight: false,
@@ -526,6 +507,9 @@ export default function LandingPage() {
               );
             })}
           </div>
+          <p className="mt-10 text-center text-xs text-white/40 max-w-xl mx-auto leading-relaxed px-2">
+            {PRICING_CALL_MINUTES_FOOTNOTE}
+          </p>
         </div>
       </section>
 

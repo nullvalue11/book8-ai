@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Header from "@/components/Header";
 import PricingPlanFeatureList from "@/components/PricingPlanFeatureList";
+import { PRICING_CALL_MINUTES_FOOTNOTE } from "@/lib/pricing-plan-features";
 import { Zap, Building2, Rocket, ArrowRight, AlertCircle } from "lucide-react";
 
 const plans = [
@@ -309,22 +310,9 @@ function PricingContent() {
               );
             })}
           </div>
-        </div>
-      </section>
-
-      {/* Call Minutes Info */}
-      <section className="py-16 px-6 border-t border-border">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl font-bold mb-4 text-foreground">AI Call Minutes</h2>
-          <p className="text-muted-foreground mb-6">
-            All plans include metered billing for AI phone agent calls at
-            <span className="text-foreground font-semibold"> $0.10 CAD per minute</span>.
-            Only pay for what you use.
+          <p className="mt-10 text-center text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed px-2">
+            {PRICING_CALL_MINUTES_FOOTNOTE}
           </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted border border-border">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-sm text-muted-foreground">Usage tracked automatically</span>
-          </div>
         </div>
       </section>
 

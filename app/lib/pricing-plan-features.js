@@ -1,56 +1,54 @@
-/** Single source of truth for plan feature bullets (/pricing + landing). */
+/** Short scannable lists for /pricing + landing (exclusive bullets only on Growth/Enterprise). */
 
-export const PRICING_STARTER_FEATURES = [
+export const PRICING_CALL_MINUTES_FOOTNOTE =
+  "AI phone agent minutes are metered at $0.10 CAD/min. Usage is tracked automatically.";
+
+/** Shown on Starter only; all bright. */
+export const PRICING_STARTER_CARD_FEATURES = [
   "Unlimited bookings",
-  "Multilingual AI voice (English + auto-detect for many languages)",
+  "Multilingual AI voice (English + auto-detect)",
   "Google Calendar sync",
   "Public booking page",
   "Email reminders",
   "Basic analytics",
-  "Call minutes: $0.10/min",
 ];
 
+export const PRICING_GROWTH_ACK = "Includes all Starter features";
+
+/** Growth card: exclusive bullets only (after ack + divider). */
 export const PRICING_GROWTH_EXCLUSIVE_FEATURES = [
-  "Multilingual AI voice (70+ languages)",
-  "Multiple event types",
+  "Multilingual AI voice (70+)",
   "AI phone agent",
   "Outlook + Google calendars",
   "SMS + Email confirmations",
   "Full analytics",
   "Priority support",
-  "Team collaboration",
 ];
+
+export const PRICING_ENTERPRISE_ACK = "Includes all Growth features";
 
 export const PRICING_ENTERPRISE_EXCLUSIVE_FEATURES = [
   "Custom voice per language (where supported)",
   "Unlimited team members",
-  "Custom integrations",
   "Dedicated account manager",
   "SLA guarantee",
-  "White-label options",
   "API access",
+  "White-label options",
 ];
 
 /**
  * @param {"starter"|"growth"|"enterprise"} planId
- * @returns {{ text: string, inherited: boolean }[]}
+ * @returns {{ ack: string | null, features: string[] }}
  */
-export function getPricingFeatureRows(planId) {
+export function getPricingFeatureDisplay(planId) {
   if (planId === "starter") {
-    return PRICING_STARTER_FEATURES.map((text) => ({ text, inherited: false }));
+    return { ack: null, features: PRICING_STARTER_CARD_FEATURES };
   }
   if (planId === "growth") {
-    return [
-      ...PRICING_STARTER_FEATURES.map((text) => ({ text, inherited: true })),
-      ...PRICING_GROWTH_EXCLUSIVE_FEATURES.map((text) => ({ text, inherited: false })),
-    ];
+    return { ack: PRICING_GROWTH_ACK, features: PRICING_GROWTH_EXCLUSIVE_FEATURES };
   }
   if (planId === "enterprise") {
-    return [
-      ...PRICING_STARTER_FEATURES.map((text) => ({ text, inherited: true })),
-      ...PRICING_GROWTH_EXCLUSIVE_FEATURES.map((text) => ({ text, inherited: true })),
-      ...PRICING_ENTERPRISE_EXCLUSIVE_FEATURES.map((text) => ({ text, inherited: false })),
-    ];
+    return { ack: PRICING_ENTERPRISE_ACK, features: PRICING_ENTERPRISE_EXCLUSIVE_FEATURES };
   }
-  return [];
+  return { ack: null, features: [] };
 }
