@@ -7,7 +7,8 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Header from "@/components/Header";
-import { Check, Zap, Building2, Rocket, ArrowRight, AlertCircle } from "lucide-react";
+import PricingPlanFeatureList from "@/components/PricingPlanFeatureList";
+import { Zap, Building2, Rocket, ArrowRight, AlertCircle } from "lucide-react";
 
 const plans = [
   {
@@ -17,15 +18,6 @@ const plans = [
     period: "/month",
     description: "Perfect for individuals and small businesses getting started",
     icon: Zap,
-    features: [
-      "Unlimited bookings",
-      "Multilingual AI voice (English + auto-detect for many languages)",
-      "Google Calendar sync",
-      "Public booking page",
-      "Email reminders",
-      "Basic analytics",
-      "Call minutes: $0.10/min"
-    ],
     popular: false,
     color: "from-blue-500 to-cyan-500"
   },
@@ -39,16 +31,6 @@ const plans = [
     priceSecondary: "after trial",
     description: "For growing teams that need more power and flexibility",
     icon: Rocket,
-    features: [
-      "Everything in Starter",
-      "Multilingual AI voice (70+ languages)",
-      "Multiple event types",
-      "AI phone agent integration",
-      "Advanced analytics",
-      "Priority support",
-      "Call minutes: $0.10/min",
-      "Team collaboration"
-    ],
     popular: true,
     color: "from-brand-500 to-purple-500",
     trial: true
@@ -59,19 +41,8 @@ const plans = [
     price: "$299",
     period: "/month",
     description: "For large organizations with advanced requirements",
-    icon: Building2,
-    features: [
-      "Everything in Growth",
-      "Multilingual AI voice (70+ languages)",
-      "Custom voice per language (where supported)",
-      "Unlimited team members",
-      "Custom integrations",
-      "Dedicated account manager",
-      "SLA guarantee",
-      "Call minutes: $0.10/min",
-      "White-label options",
-      "API access"
-    ],
+    icon: Building2
+    ,
     popular: false,
     color: "from-orange-500 to-red-500"
   }
@@ -298,14 +269,7 @@ function PricingContent() {
                       </div>
                     </div>
 
-                    <ul className="space-y-3">
-                      {plan.features.map((feat, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                          <span className="text-sm text-muted-foreground">{feat}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <PricingPlanFeatureList planId={plan.id} />
 
                     {plan.id === "growth" && isLoggedIn && isPaywall ? (
                       <Button

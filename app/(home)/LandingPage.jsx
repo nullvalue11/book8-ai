@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
+import PricingPlanFeatureList from '@/components/PricingPlanFeatureList';
 
 const faqItems = [
   {
@@ -508,14 +509,7 @@ export default function LandingPage() {
                     {tier.price}
                     <span className="text-base font-medium text-[#94A3B8]"> {tier.sub}</span>
                   </p>
-                  <ul className="space-y-2.5 text-[#94A3B8] text-sm mb-8 flex-1">
-                    {tier.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-[#06B6D4] shrink-0 mt-0.5" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
+                  <PricingPlanFeatureList planId={tier.planId} theme="landing" />
                   <Link href={tier.href}>
                     <Button
                       className={`w-full h-11 rounded-lg font-medium ${
