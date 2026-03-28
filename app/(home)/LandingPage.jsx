@@ -14,6 +14,8 @@ import {
   Scissors,
   Dumbbell,
   Sparkles,
+  Zap,
+  Rocket,
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -389,7 +391,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Pricing — all tiers (matches /pricing) */}
       <section
         className="py-20 md:py-28"
         style={{ background: 'linear-gradient(180deg, #0A0A0F 0%, #0d0d14 100%)' }}
@@ -401,41 +403,104 @@ export default function LandingPage() {
           >
             Simple Pricing
           </h2>
-          <div className="max-w-md mx-auto mt-12">
-            <div className="rounded-2xl border-2 border-[#8B5CF6]/50 p-8 relative" style={{ background: '#12121A' }}>
-              <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wide text-[#A78BFA] bg-[#8B5CF6]/20 px-2 py-1 rounded">
-                Most popular
-              </span>
-              <h3 className="text-2xl font-bold text-[#F8FAFC] mb-1 pr-24">Growth</h3>
-              <p className="text-sm text-[#94A3B8] mb-3">Start your 14-day free trial</p>
-              <p className="text-3xl font-bold text-[#F8FAFC] mb-1">
-                $99<span className="text-lg font-medium text-[#94A3B8]">/mo after trial</span>
-              </p>
-              <ul className="space-y-3 text-[#94A3B8] mb-6 mt-6">
-                {[
-                  'All 3 booking channels',
-                  '200 AI calls/month',
-                  'Google + Outlook calendar sync',
+          <p className="text-center text-[#94A3B8] text-sm max-w-2xl mx-auto mb-12">
+            Plans from $29/mo. Growth includes a 14-day free trial (card on file).{' '}
+            <Link href="/pricing" className="text-[#8B5CF6] hover:underline">
+              Compare details →
+            </Link>
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mt-8">
+            {[
+              {
+                icon: Zap,
+                name: 'Starter',
+                price: '$29',
+                sub: '/month',
+                desc: 'Individuals & small businesses',
+                features: ['Unlimited bookings', 'Google Calendar sync', 'Public booking page', 'Email reminders'],
+                cta: 'Get started',
+                href: '/setup',
+                highlight: false,
+              },
+              {
+                icon: Rocket,
+                name: 'Growth',
+                price: '$99',
+                sub: '/month after trial',
+                desc: '14-day free trial · For growing teams',
+                features: [
+                  'Everything in Starter',
+                  'AI phone agent',
+                  'Outlook + Google',
                   'SMS + Email confirmations',
-                  'Full analytics dashboard',
-                  'Priority support',
-                ].map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#06B6D4] shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/setup">
-                <Button className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-12 rounded-lg font-medium" size="lg">
-                  Start Free Trial →
-                </Button>
-              </Link>
-              <p className="text-xs text-[#64748B] text-center mt-3">
-                No charge for 14 days. Cancel anytime.
-              </p>
-              <p className="text-xs text-[#64748B] text-center mt-1">💳 Card required</p>
-            </div>
+                  'Full analytics',
+                ],
+                cta: 'Start free trial →',
+                href: '/setup',
+                highlight: true,
+                badge: 'Most popular',
+              },
+              {
+                icon: Building2,
+                name: 'Enterprise',
+                price: '$299',
+                sub: '/month',
+                desc: 'Large teams & custom needs',
+                features: ['Everything in Growth', 'Dedicated support', 'SLA options', 'API access'],
+                cta: 'Get started',
+                href: '/setup',
+                highlight: false,
+              },
+            ].map((tier) => {
+              const Icon = tier.icon;
+              return (
+                <div
+                  key={tier.name}
+                  className={`rounded-2xl border p-6 md:p-8 flex flex-col relative ${
+                    tier.highlight
+                      ? 'border-[#8B5CF6]/60 bg-[#12121A] shadow-[0_0_40px_-12px_rgba(139,92,246,0.4)]'
+                      : 'border-[#1e1e2e] bg-[#12121A]'
+                  }`}
+                >
+                  {tier.badge ? (
+                    <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wide text-[#A78BFA] bg-[#8B5CF6]/20 px-2 py-1 rounded">
+                      {tier.badge}
+                    </span>
+                  ) : null}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-[#8B5CF6]/15 flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-[#A78BFA]" />
+                    </div>
+                    <h3 className="text-xl font-bold text-[#F8FAFC]">{tier.name}</h3>
+                  </div>
+                  <p className="text-xs text-[#94A3B8] mb-3 min-h-[2.5rem]">{tier.desc}</p>
+                  <p className="text-3xl font-bold text-[#F8FAFC] mb-6">
+                    {tier.price}
+                    <span className="text-base font-medium text-[#94A3B8]"> {tier.sub}</span>
+                  </p>
+                  <ul className="space-y-2.5 text-[#94A3B8] text-sm mb-8 flex-1">
+                    {tier.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-[#06B6D4] shrink-0 mt-0.5" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href={tier.href}>
+                    <Button
+                      className={`w-full h-11 rounded-lg font-medium ${
+                        tier.highlight
+                          ? 'bg-[#8B5CF6] hover:bg-[#7C3AED] text-white'
+                          : 'bg-[#1e1e2e] hover:bg-[#2a2a3d] text-[#F8FAFC] border border-[#2a2a3d]'
+                      }`}
+                      size="lg"
+                    >
+                      {tier.cta}
+                    </Button>
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -518,7 +583,7 @@ export default function LandingPage() {
                 <Link href="/pricing" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
                   Pricing
                 </Link>
-                <Link href="/#auth" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
+                <Link href="/setup" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
                   Sign In
                 </Link>
                 <Link href="/setup" className="text-sm text-[#94A3B8] hover:text-white transition-colors">

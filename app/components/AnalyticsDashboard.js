@@ -145,6 +145,38 @@ export default function AnalyticsDashboard({ token, subscribed = false, planLimi
   const kpis = analytics.kpis || {}
   const series = analytics.series || []
 
+  const hasMeaningfulData =
+    (Number(kpis.bookings) || 0) > 0 ||
+    (Number(kpis.reschedules) || 0) > 0 ||
+    (Number(kpis.cancellations) || 0) > 0 ||
+    (Number(kpis.reminders_sent) || 0) > 0 ||
+    (Array.isArray(series) &&
+      series.some(
+        (d) =>
+          (Number(d.bookings) || 0) > 0 ||
+          (Number(d.reminders_sent) || 0) > 0 ||
+          (Number(d.reschedules) || 0) > 0 ||
+          (Number(d.cancellations) || 0) > 0
+      ))
+
+  if (!hasMeaningfulData) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold">Analytics</h2>
+        <div className="rounded-lg border border-dashed border-border bg-muted/10 px-6 py-12 text-center text-muted-foreground">
+          <p className="font-medium text-foreground">No activity to show yet</p>
+          <p className="text-sm mt-2 max-w-md mx-auto">
+            Analytics will appear here once you start receiving calls and bookings.
+          </p>
+          <Button variant="outline" size="sm" className="mt-6" onClick={() => fetchAnalytics()}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   const hasAdvancedAnalytics = !planLimits || planLimits.advancedAnalytics !== false
 
   const kpiCardsAll = [

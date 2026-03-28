@@ -156,7 +156,7 @@ function PricingContent() {
     const authToken = token || (typeof window !== "undefined" ? localStorage.getItem("book8_token") : null);
     if (!authToken) {
       const returnUrl = buildReturnUrl();
-      router.push(returnUrl ? `/#auth?callbackUrl=${encodeURIComponent(returnUrl)}` : "/#auth");
+      router.push(returnUrl ? `/setup?redirect=${encodeURIComponent(returnUrl)}` : "/setup");
       return;
     }
 

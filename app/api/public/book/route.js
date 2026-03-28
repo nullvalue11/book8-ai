@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
+import { findBusinessByPublicHandle } from '@/lib/public-business-lookup'
 import { v4 as uuidv4 } from 'uuid'
 import { checkRateLimit } from '@/lib/rateLimiting'
 import { BookingTelemetry, RateLimitTelemetry, logError } from '@/lib/telemetry'
@@ -74,13 +75,7 @@ export async function POST(request) {
 
     // Resolve by business first (handle, businessId), then fall back to user
     let owner = null
-    const business = await database.collection(BUSINESS_COLLECTION).findOne({
-      $or: [
-        { handle: handle.toLowerCase() },
-        { businessId: handle },
-        { id: handle }
-      ]
-    })
+    const business = await findBusinessByPublicHandle(database.collection(BUSINESS_COLLECTION), handle)
     if (business) {
       owner = await database.collection('users').findOne({ id: business.ownerUserId })
       if (!owner) {

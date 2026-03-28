@@ -164,6 +164,7 @@ function HomeContent(props) {
   const [phoneSetup, setPhoneSetup] = useState(null);
   const [phoneSetupLoading, setPhoneSetupLoading] = useState(false);
   const [primaryBusinessId, setPrimaryBusinessId] = useState(null);
+  const [primaryBusinessName, setPrimaryBusinessName] = useState(null);
   const [primaryBookingHandle, setPrimaryBookingHandle] = useState(null);
   const [primaryCalendarProvider, setPrimaryCalendarProvider] = useState(null);
 
@@ -565,6 +566,7 @@ function HomeContent(props) {
       const businesses = bizRes.businesses || [];
       if (!businesses.length) {
         setPrimaryBusinessId(null);
+        setPrimaryBusinessName(null);
         setPrimaryBookingHandle(null);
         setPrimaryCalendarProvider(null);
         setPhoneSetup(null);
@@ -572,6 +574,7 @@ function HomeContent(props) {
       }
       const primary = businesses[0];
       setPrimaryBusinessId(primary.businessId);
+      setPrimaryBusinessName(primary.name?.trim() || null);
       setPrimaryBookingHandle(primary.handle || primary.businessId || null);
       const provider = primary?.calendar?.provider || (!primary?.calendar?.provider && primary?.calendar?.connected ? 'google' : null)
       setPrimaryCalendarProvider(provider);
@@ -1075,6 +1078,11 @@ function HomeContent(props) {
             <HeaderLogo className="opacity-90 hover:opacity-100 transition" />
             <div className="hidden md:block h-6 w-px bg-border"></div>
             <span className="hidden md:inline text-sm text-muted-foreground">Dashboard</span>
+            {primaryBusinessName ? (
+              <span className="hidden md:inline text-sm font-medium text-foreground truncate max-w-[220px] border-l border-border pl-3" title={primaryBusinessName}>
+                {primaryBusinessName}
+              </span>
+            ) : null}
             {/* Plan badge for subscribed users */}
             {subscriptionChecked && isSubscribed && (
               billingSubscription?.status === 'trialing' && billingSubscription?.trialDaysLeft != null ? (

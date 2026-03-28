@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
+import { findBusinessByPublicHandle } from '@/lib/public-business-lookup'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -31,13 +32,7 @@ export async function GET(request) {
     }
 
     const database = await connect()
-    const business = await database.collection(BUSINESS_COLLECTION).findOne({
-      $or: [
-        { handle: handle.toLowerCase() },
-        { businessId: handle },
-        { id: handle }
-      ]
-    })
+    const business = await findBusinessByPublicHandle(database.collection(BUSINESS_COLLECTION), handle)
 
     if (!business) {
       return NextResponse.json({ ok: false, error: 'Business not found' }, { status: 404 })
@@ -65,7 +60,14 @@ export async function GET(request) {
 
     // core-api may return { services: [...] } or array directly
     const services = Array.isArray(data) ? data : (data?.services || [])
-    return NextResponse.json({ ok: true, services, businessId: business.businessId })
+    return NextResponse.json({
+      ok: true,
+      services,
+      businessId: business.businessId,
+      businessName: business.name || null,
+      category: business.category || null,
+      city: business.city || null
+    })
   } catch (error) {
     console.error('[public/services] Error:', error)
     return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 })

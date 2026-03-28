@@ -1,9 +1,26 @@
 "use client"
-import React, { useEffect, useState, useMemo, useCallback } from 'react'
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
 import { Check, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar as CalendarIcon } from 'lucide-react'
+
+function toLocalYmd(d) {
+  if (!d || !(d instanceof Date) || Number.isNaN(d.getTime())) return ''
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function formatHandleAsDisplayName(h) {
+  if (!h || typeof h !== 'string') return ''
+  return h
+    .split('-')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
+}
 
 export default function PublicBookingPage({ params }) {
   const handle = params.handle
@@ -26,6 +43,8 @@ export default function PublicBookingPage({ params }) {
   const [businessMeta, setBusinessMeta] = useState({ category: '', city: '' })
   const [bookingResult, setBookingResult] = useState(null)
   const [hasServices, setHasServices] = useState(false)
+  const slotsFetchSeq = useRef(0)
+  const hasAutoSkippedInitialClosedDay = useRef(false)
 
   // Detect timezone
   useEffect(() => {
@@ -40,6 +59,17 @@ export default function PublicBookingPage({ params }) {
       try {
         const res = await fetch(`/api/public/services?handle=${encodeURIComponent(handle)}`)
         const data = await res.json()
+        if (!cancelled && res.ok) {
+          if (data.businessName?.trim()) {
+            setOwnerName(data.businessName.trim())
+          }
+          if (data.category || data.city) {
+            setBusinessMeta({
+              category: data.category || '',
+              city: data.city || ''
+            })
+          }
+        }
         if (!cancelled && res.ok && Array.isArray(data?.services) && data.services.length > 0) {
           const seen = new Set()
           const deduped = data.services.filter((s) => {
@@ -77,30 +107,54 @@ export default function PublicBookingPage({ params }) {
   useEffect(() => {
     const now = new Date()
     setCurrentMonth({ year: now.getFullYear(), month: now.getMonth() })
-    setDate(now.toISOString().slice(0, 10))
+    setDate(toLocalYmd(now))
   }, [])
+
+  useEffect(() => {
+    hasAutoSkippedInitialClosedDay.current = false
+  }, [handle])
 
   const loadSlots = useCallback(async () => {
     if (!date || !guestTz) return
     const duration = selectedService?.durationMinutes || selectedService?.duration || 30
     if (hasServices && !selectedService) return
 
+    const seq = ++slotsFetchSeq.current
     try {
       setLoading(true)
       setError('')
       setSelected(null)
       const url = `/api/public/availability?handle=${encodeURIComponent(handle)}&date=${date}&tz=${encodeURIComponent(guestTz)}&duration=${duration}`
-      const res = await fetch(url)
-
-      if (!res) {
+      let res
+      try {
+        res = await fetch(url)
+      } catch (networkErr) {
+        if (seq !== slotsFetchSeq.current) return
+        console.error('[booking] Failed to load slots:', networkErr)
         setError('Failed to connect. Please check your internet connection.')
         setSlots([])
         return
       }
 
-      const data = await res.json()
+      if (!res) {
+        if (seq !== slotsFetchSeq.current) return
+        setError('Failed to connect. Please check your internet connection.')
+        setSlots([])
+        return
+      }
+
+      let data = {}
+      try {
+        data = await res.json()
+      } catch {
+        if (seq !== slotsFetchSeq.current) return
+        setError('Unable to read availability response.')
+        setSlots([])
+        return
+      }
 
       if (!res.ok) {
+        if (seq !== slotsFetchSeq.current) return
         if (data.code === 'GOOGLE_INVALID_GRANT') {
           setError(data.hint || 'Calendar needs to be reconnected.')
           setState('error')
@@ -115,33 +169,34 @@ export default function PublicBookingPage({ params }) {
         } else if (res.status === 429) {
           setError('Too many requests. Please wait a moment.')
         } else {
-          setError(data.error || 'Failed to load availability.')
+          setError(data.error || data.message || 'Failed to load availability.')
         }
         setSlots([])
         return
       }
 
-      setSlots(data.slots || [])
-      if (data.ownerName || data.businessName) {
-        setOwnerName(data.ownerName || data.businessName)
-      } else if (ownerName === '') {
-        setOwnerName(handle)
+      if (seq !== slotsFetchSeq.current) return
+      setSlots(Array.isArray(data.slots) ? data.slots : [])
+      const display = (data.ownerName || data.businessName || '').trim()
+      if (display) {
+        setOwnerName(display)
       }
 
-      // Auto-select today or next available: if no slots for today, try tomorrow
       if (!date && data.slots?.length === 0) {
         const tomorrow = new Date()
         tomorrow.setDate(tomorrow.getDate() + 1)
-        setDate(tomorrow.toISOString().slice(0, 10))
+        setDate(toLocalYmd(tomorrow))
       }
     } catch (err) {
+      if (seq !== slotsFetchSeq.current) return
       console.error('[booking] Failed to load slots:', err)
       setError('Unable to load available times. Please try again.')
       setSlots([])
     } finally {
-      setLoading(false)
+      if (seq === slotsFetchSeq.current) {
+        setLoading(false)
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ownerName used for fallback only
   }, [handle, date, guestTz, hasServices, selectedService])
 
   // Fetch slots when date, tz, and service are ready
@@ -151,17 +206,16 @@ export default function PublicBookingPage({ params }) {
     }
   }, [date, guestTz, hasServices, selectedService, loadSlots])
 
-  // Auto-select first available date when today has no slots (run after loadSlots)
+  // Once on load: if today (local) has no slots, advance to tomorrow so guests see the next open day
   useEffect(() => {
-    if (loading === false && slots.length === 0 && date) {
-      const todayStr = new Date().toISOString().slice(0, 10)
-      if (date === todayStr) {
-        const tomorrow = new Date()
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        const nextStr = tomorrow.toISOString().slice(0, 10)
-        setDate(nextStr)
-        setCurrentMonth({ year: tomorrow.getFullYear(), month: tomorrow.getMonth() })
-      }
+    if (loading || slots.length > 0 || !date || hasAutoSkippedInitialClosedDay.current) return
+    const todayStr = toLocalYmd(new Date())
+    if (date === todayStr) {
+      hasAutoSkippedInitialClosedDay.current = true
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      setDate(toLocalYmd(tomorrow))
+      setCurrentMonth({ year: tomorrow.getFullYear(), month: tomorrow.getMonth() })
     }
   }, [loading, slots.length, date])
 
@@ -288,7 +342,7 @@ export default function PublicBookingPage({ params }) {
 
   function onDateClick(d) {
     if (!d) return
-    const dStr = d.toISOString().slice(0, 10)
+    const dStr = toLocalYmd(d)
     if (dStr < todayStr) return
     setDate(dStr)
   }
@@ -477,7 +531,7 @@ export default function PublicBookingPage({ params }) {
                     ))}
                     {calendarDays.map((d, i) => {
                       if (!d) return <div key={`pad-${i}`} className="aspect-square" />
-                      const dStr = d.toISOString().slice(0, 10)
+                      const dStr = toLocalYmd(d)
                       const isPast = dStr < todayStr
                       const isToday = dStr === todayStr
                       const isSelected = dStr === date

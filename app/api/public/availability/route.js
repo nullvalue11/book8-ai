@@ -4,7 +4,9 @@ import { checkRateLimit } from '@/lib/rateLimiting'
 import { RateLimitTelemetry, logError } from '@/lib/telemetry'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
-import { zonedTimeToUtc } from 'date-fns-tz'
+import { zonedTimeToUtc, formatInTimeZone } from 'date-fns-tz'
+import { enUS } from 'date-fns/locale'
+import { findBusinessByPublicHandle } from '@/lib/public-business-lookup'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -303,15 +305,18 @@ export async function GET(request) {
     // Working hours: event type override or user default
     const workingHours = eventSettings.workingHours || settings.workingHours || {}
 
-    // Parse date in host timezone
-    const requestDate = new Date(date + 'T00:00:00')
-    const dayOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][requestDate.getDay()]
+    // Weekday for `date` must follow the business (host) timezone, not the server's local clock
+    const noonUtc = zonedTimeToUtc(`${date}T12:00:00`, hostTz)
+    const abbrev = formatInTimeZone(noonUtc, hostTz, 'EEE', { locale: enUS }).toLowerCase()
+    const abbrevToKey = { sun: 'sun', mon: 'mon', tue: 'tue', wed: 'wed', thu: 'thu', fri: 'fri', sat: 'sat' }
+    const dayOfWeek = abbrevToKey[abbrev] || abbrev.slice(0, 3)
     const daySlots = workingHours[dayOfWeek] || []
 
     if (daySlots.length === 0) {
       return NextResponse.json({
         ok: true,
         slots: [],
+        businessName: ownerName || owner?.name || null,
         message: business ? 'Business is closed on this day' : undefined
       }, {
         headers: {
@@ -351,9 +356,9 @@ export async function GET(request) {
       }
     }
 
-    // Check Google FreeBusy
-    const startOfDay = new Date(date + 'T00:00:00')
-    const endOfDay = new Date(date + 'T23:59:59')
+    // Check Google FreeBusy for the full calendar day in the host timezone
+    const startOfDay = zonedTimeToUtc(`${date}T00:00:00`, hostTz)
+    const endOfDay = zonedTimeToUtc(`${date}T23:59:59`, hostTz)
     
     const debugContext = {
       handle,
@@ -400,6 +405,7 @@ export async function GET(request) {
       slots: availableSlots,
       timezone: guestTz,
       ownerName: ownerName || owner.name || handle,
+      businessName: business?.name || ownerName || owner.name || null,
       settings: {
         duration: durationMin,
         buffer: bufferMin,
