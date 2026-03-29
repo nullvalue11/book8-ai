@@ -21,7 +21,7 @@ async function connectToMongo() {
 }
 
 function getJwtSecret() {
-  return env.JWT_SECRET || 'dev-secret-change-me'
+  return env.JWT_SECRET
 }
 
 async function requireAuth(request, database) {

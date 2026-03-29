@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env } from '@/lib/env'
+import { corsHeaders } from '@/lib/cors-allow'
 import { isSubscribed } from '@/lib/subscription'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 
@@ -47,14 +48,13 @@ async function requireAuth(request) {
   }
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(request) {
   return new Response(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
+    headers: corsHeaders(request, {
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
+    })
   })
 }
 

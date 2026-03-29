@@ -21,7 +21,7 @@ async function connect() {
 }
 
 function getJwtSecret() {
-  return env.JWT_SECRET || 'dev-secret-change-me'
+  return env.JWT_SECRET
 }
 
 function getMicrosoftScopes() {

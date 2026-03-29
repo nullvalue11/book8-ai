@@ -22,7 +22,7 @@ async function connectToMongo() {
   return db
 }
 
-function getJwtSecret() { return env.JWT_SECRET || 'dev-secret-change-me' }
+function getJwtSecret() { return env.JWT_SECRET }
 function getGoogleScopes() { return ['https://www.googleapis.com/auth/calendar'] }
 
 async function getOAuth2Client(base) {

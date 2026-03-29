@@ -1,5 +1,15 @@
 const path = require("path");
 
+/** Single origin for global response headers (per-route handlers use cors-allow for reflection). */
+function defaultCorsOrigin() {
+  const raw = process.env.CORS_ORIGINS;
+  if (raw && String(raw).trim()) {
+    const first = String(raw).split(",")[0].trim();
+    if (first) return first;
+  }
+  return "https://www.book8.io";
+}
+
 const nextConfig = {
   // output: 'standalone', // Disabled for Vercel - causes routing issues
   images: { unoptimized: true },
@@ -45,7 +55,7 @@ const nextConfig = {
       { source: "/(.*)", headers: [
         { key: "X-Frame-Options", value: "ALLOWALL" },
         { key: "Content-Security-Policy", value: "frame-ancestors *;" },
-        { key: "Access-Control-Allow-Origin", value: process.env.CORS_ORIGINS || "*" },
+        { key: "Access-Control-Allow-Origin", value: defaultCorsOrigin() },
         { key: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS" },
         { key: "Access-Control-Allow-Headers", value: "*" },
       ]} ,

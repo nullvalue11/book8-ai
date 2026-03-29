@@ -11,6 +11,7 @@ import {
   getReminderSubject 
 } from '@/lib/emailRenderer'
 import { env, isFeatureEnabled } from '@/lib/env'
+import { getCorsAllowOrigin } from '@/lib/cors-allow'
 
 export const runtime = 'nodejs'
 
@@ -38,17 +39,22 @@ async function connectToMongo() {
   return db
 }
 
-function cors(resp) {
-  resp.headers.set('Access-Control-Allow-Origin', '*' || '*')
+function cors(request, resp) {
+  const allow = getCorsAllowOrigin(request)
+  resp.headers.set('Access-Control-Allow-Origin', allow)
   resp.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   resp.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   resp.headers.set('Access-Control-Allow-Credentials', 'true')
   return resp
 }
 
-export async function OPTIONS() { return cors(new NextResponse(null, { status: 200 })) }
+export async function OPTIONS(request) {
+  return cors(request, new NextResponse(null, { status: 200 }))
+}
 
-function json(data, init = {}) { return cors(NextResponse.json(data, init)) }
+function json(request, data, init = {}) {
+  return cors(request, NextResponse.json(data, init))
+}
 
 async function getOAuth2Client() {
   const clientId = env.GOOGLE?.CLIENT_ID
@@ -89,26 +95,26 @@ export async function GET(request) {
     const task = url.searchParams.get('task') || 'sync'
     const cronHeader = request.headers.get('x-vercel-cron')
 
-    if (!secret && !cronHeader) return json({ error: 'Unauthorized' }, { status: 401 })
-    if (secret && env.CRON_SECRET && secret !== env.CRON_SECRET) return json({ error: 'Unauthorized' }, { status: 401 })
+    if (!secret && !cronHeader) return json(request, { error: 'Unauthorized' }, { status: 401 })
+    if (secret && env.CRON_SECRET && secret !== env.CRON_SECRET) return json(request, { error: 'Unauthorized' }, { status: 401 })
 
     const logsEnabled = String(env.DEBUG_LOGS || '').toLowerCase() === 'true'
     const runId = uuidv4()
     
     // Route to specific task
     if (task === 'reminders') {
-      return await handleRemindersTask(db, runId, logsEnabled)
+      return await handleRemindersTask(db, runId, logsEnabled, request)
     }
     
     // Default: Google Calendar sync task
-    return await handleGoogleSyncTask(db, runId, logsEnabled, cronHeader)
+    return await handleGoogleSyncTask(db, runId, logsEnabled, cronHeader, request)
     
   } catch (e) {
-    return json({ error: 'Internal server error' }, { status: 500 })
+    return json(request, { error: 'Internal server error' }, { status: 500 })
   }
 }
 
-async function handleGoogleSyncTask(db, runId, logsEnabled, cronHeader) {
+async function handleGoogleSyncTask(db, runId, logsEnabled, cronHeader, request) {
   if (logsEnabled) await db.collection('cron_logs').insertOne({ task: 'google_sync', runId, startedAt: new Date(), triggeredBy: cronHeader ? 'vercel' : 'external' })
 
   const users = await db.collection('users').find({ 'google.refreshToken': { $exists: true, $ne: null } }).limit(50).toArray()
@@ -151,13 +157,13 @@ async function handleGoogleSyncTask(db, runId, logsEnabled, cronHeader) {
 
   if (logsEnabled) await db.collection('cron_logs').updateOne({ runId }, { $set: { finishedAt: new Date(), processed } })
 
-  return json({ ok: true, task: 'google_sync', processed })
+  return json(request, { ok: true, task: 'google_sync', processed })
 }
 
-async function handleRemindersTask(db, runId, logsEnabled) {
+async function handleRemindersTask(db, runId, logsEnabled, request) {
   // Check if reminders feature is enabled
   if (!isFeatureEnabled('REMINDERS')) {
-    return json({ ok: false, error: 'Reminders feature not enabled' }, { status: 503 })
+    return json(request, { ok: false, error: 'Reminders feature not enabled' }, { status: 503 })
   }
   
   if (logsEnabled) {
@@ -318,7 +324,7 @@ async function handleRemindersTask(db, runId, logsEnabled) {
       )
     }
     
-    return json({ 
+    return json(request, { 
       ok: true, 
       task: 'reminders',
       runId,
@@ -345,7 +351,7 @@ async function handleRemindersTask(db, runId, logsEnabled) {
       )
     }
     
-    return json({ 
+    return json(request, { 
       ok: false, 
       error: error.message,
       processed,

@@ -10,7 +10,7 @@
         "start": "next start",
         "lint": "next lint",
         "test": "jest",
-        "test:env": "jest tests/env.test.js",
+        "test:env": "node --test tests/env-config.test.mjs",
         "check:env": "bash scripts/check-env-usage.sh",
         "ci:checks": "npm run check:env && npm run lint",
         "purge:dashboard:dry": "node scripts/purgeDashboardData.js --dry-run",

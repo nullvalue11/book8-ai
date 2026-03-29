@@ -59,6 +59,7 @@ import { bookingConfirmationEmail } from '@/lib/email/templates'
 import { buildICS } from '@/lib/ics'
 import { calculateReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
+import { corsHeaders } from '@/lib/cors-allow'
 import { isSubscribed } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
@@ -83,14 +84,13 @@ const SUBSCRIPTION_REQUIRED_ERROR = {
   hint: 'The business needs an active subscription to use AI phone agent features.'
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(request) {
   return new Response(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
+    headers: corsHeaders(request, {
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type'
-    }
+    })
   })
 }
 

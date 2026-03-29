@@ -39,7 +39,7 @@ function isValidAuth(authHeader: string | null): boolean {
   
   // Edge Runtime compatible env access
   const expectedUser = process.env.OPS_CONSOLE_USER || 'admin'
-  const expectedPass = process.env.OPS_CONSOLE_PASS || 'changeme'
+  const expectedPass = process.env.OPS_CONSOLE_PASS ?? ''
   
   try {
     const base64Credentials = authHeader.split(' ')[1]
@@ -58,6 +58,14 @@ export function middleware(request: NextRequest) {
   // Only apply Basic Auth to protected paths
   if (!requiresBasicAuth(pathname)) {
     return NextResponse.next()
+  }
+
+  const opsPass = process.env.OPS_CONSOLE_PASS
+  if (!opsPass || !String(opsPass).trim()) {
+    return NextResponse.json(
+      { error: 'Server misconfigured' },
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
+    )
   }
   
   // Check Basic Auth

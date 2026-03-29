@@ -9,6 +9,7 @@ import { buildICS } from '../../../../lib/ics'
 import { recomputeReminders } from '../../../../lib/reminders'
 import { renderHostReschedule } from '../../../../lib/emailRenderer'
 import { env, isFeatureEnabled } from '../../../../lib/env'
+import { corsHeaders } from '../../../../lib/cors-allow'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -24,14 +25,13 @@ async function connect() {
   return db
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(request) {
   return new Response(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
+    headers: corsHeaders(request, {
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type'
-    }
+    })
   })
 }
 

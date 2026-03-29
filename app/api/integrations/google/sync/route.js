@@ -44,7 +44,7 @@ async function connectToMongo() {
 
 export async function OPTIONS() { return new Response(null, { status: 204 }) }
 
-function getJwtSecret() { return env.JWT_SECRET || 'dev-secret-change-me' }
+function getJwtSecret() { return env.JWT_SECRET }
 
 async function requireAuth(request, database) {
   const auth = request.headers.get('authorization') || ''

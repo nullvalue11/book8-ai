@@ -51,6 +51,32 @@ function validateUrl(url, name) {
   }
 }
 
+const REQUIRED_ENV_VAR_KEYS = [
+  'JWT_SECRET',
+  'OPS_CONSOLE_PASS',
+  'MONGO_URL',
+  'NEXT_PUBLIC_BASE_URL',
+  'STRIPE_SECRET_KEY',
+  'RESEND_API_KEY'
+]
+
+/**
+ * Fail fast before loadConfig if required vars are missing or blank.
+ * @throws {EnvValidationError}
+ */
+export function validateRequiredEnvVars() {
+  const missing = REQUIRED_ENV_VAR_KEYS.filter(
+    (key) => !process.env[key] || String(process.env[key]).trim() === ''
+  )
+  if (missing.length > 0) {
+    throw new EnvValidationError(
+      `Missing required environment variables: ${missing.join(', ')}. Server cannot start.`
+    )
+  }
+}
+
+validateRequiredEnvVars()
+
 /**
  * Validate and load environment configuration
  */
@@ -103,16 +129,12 @@ function loadConfig() {
     }
     
     // Email Service (Resend)
-    const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', false)
+    const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', true)
     const EMAIL_FROM = getEnvVar('EMAIL_FROM', false, 'Book8 AI <onboarding@resend.dev>')
     const EMAIL_REPLY_TO = getEnvVar('EMAIL_REPLY_TO', false, 'support@book8.ai')
     
-    if (!RESEND_API_KEY && NODE_ENV === 'production') {
-      console.warn('[env] WARNING: RESEND_API_KEY not set. Email notifications will be disabled.')
-    }
-    
     // Stripe (Payment Processing)
-    const STRIPE_SECRET_KEY = getEnvVar('STRIPE_SECRET_KEY', false)
+    const STRIPE_SECRET_KEY = getEnvVar('STRIPE_SECRET_KEY', true)
     const STRIPE_PUBLISHABLE_KEY = getEnvVar('STRIPE_PUBLISHABLE_KEY', false)
     const STRIPE_WEBHOOK_SECRET = getEnvVar('STRIPE_WEBHOOK_SECRET', false)
     
@@ -134,7 +156,7 @@ function loadConfig() {
     
     // Ops Console (Basic Auth for /ops/* routes)
     const OPS_CONSOLE_USER = getEnvVar('OPS_CONSOLE_USER', false, 'admin')
-    const OPS_CONSOLE_PASS = getEnvVar('OPS_CONSOLE_PASS', false, 'changeme')
+    const OPS_CONSOLE_PASS = getEnvVar('OPS_CONSOLE_PASS', true)
     const OPS_INTERNAL_BASE_URL = getEnvVar('OPS_INTERNAL_BASE_URL', false, 'http://localhost:3000')
     
     // Billing/Usage Reporting (uses existing CRON_SECRET for auth)

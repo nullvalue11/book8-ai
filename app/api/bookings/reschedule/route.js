@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { verifyRescheduleToken } from '../../../lib/security/rescheduleToken'
 import { env, isFeatureEnabled } from '../../../lib/env'
+import { corsHeaders } from '../../../lib/cors-allow'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,14 +18,13 @@ async function connect() {
   return db
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(request) {
   return new Response(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
+    headers: corsHeaders(request, {
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type'
-    }
+    })
   })
 }
 

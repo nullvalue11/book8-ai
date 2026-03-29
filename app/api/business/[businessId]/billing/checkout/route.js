@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env, debugLog } from '@/lib/env'
+import { corsHeaders } from '@/lib/cors-allow'
 import { COLLECTION_NAME, SUBSCRIPTION_STATUS } from '@/lib/schemas/business'
 
 export const runtime = 'nodejs'
@@ -26,15 +27,14 @@ async function connect() {
 }
 
 // Handle OPTIONS requests for CORS preflight
-export async function OPTIONS() {
+export async function OPTIONS(request) {
   debugLog('[business/billing/checkout] OPTIONS request received')
   return new NextResponse(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
+    headers: corsHeaders(request, {
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    })
   })
 }
 

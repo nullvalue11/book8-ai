@@ -37,49 +37,42 @@ export interface OpsFetchResult<T = any> {
  * We ALWAYS prefer BASE_URL (NEXT_PUBLIC_BASE_URL) over localhost.
  */
 async function getEnvConfig(): Promise<{ baseUrl: string; secret: string }> {
-  try {
-    // @ts-ignore - env.js is a JavaScript module  
-    const envModule = await import('@/lib/env.js')
-    const env = envModule.env || envModule.default?.env || envModule
-    
-    if (env && typeof env === 'object') {
-      // Determine the base URL to use
-      let baseUrl: string
-      
-      // Check if we're in production/Vercel (not localhost)
-      const isProduction = env.IS_PRODUCTION || env.NODE_ENV === 'production'
-      const opsInternalUrl = env.OPS_INTERNAL_BASE_URL || ''
-      const publicBaseUrl = env.BASE_URL || ''
-      
-      // In production, NEVER use localhost - always use the public base URL
-      if (isProduction || opsInternalUrl.includes('localhost') || !opsInternalUrl) {
-        // Use the public base URL (the deployed app URL)
-        baseUrl = publicBaseUrl || 'http://localhost:3000'
-      } else {
-        // Use the explicitly configured internal URL (only if it's not localhost)
-        baseUrl = opsInternalUrl
-      }
-      
-      // Final safety check: if we're still on localhost in production, use BASE_URL
-      if (isProduction && baseUrl.includes('localhost')) {
-        baseUrl = publicBaseUrl
-      }
-      
-      const secret = env.OPS_INTERNAL_SECRET || 'ops-dev-secret-change-me'
-      
-      console.log(`[opsFetch] Environment: ${env.NODE_ENV}, baseUrl resolved to: ${baseUrl}`)
-      
-      return { baseUrl, secret }
-    }
-  } catch (err) {
-    console.warn('[opsFetch] Failed to load env module:', err)
+  // @ts-ignore - env.js is a JavaScript module
+  const envModule = await import('@/lib/env.js')
+  const env = envModule.env || envModule.default?.env || envModule
+
+  if (!env || typeof env !== 'object') {
+    throw new Error('Invalid env module export')
   }
-  
-  // Fallback for development only
-  return {
-    baseUrl: 'http://localhost:3000',
-    secret: 'ops-dev-secret-change-me'
+
+  const secret = env.OPS_INTERNAL_SECRET
+  if (!secret || !String(secret).trim()) {
+    throw new Error('OPS_INTERNAL_SECRET is required for Ops Console API requests')
   }
+
+  let baseUrl: string
+
+  const isProduction = env.IS_PRODUCTION || env.NODE_ENV === 'production'
+  const opsInternalUrl = env.OPS_INTERNAL_BASE_URL || ''
+  const publicBaseUrl = env.BASE_URL || ''
+
+  if (isProduction || opsInternalUrl.includes('localhost') || !opsInternalUrl) {
+    baseUrl = publicBaseUrl || 'http://localhost:3000'
+  } else {
+    baseUrl = opsInternalUrl
+  }
+
+  if (isProduction && baseUrl.includes('localhost')) {
+    baseUrl = publicBaseUrl
+  }
+
+  if (!baseUrl || !String(baseUrl).trim()) {
+    throw new Error('NEXT_PUBLIC_BASE_URL (BASE_URL) is required to resolve ops fetch target')
+  }
+
+  console.log(`[opsFetch] Environment: ${env.NODE_ENV}, baseUrl resolved to: ${baseUrl}`)
+
+  return { baseUrl, secret }
 }
 
 /**
