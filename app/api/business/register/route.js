@@ -399,6 +399,9 @@ export async function GET(request) {
         lastRequestStatus: b.ops?.lastRequestStatus,
         provisionedAt: b.ops?.provisionedAt
       },
+      phoneSetup: b.phoneSetup || null,
+      existingBusinessNumber: b.existingBusinessNumber || null,
+      book8Number: b.book8Number || null,
       createdAt: b.createdAt,
       updatedAt: b.updatedAt
     }

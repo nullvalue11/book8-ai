@@ -104,6 +104,7 @@ const STEP_LABELS = [
   'Calendar',
   'Hours',
   'Services',
+  'Phone',
   'Live!'
 ]
 
@@ -121,6 +122,20 @@ function formatPhone(num) {
     return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
   }
   return num
+}
+
+function normalizeBusinessPhoneInput(input) {
+  if (input == null || typeof input !== 'string') return null
+  const d = input.replace(/\D/g, '')
+  if (d.length === 10) return `+1${d}`
+  if (d.length === 11 && d.startsWith('1')) return `+${d}`
+  return null
+}
+
+/** E.164 +1… → digits only for *72 style dial strings */
+function phoneDigitsForDialString(e164) {
+  if (!e164 || typeof e164 !== 'string') return ''
+  return e164.replace(/\D/g, '')
 }
 
 function SetupAuthScreen({ onAuthenticated }) {
@@ -373,6 +388,9 @@ function WizardContent() {
     calendarSkipped: false,
     businessHours: { ...DEFAULT_HOURS },
     phoneNumber: null,
+    book8Number: null,
+    phoneSetup: null,
+    existingBusinessNumber: null,
     bookingHandle: null,
     /** 'starter' | 'growth' | 'enterprise' — from business after checkout */
     subscriptionPlan: null
@@ -387,9 +405,15 @@ function WizardContent() {
     growth: null,
     enterprise: null
   })
-  /** Step 6 only: idle | loading | live | provisioning | error — avoids relying on core during Steps 1–5 */
-  const [step6LineState, setStep6LineState] = useState('idle')
-  const [step6RetryKey, setStep6RetryKey] = useState(0)
+  /** Step 7 (You're Live): idle | loading | live | provisioning | error */
+  const [step7LineState, setStep7LineState] = useState('idle')
+  const [step7RetryKey, setStep7RetryKey] = useState(0)
+  /** Step 6 (phone): pick | provisioning | new-ready | forward-ready | error */
+  const [phoneStepPhase, setPhoneStepPhase] = useState('pick')
+  const [phoneStepChoice, setPhoneStepChoice] = useState('new')
+  const [phoneStepExistingInput, setPhoneStepExistingInput] = useState('')
+  const [phoneStepSaving, setPhoneStepSaving] = useState(false)
+  const [phoneStepPollKey, setPhoneStepPollKey] = useState(0)
   const [step2CheckoutPhase, setStep2CheckoutPhase] = useState('choose')
   const trialChargeDateLabel = useMemo(() => {
     const d = new Date()
@@ -492,6 +516,9 @@ function WizardContent() {
           calendarSkipped: false,
           businessHours: { ...DEFAULT_HOURS },
           phoneNumber: null,
+          book8Number: null,
+          phoneSetup: null,
+          existingBusinessNumber: null,
           bookingHandle: null,
           subscriptionPlan: null
         }))
@@ -532,7 +559,10 @@ function WizardContent() {
             planActive,
             calendarConnected,
             calendarProvider,
-            subscriptionPlan: normalizePlanKey(primary.plan || primary.subscription?.plan)
+            subscriptionPlan: normalizePlanKey(primary.plan || primary.subscription?.plan),
+            phoneSetup: primary.phoneSetup ?? null,
+            existingBusinessNumber: primary.existingBusinessNumber ?? null,
+            book8Number: primary.book8Number ?? null
           }))
           step = 2
         }
@@ -545,11 +575,14 @@ function WizardContent() {
           { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
         )
         const setupData = await setupRes.json()
+        let hasAssignedLine = false
         if (setupRes.ok && setupData.ok && setupData.assignedTwilioNumber) {
-          step = 6
+          hasAssignedLine = true
+          const twilio = setupData.assignedTwilioNumber
           setWizardData((prev) => ({
             ...prev,
-            phoneNumber: setupData.assignedTwilioNumber,
+            phoneNumber: twilio,
+            book8Number: prev.book8Number || primary.book8Number || twilio,
             bookingHandle: primary.handle
           }))
         } else if (step === 4) {
@@ -563,10 +596,14 @@ function WizardContent() {
           }
         }
 
+        if (hasAssignedLine) {
+          step = 7
+        }
+
         const urlStep = searchParams.get('step')
         if (urlStep) {
           const s = parseInt(urlStep, 10)
-          if (s >= 1 && s <= 6) step = s
+          if (s >= 1 && s <= 7) step = s
         }
 
         setCurrentStep(step)
@@ -607,22 +644,16 @@ function WizardContent() {
     }
   }, [searchParams, wizardData.businessId, loadInitialState])
 
-  // Step 6 only: poll phone-setup from core (lazy; graceful when business not provisioned yet)
+  // Step 6: poll for assigned Twilio line after user submits phone preferences
   useEffect(() => {
-    if (currentStep !== 6) {
-      setStep6LineState('idle')
-      return
-    }
+    if (currentStep !== 6) return
     if (!token || !wizardData.businessId) return
-
     const tier = normalizePlanKey(wizardData.subscriptionPlan)
-    if (tier === 'starter') {
-      setStep6LineState('live')
-      return
-    }
+    if (tier === 'starter') return
+    if (phoneStepPhase !== 'provisioning') return
 
     if (wizardData.phoneNumber) {
-      setStep6LineState('live')
+      setPhoneStepPhase(wizardData.phoneSetup === 'forward' ? 'forward-ready' : 'new-ready')
       return
     }
 
@@ -639,13 +670,28 @@ function WizardContent() {
       }
     }
 
+    const persistBook8 = async (num, setup, existing) => {
+      try {
+        await fetch('/api/business/phone-setup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            businessId: wizardData.businessId,
+            phoneSetup: setup,
+            book8Number: num,
+            ...(setup === 'forward' && existing ? { existingBusinessNumber: existing } : {})
+          })
+        })
+      } catch {
+        /* ignore */
+      }
+    }
+
     const fetchPhoneLine = async () => {
       try {
-        setStep6LineState((prev) => {
-          if (prev === 'live') return 'live'
-          if (!firstPhoneFetch && prev === 'provisioning') return 'provisioning'
-          return 'loading'
-        })
         const r = await fetch(
           `/api/business/phone-setup?businessId=${encodeURIComponent(wizardData.businessId)}`,
           { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
@@ -660,24 +706,34 @@ function WizardContent() {
         firstPhoneFetch = false
 
         if (!r.ok || !data.ok) {
-          setStep6LineState('error')
+          setPhoneStepPhase('error')
           clearPoll()
           return
         }
 
         const num = data.assignedTwilioNumber ?? data.phoneNumber ?? null
         if (num) {
-          setWizardData((prev) => ({ ...prev, phoneNumber: num }))
-          setStep6LineState('live')
+          const setup = wizardData.phoneSetup || phoneStepChoice
+          const existing =
+            setup === 'forward'
+              ? wizardData.existingBusinessNumber ||
+                normalizeBusinessPhoneInput(phoneStepExistingInput)
+              : null
+          setWizardData((prev) => ({
+            ...prev,
+            phoneNumber: num,
+            book8Number: num,
+            phoneSetup: setup === 'forward' ? 'forward' : setup === 'new' ? 'new' : prev.phoneSetup
+          }))
+          void persistBook8(num, setup === 'forward' ? 'forward' : 'new', existing)
+          setPhoneStepPhase(setup === 'forward' ? 'forward-ready' : 'new-ready')
           clearPoll()
           return
         }
-
-        setStep6LineState('provisioning')
       } catch {
         firstPhoneFetch = false
         if (!cancelled) {
-          setStep6LineState('error')
+          setPhoneStepPhase('error')
           clearPoll()
         }
       }
@@ -699,11 +755,142 @@ function WizardContent() {
       cancelled = true
       clearPoll()
     }
-  }, [currentStep, token, wizardData.businessId, wizardData.phoneNumber, wizardData.subscriptionPlan, step6RetryKey])
+  }, [
+    currentStep,
+    token,
+    wizardData.businessId,
+    wizardData.phoneNumber,
+    wizardData.subscriptionPlan,
+    wizardData.phoneSetup,
+    wizardData.existingBusinessNumber,
+    phoneStepPhase,
+    phoneStepChoice,
+    phoneStepExistingInput,
+    phoneStepPollKey
+  ])
 
-  // Step 6: load handle from our DB only (no core-api)
+  // Step 7 (You're Live): poll phone-setup if line not yet assigned
   useEffect(() => {
-    if (currentStep !== 6 || !token || !wizardData.businessId) return
+    if (currentStep !== 7) {
+      setStep7LineState('idle')
+      return
+    }
+    if (!token || !wizardData.businessId) return
+
+    const tier = normalizePlanKey(wizardData.subscriptionPlan)
+    if (tier === 'starter') {
+      setStep7LineState('live')
+      return
+    }
+
+    if (wizardData.phoneNumber) {
+      setStep7LineState('live')
+      return
+    }
+
+    let cancelled = false
+    let intervalId = null
+    let pollCount = 0
+    const maxPolls = 24
+    let firstPhoneFetch = true
+
+    const clearPoll = () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+        intervalId = null
+      }
+    }
+
+    const fetchPhoneLine = async () => {
+      try {
+        setStep7LineState((prev) => {
+          if (prev === 'live') return 'live'
+          if (!firstPhoneFetch && prev === 'provisioning') return 'provisioning'
+          return 'loading'
+        })
+        const r = await fetch(
+          `/api/business/phone-setup?businessId=${encodeURIComponent(wizardData.businessId)}`,
+          { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
+        )
+        let data = {}
+        try {
+          data = await r.json()
+        } catch {
+          data = {}
+        }
+        if (cancelled) return
+        firstPhoneFetch = false
+
+        if (!r.ok || !data.ok) {
+          setStep7LineState('error')
+          clearPoll()
+          return
+        }
+
+        const num = data.assignedTwilioNumber ?? data.phoneNumber ?? null
+        if (num) {
+          setWizardData((prev) => ({ ...prev, phoneNumber: num, book8Number: num }))
+          setStep7LineState('live')
+          clearPoll()
+          const ps = wizardData.phoneSetup || 'new'
+          void fetch('/api/business/phone-setup', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              businessId: wizardData.businessId,
+              phoneSetup: ps,
+              book8Number: num,
+              ...(ps === 'forward' && wizardData.existingBusinessNumber
+                ? { existingBusinessNumber: wizardData.existingBusinessNumber }
+                : {})
+            })
+          }).catch(() => {})
+          return
+        }
+
+        setStep7LineState('provisioning')
+      } catch {
+        firstPhoneFetch = false
+        if (!cancelled) {
+          setStep7LineState('error')
+          clearPoll()
+        }
+      }
+    }
+
+    fetchPhoneLine()
+
+    intervalId = setInterval(() => {
+      if (cancelled) return
+      pollCount += 1
+      if (pollCount >= maxPolls) {
+        clearPoll()
+        return
+      }
+      fetchPhoneLine()
+    }, 15000)
+
+    return () => {
+      cancelled = true
+      clearPoll()
+    }
+  }, [
+    currentStep,
+    token,
+    wizardData.businessId,
+    wizardData.phoneNumber,
+    wizardData.subscriptionPlan,
+    wizardData.phoneSetup,
+    wizardData.existingBusinessNumber,
+    step7RetryKey
+  ])
+
+  // Step 7: load handle from our DB only (no core-api)
+  useEffect(() => {
+    if (currentStep !== 7 || !token || !wizardData.businessId) return
     if (wizardData.bookingHandle || wizardData.handle) return
 
     ;(async () => {
@@ -1077,14 +1264,111 @@ function WizardContent() {
         body: JSON.stringify({ onboardingServicesCatalog: catalogPayload })
       }).catch(() => {})
 
-      setCurrentStep(6)
-      setStep6LineState('idle')
+      const tier = normalizePlanKey(wizardData.subscriptionPlan)
+      if (tier === 'starter') {
+        setCurrentStep(7)
+        setStep7LineState('live')
+      } else {
+        setPhoneStepPhase('pick')
+        setPhoneStepChoice('new')
+        setPhoneStepExistingInput('')
+        setPhoneStepPollKey((k) => k + 1)
+        setCurrentStep(6)
+      }
     } catch (err) {
       setError(err.message || 'Failed to save services')
     } finally {
       setSaving(false)
     }
   }
+
+  async function handlePhoneStepSubmitPrefs() {
+    if (!wizardData.businessId || !token) return
+    const tier = normalizePlanKey(wizardData.subscriptionPlan)
+    if (tier === 'starter') {
+      setCurrentStep(7)
+      return
+    }
+    if (phoneStepPhase === 'new-ready' || phoneStepPhase === 'forward-ready') {
+      setCurrentStep(7)
+      return
+    }
+    if (phoneStepChoice === 'forward') {
+      const norm = normalizeBusinessPhoneInput(phoneStepExistingInput)
+      if (!norm) {
+        setError('Enter a valid US or Canada business number (10 digits).')
+        return
+      }
+    }
+
+    setPhoneStepSaving(true)
+    setError('')
+    try {
+      const phoneSetup = phoneStepChoice === 'forward' ? 'forward' : 'new'
+      const r = await fetch('/api/business/phone-setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          businessId: wizardData.businessId,
+          phoneSetup,
+          ...(phoneSetup === 'forward'
+            ? { existingBusinessNumber: phoneStepExistingInput }
+            : {})
+        })
+      })
+      const out = await r.json().catch(() => ({}))
+      if (!r.ok || !out.ok) {
+        throw new Error(out.error || 'Could not save phone preferences')
+      }
+      const normExisting =
+        phoneSetup === 'forward' ? normalizeBusinessPhoneInput(phoneStepExistingInput) : null
+      updateWizard({
+        phoneSetup,
+        existingBusinessNumber: normExisting
+      })
+      setPhoneStepPhase('provisioning')
+      setPhoneStepPollKey((k) => k + 1)
+    } catch (err) {
+      setError(err.message || 'Failed to save')
+    } finally {
+      setPhoneStepSaving(false)
+    }
+  }
+
+  function handlePhoneStepSkipForwarding() {
+    setCurrentStep(7)
+  }
+
+  useEffect(() => {
+    if (currentStep !== 6) {
+      setPhoneStepPhase('pick')
+      return
+    }
+    const tier = normalizePlanKey(wizardData.subscriptionPlan)
+    if (tier === 'starter') {
+      setCurrentStep(7)
+      return
+    }
+    if (!wizardData.phoneNumber) return
+    if (wizardData.phoneSetup === 'forward') {
+      setPhoneStepChoice('forward')
+      if (wizardData.existingBusinessNumber) {
+        setPhoneStepExistingInput(wizardData.existingBusinessNumber.replace(/^\+1/, ''))
+      }
+      setPhoneStepPhase('forward-ready')
+    } else {
+      setPhoneStepPhase('new-ready')
+    }
+  }, [
+    currentStep,
+    wizardData.phoneNumber,
+    wizardData.phoneSetup,
+    wizardData.existingBusinessNumber,
+    wizardData.subscriptionPlan
+  ])
 
   function handleGoToDashboard() {
     router.push('/dashboard')
@@ -1114,7 +1398,7 @@ function WizardContent() {
     }} />
   }
 
-  const progressPct = (currentStep / 6) * 100
+  const progressPct = (currentStep / 7) * 100
 
   return (
     <main className="min-h-screen bg-[#0A0A0F]">
@@ -1780,8 +2064,230 @@ function WizardContent() {
           </div>
         )}
 
-        {/* Step 6: You're Live! */}
+        {/* Step 6: Phone line */}
         {currentStep === 6 && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Set up your phone line</h1>
+              <p className="text-[#94A3B8] mt-1">
+                How would you like customers to reach your AI receptionist?
+              </p>
+            </div>
+            <Card className={WIZARD_CARD}>
+              <CardContent className="pt-6 space-y-6">
+                {(phoneStepPhase === 'pick' || phoneStepPhase === 'error') && (
+                  <div className="space-y-4">
+                    <button
+                      type="button"
+                      onClick={() => setPhoneStepChoice('new')}
+                      className={cn(
+                        'w-full text-left rounded-xl border p-4 transition-colors',
+                        phoneStepChoice === 'new'
+                          ? 'border-[#8B5CF6] bg-[#8B5CF6]/10 ring-1 ring-[#8B5CF6]/40'
+                          : 'border-[#1e1e2e] bg-[#0A0A0F]/60 hover:border-[#2a2a3d]'
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="text-xl" aria-hidden>
+                          📱
+                        </span>
+                        <div className="space-y-1 min-w-0">
+                          <p className="font-semibold !text-white">Get a new Book8 AI number</p>
+                          <p className="text-sm !text-[#94A3B8]">
+                            We&apos;ll assign a dedicated phone number just for your business.
+                          </p>
+                          <p className="text-xs !text-[#A78BFA] mt-1">Recommended for new businesses</p>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPhoneStepChoice('forward')}
+                      className={cn(
+                        'w-full text-left rounded-xl border p-4 transition-colors',
+                        phoneStepChoice === 'forward'
+                          ? 'border-[#8B5CF6] bg-[#8B5CF6]/10 ring-1 ring-[#8B5CF6]/40'
+                          : 'border-[#1e1e2e] bg-[#0A0A0F]/60 hover:border-[#2a2a3d]'
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="text-xl" aria-hidden>
+                          📞
+                        </span>
+                        <div className="space-y-3 min-w-0 flex-1">
+                          <div>
+                            <p className="font-semibold !text-white">Use my existing business number</p>
+                            <p className="text-sm !text-[#94A3B8] mt-1">
+                              Keep your current number. We&apos;ll show you how to forward calls to your AI
+                              receptionist.
+                            </p>
+                          </div>
+                          {phoneStepChoice === 'forward' && (
+                            <div>
+                              <Label className={WIZARD_LABEL}>Your business number</Label>
+                              <div className="flex items-center gap-2 mt-1 max-w-md">
+                                <span className="text-sm !text-[#94A3B8] shrink-0">+1</span>
+                                <Input
+                                  className={WIZARD_INPUT_INLINE}
+                                  placeholder="555 123 4567"
+                                  value={phoneStepExistingInput}
+                                  onChange={(e) => setPhoneStepExistingInput(e.target.value)}
+                                  autoComplete="tel"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                {phoneStepPhase === 'provisioning' && !wizardData.phoneNumber && (
+                  <div className="rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-4 py-4 flex items-start gap-3">
+                    <Loader2 className="w-5 h-5 text-[#8B5CF6] shrink-0 animate-spin mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium !text-white">Getting your Book8 AI number…</p>
+                      <p className="text-xs !text-[#94A3B8] mt-1">
+                        This usually takes a short time. We check every 15 seconds until your line is ready.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {phoneStepPhase === 'error' && (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 space-y-2">
+                    <p className="text-sm text-red-200">
+                      We couldn&apos;t confirm your line yet. You can retry, or continue and finish from the dashboard.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-red-500/40 text-red-200 hover:bg-red-500/20"
+                      onClick={() => {
+                        setPhoneStepPhase('provisioning')
+                        setPhoneStepPollKey((k) => k + 1)
+                      }}
+                    >
+                      Try again
+                    </Button>
+                  </div>
+                )}
+
+                {phoneStepPhase === 'new-ready' && wizardData.phoneNumber && (
+                  <div className="rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/60 p-4 space-y-2">
+                    <p className="text-sm font-medium !text-white">Your Book8 AI number</p>
+                    <p className="text-xl font-mono !text-[#8B5CF6]">
+                      {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber}
+                    </p>
+                    <p className="text-sm !text-[#94A3B8]">
+                      Share this number with customers — calls and texts reach your AI receptionist.
+                    </p>
+                  </div>
+                )}
+
+                {phoneStepPhase === 'forward-ready' && wizardData.phoneNumber && (
+                  <div className="space-y-4 rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/60 p-4">
+                    <div>
+                      <p className="text-lg font-semibold !text-white">Forward your calls to Book8 AI</p>
+                      <p className="text-sm !text-[#94A3B8] mt-2">
+                        When customers call your current number, calls can ring through to your AI receptionist once
+                        forwarding is set up.
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide !text-[#64748B]">
+                        Your AI receptionist number
+                      </p>
+                      <p className="text-xl font-mono !text-[#8B5CF6] mt-1">
+                        {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber}
+                      </p>
+                    </div>
+                    <div className="text-sm !text-[#94A3B8] space-y-3">
+                      <p className="!text-white font-medium">To activate, set up call forwarding on your current number:</p>
+                      <ol className="list-decimal pl-5 space-y-2">
+                        <li>
+                          From your phone, dial:{' '}
+                          <span className="font-mono !text-[#E9D5FF]">
+                            *72{phoneDigitsForDialString(wizardData.phoneNumber)}
+                          </span>{' '}
+                          <span className="!text-[#64748B]">(works on many US/Canada carriers; codes vary)</span>
+                        </li>
+                        <li>
+                          Or contact your phone provider and ask to forward all calls (or unanswered calls) to{' '}
+                          <span className="!text-white font-mono">
+                            {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber}
+                          </span>
+                          .
+                        </li>
+                        <li>
+                          Test it: call your business number and wait for the AI to answer.
+                        </li>
+                      </ol>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                      <Button
+                        type="button"
+                        className="flex-1 bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
+                        onClick={() => setCurrentStep(7)}
+                      >
+                        I&apos;ve set up forwarding — Continue
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn('flex-1', WIZARD_OUTLINE_MUTED)}
+                        onClick={handlePhoneStepSkipForwarding}
+                      >
+                        I&apos;ll do this later — Skip for now
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    className={WIZARD_OUTLINE_MUTED}
+                    onClick={() => setCurrentStep(5)}
+                    disabled={phoneStepSaving}
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                  {phoneStepPhase === 'pick' && (
+                    <Button
+                      className="flex-1 bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
+                      onClick={handlePhoneStepSubmitPrefs}
+                      disabled={
+                        phoneStepSaving ||
+                        (phoneStepChoice === 'forward' &&
+                          !normalizeBusinessPhoneInput(phoneStepExistingInput))
+                      }
+                    >
+                      {phoneStepSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Continue
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  )}
+                  {phoneStepPhase === 'new-ready' && (
+                    <Button
+                      className="flex-1 bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
+                      onClick={() => setCurrentStep(7)}
+                    >
+                      Continue to You&apos;re Live
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 7: You're Live! */}
+        {currentStep === 7 && (
           <div className="space-y-6">
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#8B5CF6]/20 mb-4">
@@ -1815,6 +2321,38 @@ function WizardContent() {
                         Upgrade to Growth →
                       </Button>
                     </div>
+                  ) : wizardData.phoneSetup === 'forward' && wizardData.existingBusinessNumber ? (
+                    <div className="space-y-3">
+                      <div className="rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/50 px-3 py-3">
+                        <p className="text-xs font-medium uppercase tracking-wide !text-[#64748B]">
+                          Your existing number
+                        </p>
+                        <p className="text-lg font-mono !text-white mt-1">
+                          {formatPhone(wizardData.existingBusinessNumber) ||
+                            wizardData.existingBusinessNumber}{' '}
+                          <span className="text-sm font-sans !text-[#94A3B8]">(forwarded)</span>
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/50 px-3 py-3">
+                        <p className="text-xs font-medium uppercase tracking-wide !text-[#64748B]">
+                          Book8 AI number
+                        </p>
+                        <p className="text-lg font-mono !text-[#8B5CF6] mt-1">
+                          {wizardData.phoneNumber
+                            ? formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber
+                            : '—'}
+                        </p>
+                      </div>
+                      <p className="text-sm !text-[#94A3B8]">
+                        Customers can keep calling the number they already know; forwarding sends those calls to your AI
+                        line.
+                      </p>
+                      <p className="text-xs !text-[#64748B] border border-[#1e1e2e] rounded-lg px-3 py-2 bg-[#0A0A0F]/50">
+                        If forwarding isn&apos;t active yet, dial *72 and your Book8 number on your business phone, or
+                        ask your carrier to forward to{' '}
+                        {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber || 'your Book8 line'}.
+                      </p>
+                    </div>
                   ) : wizardData.phoneNumber ? (
                     <>
                       <p className="text-xl font-mono !text-white">
@@ -1828,7 +2366,7 @@ function WizardContent() {
                         action.
                       </p>
                     </>
-                  ) : step6LineState === 'error' ? (
+                  ) : step7LineState === 'error' ? (
                     <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 space-y-2">
                       <p className="text-sm text-red-200">
                         Couldn&apos;t load your line from our systems yet. You can try again, or continue from the
@@ -1839,7 +2377,7 @@ function WizardContent() {
                         variant="outline"
                         size="sm"
                         className="border-red-500/40 text-red-200 hover:bg-red-500/20"
-                        onClick={() => setStep6RetryKey((k) => k + 1)}
+                        onClick={() => setStep7RetryKey((k) => k + 1)}
                       >
                         Try again
                       </Button>
@@ -1880,6 +2418,14 @@ function WizardContent() {
                   <ul className="space-y-1">
                     {normalizePlanKey(wizardData.subscriptionPlan) === 'starter' ? (
                       <li>→ Visit your booking page</li>
+                    ) : wizardData.phoneSetup === 'forward' && wizardData.existingBusinessNumber ? (
+                      <>
+                        <li>→ Call your existing business number and confirm the AI answers (forwarding must be on)</li>
+                        <li>
+                          → Text your Book8 AI number: &quot;Book a cleaning tomorrow at 2pm&quot; — SMS uses your AI line
+                        </li>
+                        <li>→ Visit your booking page</li>
+                      </>
                     ) : (
                       <>
                         <li>→ Call your number to hear the AI agent</li>

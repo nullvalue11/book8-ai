@@ -18,6 +18,14 @@ async function connect() {
   return db
 }
 
+function normalizeExistingBusinessNumber(input) {
+  if (input == null || typeof input !== 'string') return null
+  const d = input.replace(/\D/g, '')
+  if (d.length === 10) return `+1${d}`
+  if (d.length === 11 && d.startsWith('1')) return `+${d}`
+  return null
+}
+
 async function verifyAuth(request, database) {
   const auth = request.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
@@ -173,6 +181,9 @@ export async function POST(request) {
     const {
       businessId,
       numberSetupMethod,
+      phoneSetup,
+      existingBusinessNumber,
+      book8Number,
       forwardingEnabled,
       forwardingFrom,
       phoneNumber
@@ -185,9 +196,13 @@ export async function POST(request) {
       )
     }
 
-    if (!numberSetupMethod) {
+    const resolvedMethod =
+      numberSetupMethod ||
+      (phoneSetup === 'forward' ? 'forward' : phoneSetup === 'new' ? 'dedicated' : null)
+
+    if (!resolvedMethod) {
       return NextResponse.json(
-        { ok: false, error: 'numberSetupMethod is required' },
+        { ok: false, error: 'numberSetupMethod or phoneSetup (new|forward) is required' },
         { status: 400 }
       )
     }
@@ -218,16 +233,31 @@ export async function POST(request) {
       )
     }
 
+    let fwdList = Array.isArray(forwardingFrom)
+      ? forwardingFrom
+      : forwardingFrom
+        ? [forwardingFrom]
+        : []
+    let fwdFlag = !!forwardingEnabled
+
+    if (phoneSetup === 'forward' && existingBusinessNumber) {
+      const norm = normalizeExistingBusinessNumber(existingBusinessNumber)
+      if (norm) {
+        fwdList = [norm]
+        fwdFlag = true
+      }
+    }
+    if (phoneSetup === 'new') {
+      fwdFlag = false
+      fwdList = []
+    }
+
     const updatePayload = {
       id: businessId,
       name: business.name,
-      numberSetupMethod,
-      forwardingEnabled: !!forwardingEnabled,
-      forwardingFrom: Array.isArray(forwardingFrom)
-        ? forwardingFrom
-        : forwardingFrom
-        ? [forwardingFrom]
-        : [],
+      numberSetupMethod: resolvedMethod,
+      forwardingEnabled: fwdFlag,
+      forwardingFrom: fwdList,
       phoneNumber: phoneNumber || null
     }
 
@@ -252,6 +282,26 @@ export async function POST(request) {
         { status: 502 }
       )
     }
+
+    const mongoFields = { updatedAt: new Date() }
+    if (phoneSetup === 'new' || phoneSetup === 'forward') {
+      mongoFields.phoneSetup = phoneSetup
+    }
+    if (phoneSetup === 'new') {
+      mongoFields.existingBusinessNumber = null
+    }
+    if (phoneSetup === 'forward' && existingBusinessNumber) {
+      const norm = normalizeExistingBusinessNumber(existingBusinessNumber)
+      if (norm) mongoFields.existingBusinessNumber = norm
+    }
+    if (book8Number && typeof book8Number === 'string' && book8Number.trim()) {
+      mongoFields.book8Number = book8Number.trim()
+    }
+
+    await database.collection(BUSINESS_COLLECTION).updateOne(
+      { businessId },
+      { $set: mongoFields }
+    )
 
     return NextResponse.json({
       ok: true,
