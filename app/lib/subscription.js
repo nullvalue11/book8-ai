@@ -1,9 +1,11 @@
 /**
  * Subscription Status Helper
- * 
+ *
  * Provides utilities for checking user subscription status.
  * Used for paywall enforcement across the application.
  */
+
+import { getPlanFeatures as getCorePlanFeatures, normalizePlanKey } from './plan-features'
 
 /**
  * Check if a user has an active subscription
@@ -68,14 +70,14 @@ export function trialDaysRemaining(trialEndIso) {
 }
 
 /**
- * Get features available for a plan tier
- * 
+ * Billing/paywall feature flags derived from {@link ./plan-features} (Starter = Google only, no AI agent).
+ *
  * @param {string} tier - Plan tier
  * @returns {object} Features object
  */
 export function getPlanFeatures(tier) {
-  const features = {
-    free: {
+  if (!tier || tier === 'free') {
+    return {
       calendar: false,
       analytics: false,
       agent: false,
@@ -84,40 +86,20 @@ export function getPlanFeatures(tier) {
       prioritySupport: false,
       teamMembers: false,
       maxCalendars: 0
-    },
-    starter: {
-      calendar: true,
-      analytics: true,
-      agent: true,
-      multiCalendar: false,
-      advancedAnalytics: false,
-      prioritySupport: false,
-      teamMembers: false,
-      maxCalendars: 1
-    },
-    growth: {
-      calendar: true,
-      analytics: true,
-      agent: true,
-      multiCalendar: true,
-      advancedAnalytics: false,
-      prioritySupport: false,
-      teamMembers: false,
-      maxCalendars: 3
-    },
-    enterprise: {
-      calendar: true,
-      analytics: true,
-      agent: true,
-      multiCalendar: true,
-      advancedAnalytics: true,
-      prioritySupport: true,
-      teamMembers: true,
-      maxCalendars: 10
     }
-  };
-  
-  return features[tier] || features.free;
+  }
+  const key = normalizePlanKey(tier)
+  const f = getCorePlanFeatures(key)
+  return {
+    calendar: true,
+    analytics: true,
+    agent: !!f.aiPhoneAgent,
+    multiCalendar: !!f.calendarProviders?.includes('outlook'),
+    advancedAnalytics: f.analytics === 'full',
+    prioritySupport: key === 'enterprise',
+    teamMembers: key === 'enterprise' || f.teamMembers === -1 || f.teamMembers > 1,
+    maxCalendars: f.calendarProviders?.length || 1
+  }
 }
 
 /**

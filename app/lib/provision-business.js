@@ -47,10 +47,17 @@ export async function provisionOnCoreApi({
   try {
     console.log('[provision] Triggering core-api provisioning for:', businessId)
 
+    const resolvedPlan = plan || 'starter'
+    if (resolvedPlan === 'starter') {
+      console.log('[provision] Starter plan — requesting no dedicated phone line from core-api')
+    }
     const body = {
       businessId,
       name,
-      plan: plan || 'starter',
+      plan: resolvedPlan,
+      /** Core-api may use this to skip pool number assignment for Starter */
+      requestDedicatedPhoneLine: resolvedPlan !== 'starter',
+      skipPhoneProvisioning: resolvedPlan === 'starter',
       timezone,
       ...(category != null && { category }),
       ...(customCategory != null &&

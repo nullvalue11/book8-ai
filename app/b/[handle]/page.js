@@ -43,6 +43,10 @@ export default function PublicBookingPage({ params }) {
   const [businessMeta, setBusinessMeta] = useState({ category: '', city: '' })
   const [bookingResult, setBookingResult] = useState(null)
   const [hasServices, setHasServices] = useState(false)
+  /** From /api/public/services — used to hide call/SMS booking for Starter */
+  const [businessPlanTier, setBusinessPlanTier] = useState('starter')
+  const [businessMultilingual, setBusinessMultilingual] = useState(false)
+  const [publicBookingPhone, setPublicBookingPhone] = useState(null)
   const slotsFetchSeq = useRef(0)
   const hasAutoSkippedInitialClosedDay = useRef(false)
 
@@ -69,6 +73,17 @@ export default function PublicBookingPage({ params }) {
               city: data.city || ''
             })
           }
+        }
+        if (res.ok && data.plan != null) {
+          if (!cancelled) setBusinessPlanTier(String(data.plan).toLowerCase())
+        }
+        if (res.ok && data.multilingual != null) {
+          if (!cancelled) setBusinessMultilingual(!!data.multilingual)
+        }
+        if (res.ok && data.bookingPhone) {
+          if (!cancelled) setPublicBookingPhone(data.bookingPhone)
+        } else if (!cancelled) {
+          setPublicBookingPhone(null)
         }
         if (!cancelled && res.ok && Array.isArray(data?.services) && data.services.length > 0) {
           const seen = new Set()
@@ -457,10 +472,12 @@ export default function PublicBookingPage({ params }) {
               </p>
             )}
           </div>
-          <span className="inline-flex items-center gap-1.5 shrink-0 text-xs font-medium text-violet-300 bg-violet-500/10 border border-violet-500/25 rounded-full px-2.5 py-1 self-start">
-            <span aria-hidden>🌐</span>
-            70+ languages supported
-          </span>
+          {businessMultilingual ? (
+            <span className="inline-flex items-center gap-1.5 shrink-0 text-xs font-medium text-violet-300 bg-violet-500/10 border border-violet-500/25 rounded-full px-2.5 py-1 self-start">
+              <span aria-hidden>🌐</span>
+              70+ languages supported
+            </span>
+          ) : null}
         </div>
       </header>
 
@@ -640,7 +657,10 @@ export default function PublicBookingPage({ params }) {
                 </div>
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium mb-1.5 text-gray-300">
-                    Phone <span className="text-gray-500 font-normal">(optional, for SMS)</span>
+                    Phone{' '}
+                    <span className="text-gray-500 font-normal">
+                      {businessPlanTier === 'starter' ? '(optional)' : '(optional, for SMS)'}
+                    </span>
                   </label>
                   <Input
                     id="phone"
@@ -716,10 +736,28 @@ export default function PublicBookingPage({ params }) {
         </div>
       </div>
       <footer className="max-w-[900px] mx-auto px-4 md:px-6 pb-10 pt-2 text-center text-xs text-gray-500">
-        <p>
-          Our AI receptionist speaks 70+ languages.{' '}
-          <span className="text-gray-400">Call to book — we speak your language.</span>
-        </p>
+        {publicBookingPhone ? (
+          <p>
+            {businessMultilingual ? (
+              <>
+                Our AI receptionist speaks 70+ languages.{' '}
+                <span className="text-gray-400">
+                  Or call or text to book: <span className="text-gray-300 font-medium">{publicBookingPhone}</span>
+                </span>
+              </>
+            ) : (
+              <span className="text-gray-400">
+                Or call or text to book: <span className="text-gray-300 font-medium">{publicBookingPhone}</span>
+              </span>
+            )}
+          </p>
+        ) : (
+          <p>
+            {businessMultilingual
+              ? 'Our AI receptionist speaks 70+ languages on eligible plans.'
+              : 'Book online — fast and simple.'}
+          </p>
+        )}
       </footer>
     </main>
   )

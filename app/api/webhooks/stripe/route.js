@@ -16,6 +16,7 @@ import {
   sendPaymentFailedEmail
 } from '@/lib/trialLifecycleEmail'
 import { provisionOnCoreApi } from '@/lib/provision-business'
+import { syncPlanToCore } from '@/lib/sync-calendar-to-core'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -204,6 +205,9 @@ async function handleSubscriptionEvent(event, stripe, database) {
         })
         console.log(
           `[webhooks/stripe] checkout.session.completed: Updated business ${resolvedBizId} subscription to ${bizSubStatus}`
+        )
+        await syncPlanToCore({ businessId: resolvedBizId, plan }).catch((e) =>
+          console.warn('[webhooks/stripe] syncPlanToCore:', e?.message || e)
         )
       }
 
@@ -536,7 +540,21 @@ async function handleSubscriptionEvent(event, stripe, database) {
           }
         }
       )
-      
+
+      const bizRows = await database
+        .collection(BUSINESS_COLLECTION)
+        .find({ 'subscription.stripeCustomerId': customerId })
+        .project({ businessId: 1, id: 1 })
+        .toArray()
+      for (const row of bizRows) {
+        const bid = row.businessId || row.id
+        if (bid) {
+          await syncPlanToCore({ businessId: bid, plan }).catch((e) =>
+            console.warn('[webhooks/stripe] syncPlanToCore:', e?.message || e)
+          )
+        }
+      }
+
       return
     }
     

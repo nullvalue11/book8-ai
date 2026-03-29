@@ -8,6 +8,11 @@ import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 import { findBusinessByPublicHandle } from '@/lib/public-business-lookup'
+import {
+  getPlanFeatures,
+  hasVoiceOrSmsBooking,
+  normalizePlanKey
+} from '@/lib/plan-features'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,13 +65,25 @@ export async function GET(request) {
 
     // core-api may return { services: [...] } or array directly
     const services = Array.isArray(data) ? data : (data?.services || [])
+    const plan = normalizePlanKey(business.plan || business.subscription?.plan)
+    const multilingual = !!getPlanFeatures(plan).multilingual
+    const bookingPhone =
+      business.assignedTwilioNumber ||
+      business.phone ||
+      business.assigned_twilio_number ||
+      null
+    const showPhoneBookingChannel = hasVoiceOrSmsBooking(plan) && !!bookingPhone
+
     return NextResponse.json({
       ok: true,
       services,
       businessId: business.businessId,
       businessName: business.name || null,
       category: business.category || null,
-      city: business.city || null
+      city: business.city || null,
+      plan,
+      multilingual,
+      bookingPhone: showPhoneBookingChannel ? bookingPhone : null
     })
   } catch (error) {
     console.error('[public/services] Error:', error)

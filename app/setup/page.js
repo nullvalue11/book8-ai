@@ -25,11 +25,13 @@ import {
   Zap,
   Building2,
   X,
-  Plus
+  Plus,
+  Lock
 } from 'lucide-react'
 import TimeZonePicker from '@/components/TimeZonePicker'
 import { cn } from '@/lib/utils'
 import { PRIMARY_LANGUAGE_OPTIONS } from '@/lib/primary-languages'
+import { hasOutlookCalendar, normalizePlanKey } from '@/lib/plan-features'
 
 const CATEGORIES = [
   { value: 'barber', label: 'Barber' },
@@ -371,7 +373,9 @@ function WizardContent() {
     calendarSkipped: false,
     businessHours: { ...DEFAULT_HOURS },
     phoneNumber: null,
-    bookingHandle: null
+    bookingHandle: null,
+    /** 'starter' | 'growth' | 'enterprise' — from business after checkout */
+    subscriptionPlan: null
   })
 
   const [loading, setLoading] = useState(true)
@@ -492,7 +496,8 @@ function WizardContent() {
                 : prev.multilingualEnabled !== false,
             planActive,
             calendarConnected,
-            calendarProvider
+            calendarProvider,
+            subscriptionPlan: normalizePlanKey(primary.plan || primary.subscription?.plan)
           }))
           step = 2
         }
@@ -575,6 +580,12 @@ function WizardContent() {
     }
     if (!token || !wizardData.businessId) return
 
+    const tier = normalizePlanKey(wizardData.subscriptionPlan)
+    if (tier === 'starter') {
+      setStep6LineState('live')
+      return
+    }
+
     if (wizardData.phoneNumber) {
       setStep6LineState('live')
       return
@@ -653,7 +664,7 @@ function WizardContent() {
       cancelled = true
       clearPoll()
     }
-  }, [currentStep, token, wizardData.businessId, wizardData.phoneNumber, step6RetryKey])
+  }, [currentStep, token, wizardData.businessId, wizardData.phoneNumber, wizardData.subscriptionPlan, step6RetryKey])
 
   // Step 6: load handle from our DB only (no core-api)
   useEffect(() => {
@@ -1507,14 +1518,28 @@ function WizardContent() {
                     <Calendar className="w-5 h-5 mr-2" />
                     Gmail
                   </Button>
-                  <Button
-                    variant="outline"
-                    className={cn('h-14', WIZARD_OUTLINE_BTN)}
-                    onClick={handleConnectOutlook}
-                  >
-                    <Calendar className="w-5 h-5 mr-2" />
-                    Outlook
-                  </Button>
+                  {hasOutlookCalendar(wizardData.subscriptionPlan) ? (
+                    <Button
+                      variant="outline"
+                      className={cn('h-14', WIZARD_OUTLINE_BTN)}
+                      onClick={handleConnectOutlook}
+                    >
+                      <Calendar className="w-5 h-5 mr-2" />
+                      Outlook
+                    </Button>
+                  ) : (
+                    <div
+                      className={cn(
+                        'h-14 rounded-md border border-[#1e1e2e] bg-[#0A0A0F]/80 flex flex-col items-center justify-center px-2 text-center'
+                      )}
+                    >
+                      <span className="text-xs font-medium text-[#94A3B8] flex items-center gap-1">
+                        <Lock className="w-3.5 h-3.5" />
+                        Outlook
+                      </span>
+                      <span className="text-[10px] text-[#64748B] mt-0.5">Growth — upgrade</span>
+                    </div>
+                  )}
                 </div>
                 <Button
                   variant="ghost"
@@ -1721,7 +1746,11 @@ function WizardContent() {
                 <Sparkles className="w-8 h-8 text-[#8B5CF6]" />
               </div>
               <h1 className="text-2xl font-bold text-white">You&apos;re Live! 🎉</h1>
-              <p className="text-[#94A3B8] mt-1">Your AI receptionist is ready.</p>
+              <p className="text-[#94A3B8] mt-1">
+                {normalizePlanKey(wizardData.subscriptionPlan) === 'starter'
+                  ? 'Your online booking page is ready.'
+                  : 'Your AI receptionist is ready.'}
+              </p>
             </div>
             <Card className={WIZARD_CARD}>
               <CardContent className="pt-6 space-y-6">
@@ -1730,7 +1759,21 @@ function WizardContent() {
                     <Phone className="w-5 h-5" />
                     <span className="font-semibold">Your Booking Line</span>
                   </div>
-                  {wizardData.phoneNumber ? (
+                  {normalizePlanKey(wizardData.subscriptionPlan) === 'starter' ? (
+                    <div className="space-y-4">
+                      <p className="text-sm !text-[#94A3B8]">
+                        Want an AI phone agent too? Upgrade to Growth for a dedicated number that answers calls in 70+
+                        languages.
+                      </p>
+                      <Button
+                        type="button"
+                        className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
+                        onClick={() => router.push('/pricing')}
+                      >
+                        Upgrade to Growth →
+                      </Button>
+                    </div>
+                  ) : wizardData.phoneNumber ? (
                     <>
                       <p className="text-xl font-mono !text-white">
                         {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber}
@@ -1793,9 +1836,15 @@ function WizardContent() {
                 <div className="rounded-lg !bg-[#0A0A0F] !border-[#1e1e2e] border p-4 text-sm !text-[#94A3B8]">
                   <p className="font-medium !text-white mb-2">Try it now!</p>
                   <ul className="space-y-1">
-                    <li>→ Call your number to hear the AI agent</li>
-                    <li>→ Text your number: &quot;Book a cleaning tomorrow at 2pm&quot;</li>
-                    <li>→ Visit your booking page</li>
+                    {normalizePlanKey(wizardData.subscriptionPlan) === 'starter' ? (
+                      <li>→ Visit your booking page</li>
+                    ) : (
+                      <>
+                        <li>→ Call your number to hear the AI agent</li>
+                        <li>→ Text your number: &quot;Book a cleaning tomorrow at 2pm&quot;</li>
+                        <li>→ Visit your booking page</li>
+                      </>
+                    )}
                   </ul>
                 </div>
                 <Button

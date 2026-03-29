@@ -23,6 +23,7 @@ import {
   Crown,
   AlertCircle
 } from 'lucide-react'
+import { hasOutlookCalendar } from '@/lib/plan-features'
 
 // Calendar provider configurations
 const PROVIDERS = [
@@ -240,6 +241,7 @@ function CalendarIntegrationsContent() {
     if (!isSubscribed) return false
     if (!features.calendar) return false
     if (provider.enterpriseOnly && planTier !== 'enterprise') return false
+    if (provider.id === 'microsoft' && !hasOutlookCalendar(planTier)) return false
     return provider.available
   }
   
@@ -318,6 +320,8 @@ function CalendarIntegrationsContent() {
             const isConnected = connectedProviders[provider.id]
             const canConnectProvider = canConnect(provider)
             const isEnterpriseLocked = provider.enterpriseOnly && planTier !== 'enterprise'
+            const isOutlookPlanLocked =
+              provider.id === 'microsoft' && isSubscribed && !hasOutlookCalendar(planTier)
             
             return (
               <Card 
@@ -404,6 +408,15 @@ function CalendarIntegrationsContent() {
                     >
                       <Lock className="w-4 h-4 mr-2" />
                       Subscribe to Connect
+                    </Button>
+                  ) : isOutlookPlanLocked ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push('/pricing?paywall=1&feature=calendar')}
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      Upgrade to Growth
                     </Button>
                   ) : isEnterpriseLocked ? (
                     <Button 

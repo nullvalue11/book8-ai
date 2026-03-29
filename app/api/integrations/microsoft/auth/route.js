@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
 import { env } from '@/lib/env'
 import { isSubscribed } from '@/lib/subscription'
+import { hasOutlookCalendar } from '@/lib/plan-features'
 
 export const runtime = 'nodejs'
 
@@ -92,6 +93,12 @@ export async function GET(request) {
       if (!hasActiveSubscription) {
         console.log(`[Microsoft Auth] Business ${businessId} has no active subscription`)
         return NextResponse.redirect(`${base}/dashboard/business?error=subscription_required&businessId=${businessId}`)
+      }
+
+      const planKey = business.plan || business.subscription?.plan || 'starter'
+      if (!hasOutlookCalendar(planKey)) {
+        console.log(`[Microsoft Auth] Business ${businessId} plan ${planKey} does not include Outlook`)
+        return NextResponse.redirect(`${base}/pricing?paywall=1&feature=calendar`)
       }
     } else {
       // User-context calendar connections (legacy behavior)

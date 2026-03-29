@@ -19,6 +19,9 @@ import SocialMediaLinks from "./components/SocialMediaLinks";
 import { useTheme } from "next-themes";
 import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Activity } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import UpgradePrompt from "./components/UpgradePrompt";
+import PlanFeatureLock from "./components/PlanFeatureLock";
+import { getPlanName, getUiPlanLimits, normalizePlanKey } from "./lib/plan-features";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function formatDuration(seconds) {
@@ -565,6 +568,10 @@ function HomeContent(props) {
       router.push('/pricing?paywall=1&feature=calendar');
       return;
     }
+    if (planLimits && planLimits.outlookCalendar === false) {
+      router.push('/pricing?paywall=1&feature=calendar');
+      return;
+    }
     if (!primaryBusinessId) {
       alert('Set up a business first (need a businessId to connect Outlook for phone bookings).');
       return;
@@ -596,9 +603,8 @@ function HomeContent(props) {
       setPrimaryBookingHandle(primary.handle || primary.businessId || null);
       const provider = primary?.calendar?.provider || (!primary?.calendar?.provider && primary?.calendar?.connected ? 'google' : null)
       setPrimaryCalendarProvider(provider);
-      if (primary.planLimits) {
-        setPlanLimits(primary.planLimits);
-      }
+      const planKey = normalizePlanKey(primary.plan || primary.subscription?.plan);
+      setPlanLimits(primary.planLimits || getUiPlanLimits(planKey));
       const setupRes = await api(
         `/business/phone-setup?businessId=${encodeURIComponent(primary.businessId)}`,
         { method: "GET" }
@@ -1445,33 +1451,52 @@ function HomeContent(props) {
                 )}
               </div>
 
-              <div className="rounded-md border p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium flex items-center gap-2">
-                      Microsoft Outlook
-                      {!isSubscribed && <Lock className="w-3 h-3 text-muted-foreground" />}
-                    </p>
-                    <p className="text-xs text-muted-foreground break-words">
-                      {!isSubscribed
-                        ? "Subscribe to activate Outlook calendar"
-                        : primaryCalendarProvider === "microsoft"
-                          ? `Connected • Last synced ${outlookStatus?.lastSyncedAt ? formatDT(outlookStatus.lastSyncedAt) : formatDT(new Date())}`
-                          : "Not connected"
+              <PlanFeatureLock
+                available={!isSubscribed || !planLimits || planLimits.outlookCalendar !== false}
+                requiredPlan="Growth"
+              >
+                <div className="rounded-md border p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium flex items-center gap-2">
+                        Microsoft Outlook
+                        {(!isSubscribed || (planLimits && planLimits.outlookCalendar === false)) && (
+                          <Lock className="w-3 h-3 text-muted-foreground" />
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground break-words">
+                        {!isSubscribed
+                          ? "Subscribe to activate Outlook calendar"
+                          : planLimits && planLimits.outlookCalendar === false
+                            ? "Included on Growth — upgrade to connect Outlook"
+                          : primaryCalendarProvider === "microsoft"
+                            ? `Connected • Last synced ${outlookStatus?.lastSyncedAt ? formatDT(outlookStatus.lastSyncedAt) : formatDT(new Date())}`
+                            : "Not connected"
+                        }
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={primaryCalendarProvider === "microsoft" ? "secondary" : "default"}
+                      onClick={
+                        planLimits && planLimits.outlookCalendar === false
+                          ? () => router.push('/pricing?paywall=1&feature=calendar')
+                          : connectOutlook
                       }
-                    </p>
+                      className="shrink-0"
+                      disabled={!isSubscribed}
+                    >
+                      {!isSubscribed
+                        ? "Locked"
+                        : planLimits && planLimits.outlookCalendar === false
+                          ? "Upgrade"
+                        : primaryCalendarProvider === "microsoft"
+                          ? "Reconnect"
+                          : "Connect"}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={primaryCalendarProvider === "microsoft" ? "secondary" : "default"}
-                    onClick={connectOutlook}
-                    className="shrink-0"
-                    disabled={!isSubscribed}
-                  >
-                    {!isSubscribed ? "Locked" : primaryCalendarProvider === "microsoft" ? "Reconnect" : "Connect"}
-                  </Button>
                 </div>
-              </div>
+              </PlanFeatureLock>
 
               <div className="rounded-md border p-3">
                 <div className="flex items-center justify-between mb-3">
@@ -1525,18 +1550,11 @@ function HomeContent(props) {
               ) : (
                 <>
                   {planLimits && planLimits.aiPhoneAgent === false ? (
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">
-                        AI Phone Agent is available on the Growth plan. Upgrade to let callers book by phone.
-                      </p>
-                      <Button
-                        size="sm"
-                        className="bg-white text-brand-600 hover:bg-gray-100 font-semibold"
-                        onClick={() => router.push("/pricing")}
-                      >
-                        Upgrade
-                      </Button>
-                    </div>
+                    <UpgradePrompt
+                      feature="AI phone agent & booking line"
+                      currentPlan={planName || getPlanName(normalizePlanKey(planTier))}
+                      requiredPlan="Growth"
+                    />
                   ) : (
                     <>
                       <div className="space-y-1">

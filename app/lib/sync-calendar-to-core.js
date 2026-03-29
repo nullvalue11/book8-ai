@@ -107,3 +107,44 @@ export async function syncTimezoneToCore({
     return { ok: false, error: err.message }
   }
 }
+
+/**
+ * Push subscription plan tier to core-api (merges on business record).
+ */
+export async function syncPlanToCore({ businessId, plan }) {
+  const CORE_API_URL =
+    env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
+  const secret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET
+
+  if (!secret) {
+    console.warn('[sync-plan-to-core] No internal secret — skipping')
+    return { ok: false, skipped: true }
+  }
+  if (!businessId || plan == null) {
+    console.warn('[sync-plan-to-core] Missing businessId or plan — skipping')
+    return { ok: false, skipped: true }
+  }
+
+  try {
+    const baseUrl = CORE_API_URL.replace(/\/$/, '')
+    const response = await fetch(`${baseUrl}/internal/business/update-calendar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-book8-internal-secret': secret,
+        'x-internal-secret': secret
+      },
+      body: JSON.stringify({ businessId, plan })
+    })
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      console.warn('[sync-plan-to-core] Core-api returned:', response.status, text.slice(0, 200))
+      return { ok: false, status: response.status }
+    }
+    console.log('[sync-plan-to-core] Synced plan:', { businessId, plan })
+    return { ok: true }
+  } catch (err) {
+    console.warn('[sync-plan-to-core] Failed:', err.message)
+    return { ok: false, error: err.message }
+  }
+}

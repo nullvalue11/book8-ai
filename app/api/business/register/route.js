@@ -19,6 +19,7 @@ import {
 import { provisionOnCoreApi } from '@/lib/provision-business'
 import { isValidIanaTimeZone } from '@/lib/timezones'
 import { normalizePrimaryLanguage } from '@/lib/primary-languages'
+import { getUiPlanLimits, normalizePlanKey } from '@/lib/plan-features'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -367,7 +368,9 @@ export async function GET(request) {
       .sort({ createdAt: -1 })
       .toArray()
     
-    const cleanedBusinesses = businesses.map(b => ({
+    const cleanedBusinesses = businesses.map(b => {
+      const planKey = normalizePlanKey(b.plan || b.subscription?.plan)
+      return {
       businessId: b.businessId,
       name: b.name,
       timezone: b.timezone || null,
@@ -379,10 +382,11 @@ export async function GET(request) {
       multilingualEnabled: b.multilingualEnabled !== false,
       status: b.status,
       statusReason: b.statusReason,
-      plan: b.plan || b.subscription?.plan || null,
+      plan: planKey,
+      planLimits: getUiPlanLimits(planKey),
       subscription: {
         status: b.subscription?.status || 'none',
-        plan: b.subscription?.plan || b.plan || null,
+        plan: planKey,
         stripePriceId: b.subscription?.stripePriceId || null
       },
       calendar: { 
@@ -397,7 +401,8 @@ export async function GET(request) {
       },
       createdAt: b.createdAt,
       updatedAt: b.updatedAt
-    }))
+    }
+    })
     
     return NextResponse.json({
       ok: true,
