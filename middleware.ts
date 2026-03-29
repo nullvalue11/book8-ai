@@ -14,6 +14,26 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * Constant-time comparison for Edge (no Node crypto). Uses UTF-8 byte XOR.
+ * Mirrors app/lib/auth-utils safeCompare semantics for Basic Auth secrets.
+ */
+function safeCompare(a: string | undefined, b: string | undefined): boolean {
+  if (a == null || b == null || a === '' || b === '') return false
+  const enc = new TextEncoder()
+  const bufA = enc.encode(String(a))
+  const bufB = enc.encode(String(b))
+  if (bufA.length !== bufB.length) {
+    let burn = 0
+    for (let i = 0; i < bufA.length; i++) burn ^= bufA[i]
+    void burn
+    return false
+  }
+  let out = 0
+  for (let i = 0; i < bufA.length; i++) out |= bufA[i] ^ bufB[i]
+  return out === 0
+}
+
 // Routes that require Basic Auth
 const PROTECTED_PATHS = ['/ops', '/api/ops']
 
@@ -37,8 +57,7 @@ function isValidAuth(authHeader: string | null): boolean {
     return false
   }
   
-  // Edge Runtime compatible env access
-  const expectedUser = process.env.OPS_CONSOLE_USER || 'admin'
+  const expectedUser = process.env.OPS_CONSOLE_USER ?? ''
   const expectedPass = process.env.OPS_CONSOLE_PASS ?? ''
   
   try {
@@ -46,7 +65,7 @@ function isValidAuth(authHeader: string | null): boolean {
     const credentials = Buffer.from(base64Credentials, 'base64').toString('utf8')
     const [username, password] = credentials.split(':')
     
-    return username === expectedUser && password === expectedPass
+    return safeCompare(username, expectedUser) && safeCompare(password, expectedPass)
   } catch {
     return false
   }
@@ -60,8 +79,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  const opsUser = process.env.OPS_CONSOLE_USER
   const opsPass = process.env.OPS_CONSOLE_PASS
-  if (!opsPass || !String(opsPass).trim()) {
+  if (!opsUser || !String(opsUser).trim() || !opsPass || !String(opsPass).trim()) {
     return NextResponse.json(
       { error: 'Server misconfigured' },
       { status: 503, headers: { 'Content-Type': 'application/json' } }

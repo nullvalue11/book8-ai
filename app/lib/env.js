@@ -53,6 +53,7 @@ function validateUrl(url, name) {
 
 const REQUIRED_ENV_VAR_KEYS = [
   'JWT_SECRET',
+  'OPS_CONSOLE_USER',
   'OPS_CONSOLE_PASS',
   'MONGO_URL',
   'NEXT_PUBLIC_BASE_URL',
@@ -71,6 +72,18 @@ export function validateRequiredEnvVars() {
   if (missing.length > 0) {
     throw new EnvValidationError(
       `Missing required environment variables: ${missing.join(', ')}. Server cannot start.`
+    )
+  }
+
+  if (process.env.NODE_ENV === 'production' && process.env.DEBUG_LOGS === 'true') {
+    throw new EnvValidationError(
+      'DEBUG_LOGS=true is not allowed in production. Set DEBUG_LOGS=false or remove it.'
+    )
+  }
+
+  if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
+    throw new EnvValidationError(
+      `JWT_SECRET must be at least 32 characters. Current length: ${process.env.JWT_SECRET.length}`
     )
   }
 }
@@ -108,10 +121,6 @@ function loadConfig() {
     const AZURE_AD_CLIENT_ID = getEnvVar('AZURE_AD_CLIENT_ID', false)
     const AZURE_AD_CLIENT_SECRET = getEnvVar('AZURE_AD_CLIENT_SECRET', false)
     const AZURE_AD_TENANT_ID = getEnvVar('AZURE_AD_TENANT_ID', false, 'common')
-    
-    if (JWT_SECRET.length < 32) {
-      console.warn('[env] WARNING: JWT_SECRET should be at least 32 characters for security')
-    }
     
     // Google OAuth & Calendar
     const GOOGLE_CLIENT_ID = getEnvVar('GOOGLE_CLIENT_ID', false)
@@ -155,7 +164,7 @@ function loadConfig() {
     const OPS_KEY_ADMIN = getEnvVar('OPS_KEY_ADMIN', false)
     
     // Ops Console (Basic Auth for /ops/* routes)
-    const OPS_CONSOLE_USER = getEnvVar('OPS_CONSOLE_USER', false, 'admin')
+    const OPS_CONSOLE_USER = getEnvVar('OPS_CONSOLE_USER', true)
     const OPS_CONSOLE_PASS = getEnvVar('OPS_CONSOLE_PASS', true)
     const OPS_INTERNAL_BASE_URL = getEnvVar('OPS_INTERNAL_BASE_URL', false, 'http://localhost:3000')
     

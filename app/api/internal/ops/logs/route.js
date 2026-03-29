@@ -30,6 +30,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import crypto from 'crypto'
 import { env } from '@/lib/env'
+import { safeCompare as verifySecret } from '@/lib/auth-utils'
 import {
   COLLECTION_NAME,
   STATUS_VALUES,
@@ -102,27 +103,6 @@ function scopeMatches(allowedScope, requiredScope) {
  */
 function hasScope(allowedScopes, requiredScope) {
   return allowedScopes.some(scope => scopeMatches(scope, requiredScope))
-}
-
-// ============================================================================
-// Security: Constant-Time Secret Comparison
-// ============================================================================
-
-function verifySecret(provided, expected) {
-  if (!provided || !expected) {
-    crypto.timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32))
-    return false
-  }
-  
-  const providedBuffer = Buffer.from(provided, 'utf8')
-  const expectedBuffer = Buffer.from(expected, 'utf8')
-  
-  if (providedBuffer.length !== expectedBuffer.length) {
-    crypto.timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32))
-    return false
-  }
-  
-  return crypto.timingSafeEqual(providedBuffer, expectedBuffer)
 }
 
 /**

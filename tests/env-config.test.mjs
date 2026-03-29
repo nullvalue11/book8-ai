@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 
 const placeholders = {
   JWT_SECRET: 'jest-jwt-secret-min-32-chars-ok!!',
+  OPS_CONSOLE_USER: 'jest-ops-user',
   OPS_CONSOLE_PASS: 'jest-ops-pass',
   MONGO_URL: 'mongodb://127.0.0.1:27017/jest',
   NEXT_PUBLIC_BASE_URL: 'http://localhost:3000',

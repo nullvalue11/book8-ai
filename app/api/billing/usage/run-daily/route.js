@@ -42,6 +42,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
+import { safeCompare } from '@/lib/auth-utils'
 import { getStripe } from '@/lib/stripeSubscription'
 
 export const runtime = 'nodejs'
@@ -76,7 +77,7 @@ function verifyCronAuth(request) {
   // Support both "Bearer <token>" format
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
   
-  if (token !== cronSecret) {
+  if (!safeCompare(token, cronSecret)) {
     return { valid: false, error: 'Invalid cron secret' }
   }
   

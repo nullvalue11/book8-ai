@@ -12,6 +12,7 @@ import {
 } from '@/lib/emailRenderer'
 import { env, isFeatureEnabled } from '@/lib/env'
 import { getCorsAllowOrigin } from '@/lib/cors-allow'
+import { safeCompare } from '@/lib/auth-utils'
 
 export const runtime = 'nodejs'
 
@@ -96,7 +97,7 @@ export async function GET(request) {
     const cronHeader = request.headers.get('x-vercel-cron')
 
     if (!secret && !cronHeader) return json(request, { error: 'Unauthorized' }, { status: 401 })
-    if (secret && env.CRON_SECRET && secret !== env.CRON_SECRET) return json(request, { error: 'Unauthorized' }, { status: 401 })
+    if (secret && env.CRON_SECRET && !safeCompare(secret, env.CRON_SECRET)) return json(request, { error: 'Unauthorized' }, { status: 401 })
 
     const logsEnabled = String(env.DEBUG_LOGS || '').toLowerCase() === 'true'
     const runId = uuidv4()

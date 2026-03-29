@@ -34,6 +34,7 @@
 
 import { NextResponse } from 'next/server'
 import { env } from '@/lib/env'
+import { safeCompare } from '@/lib/auth-utils'
 import { getStripe } from '@/lib/stripeSubscription'
 
 export const runtime = 'nodejs'
@@ -45,14 +46,17 @@ function verifyAdminToken(request) {
   
   // Check x-admin-token header
   const providedAdminToken = request.headers.get('x-admin-token')
-  if (adminToken && providedAdminToken === adminToken) {
+  if (adminToken && safeCompare(providedAdminToken, adminToken)) {
     return { valid: true }
   }
   
   // Check Authorization: Bearer <CRON_SECRET>
   const authHeader = request.headers.get('authorization') || ''
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
-    return { valid: true }
+  if (cronSecret && authHeader.startsWith('Bearer ')) {
+    const bearer = authHeader.slice(7)
+    if (safeCompare(bearer, cronSecret)) {
+      return { valid: true }
+    }
   }
   
   if (!adminToken && !cronSecret) {

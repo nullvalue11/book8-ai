@@ -34,6 +34,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
+import { safeCompare } from '@/lib/auth-utils'
 import { getStripe, getCallMinutesItemId } from '@/lib/stripeSubscription'
 
 export const runtime = 'nodejs'
@@ -64,7 +65,7 @@ function verifyAdminToken(request) {
     return { valid: false, error: 'Missing x-admin-token header' }
   }
   
-  if (providedToken !== adminToken) {
+  if (!safeCompare(providedToken, adminToken)) {
     return { valid: false, error: 'Invalid admin token' }
   }
   
