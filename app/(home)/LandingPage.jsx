@@ -22,6 +22,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Button } from '@/components/ui/button';
 import PricingPlanFeatureList from '@/components/PricingPlanFeatureList';
 import { PRICING_CALL_MINUTES_FOOTNOTE } from '@/lib/pricing-plan-features';
+import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from '@/lib/setup-entry';
 
 const faqItems = [
   {
@@ -120,7 +121,7 @@ export default function LandingPage() {
                 className={`flex flex-wrap gap-4 transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 style={{ transitionDelay: '300ms' }}
               >
-                <Link href="/setup">
+                <Link href={SETUP_NEW_BUSINESS_PATH}>
                   <Button
                     className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-12 px-6 rounded-lg font-medium"
                     size="lg"
@@ -437,7 +438,7 @@ export default function LandingPage() {
                 sub: '/month',
                 desc: 'Individuals & small businesses',
                 cta: 'Get started',
-                href: '/setup',
+                href: setupUrlWithNewBusiness({ plan: 'starter' }),
                 highlight: false,
               },
               {
@@ -448,7 +449,7 @@ export default function LandingPage() {
                 sub: '/month after trial',
                 desc: '14-day free trial · For growing teams',
                 cta: 'Start free trial →',
-                href: '/setup',
+                href: setupUrlWithNewBusiness({ plan: 'growth' }),
                 highlight: true,
                 badge: 'Most popular',
               },
@@ -460,7 +461,7 @@ export default function LandingPage() {
                 sub: '/month',
                 desc: 'Large teams & custom needs',
                 cta: 'Get started',
-                href: '/setup',
+                href: setupUrlWithNewBusiness({ plan: 'enterprise' }),
                 highlight: false,
               },
             ].map((tier) => {
@@ -559,7 +560,7 @@ export default function LandingPage() {
           >
             Stop Missing Calls. Start Booking 24/7.
           </h2>
-          <Link href="/setup">
+          <Link href={SETUP_NEW_BUSINESS_PATH}>
             <Button
               className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-14 px-10 text-lg rounded-lg font-medium"
               size="lg"
@@ -594,7 +595,7 @@ export default function LandingPage() {
                 <Link href="/setup" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
                   Sign In
                 </Link>
-                <Link href="/setup" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
+                <Link href={SETUP_NEW_BUSINESS_PATH} className="text-sm text-[#94A3B8] hover:text-white transition-colors">
                   Get Started
                 </Link>
               </div>

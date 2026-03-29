@@ -29,6 +29,8 @@ try {
 }
 
 const KEEP_BUSINESS_ID = 'biz_mmpsyemadcrxuc' // Downtown Barber
+/** Verify these are gone after run (e.g. stray test tenants from other accounts) */
+const MUST_NOT_EXIST_AFTER_RUN = ['biz_mkgabnsmuzyjmw'] // Wais Mo Fitness
 const dryRun = process.argv.includes('--dry-run')
 
 function resolveDbName(uri) {
@@ -142,6 +144,18 @@ async function run() {
   subs.forEach((s) => {
     console.log(`  ${s.businessId} — ${s.plan || 'unknown'} — ${s.status}`)
   })
+
+  console.log('\n=== MUST-NOT-EXIST CHECK (test / stray IDs) ===\n')
+  for (const id of MUST_NOT_EXIST_AFTER_RUN) {
+    const found = await db.collection('businesses').findOne({
+      $or: [{ businessId: id }, { id }]
+    })
+    if (found) {
+      console.error(`❌ STILL PRESENT: ${id} (${found.name || 'unnamed'}) — run live purge or delete manually`)
+    } else {
+      console.log(`✓ Absent (ok): ${id}`)
+    }
+  }
 
   await client.close()
   console.log('\nDone.')

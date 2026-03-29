@@ -99,7 +99,7 @@ export async function GET(request) {
     // If this is a business-context connection, update the business document
     if (businessId) {
       const updateResult = await database.collection('businesses').updateOne(
-        { businessId, ownerUserId: uid },
+        { ownerUserId: uid, $or: [{ businessId }, { id: businessId }] },
         { 
           $set: { 
             calendar: {

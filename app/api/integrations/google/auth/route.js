@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
 import { env } from '@/lib/env'
-import { isSubscribed } from '@/lib/subscription'
+import { isSubscribed, businessHasCalendarEntitlement } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 
@@ -90,25 +90,27 @@ export async function GET(request) {
     
     // If businessId is provided, validate ownership and check business subscription
     if (businessId) {
-      const business = await database.collection('businesses').findOne({ 
-        businessId, 
-        ownerUserId: userId 
+      const business = await database.collection('businesses').findOne({
+        ownerUserId: userId,
+        $or: [{ businessId }, { id: businessId }]
       })
-      
+
       if (!business) {
         console.log(`[Google Auth] Business ${businessId} not found or not owned by user ${userId}`)
         return NextResponse.redirect(`${base}/dashboard/business?error=business_not_found`)
       }
-      
-      // For business calendar connections, check business subscription.
-      // Accept subscription.status === 'active' OR a valid paid plan (webhook may set plan before status).
-      const hasActiveSubscription =
-        business.subscription?.status === 'active' ||
-        business.subscription?.status === 'trialing' ||
-        ['starter', 'growth', 'enterprise'].includes(business.plan)
 
-      if (!hasActiveSubscription) {
-        console.log(`[Google Auth] Business ${businessId} has no active subscription`)
+      if (!businessHasCalendarEntitlement(business, user)) {
+        console.log(
+          `[Google Auth] Business ${businessId} subscription gate:`,
+          JSON.stringify({
+            subStatus: business.subscription?.status,
+            plan: business.plan,
+            subPlan: business.subscription?.plan,
+            billingEnabled: business.features?.billingEnabled,
+            userSubscribed: isSubscribed(user)
+          })
+        )
         return NextResponse.redirect(`${base}/dashboard/business?error=subscription_required&businessId=${businessId}`)
       }
     } else {

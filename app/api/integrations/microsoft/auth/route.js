@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
 import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
 import { env } from '@/lib/env'
-import { isSubscribed } from '@/lib/subscription'
+import { isSubscribed, businessHasCalendarEntitlement } from '@/lib/subscription'
 import { hasOutlookCalendar } from '@/lib/plan-features'
 
 export const runtime = 'nodejs'
@@ -75,8 +75,8 @@ export async function GET(request) {
 
     if (businessId) {
       const business = await database.collection('businesses').findOne({
-        businessId,
-        ownerUserId: userId
+        ownerUserId: userId,
+        $or: [{ businessId }, { id: businessId }]
       })
 
       if (!business) {
@@ -84,14 +84,8 @@ export async function GET(request) {
         return NextResponse.redirect(`${base}/dashboard/business?error=business_not_found`)
       }
 
-      // Accept subscription.status === 'active' OR a valid paid plan (webhook may set plan before status).
-      const hasActiveSubscription =
-        business.subscription?.status === 'active' ||
-        business.subscription?.status === 'trialing' ||
-        ['starter', 'growth', 'enterprise'].includes(business.plan)
-
-      if (!hasActiveSubscription) {
-        console.log(`[Microsoft Auth] Business ${businessId} has no active subscription`)
+      if (!businessHasCalendarEntitlement(business, user)) {
+        console.log(`[Microsoft Auth] Business ${businessId} has no calendar entitlement`)
         return NextResponse.redirect(`${base}/dashboard/business?error=subscription_required&businessId=${businessId}`)
       }
 

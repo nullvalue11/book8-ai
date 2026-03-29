@@ -463,7 +463,40 @@ function WizardContent() {
       const bizList = bizData.businesses || []
       setBusinesses(bizList)
 
-      if (bizList.length > 0) {
+      const oauthResume =
+        searchParams.get('google_connected') === '1' ||
+        searchParams.get('outlook_connected') === '1'
+      const registerNewBusiness =
+        !oauthResume &&
+        (searchParams.get('newBusiness') === '1' || searchParams.get('registerNew') === '1')
+
+      if (bizList.length > 0 && registerNewBusiness) {
+        const tz =
+          typeof Intl !== 'undefined'
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : 'UTC'
+        setWizardData((prev) => ({
+          ...prev,
+          businessId: null,
+          handle: null,
+          businessName: '',
+          category: 'barber',
+          customCategory: '',
+          city: '',
+          timezone: prev.timezone || tz,
+          primaryLanguage: prev.primaryLanguage || 'en',
+          multilingualEnabled: prev.multilingualEnabled !== false,
+          planActive: false,
+          calendarConnected: false,
+          calendarProvider: null,
+          calendarSkipped: false,
+          businessHours: { ...DEFAULT_HOURS },
+          phoneNumber: null,
+          bookingHandle: null,
+          subscriptionPlan: null
+        }))
+        setCurrentStep(1)
+      } else if (bizList.length > 0) {
         const urlBizId = searchParams.get('businessId')
         let primary = bizList[0]
         if (urlBizId) {
@@ -475,7 +508,9 @@ function WizardContent() {
         const planActive =
           primary.subscription?.status === 'active' ||
           primary.subscription?.status === 'trialing' ||
-          ['starter', 'growth', 'enterprise'].includes(primary.plan)
+          ['starter', 'growth', 'enterprise'].includes(
+            String(primary.plan || primary.subscription?.plan || '').toLowerCase()
+          )
         const calendarConnected = primary.calendar?.connected || false
         const calendarProvider = primary.calendar?.provider || null
 
@@ -1126,6 +1161,13 @@ function WizardContent() {
           <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-start gap-2">
             <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <p className="text-sm text-red-300">{error}</p>
+          </div>
+        )}
+
+        {searchParams.get('newBusiness') === '1' && currentStep === 1 && (
+          <div className="mb-6 rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-4 py-3 text-sm text-[#E9D5FF]">
+            You&apos;re registering a <span className="font-semibold text-white">new business</span>. Existing
+            businesses remain in your dashboard.
           </div>
         )}
 

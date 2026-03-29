@@ -27,6 +27,30 @@ export function isSubscribed(user) {
 }
 
 /**
+ * Whether a business may connect calendars (Google / Outlook).
+ * Uses embedded business.subscription, plan fields, billing flag, then the owner's user subscription.
+ *
+ * @param {object | null} business
+ * @param {object | null} [user] - owner user doc (optional fallback)
+ */
+export function businessHasCalendarEntitlement(business, user = null) {
+  if (!business) return false
+
+  const status = business.subscription?.status
+  if (['active', 'trialing', 'past_due'].includes(status)) return true
+
+  const planRaw = business.plan ?? business.subscription?.plan
+  const planKey = planRaw != null ? String(planRaw).toLowerCase().trim() : ''
+  if (['starter', 'growth', 'enterprise'].includes(planKey)) return true
+
+  if (business.features?.billingEnabled === true) return true
+
+  if (user && isSubscribed(user)) return true
+
+  return false
+}
+
+/**
  * Get plan tier from price ID
  * 
  * @param {string} priceId - Stripe price ID

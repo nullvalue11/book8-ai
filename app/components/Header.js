@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import HeaderLogo from "./HeaderLogo";
 import { Shield, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SETUP_NEW_BUSINESS_PATH } from "@/lib/setup-entry";
 
 export default function Header({ variant }) {
   const { data: session, status } = useSession();
@@ -85,7 +86,7 @@ export default function Header({ variant }) {
           ) : (
             <>
               <Link href="/setup" className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}>Sign In</Link>
-              <Link href="/setup" className={`inline-flex h-11 items-center rounded-lg px-4 text-sm font-medium transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+              <Link href={SETUP_NEW_BUSINESS_PATH} className={`inline-flex h-11 items-center rounded-lg px-4 text-sm font-medium transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                 isLanding 
                   ? "bg-[#8B5CF6] text-white hover:bg-[#7C3AED] focus-visible:ring-[#8B5CF6] focus-visible:ring-offset-[#0A0A0F]" 
                   : "bg-brand-500 text-white hover:bg-brand-600 hover:scale-[1.01] active:scale-[0.99] shadow-[0_8px_24px_-12px_rgba(124,77,255,.6)] focus-visible:ring-brand-500 focus-visible:ring-offset-background"
@@ -134,7 +135,7 @@ export default function Header({ variant }) {
                 <Link href="/setup" className={`py-3 transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setMobileMenuOpen(false)}>
                   Sign In
                 </Link>
-                <Link href="/setup" className="inline-flex justify-center py-3 rounded-lg bg-[#8B5CF6] text-white font-medium" onClick={() => setMobileMenuOpen(false)}>
+                <Link href={SETUP_NEW_BUSINESS_PATH} className="inline-flex justify-center py-3 rounded-lg bg-[#8B5CF6] text-white font-medium" onClick={() => setMobileMenuOpen(false)}>
                   Get Started →
                 </Link>
               </>

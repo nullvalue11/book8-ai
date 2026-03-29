@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import Header from "@/components/Header";
 import PricingPlanFeatureList from "@/components/PricingPlanFeatureList";
 import { PRICING_CALL_MINUTES_FOOTNOTE } from "@/lib/pricing-plan-features";
+import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from "@/lib/setup-entry";
 import { Zap, Building2, Rocket, ArrowRight, AlertCircle } from "lucide-react";
 
 const plans = [
@@ -282,7 +283,14 @@ function PricingContent() {
                         <ArrowRight className="w-4 h-4 inline" />
                       </Button>
                     ) : (
-                      <Link href={isLoggedIn ? `/setup?plan=${plan.id}` : "/setup"} className="block">
+                      <Link
+                        href={
+                          isLoggedIn
+                            ? setupUrlWithNewBusiness({ plan: plan.id })
+                            : SETUP_NEW_BUSINESS_PATH
+                        }
+                        className="block"
+                      >
                         <Button
                           className={`w-full ${
                             plan.popular
