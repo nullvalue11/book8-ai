@@ -67,7 +67,7 @@ export async function POST(request) {
       )
     }
 
-    const { businessId, bookingId, title, description, start: startStr, end: endStr, timezone, customer } = body || {}
+    const { businessId, bookingId, title, description, start: startStr, end: endStr, timezone } = body || {}
 
     if (!businessId || typeof businessId !== 'string' || !businessId.trim()) {
       return NextResponse.json(
@@ -144,8 +144,9 @@ export async function POST(request) {
     const calendarId = selectedCalendarIds[0] || 'primary'
 
     const resolvedTimezone = timezone && typeof timezone === 'string' ? timezone : 'America/Toronto'
-    const customerEmail = customer && typeof customer === 'object' && customer.email ? customer.email : null
 
+    // Do not add customer as attendee — Google would send them a duplicate invite from the owner's
+    // calendar. Customer gets Book8 confirmation email only. Details stay in description (from core-api).
     const event = {
       summary: String(title).trim(),
       description: description && typeof description === 'string' ? description : '',
@@ -157,7 +158,6 @@ export async function POST(request) {
         dateTime: endStr,
         timeZone: resolvedTimezone
       },
-      attendees: customerEmail ? [{ email: customerEmail }] : [],
       colorId: '10',
       reminders: {
         useDefault: false,
@@ -182,7 +182,8 @@ export async function POST(request) {
       const created = await calendar.events.insert({
         calendarId,
         requestBody: event,
-        sendUpdates: 'all'
+        // No calendar emails — owner sees the event on their calendar; customer gets Resend only.
+        sendUpdates: 'none'
       })
       eventId = created.data?.id || null
     } catch (err) {
