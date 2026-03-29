@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
+import React, { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -414,6 +414,8 @@ function WizardContent() {
   const [phoneStepExistingInput, setPhoneStepExistingInput] = useState('')
   const [phoneStepSaving, setPhoneStepSaving] = useState(false)
   const [phoneStepPollKey, setPhoneStepPollKey] = useState(0)
+  /** Tracks last step index so we detect entering Step 6 (choice always starts at pick). */
+  const phoneStepPrevRef = useRef(null)
   const [step2CheckoutPhase, setStep2CheckoutPhase] = useState('choose')
   const trialChargeDateLabel = useMemo(() => {
     const d = new Date()
@@ -1269,9 +1271,6 @@ function WizardContent() {
         setCurrentStep(7)
         setStep7LineState('live')
       } else {
-        setPhoneStepPhase('pick')
-        setPhoneStepChoice('new')
-        setPhoneStepExistingInput('')
         setPhoneStepPollKey((k) => k + 1)
         setCurrentStep(6)
       }
@@ -1342,32 +1341,46 @@ function WizardContent() {
     setCurrentStep(7)
   }
 
+  // Step 6: never auto-skip to assigned-number UI — always start at pick with cards.
+  // Pre-select new vs forward from saved business prefs only (not from assignedTwilioNumber).
   useEffect(() => {
     if (currentStep !== 6) {
       setPhoneStepPhase('pick')
+      phoneStepPrevRef.current = currentStep
       return
     }
+
     const tier = normalizePlanKey(wizardData.subscriptionPlan)
     if (tier === 'starter') {
       setCurrentStep(7)
+      phoneStepPrevRef.current = currentStep
       return
     }
-    if (!wizardData.phoneNumber) return
+
+    const enteredFromElsewhere = phoneStepPrevRef.current !== 6
+    phoneStepPrevRef.current = currentStep
+
+    if (!enteredFromElsewhere) return
+
+    setPhoneStepPhase('pick')
     if (wizardData.phoneSetup === 'forward') {
       setPhoneStepChoice('forward')
       if (wizardData.existingBusinessNumber) {
-        setPhoneStepExistingInput(wizardData.existingBusinessNumber.replace(/^\+1/, ''))
+        setPhoneStepExistingInput(
+          String(wizardData.existingBusinessNumber).replace(/^\+1/, '')
+        )
+      } else {
+        setPhoneStepExistingInput('')
       }
-      setPhoneStepPhase('forward-ready')
     } else {
-      setPhoneStepPhase('new-ready')
+      setPhoneStepChoice('new')
+      setPhoneStepExistingInput('')
     }
   }, [
     currentStep,
-    wizardData.phoneNumber,
+    wizardData.subscriptionPlan,
     wizardData.phoneSetup,
-    wizardData.existingBusinessNumber,
-    wizardData.subscriptionPlan
+    wizardData.existingBusinessNumber
   ])
 
   function handleGoToDashboard() {
@@ -2075,7 +2088,7 @@ function WizardContent() {
             </div>
             <Card className={WIZARD_CARD}>
               <CardContent className="pt-6 space-y-6">
-                {(phoneStepPhase === 'pick' || phoneStepPhase === 'error') && (
+                {phoneStepPhase === 'pick' && (
                   <div className="space-y-4">
                     <button
                       type="button"
