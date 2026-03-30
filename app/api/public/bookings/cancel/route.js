@@ -1,3 +1,24 @@
+/**
+ * CANCEL BOOKING ROUTES
+ *
+ * KNOWN ISSUE (QA-011): Two cancel token systems exist:
+ *
+ * 1. Legacy: GET handler uses `public_booking_tokens` collection
+ *    - Created by /api/public/bookings endpoint
+ *    - Token stored in separate collection, tracked via `used` flag
+ *
+ * 2. Current: POST handler uses `bookings.cancelToken` field
+ *    - Created by /api/public/book endpoint
+ *    - Token stored directly on the booking document
+ *
+ * These are NOT interchangeable. A token from system 1 won't work with
+ * the POST endpoint, and vice versa. Both systems work independently
+ * but should be unified in a future refactor.
+ *
+ * TODO: Migrate all bookings to use cancelToken on the booking document.
+ * Remove public_booking_tokens collection after migration.
+ */
+
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import bcrypt from 'bcryptjs'
@@ -11,6 +32,42 @@ export const dynamic = 'force-dynamic'
 
 let client, db
 async function connect() { if (!client) { client = new MongoClient(env.MONGO_URL); await client.connect(); db = client.db(env.DB_NAME) } return db }
+
+/** Best-effort sync to core-api (BOO-19B / QA-003). Does not throw. */
+async function propagateCancellationToCoreApi(booking) {
+  const coreApiUrl = (env.CORE_API_BASE_URL || '').replace(/\/$/, '')
+  const coreApiSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
+  if (!coreApiUrl || !coreApiSecret) return
+
+  const slotStart = booking.startTime || booking.date || booking.slot?.start
+  const businessId = booking.businessId
+  if (!businessId || !slotStart) {
+    console.warn('[cancel] Skipping core-api propagation: missing businessId or slot start')
+    return
+  }
+
+  try {
+    const cancelResponse = await fetch(`${coreApiUrl}/api/bookings/cancel-by-slot`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-book8-internal-secret': coreApiSecret
+      },
+      body: JSON.stringify({
+        businessId,
+        slotStart,
+        customerEmail: booking.guestEmail || booking.customerEmail || booking.email,
+        customerPhone: booking.guestPhone || booking.phone || booking.customerPhone
+      })
+    })
+
+    if (!cancelResponse.ok) {
+      console.error('[cancel] Core-api cancellation failed:', cancelResponse.status)
+    }
+  } catch (err) {
+    console.error('[cancel] Failed to propagate cancellation to core-api:', err?.message || err)
+  }
+}
 
 // New POST endpoint for modern cancel flow
 export async function POST(request) {
@@ -88,6 +145,8 @@ export async function POST(request) {
         } 
       }
     )
+
+    await propagateCancellationToCoreApi(booking)
 
     // Send cancellation emails
     try {
@@ -214,6 +273,8 @@ export async function GET(request) {
 
     await database.collection('bookings').updateOne({ id }, { $set: { status: 'canceled', updatedAt: new Date().toISOString() } })
     await database.collection('public_booking_tokens').updateOne({ _id: marker._id }, { $set: { used: true, usedAt: new Date() } })
+
+    await propagateCancellationToCoreApi(booking)
 
     // send cancellation emails
     try {

@@ -20,6 +20,11 @@ for (const [key, value] of Object.entries(placeholders)) {
   }
 }
 
+// Avoid EnvValidationError when host shell has NODE_ENV=production + DEBUG_LOGS=true
+if (process.env.NODE_ENV === 'production' && process.env.DEBUG_LOGS === 'true') {
+  process.env.DEBUG_LOGS = 'false'
+}
+
 let env
 let debugLog
 let isFeatureEnabled

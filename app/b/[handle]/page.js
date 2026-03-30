@@ -48,7 +48,8 @@ export default function PublicBookingPage({ params }) {
   const [businessMultilingual, setBusinessMultilingual] = useState(false)
   const [publicBookingPhone, setPublicBookingPhone] = useState(null)
   const slotsFetchSeq = useRef(0)
-  const hasAutoSkippedInitialClosedDay = useRef(false)
+  /** Consecutive auto day-advances when initial dates have no slots (max 7). */
+  const autoSkipAdvancesDone = useRef(0)
 
   // Detect timezone
   useEffect(() => {
@@ -126,7 +127,7 @@ export default function PublicBookingPage({ params }) {
   }, [])
 
   useEffect(() => {
-    hasAutoSkippedInitialClosedDay.current = false
+    autoSkipAdvancesDone.current = 0
   }, [handle])
 
   const loadSlots = useCallback(async () => {
@@ -221,17 +222,24 @@ export default function PublicBookingPage({ params }) {
     }
   }, [date, guestTz, hasServices, selectedService, loadSlots])
 
-  // Once on load: if today (local) has no slots, advance to tomorrow so guests see the next open day
+  // If today (local) has no slots, advance day-by-day up to 7 times (e.g. weekend → Monday)
   useEffect(() => {
-    if (loading || slots.length > 0 || !date || hasAutoSkippedInitialClosedDay.current) return
-    const todayStr = toLocalYmd(new Date())
-    if (date === todayStr) {
-      hasAutoSkippedInitialClosedDay.current = true
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      setDate(toLocalYmd(tomorrow))
-      setCurrentMonth({ year: tomorrow.getFullYear(), month: tomorrow.getMonth() })
+    if (loading || !date) return
+    if (slots.length > 0) {
+      autoSkipAdvancesDone.current = 0
+      return
     }
+    if (autoSkipAdvancesDone.current >= 7) return
+
+    const todayStr = toLocalYmd(new Date())
+    if (autoSkipAdvancesDone.current === 0 && date !== todayStr) return
+
+    autoSkipAdvancesDone.current += 1
+    const [y, m, d] = date.split('-').map(Number)
+    const cur = new Date(y, m - 1, d)
+    cur.setDate(cur.getDate() + 1)
+    setDate(toLocalYmd(cur))
+    setCurrentMonth({ year: cur.getFullYear(), month: cur.getMonth() })
   }, [loading, slots.length, date])
 
   async function handleBooking() {
@@ -319,10 +327,11 @@ export default function PublicBookingPage({ params }) {
   }
 
   const canSubmit =
+    hasServices &&
+    selectedService &&
     selected &&
     form.name?.trim() &&
     form.email?.trim()?.includes('@') &&
-    (!hasServices || selectedService) &&
     !booking
 
   // --- Calendar helpers ---
@@ -341,22 +350,25 @@ export default function PublicBookingPage({ params }) {
     return days
   }, [currentMonth])
 
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = toLocalYmd(new Date())
 
   function goPrevMonth() {
     if (!currentMonth) return
+    autoSkipAdvancesDone.current = 0
     const d = new Date(currentMonth.year, currentMonth.month - 1, 1)
     setCurrentMonth({ year: d.getFullYear(), month: d.getMonth() })
   }
 
   function goNextMonth() {
     if (!currentMonth) return
+    autoSkipAdvancesDone.current = 0
     const d = new Date(currentMonth.year, currentMonth.month + 1, 1)
     setCurrentMonth({ year: d.getFullYear(), month: d.getMonth() })
   }
 
   function onDateClick(d) {
     if (!d) return
+    autoSkipAdvancesDone.current = 0
     const dStr = toLocalYmd(d)
     if (dStr < todayStr) return
     setDate(dStr)
@@ -485,6 +497,16 @@ export default function PublicBookingPage({ params }) {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           {/* Left: Services, Calendar, Slots */}
           <div className="lg:col-span-3 space-y-6">
+            {!servicesLoading && !hasServices && services.length === 0 && (
+              <div className="text-center p-6 bg-yellow-950/40 border border-yellow-700/50 rounded-lg">
+                <p className="text-yellow-200 font-medium">
+                  This business hasn&apos;t configured their services yet.
+                </p>
+                <p className="text-yellow-400/90 text-sm mt-1">
+                  Please call or text them directly to book an appointment.
+                </p>
+              </div>
+            )}
             {/* Service pills */}
             {hasServices && (
               <section>
