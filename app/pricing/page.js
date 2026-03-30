@@ -10,6 +10,8 @@ import Header from "@/components/Header";
 import PricingPlanFeatureList from "@/components/PricingPlanFeatureList";
 import { PRICING_CALL_MINUTES_FOOTNOTE } from "@/lib/pricing-plan-features";
 import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from "@/lib/setup-entry";
+import { faqItems } from "@/lib/faq-items";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Zap, Building2, Rocket, ArrowRight, AlertCircle, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,7 +24,7 @@ const plans = [
     description: "Perfect for individuals and small businesses getting started",
     icon: Zap,
     popular: false,
-    color: "from-blue-500 to-cyan-500"
+    color: "from-slate-500 to-slate-400"
   },
   {
     id: "growth",
@@ -320,16 +322,35 @@ function PricingContent() {
               );
             })}
           </div>
-          <p className="mt-10 text-center text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed px-2">
+          <p className="mt-10 text-center text-sm text-[#94A3B8] dark:text-muted-foreground max-w-xl mx-auto leading-relaxed px-2">
             {PRICING_CALL_MINUTES_FOOTNOTE}
           </p>
         </div>
       </section>
 
-      {/* FAQ or Footer */}
+      <section className="max-w-3xl mx-auto py-16 px-4">
+        <h2 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+        <Accordion type="single" collapsible className="w-full">
+          {faqItems.map(({ q, a }) => (
+            <AccordionItem key={q} value={q} className="border-border">
+              <AccordionTrigger className="text-left hover:no-underline">{q}</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">{a}</AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </section>
+
       <footer className="py-8 px-6 border-t border-border">
         <div className="max-w-6xl mx-auto text-center text-muted-foreground text-sm">
-          <p>Questions? Contact us at support@book8.ai</p>
+          <p>
+            Questions? Contact us at{" "}
+            <a
+              href="mailto:support@book8.ai"
+              className="underline hover:no-underline text-foreground font-medium"
+            >
+              support@book8.ai
+            </a>
+          </p>
         </div>
       </footer>
     </main>

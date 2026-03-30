@@ -1513,7 +1513,7 @@ function WizardContent() {
 
       <div
         className={cn(
-          'mx-auto px-4 py-8 sm:py-12 w-full',
+          'mx-auto px-4 py-8 sm:py-12 w-full transition-all duration-300 ease-in-out',
           currentStep === 2 ? 'max-w-6xl' : 'max-w-xl'
         )}
       >
@@ -1546,7 +1546,7 @@ function WizardContent() {
                   <Label className={WIZARD_LABEL}>Business name *</Label>
                   <Input
                     className={WIZARD_INPUT}
-                    placeholder="e.g. Riverside Dental Studio"
+                    placeholder="e.g. Downtown Barber, Bloom Wellness"
                     value={wizardData.businessName}
                     onChange={(e) => updateWizard({ businessName: e.target.value })}
                   />
@@ -1982,15 +1982,25 @@ function WizardContent() {
                 </Button>
                 <div className="space-y-3">
                   {DAYS.map((day) => (
-                    <div key={day} className="flex items-center gap-3 flex-wrap">
-                      <div className="w-12 text-sm !text-[#94A3B8]">{DAY_LABELS[day]}</div>
-                      <Switch
-                        checked={isDayOpen(day)}
-                        onCheckedChange={(open) => setDayOpen(day, open)}
-                        className="data-[state=checked]:bg-[#8B5CF6]"
-                      />
+                    <div
+                      key={day}
+                      className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-h-[36px]">
+                        <div className="w-12 text-sm font-medium !text-[#94A3B8] shrink-0">
+                          {DAY_LABELS[day]}
+                        </div>
+                        <Switch
+                          checked={isDayOpen(day)}
+                          onCheckedChange={(open) => setDayOpen(day, open)}
+                          className="data-[state=checked]:bg-[#8B5CF6]"
+                        />
+                        {!isDayOpen(day) && (
+                          <span className="!text-[#64748B] text-sm sm:ml-0">Closed</span>
+                        )}
+                      </div>
                       {isDayOpen(day) && (
-                        <>
+                        <div className="flex items-center gap-2 flex-wrap ml-0 sm:ml-0">
                           <select
                             className="h-9 rounded-md appearance-none !border-[#1e1e2e] !bg-[#0A0A0F] !text-white border text-sm px-3 py-2 min-w-0"
                             value={wizardData.businessHours[day]?.[0]?.start || '09:00'}
@@ -2002,7 +2012,7 @@ function WizardContent() {
                           </select>
                           <span className="!text-[#64748B]">—</span>
                           <select
-                            className="h-9 rounded-md !border-[#1e1e2e] !bg-[#0A0A0F] !text-white text-sm px-2 border"
+                            className="h-9 rounded-md appearance-none !border-[#1e1e2e] !bg-[#0A0A0F] !text-white border text-sm px-3 py-2 min-w-0"
                             value={wizardData.businessHours[day]?.[0]?.end || '17:00'}
                             onChange={(e) => setDayBlock(day, 0, 'end', e.target.value)}
                           >
@@ -2010,9 +2020,8 @@ function WizardContent() {
                               <option key={t} value={t}>{t}</option>
                             ))}
                           </select>
-                        </>
+                        </div>
                       )}
-                      {!isDayOpen(day) && <span className="!text-[#64748B] text-sm">Closed</span>}
                     </div>
                   ))}
                 </div>

@@ -24,33 +24,7 @@ import { Button } from '@/components/ui/button';
 import PricingPlanFeatureList from '@/components/PricingPlanFeatureList';
 import { PRICING_CALL_MINUTES_FOOTNOTE } from '@/lib/pricing-plan-features';
 import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from '@/lib/setup-entry';
-
-const faqItems = [
-  {
-    q: 'How does the AI voice agent work?',
-    a: 'When a customer calls your Book8 AI number, our AI answers using natural speech. It knows your services, hours, and availability. It has a natural conversation, finds a time that works, and books the appointment.',
-  },
-  {
-    q: 'Do I need any special equipment?',
-    a: 'No. We give you a phone number. Customers call it. That\'s it.',
-  },
-  {
-    q: 'Can I use my existing phone number?',
-    a: 'Yes, you can absolutely use your existing business phone number.',
-  },
-  {
-    q: 'What calendars do you support?',
-    a: 'Google Calendar and Microsoft Outlook (including Hotmail, Live, and Office 365).',
-  },
-  {
-    q: 'Is there a contract?',
-    a: 'No. Monthly billing, cancel anytime.',
-  },
-  {
-    q: 'What languages does the AI support?',
-    a: "Book8 AI automatically detects your customer's language and responds in that language. We currently support 70+ languages including English, French, Spanish, Arabic, Mandarin, Hindi, Portuguese, German, Japanese, Korean, and many more. No configuration needed — it just works.",
-  },
-];
+import { faqItems } from '@/lib/faq-items';
 
 function useIntersectionObserver(ref, options = {}) {
   const [isVisible, setIsVisible] = useState(false);
@@ -506,7 +480,7 @@ export default function LandingPage() {
               );
             })}
           </div>
-          <p className="mt-10 text-center text-xs text-white/40 max-w-xl mx-auto leading-relaxed px-2">
+          <p className="mt-10 text-center text-xs text-[#94A3B8] max-w-xl mx-auto leading-relaxed px-2">
             {PRICING_CALL_MINUTES_FOOTNOTE}
           </p>
         </div>
@@ -568,55 +542,6 @@ export default function LandingPage() {
           </Link>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer
-        className="py-12 border-t border-[#1e1e2e]"
-        style={{ background: '#0A0A0F' }}
-      >
-        <div className="mx-auto max-w-6xl px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <p className="font-bold text-[#F8FAFC] mb-4" style={{ fontFamily: "'Sora', sans-serif" }}>
-                Book8 AI
-              </p>
-              <p className="text-sm text-[#94A3B8]">© {new Date().getFullYear()} Book8 AI Inc.</p>
-            </div>
-            <div>
-              <p className="font-semibold text-[#F8FAFC] mb-4" style={{ fontFamily: "'Sora', sans-serif" }}>
-                Product
-              </p>
-              <div className="flex flex-col gap-2">
-                <Link href="/pricing" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
-                  Pricing
-                </Link>
-                <Link href="/setup?mode=login" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
-                  Sign In
-                </Link>
-                <Link href={SETUP_NEW_BUSINESS_PATH} className="text-sm text-[#94A3B8] hover:text-white transition-colors">
-                  Get Started
-                </Link>
-              </div>
-            </div>
-            <div>
-              <p className="font-semibold text-[#F8FAFC] mb-4" style={{ fontFamily: "'Sora', sans-serif" }}>
-                Legal
-              </p>
-              <div className="flex flex-col gap-2">
-                <Link href="/privacy" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
-                  Privacy Policy
-                </Link>
-                <Link href="/terms" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
-                  Terms & Conditions
-                </Link>
-                <Link href="#data-transparency" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
-                  Data Usage
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

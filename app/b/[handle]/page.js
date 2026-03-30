@@ -434,7 +434,7 @@ export default function PublicBookingPage({ params }) {
             </div>
           </div>
           <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bold text-white">You&apos;re booked! ✓</h1>
+            <h1 className="text-3xl font-bold text-white">You&apos;re all set!</h1>
             {selectedService && (
               <p className="text-gray-300 font-medium">
                 {selectedService.name} • {selected && formatTime(selected.start)}
@@ -463,15 +463,25 @@ export default function PublicBookingPage({ params }) {
                 Add to Calendar
               </Button>
             )}
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-2">
               {rescheduleUrl && (
-                <Button onClick={() => (window.location.href = rescheduleUrl)} variant="outline" className="flex-1">
+                <Button
+                  type="button"
+                  onClick={() => (window.location.href = rescheduleUrl)}
+                  variant="outline"
+                  className="w-full"
+                >
                   Reschedule
                 </Button>
               )}
               {cancelUrl && (
-                <Button onClick={() => (window.location.href = cancelUrl)} variant="outline" className="flex-1 text-destructive hover:text-destructive">
-                  Cancel
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full text-red-400/70 hover:text-red-400 text-sm"
+                  onClick={() => (window.location.href = cancelUrl)}
+                >
+                  Cancel booking
                 </Button>
               )}
             </div>
@@ -494,6 +504,7 @@ export default function PublicBookingPage({ params }) {
 
   return (
     <main className="min-h-screen bg-gray-950 text-white dark">
+      {/* Booking page is intentionally always-dark for brand consistency across all embedded contexts */}
       {/* Header */}
       <header className="border-b border-gray-800 px-4 py-4 md:px-6">
         <div className="max-w-[900px] mx-auto flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

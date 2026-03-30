@@ -16,7 +16,7 @@ import LandingPage from "./(home)/LandingPage";
 import DataPrivacy from "./(home)/DataPrivacy";
 import SocialMediaLinks from "./components/SocialMediaLinks";
 import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Activity, CheckCircle2, XCircle } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import UpgradePrompt from "./components/UpgradePrompt";
 import PlanFeatureLock from "./components/PlanFeatureLock";
@@ -822,7 +822,7 @@ function HomeContent(props) {
             </div>
           </div>
         </header>
-        <div className="container mx-auto max-w-7xl p-6">
+        <div className="container mx-auto max-w-6xl p-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="h-64 rounded-lg bg-muted" />
             <div className="h-64 rounded-lg bg-muted lg:col-span-2" />
@@ -1122,28 +1122,16 @@ function HomeContent(props) {
                 {primaryBusinessName}
               </span>
             ) : null}
-            {/* Plan badge for subscribed users */}
-            {subscriptionChecked && isSubscribed && (
-              billingSubscription?.status === 'trialing' && billingSubscription?.trialDaysLeft != null ? (
-                <span className={`inline px-2 py-0.5 rounded-full text-xs md:text-sm font-medium ${
-                  billingSubscription.trialDaysLeft > 6
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
-                    : billingSubscription.trialDaysLeft > 2
-                      ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100'
-                      : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
-                }`}>
-                  Trial — {billingSubscription.trialDaysLeft}d left
-                </span>
-              ) : (
-                <span className={`inline px-2 py-0.5 rounded-full text-xs md:text-sm font-medium ${
-                  planTier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
-                  planTier === 'growth' ? 'bg-blue-100 text-blue-800' :
-                  'bg-green-100 text-green-800'
-                }`}>
-                  {planTier === 'enterprise' && <Crown className="w-3 h-3 inline mr-1" />}
-                  {planName}
-                </span>
-              )
+            {/* Plan badge (trial status uses banner below to avoid duplicate copy) */}
+            {subscriptionChecked && isSubscribed && billingSubscription?.status !== 'trialing' && (
+              <span className={`inline px-2 py-0.5 rounded-full text-xs md:text-sm font-medium ${
+                planTier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
+                planTier === 'growth' ? 'bg-blue-100 text-blue-800' :
+                'bg-green-100 text-green-800'
+              }`}>
+                {planTier === 'enterprise' && <Crown className="w-3 h-3 inline mr-1" />}
+                {planName}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-3 text-sm">
@@ -1159,12 +1147,13 @@ function HomeContent(props) {
           <div className="mx-auto max-w-6xl px-4 md:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-purple-600 dark:text-purple-300">
-                Free Trial — {billingSubscription.trialDaysLeft ?? '—'} day
-                {billingSubscription.trialDaysLeft !== 1 ? 's' : ''} remaining
+                {billingSubscription.trialDaysLeft != null
+                  ? `Free Trial — ${billingSubscription.trialDaysLeft} day${billingSubscription.trialDaysLeft !== 1 ? 's' : ''} left`
+                  : 'Free Trial — Trial active'}
               </p>
               <p className="text-xs text-muted-foreground mt-1 max-w-xl">
                 Your Growth plan trial ends on{' '}
-                {new Date(billingSubscription.trialEnd).toLocaleDateString('en-US', {
+                {new Date(billingSubscription.trialEnd).toLocaleDateString(undefined, {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric'
@@ -1225,7 +1214,7 @@ function HomeContent(props) {
       {/* Top Subscription Banner - only show if NOT subscribed */}
       {subscriptionChecked && !isSubscribed && (
         <div className="bg-brand-500 border-b border-brand-600">
-          <div className="container mx-auto max-w-7xl px-6 py-3">
+          <div className="container mx-auto max-w-6xl px-6 py-3">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-3 text-white">
                 <Lock className="w-5 h-5 shrink-0" />
@@ -1258,7 +1247,7 @@ function HomeContent(props) {
         </div>
       )}
 
-      <div className="container mx-auto max-w-7xl p-6">
+      <div className="container mx-auto max-w-6xl p-6">
         {forceDashboard && (
           <ProvisioningAlertBanner token={token} show={!!token} />
         )}
@@ -1267,7 +1256,9 @@ function HomeContent(props) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <Card className="bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">📞 Recent Calls</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Phone className="w-5 h-5 shrink-0" aria-hidden /> Recent Calls
+                </CardTitle>
                 {recentCalls.length > 0 && (
                   <span className="text-sm text-muted-foreground">
                     {recentCalls.length} call{recentCalls.length !== 1 ? "s" : ""} · last 7 days
@@ -1334,7 +1325,9 @@ function HomeContent(props) {
             </Card>
             <Card className="bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">📅 Upcoming Bookings</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="w-5 h-5 shrink-0" aria-hidden /> Upcoming Bookings
+                </CardTitle>
                 {upcomingBookings.length > 0 && (
                   <span className="text-sm text-muted-foreground">
                     {upcomingBookings.length} upcoming · next 30 days
