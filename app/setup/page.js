@@ -1508,6 +1508,9 @@ function WizardContent() {
               style={{ width: `${progressPct}%` }}
             />
           </div>
+          <p className="text-center text-sm text-gray-400 sm:hidden mt-2">
+            Step {currentStep} of {STEP_LABELS.length} — {STEP_LABELS[currentStep - 1] ?? ''}
+          </p>
         </div>
       </div>
 
@@ -1535,7 +1538,7 @@ function WizardContent() {
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">Welcome to Book8 AI! 👋</h1>
+              <h1 className="text-2xl font-bold text-white">Welcome to Book8 AI!</h1>
               <p className="text-[#94A3B8] mt-1">
                 Let&apos;s set up your AI receptionist in under 5 minutes.
               </p>

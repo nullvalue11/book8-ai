@@ -371,7 +371,7 @@ export default function LandingPage() {
                 {['9:00', '10:00', '11:00', '12:00', '1:00', '2:00', '3:00', '4:00'].map((t) => (
                   <div
                     key={t}
-                    className="py-2 rounded-lg border border-[#1e1e2e] text-center text-sm font-medium"
+                    className="py-2 rounded-lg border border-[#1e1e2e] text-center text-sm font-medium text-white/70"
                   >
                     {t}
                   </div>

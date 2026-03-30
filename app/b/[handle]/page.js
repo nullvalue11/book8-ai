@@ -587,8 +587,9 @@ export default function PublicBookingPage({ params }) {
                 <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <button
+                      type="button"
                       onClick={goPrevMonth}
-                      className="p-1 rounded hover:bg-gray-800 transition-colors text-white"
+                      className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded hover:bg-gray-800 transition-colors text-white"
                       aria-label="Previous month"
                     >
                       <ChevronLeft className="w-5 h-5" />
@@ -599,7 +600,7 @@ export default function PublicBookingPage({ params }) {
                     <button
                       type="button"
                       onClick={goNextMonth}
-                      className="p-1 rounded hover:bg-gray-800 transition-colors text-white"
+                      className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded hover:bg-gray-800 transition-colors text-white"
                       aria-label="Next month"
                     >
                       <ChevronRight className="w-5 h-5" />
@@ -746,7 +747,7 @@ export default function PublicBookingPage({ params }) {
                     <button
                       type="button"
                       onClick={() => setNotesExpanded(false)}
-                      className="text-xs text-gray-500 mt-1 hover:underline"
+                      className="text-sm text-gray-500 hover:text-gray-300 transition-colors mt-1"
                     >
                       Collapse
                     </button>

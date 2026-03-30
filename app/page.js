@@ -31,17 +31,47 @@ function formatDuration(seconds) {
   return `${min}m ${sec.toString().padStart(2, "0")}s`;
 }
 function formatPhone(phone) {
-  if (!phone) return "Unknown";
-  const normalized = String(phone).replace(/\D/g, "");
-  const match = normalized.match(/^1?(\d{3})(\d{3})(\d{4})$/);
-  if (match) return `(${match[1]}) ${match[2]}-${match[3]}`;
-  return phone;
+  if (phone == null || String(phone).trim() === "") return "";
+  const raw = String(phone).trim();
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return raw.startsWith("+") ? raw : `+${digits || raw}`;
 }
 function formatCallTime(iso) {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   } catch { return "—"; }
+}
+
+/** ISO-ish codes from calls → short display names for tooltips */
+const CALL_LANGUAGE_LABELS = {
+  en: "English",
+  fr: "French",
+  es: "Spanish",
+  ar: "Arabic",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  nl: "Dutch",
+  pl: "Polish",
+  ru: "Russian",
+  ja: "Japanese",
+  ko: "Korean",
+  zh: "Chinese",
+  hi: "Hindi",
+};
+
+function callLanguageDisplayLabel(code) {
+  if (!code) return "";
+  const key = String(code).toLowerCase().replace(/_/g, "-").split("-")[0].slice(0, 8);
+  if (!/^[a-z]{2,8}$/.test(key)) return String(code).toUpperCase();
+  return CALL_LANGUAGE_LABELS[key] || String(code).toUpperCase();
 }
 
 /** ElevenLabs / core-api may expose detected language on call payloads */
@@ -814,7 +844,7 @@ function HomeContent(props) {
     return (
       <main className="min-h-screen bg-background">
         <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="container mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4">
+          <div className="container mx-auto max-w-6xl px-6 py-4 flex items-center justify-between gap-4">
             <div className="h-6 w-24 bg-muted rounded" />
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded bg-muted" />
@@ -1137,7 +1167,7 @@ function HomeContent(props) {
           <div className="flex items-center gap-3 text-sm">
             <ThemeToggle resolved={resolved} setTheme={setTheme} />
             <span className="text-muted-foreground hidden sm:inline truncate max-w-[200px]">{user?.email}</span>
-            <Button variant="destructive" size="sm" onClick={handleLogout}>Logout</Button>
+            <Button variant="outline" size="sm" onClick={handleLogout}>Logout</Button>
           </div>
         </div>
       </header>
@@ -1199,7 +1229,7 @@ function HomeContent(props) {
               Welcome to <span className="font-semibold text-foreground">{planName}</span>! 
               {planTier === 'enterprise' && ' You now have access to all premium features including advanced analytics, multi-calendar support, and priority support.'}
               {planTier === 'growth' && ' You now have access to multi-calendar support and all standard features.'}
-              {planTier === 'starter' && ' You now have access to calendar sync, AI agents, and analytics.'}
+              {planTier === 'starter' && ' You now have access to web booking, Google Calendar sync, and appointment management.'}
             </p>
             <Button 
               className="bg-brand-500 hover:bg-brand-600"
@@ -1220,7 +1250,7 @@ function HomeContent(props) {
                 <Lock className="w-5 h-5 shrink-0" />
                 <p className="text-sm font-medium">
                   <span className="hidden sm:inline">Unlock all features — </span>
-                  Subscribe to connect calendars, use AI agents, and access analytics.
+                  Subscribe for calendar sync, the AI booking line on Growth+, and analytics.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -1295,7 +1325,7 @@ function HomeContent(props) {
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                               <span className="text-muted-foreground shrink-0">{formatCallTime(time)}</span>
-                              <span className="text-foreground">{formatPhone(callerPhone)}</span>
+                              <span className="text-foreground">{formatPhone(callerPhone) || "—"}</span>
                               <span className="text-muted-foreground">{formatDuration(duration)}</span>
                               <span className="inline-flex shrink-0" aria-hidden>
                                 {isSuccess ? (
@@ -1305,7 +1335,10 @@ function HomeContent(props) {
                                 )}
                               </span>
                               {langCode ? (
-                                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/25">
+                                <span
+                                  title={`Call language: ${callLanguageDisplayLabel(langCode)}`}
+                                  className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/25"
+                                >
                                   {langCode.toUpperCase()}
                                 </span>
                               ) : null}
@@ -1362,7 +1395,12 @@ function HomeContent(props) {
                           </div>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
                             <span>{serviceName}{durationMin ? ` (${durationMin} min)` : ""}</span>
-                            {phone && <span>📞 {formatPhone(phone)}</span>}
+                            {phone ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Phone className="w-3.5 h-3.5 shrink-0 opacity-70" aria-hidden />
+                                {formatPhone(phone) || phone}
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                       );

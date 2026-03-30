@@ -49,7 +49,7 @@ const plans = [
     icon: Building2
     ,
     popular: false,
-    color: "from-orange-500 to-red-500"
+    color: "from-amber-400 to-yellow-300"
   }
 ];
 
@@ -322,7 +322,7 @@ function PricingContent() {
               );
             })}
           </div>
-          <p className="mt-10 text-center text-sm text-[#94A3B8] dark:text-muted-foreground max-w-xl mx-auto leading-relaxed px-2">
+          <p className="mt-10 text-center text-xs text-[#94A3B8] dark:text-muted-foreground max-w-xl mx-auto leading-relaxed px-2">
             {PRICING_CALL_MINUTES_FOOTNOTE}
           </p>
         </div>
