@@ -75,7 +75,17 @@ export function validateRequiredEnvVars() {
     )
   }
 
-  if (process.env.NODE_ENV === 'production' && process.env.DEBUG_LOGS === 'true') {
+  // Block verbose debug logs in real production runtime, but not during `next build`
+  // (Vercel/CI use NODE_ENV=production for builds; DEBUG_LOGS may still be set on the project).
+  const isNextBuild =
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.NEXT_PHASE === 'phase-development-build' ||
+    process.env.npm_lifecycle_event === 'build'
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.DEBUG_LOGS === 'true' &&
+    !isNextBuild
+  ) {
     throw new EnvValidationError(
       'DEBUG_LOGS=true is not allowed in production. Set DEBUG_LOGS=false or remove it.'
     )
