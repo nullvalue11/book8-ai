@@ -191,13 +191,13 @@ export default function AnalyticsDashboard({ token, subscribed = false, planLimi
     : kpiCardsAll.filter(card => card.title === 'Total Bookings' || card.title === 'Cancellations')
 
   const lineChartData = series.map(day => ({
-    date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
     bookings: day.bookings,
     reminders: day.reminders_sent
   }))
 
   const barChartData = series.map(day => ({
-    date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
     reschedules: day.reschedules,
     cancellations: day.cancellations
   }))

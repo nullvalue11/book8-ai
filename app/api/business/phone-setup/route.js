@@ -20,6 +20,10 @@ async function connect() {
 
 function normalizeExistingBusinessNumber(input) {
   if (input == null || typeof input !== 'string') return null
+  const cleaned = input.replace(/[^\d+]/g, '')
+  if (cleaned.startsWith('+') && cleaned.replace(/\D/g, '').length >= 7) {
+    return cleaned
+  }
   const d = input.replace(/\D/g, '')
   if (d.length === 10) return `+1${d}`
   if (d.length === 11 && d.startsWith('1')) return `+${d}`

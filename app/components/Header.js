@@ -85,7 +85,7 @@ export default function Header({ variant }) {
             </>
           ) : (
             <>
-              <Link href="/setup" className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}>Sign In</Link>
+              <Link href="/setup?mode=login" className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}>Sign In</Link>
               <Link href={SETUP_NEW_BUSINESS_PATH} className={`inline-flex h-11 items-center rounded-lg px-4 text-sm font-medium transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                 isLanding 
                   ? "bg-[#8B5CF6] text-white hover:bg-[#7C3AED] focus-visible:ring-[#8B5CF6] focus-visible:ring-offset-[#0A0A0F]" 
@@ -132,7 +132,7 @@ export default function Header({ variant }) {
               </>
             ) : (
               <>
-                <Link href="/setup" className={`py-3 transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setMobileMenuOpen(false)}>
+                <Link href="/setup?mode=login" className={`py-3 transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setMobileMenuOpen(false)}>
                   Sign In
                 </Link>
                 <Link href={SETUP_NEW_BUSINESS_PATH} className="inline-flex justify-center py-3 rounded-lg bg-[#8B5CF6] text-white font-medium" onClick={() => setMobileMenuOpen(false)}>

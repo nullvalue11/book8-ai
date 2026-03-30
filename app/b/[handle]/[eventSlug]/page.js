@@ -142,7 +142,7 @@ export default function EventTypeBookingPage({ params }) {
   }
 
   function formatTime(iso) {
-    return new Date(iso).toLocaleTimeString('en-US', {
+    return new Date(iso).toLocaleTimeString(undefined, {
       hour: 'numeric',
       minute: '2-digit',
       timeZone: guestTz
@@ -150,7 +150,7 @@ export default function EventTypeBookingPage({ params }) {
   }
 
   function formatDate(iso) {
-    return new Date(iso).toLocaleDateString('en-US', {
+    return new Date(iso).toLocaleDateString(undefined, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',

@@ -14,6 +14,7 @@ import {
   Scissors,
   Dumbbell,
   Sparkles,
+  Stethoscope,
   Zap,
   Rocket,
   Languages,
@@ -74,10 +75,7 @@ export default function LandingPage() {
   const featuresVisible = useIntersectionObserver(featuresRef);
 
   return (
-    <div
-      className="font-landing-body"
-      style={{ fontFamily: "'DM Sans', sans-serif" }}
-    >
+    <div className="font-landing-body">
       {/* HERO */}
       <section
         ref={heroRef}
@@ -134,7 +132,7 @@ export default function LandingPage() {
                   className="inline-flex items-center gap-2 text-[#94A3B8] hover:text-white transition-colors"
                 >
                   See How It Works
-                  <ChevronDown className="w-4 h-4 animate-bounce" />
+                  <ChevronDown aria-hidden className="w-4 h-4 animate-bounce" />
                 </a>
               </div>
               <div
@@ -142,19 +140,19 @@ export default function LandingPage() {
                 style={{ transitionDelay: '400ms' }}
               >
                 <span className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#06B6D4] shrink-0" />
+                  <Check aria-hidden className="w-4 h-4 text-[#06B6D4] shrink-0" />
                   Answers calls 24/7
                 </span>
                 <span className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#06B6D4] shrink-0" />
+                  <Check aria-hidden className="w-4 h-4 text-[#06B6D4] shrink-0" />
                   Books appointments in real time
                 </span>
                 <span className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#06B6D4] shrink-0" />
+                  <Check aria-hidden className="w-4 h-4 text-[#06B6D4] shrink-0" />
                   Speaks 70+ languages automatically
                 </span>
                 <span className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#06B6D4] shrink-0" />
+                  <Check aria-hidden className="w-4 h-4 text-[#06B6D4] shrink-0" />
                   SMS + email confirmations
                 </span>
               </div>
@@ -171,7 +169,7 @@ export default function LandingPage() {
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-[#8B5CF6]/20 flex items-center justify-center animate-pulse">
-                      <Phone className="w-7 h-7 text-[#8B5CF6]" />
+                      <Phone className="w-7 h-7 text-[#8B5CF6]" aria-hidden />
                     </div>
                     <div>
                       <p className="font-semibold text-[#F8FAFC]">Phone rings</p>
@@ -179,11 +177,11 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <div className="flex justify-center">
-                    <ChevronDown className="w-5 h-5 text-[#94A3B8]" />
+                    <ChevronDown className="w-5 h-5 text-[#94A3B8]" aria-hidden />
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-[#06B6D4]/20 flex items-center justify-center">
-                      <Calendar className="w-7 h-7 text-[#06B6D4]" />
+                      <Calendar className="w-7 h-7 text-[#06B6D4]" aria-hidden />
                     </div>
                     <div>
                       <p className="font-semibold text-[#F8FAFC]">AI checks calendar</p>
@@ -191,11 +189,11 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <div className="flex justify-center">
-                    <ChevronDown className="w-5 h-5 text-[#94A3B8]" />
+                    <ChevronDown className="w-5 h-5 text-[#94A3B8]" aria-hidden />
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <Check className="w-7 h-7 text-green-400" />
+                      <Check className="w-7 h-7 text-green-400" aria-hidden />
                     </div>
                     <div>
                       <p className="font-semibold text-[#F8FAFC]">Appointment booked</p>
@@ -221,7 +219,7 @@ export default function LandingPage() {
           <div className="flex flex-wrap justify-center gap-8 mt-4">
             {[
               { icon: Scissors, label: 'Barbers' },
-              { icon: Sparkles, label: 'Dental Clinics' },
+              { icon: Stethoscope, label: 'Dental Clinics' },
               { icon: Sparkles, label: 'Spas' },
               { icon: Dumbbell, label: 'Fitness Studios' },
             ].map(({ icon: Icon, label }) => (
@@ -229,7 +227,7 @@ export default function LandingPage() {
                 key={label}
                 className="flex items-center gap-2 text-[#64748B]"
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-5 h-5" aria-hidden />
                 <span className="text-sm">{label}</span>
               </div>
             ))}
@@ -396,7 +394,7 @@ export default function LandingPage() {
                 })}
               </div>
               <div className="grid grid-cols-4 gap-2">
-                {['9:00', '10:00', '11:00', '2:00', '3:00', '4:00'].map((t) => (
+                {['9:00', '10:00', '11:00', '12:00', '1:00', '2:00', '3:00', '4:00'].map((t) => (
                   <div
                     key={t}
                     className="py-2 rounded-lg border border-[#1e1e2e] text-center text-sm font-medium"
@@ -482,7 +480,7 @@ export default function LandingPage() {
                   ) : null}
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-xl bg-[#8B5CF6]/15 flex items-center justify-center">
-                      <Icon className="w-5 h-5 text-[#A78BFA]" />
+                      <Icon className="w-5 h-5 text-[#A78BFA]" aria-hidden />
                     </div>
                     <h3 className="text-xl font-bold text-[#F8FAFC]">{tier.name}</h3>
                   </div>
@@ -582,7 +580,7 @@ export default function LandingPage() {
               <p className="font-bold text-[#F8FAFC] mb-4" style={{ fontFamily: "'Sora', sans-serif" }}>
                 Book8 AI
               </p>
-              <p className="text-sm text-[#94A3B8]">© 2026 Book8 AI Inc.</p>
+              <p className="text-sm text-[#94A3B8]">© {new Date().getFullYear()} Book8 AI Inc.</p>
             </div>
             <div>
               <p className="font-semibold text-[#F8FAFC] mb-4" style={{ fontFamily: "'Sora', sans-serif" }}>
@@ -592,7 +590,7 @@ export default function LandingPage() {
                 <Link href="/pricing" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
                   Pricing
                 </Link>
-                <Link href="/setup" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
+                <Link href="/setup?mode=login" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
                   Sign In
                 </Link>
                 <Link href={SETUP_NEW_BUSINESS_PATH} className="text-sm text-[#94A3B8] hover:text-white transition-colors">

@@ -170,7 +170,7 @@ export default function ReschedulePage({ params }) {
   }
 
   function formatDate(isoString) {
-    return new Date(isoString).toLocaleDateString('en-US', {
+    return new Date(isoString).toLocaleDateString(undefined, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',

@@ -48,6 +48,7 @@ export default function PublicBookingPage({ params }) {
   const [businessMultilingual, setBusinessMultilingual] = useState(false)
   const [publicBookingPhone, setPublicBookingPhone] = useState(null)
   const slotsFetchSeq = useRef(0)
+  const bookingFormRef = useRef(null)
   /** Consecutive auto day-advances when initial dates have no slots (max 7). */
   const autoSkipAdvancesDone = useRef(0)
 
@@ -316,7 +317,7 @@ export default function PublicBookingPage({ params }) {
   }
 
   function formatDate(isoString) {
-    return new Date(isoString).toLocaleDateString('en-US', {
+    return new Date(isoString).toLocaleDateString(undefined, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
@@ -352,11 +353,33 @@ export default function PublicBookingPage({ params }) {
 
   const todayStr = toLocalYmd(new Date())
 
+  const isCalendarAtCurrentMonth = useMemo(() => {
+    if (!currentMonth) return true
+    const now = new Date()
+    return currentMonth.year === now.getFullYear() && currentMonth.month === now.getMonth()
+  }, [currentMonth])
+
   function goPrevMonth() {
     if (!currentMonth) return
+    const now = new Date()
+    const target = new Date(currentMonth.year, currentMonth.month - 1, 1)
+    if (
+      target.getFullYear() < now.getFullYear() ||
+      (target.getFullYear() === now.getFullYear() && target.getMonth() < now.getMonth())
+    ) {
+      return
+    }
     autoSkipAdvancesDone.current = 0
-    const d = new Date(currentMonth.year, currentMonth.month - 1, 1)
-    setCurrentMonth({ year: d.getFullYear(), month: d.getMonth() })
+    setCurrentMonth({ year: target.getFullYear(), month: target.getMonth() })
+  }
+
+  function handleSlotSelect(slot) {
+    setSelected(slot)
+    if (typeof window !== 'undefined' && window.innerWidth < 768 && bookingFormRef.current) {
+      setTimeout(() => {
+        bookingFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }
   }
 
   function goNextMonth() {
@@ -478,11 +501,11 @@ export default function PublicBookingPage({ params }) {
             <h1 className="text-2xl font-bold text-white">
               {ownerName?.trim() || formatHandleAsDisplayName(handle)}
             </h1>
-            {(businessMeta.category || businessMeta.city) && (
+            {businessMeta.category ? (
               <p className="text-xs uppercase tracking-wide text-muted-foreground mt-0.5">
-                {[businessMeta.category, businessMeta.city].filter(Boolean).join(' • ')}
+                {businessMeta.category}
               </p>
-            )}
+            ) : null}
           </div>
           {businessMultilingual ? (
             <span className="inline-flex items-center gap-1.5 shrink-0 text-xs font-medium text-violet-300 bg-violet-500/10 border border-violet-500/25 rounded-full px-2.5 py-1 self-start">
@@ -563,6 +586,7 @@ export default function PublicBookingPage({ params }) {
                       {currentMonth && monthNames[currentMonth.month]} {currentMonth?.year}
                     </span>
                     <button
+                      type="button"
                       onClick={goNextMonth}
                       className="p-1 rounded hover:bg-gray-800 transition-colors text-white"
                       aria-label="Next month"
@@ -624,7 +648,8 @@ export default function PublicBookingPage({ params }) {
                       return (
                         <button
                           key={slot.start}
-                          onClick={() => setSelected(slot)}
+                          type="button"
+                          onClick={() => handleSlotSelect(slot)}
                           className={`
                             min-h-[44px] px-3 py-2.5 rounded-lg text-sm font-medium
                             transition-all duration-150
@@ -645,7 +670,7 @@ export default function PublicBookingPage({ params }) {
           </div>
 
           {/* Right: Customer info - ONLY show when slot selected */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2" ref={bookingFormRef}>
             {selected ? (
             <div className="sticky top-4 animate-in slide-in-from-bottom-4 duration-200">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
@@ -687,7 +712,7 @@ export default function PublicBookingPage({ params }) {
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="+1 613 555 0123"
+                    placeholder="Phone number"
                     value={form.phone}
                     onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                     className="min-h-[44px] bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
@@ -701,7 +726,7 @@ export default function PublicBookingPage({ params }) {
                     </label>
                     <Textarea
                       id="notes"
-                      placeholder="Anything you&apos;d like to share..."
+                      placeholder="Anything you'd like to share..."
                       value={form.notes}
                       onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                       rows={3}

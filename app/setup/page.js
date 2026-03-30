@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -27,7 +28,8 @@ import {
   X,
   Plus,
   Lock,
-  Minus
+  Minus,
+  CreditCard
 } from 'lucide-react'
 import TimeZonePicker from '@/components/TimeZonePicker'
 import { cn } from '@/lib/utils'
@@ -125,21 +127,22 @@ function formatPhone(num) {
   return num
 }
 
-function normalizeBusinessPhoneInput(input) {
-  if (input == null || typeof input !== 'string') return null
-  const d = input.replace(/\D/g, '')
-  if (d.length === 10) return `+1${d}`
-  if (d.length === 11 && d.startsWith('1')) return `+${d}`
-  return null
+function normalizeBusinessPhoneInput(value) {
+  if (value == null || typeof value !== 'string') return value
+  const cleaned = value.replace(/[^\d+]/g, '')
+  if (cleaned.startsWith('+') && cleaned.replace(/\D/g, '').length >= 7) {
+    return cleaned
+  }
+  return value
 }
 
-/** E.164 +1… → digits only for *72 style dial strings */
-function phoneDigitsForDialString(e164) {
-  if (!e164 || typeof e164 !== 'string') return ''
-  return e164.replace(/\D/g, '')
+function isInternationalBusinessPhoneValid(value) {
+  if (value == null || typeof value !== 'string') return false
+  const cleaned = value.replace(/[^\d+]/g, '')
+  return cleaned.startsWith('+') && cleaned.replace(/\D/g, '').length >= 7
 }
 
-function SetupAuthScreen({ onAuthenticated }) {
+function SetupAuthScreen({ onAuthenticated, initialLoginMode = false }) {
   const [formData, setFormData] = useState({ email: '', password: '', name: '' })
   const [authMode, setAuthMode] = useState('login')
   const [formError, setFormError] = useState('')
@@ -208,9 +211,13 @@ function SetupAuthScreen({ onAuthenticated }) {
       <div className="w-full max-w-md mx-auto bg-gray-900/50 backdrop-blur border border-gray-800 rounded-xl p-8 shadow-xl">
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-white">Get Started with Book8 AI</h1>
+            <h1 className="text-3xl font-bold text-white">
+              {initialLoginMode ? 'Sign in' : 'Get Started with Book8 AI'}
+            </h1>
             <p className="text-[#94A3B8] text-sm">
-              Create your AI receptionist in under 5 minutes.
+              {initialLoginMode
+                ? 'Use your account to continue to your dashboard or setup.'
+                : 'Create your AI receptionist in under 5 minutes.'}
             </p>
           </div>
 
@@ -338,6 +345,16 @@ function SetupAuthScreen({ onAuthenticated }) {
                 onChange={(e) => setFormData((f) => ({ ...f, password: e.target.value }))}
                 autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
               />
+              {authMode === 'login' && (
+                <div className="text-right mt-1">
+                  <Link
+                    href="/reset-password/request"
+                    className="text-sm text-[#A78BFA] hover:text-[#E9D5FF]"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+              )}
               {authMode === 'register' && (
                 <p className="text-xs text-gray-500">Must be at least 6 characters</p>
               )}
@@ -360,6 +377,15 @@ function SetupAuthScreen({ onAuthenticated }) {
             ) : null}
             {authMode === 'login' ? 'Sign In' : 'Create Account'}
           </Button>
+
+          {authMode === 'login' && (
+            <p className="text-center text-sm text-gray-400">
+              Don&apos;t have an account?{' '}
+              <Link href="/setup" className="text-[#A78BFA] hover:text-[#E9D5FF] font-medium">
+                Get started
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </main>
@@ -369,6 +395,7 @@ function SetupAuthScreen({ onAuthenticated }) {
 function WizardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const isLoginMode = searchParams.get('mode') === 'login'
   const [token, setToken] = useState(null)
   const [appReady, setAppReady] = useState(false)
 
@@ -421,7 +448,7 @@ function WizardContent() {
   const trialChargeDateLabel = useMemo(() => {
     const d = new Date()
     d.setDate(d.getDate() + 14)
-    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+    return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
   }, [])
   const [bookingHost, setBookingHost] = useState('book8.io')
   /** Step 5: core service IDs to remove when saving (e.g. provisioned defaults) */
@@ -1294,9 +1321,10 @@ function WizardContent() {
       return
     }
     if (phoneStepChoice === 'forward') {
-      const norm = normalizeBusinessPhoneInput(phoneStepExistingInput)
-      if (!norm) {
-        setError('Enter a valid US or Canada business number (10 digits).')
+      if (!isInternationalBusinessPhoneValid(phoneStepExistingInput)) {
+        setError(
+          'Enter a valid phone number with country code (e.g. +1 for US/Canada, +44 for UK).'
+        )
         return
       }
     }
@@ -1315,7 +1343,9 @@ function WizardContent() {
           businessId: wizardData.businessId,
           phoneSetup,
           ...(phoneSetup === 'forward'
-            ? { existingBusinessNumber: phoneStepExistingInput }
+            ? {
+                existingBusinessNumber: normalizeBusinessPhoneInput(phoneStepExistingInput)
+              }
             : {})
         })
       })
@@ -1323,11 +1353,11 @@ function WizardContent() {
       if (!r.ok || !out.ok) {
         throw new Error(out.error || 'Could not save phone preferences')
       }
-      const normExisting =
+      const normExistingForward =
         phoneSetup === 'forward' ? normalizeBusinessPhoneInput(phoneStepExistingInput) : null
       updateWizard({
         phoneSetup,
-        existingBusinessNumber: normExisting
+        existingBusinessNumber: normExistingForward
       })
       setPhoneStepPhase('provisioning')
       setPhoneStepPollKey((k) => k + 1)
@@ -1367,9 +1397,7 @@ function WizardContent() {
     if (wizardData.phoneSetup === 'forward') {
       setPhoneStepChoice('forward')
       if (wizardData.existingBusinessNumber) {
-        setPhoneStepExistingInput(
-          String(wizardData.existingBusinessNumber).replace(/^\+1/, '')
-        )
+        setPhoneStepExistingInput(String(wizardData.existingBusinessNumber))
       } else {
         setPhoneStepExistingInput('')
       }
@@ -1406,10 +1434,15 @@ function WizardContent() {
 
   // Show sign-in form when not logged in (Option A: keep user on setup page)
   if (!token) {
-    return <SetupAuthScreen onAuthenticated={() => {
-      const t = localStorage.getItem('book8_token')
-      setToken(t)
-    }} />
+    return (
+      <SetupAuthScreen
+        initialLoginMode={isLoginMode}
+        onAuthenticated={() => {
+          const t = localStorage.getItem('book8_token')
+          setToken(t)
+        }}
+      />
+    )
   }
 
   const setupPlanTier =
@@ -1556,7 +1589,7 @@ function WizardContent() {
                   <Label className={WIZARD_LABEL}>City (optional)</Label>
                   <Input
                     className={WIZARD_INPUT}
-                    placeholder="e.g. Chicago"
+                    placeholder="e.g. London, Tokyo, São Paulo"
                     value={wizardData.city}
                     onChange={(e) => updateWizard({ city: e.target.value })}
                   />
@@ -1663,7 +1696,10 @@ function WizardContent() {
                     </li>
                     <li>Cancel anytime before then and pay nothing</li>
                   </ul>
-                  <p className="text-xs !text-[#64748B]">💳 Card required for verification. No charge for 14 days.</p>
+                  <p className="text-xs !text-[#64748B] flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 shrink-0 opacity-80" aria-hidden />
+                    Card required for verification. No charge for 14 days.
+                  </p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       variant="outline"
@@ -1692,7 +1728,7 @@ function WizardContent() {
                 <Card
                   className={cn(
                     WIZARD_CARD,
-                    'order-1 lg:order-1 min-w-[280px] w-full max-w-full h-full flex flex-col overflow-hidden'
+                    'order-1 lg:order-1 min-w-0 lg:min-w-[280px] w-full max-w-full h-full flex flex-col overflow-hidden'
                   )}
                 >
                   <CardContent className="p-0 flex flex-col h-full min-h-0 flex-1 justify-between">
@@ -1748,7 +1784,7 @@ function WizardContent() {
                 <Card
                   className={cn(
                     WIZARD_CARD,
-                    'border-2 !border-[#8B5CF6]/70 order-2 lg:order-2 min-w-[280px] w-full max-w-full h-full flex flex-col overflow-hidden lg:shadow-[0_0_48px_-12px_rgba(139,92,246,0.55)] lg:scale-[1.07] lg:z-10 relative'
+                    'border-2 !border-[#8B5CF6]/70 order-2 lg:order-2 min-w-0 lg:min-w-[280px] w-full max-w-full h-full flex flex-col overflow-hidden lg:shadow-[0_0_48px_-12px_rgba(139,92,246,0.55)] lg:scale-[1.07] lg:z-10 relative'
                   )}
                 >
                   <CardContent className="p-0 flex flex-col h-full min-h-0 flex-1 justify-between">
@@ -1811,7 +1847,7 @@ function WizardContent() {
                 <Card
                   className={cn(
                     WIZARD_CARD,
-                    'order-3 lg:order-3 min-w-[280px] w-full max-w-full h-full flex flex-col overflow-hidden'
+                    'order-3 lg:order-3 min-w-0 lg:min-w-[280px] w-full max-w-full h-full flex flex-col overflow-hidden'
                   )}
                 >
                   <CardContent className="p-0 flex flex-col h-full min-h-0 flex-1 justify-between">
@@ -1885,7 +1921,7 @@ function WizardContent() {
                     onClick={handleConnectGoogle}
                   >
                     <Calendar className="w-5 h-5 mr-2" />
-                    Gmail
+                    Google Calendar
                   </Button>
                   {hasOutlookCalendar(wizardData.subscriptionPlan) ? (
                     <Button
@@ -1897,17 +1933,22 @@ function WizardContent() {
                       Outlook
                     </Button>
                   ) : (
-                    <div
+                    <button
+                      type="button"
+                      onClick={() => router.push('/pricing')}
                       className={cn(
-                        'h-14 rounded-md border border-[#1e1e2e] bg-[#0A0A0F]/80 flex flex-col items-center justify-center px-2 text-center'
+                        'h-14 w-full rounded-md border border-[#1e1e2e] bg-[#0A0A0F]/80 flex flex-col items-center justify-center px-2 text-center opacity-60 hover:opacity-80 transition-opacity cursor-pointer'
                       )}
                     >
                       <span className="text-xs font-medium text-[#94A3B8] flex items-center gap-1">
-                        <Lock className="w-3.5 h-3.5" />
+                        <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden />
                         Outlook
                       </span>
-                      <span className="text-[10px] text-[#64748B] mt-0.5">Growth — upgrade</span>
-                    </div>
+                      <span className="text-[10px] text-[#64748B] mt-0.5">
+                        Growth — upgrade
+                        <span className="text-purple-400 ml-1">View plans →</span>
+                      </span>
+                    </button>
                   )}
                 </div>
                 <Button
@@ -1951,7 +1992,7 @@ function WizardContent() {
                       {isDayOpen(day) && (
                         <>
                           <select
-                            className="h-9 rounded-md !border-[#1e1e2e] !bg-[#0A0A0F] !text-white text-sm px-2 border"
+                            className="h-9 rounded-md appearance-none !border-[#1e1e2e] !bg-[#0A0A0F] !text-white border text-sm px-3 py-2 min-w-0"
                             value={wizardData.businessHours[day]?.[0]?.start || '09:00'}
                             onChange={(e) => setDayBlock(day, 0, 'start', e.target.value)}
                           >
@@ -2168,16 +2209,13 @@ function WizardContent() {
                           {phoneStepChoice === 'forward' && (
                             <div>
                               <Label className={WIZARD_LABEL}>Your business number</Label>
-                              <div className="flex items-center gap-2 mt-1 max-w-md">
-                                <span className="text-sm !text-[#94A3B8] shrink-0">+1</span>
-                                <Input
-                                  className={WIZARD_INPUT_INLINE}
-                                  placeholder="555 123 4567"
-                                  value={phoneStepExistingInput}
-                                  onChange={(e) => setPhoneStepExistingInput(e.target.value)}
-                                  autoComplete="tel"
-                                />
-                              </div>
+                              <Input
+                                className={cn('mt-1 max-w-md', WIZARD_INPUT_INLINE)}
+                                placeholder="e.g. +1 555 123 4567"
+                                value={phoneStepExistingInput}
+                                onChange={(e) => setPhoneStepExistingInput(e.target.value)}
+                                autoComplete="tel"
+                              />
                             </div>
                           )}
                         </div>
@@ -2248,26 +2286,23 @@ function WizardContent() {
                       </p>
                     </div>
                     <div className="text-sm !text-[#94A3B8] space-y-3">
-                      <p className="!text-white font-medium">To activate, set up call forwarding on your current number:</p>
-                      <ol className="list-decimal pl-5 space-y-2">
-                        <li>
-                          From your phone, dial:{' '}
-                          <span className="font-mono !text-[#E9D5FF]">
-                            *72{phoneDigitsForDialString(wizardData.phoneNumber)}
-                          </span>{' '}
-                          <span className="!text-[#64748B]">(works on many US/Canada carriers; codes vary)</span>
-                        </li>
-                        <li>
-                          Or contact your phone provider and ask to forward all calls (or unanswered calls) to{' '}
-                          <span className="!text-white font-mono">
-                            {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber}
-                          </span>
-                          .
-                        </li>
-                        <li>
-                          Test it: call your business number and wait for the AI to answer.
-                        </li>
-                      </ol>
+                      <div className="space-y-2">
+                        <p className="font-medium !text-white">How to forward your calls:</p>
+                        <ol className="list-decimal list-inside space-y-1 text-sm !text-[#94A3B8]">
+                          <li>
+                            Contact your phone provider and request call forwarding to{' '}
+                            <span className="font-mono !text-white">
+                              {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber}
+                            </span>
+                          </li>
+                          <li>Ask them to forward all unanswered calls to this number</li>
+                          <li>Test by calling your business line — the AI should answer</li>
+                        </ol>
+                        <p className="text-xs !text-[#64748B] mt-2">
+                          Tip: In North America, you may be able to dial *72 followed by the number above. Forwarding
+                          codes vary by carrier and country.
+                        </p>
+                      </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 pt-2">
                       <Button
@@ -2306,7 +2341,7 @@ function WizardContent() {
                       disabled={
                         phoneStepSaving ||
                         (phoneStepChoice === 'forward' &&
-                          !normalizeBusinessPhoneInput(phoneStepExistingInput))
+                          !isInternationalBusinessPhoneValid(phoneStepExistingInput))
                       }
                     >
                       {phoneStepSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
@@ -2391,9 +2426,9 @@ function WizardContent() {
                         line.
                       </p>
                       <p className="text-xs !text-[#64748B] border border-[#1e1e2e] rounded-lg px-3 py-2 bg-[#0A0A0F]/50">
-                        If forwarding isn&apos;t active yet, dial *72 and your Book8 number on your business phone, or
-                        ask your carrier to forward to{' '}
-                        {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber || 'your Book8 line'}.
+                        If forwarding isn&apos;t active yet, contact your carrier to forward calls to{' '}
+                        {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber || 'your Book8 line'}. In some
+                        regions you can use carrier codes (e.g. *72 in parts of North America); codes vary by provider.
                       </p>
                     </div>
                   ) : wizardData.phoneNumber ? (

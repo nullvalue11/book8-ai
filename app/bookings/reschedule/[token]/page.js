@@ -149,7 +149,7 @@ export default function RescheduleBookingPage({ params }) {
   }
 
   function formatDateTime(isoString) {
-    return new Date(isoString).toLocaleString('en-US', {
+    return new Date(isoString).toLocaleString(undefined, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',

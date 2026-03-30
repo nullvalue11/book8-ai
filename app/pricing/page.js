@@ -10,7 +10,8 @@ import Header from "@/components/Header";
 import PricingPlanFeatureList from "@/components/PricingPlanFeatureList";
 import { PRICING_CALL_MINUTES_FOOTNOTE } from "@/lib/pricing-plan-features";
 import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from "@/lib/setup-entry";
-import { Zap, Building2, Rocket, ArrowRight, AlertCircle } from "lucide-react";
+import { Zap, Building2, Rocket, ArrowRight, AlertCircle, CreditCard } from "lucide-react";
+import { toast } from "sonner";
 
 const plans = [
   {
@@ -179,7 +180,7 @@ function PricingContent() {
         throw new Error("No checkout URL returned");
       }
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message || "Something went wrong");
     } finally {
       setIsLoading((prev) => ({ ...prev, [planId]: false }));
     }
@@ -309,8 +310,9 @@ function PricingContent() {
                     )}
 
                     {plan.trial && (
-                      <p className="text-xs text-muted-foreground text-center -mt-2">
-                        No charge for 14 days. Cancel anytime. 💳 Card required.
+                      <p className="text-xs text-muted-foreground text-center -mt-2 flex items-center justify-center gap-1">
+                        <CreditCard className="w-3.5 h-3.5 shrink-0 opacity-80" aria-hidden />
+                        No charge for 14 days. Cancel anytime. Card required.
                       </p>
                     )}
                   </CardContent>

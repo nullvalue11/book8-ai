@@ -73,7 +73,7 @@ export default function CancelBookingPage({ params }) {
   }
 
   function formatDateTime(isoString, timezone = 'UTC') {
-    return new Date(isoString).toLocaleString('en-US', {
+    return new Date(isoString).toLocaleString(undefined, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
@@ -195,11 +195,11 @@ export default function CancelBookingPage({ params }) {
                 <div className="flex-1">
                   <p className="font-medium">Duration</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {new Date(booking.startTime).toLocaleTimeString('en-US', { 
+                    {new Date(booking.startTime).toLocaleTimeString(undefined, { 
                       hour: '2-digit', 
                       minute: '2-digit',
                       timeZone: booking.guestTimezone || booking.timeZone
-                    })} - {new Date(booking.endTime).toLocaleTimeString('en-US', { 
+                    })} - {new Date(booking.endTime).toLocaleTimeString(undefined, { 
                       hour: '2-digit', 
                       minute: '2-digit',
                       timeZone: booking.guestTimezone || booking.timeZone

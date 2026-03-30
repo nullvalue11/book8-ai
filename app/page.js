@@ -9,7 +9,6 @@ import { Button } from "./components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
-import { Textarea } from "./components/ui/textarea";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
@@ -17,11 +16,12 @@ import LandingPage from "./(home)/LandingPage";
 import DataPrivacy from "./(home)/DataPrivacy";
 import SocialMediaLinks from "./components/SocialMediaLinks";
 import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Activity } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Activity, CheckCircle2, XCircle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import UpgradePrompt from "./components/UpgradePrompt";
 import PlanFeatureLock from "./components/PlanFeatureLock";
 import { getPlanName, getUiPlanLimits, normalizePlanKey } from "./lib/plan-features";
+import { toast } from "sonner";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function formatDuration(seconds) {
@@ -40,7 +40,7 @@ function formatPhone(phone) {
 function formatCallTime(iso) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   } catch { return "—"; }
 }
 
@@ -160,12 +160,6 @@ function HomeContent(props) {
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
   const [isSyncingSubscription, setIsSyncingSubscription] = useState(false);
 
-  const [title, setTitle] = useState("Intro call");
-  const [customerName, setCustomerName] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [notes, setNotes] = useState("");
-
   const detectedTz = useMemo(() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } }, []);
   const [timeZone, setTimeZone] = useState(detectedTz);
 
@@ -202,7 +196,6 @@ function HomeContent(props) {
   const [isLoading, setIsLoading] = useState(false);
   const [authMode, setAuthMode] = useState("login"); // "login" or "register"
   const [showAuth, setShowAuth] = useState(false);
-
   const fetchAbort = useRef(null);
 
   useEffect(() => {
@@ -427,13 +420,13 @@ function HomeContent(props) {
         setTimeout(() => setShowSubscriptionSuccess(false), 5000);
       } else if (data.ok) {
         setBillingSubscription(null);
-        alert(data.message || 'No active subscription found');
+        toast.info(data.message || 'No active subscription found');
       } else {
-        alert(data.error || 'Sync failed');
+        toast.error(data.error || 'Sync failed');
       }
     } catch (err) {
       console.error('[Dashboard] Sync error:', err);
-      alert('Failed to sync subscription: ' + err.message);
+      toast.error('Failed to sync subscription: ' + err.message);
     } finally {
       setIsSyncingSubscription(false);
     }
@@ -491,8 +484,6 @@ function HomeContent(props) {
   }
 
   async function fetchBookings() { try { setLoadingBookings(true); const list = await api(`/bookings`, { method: "GET" }); setBookings(list || []); } catch {} finally { setLoadingBookings(false); } }
-  async function cancelBooking(id) { if (!confirm("Cancel this booking?")) return; try { await api(`/bookings/${id}`, { method: "DELETE" }); await fetchBookings(); } catch (err) { alert(err.message); } }
-  async function archiveBookings() { if (!confirm("Archive all completed and canceled bookings?")) return; try { const result = await api(`/bookings/archive`, { method: "POST" }); alert(`Archived ${result.archived || 0} booking(s)`); await fetchBookings(); await fetchArchivedCount(); } catch (err) { alert(err.message); } }
   async function fetchArchivedCount() { try { const items = await api(`/bookings/archived`, { method: "GET" }); setArchivedCount((items || []).length); } catch {} }
 
   async function refetchUpcomingBookings() {
@@ -523,39 +514,13 @@ function HomeContent(props) {
     }
   }
 
-  async function createBooking(e) {
-    e.preventDefault();
-    if (!primaryBusinessId) {
-      alert("No business selected. Set up a business first.");
-      return;
-    }
-    try {
-      const payload = {
-        businessId: primaryBusinessId,
-        serviceId: "manual-booking",
-        startTime: startTime ? new Date(startTime).toISOString() : null,
-        endTime: endTime ? new Date(endTime).toISOString() : null,
-        customerName: customerName || "Walk-in",
-        title: title || "Booking",
-        notes: notes || ""
-      };
-      const created = await api(`/bookings/create`, { method: "POST", body: JSON.stringify(payload) });
-      setTitle("Intro call");
-      setCustomerName("");
-      setStartTime("");
-      setEndTime("");
-      setNotes("");
-      await refetchUpcomingBookings();
-      alert(`Booking created: ${created?.title ?? created?.id ?? "Done"}`);
-    } catch (err) {
-      alert(err.message);
-    }
-  }
-
   async function fetchGoogleStatus() { try { const status = await api(`/integrations/google/sync`, { method: "GET" }); setGoogleStatus(status || { connected: false, lastSyncedAt: null }); } catch { setGoogleStatus({ connected: false, lastSyncedAt: null }); } }
   async function fetchOutlookStatus() { try { const status = await api(`/integrations/microsoft/status`, { method: "GET" }); setOutlookStatus(status || { connected: false, lastSyncedAt: null }); } catch { setOutlookStatus({ connected: false, lastSyncedAt: null }); } }
   async function connectGoogle() { 
-    if (!token) return alert("Please login first"); 
+    if (!token) {
+      toast.error("Please login first");
+      return;
+    }
     if (!isSubscribed) {
       router.push('/pricing?paywall=1&feature=calendar');
       return;
@@ -563,7 +528,10 @@ function HomeContent(props) {
     window.location.href = `/api/integrations/google/auth?jwt=${token}`; 
   }
   async function connectOutlook() { 
-    if (!token) return alert("Please login first"); 
+    if (!token) {
+      toast.error("Please login first");
+      return;
+    }
     if (!isSubscribed) {
       router.push('/pricing?paywall=1&feature=calendar');
       return;
@@ -573,14 +541,46 @@ function HomeContent(props) {
       return;
     }
     if (!primaryBusinessId) {
-      alert('Set up a business first (need a businessId to connect Outlook for phone bookings).');
+      toast.error('Set up a business first (need a businessId to connect Outlook for phone bookings).');
       return;
     }
     window.location.href = `/api/integrations/microsoft/auth?jwt=${token}&businessId=${primaryBusinessId}`; 
   }
-  async function openCalendars() { try { const res = await api(`/integrations/google/calendars`, { method: "GET" }); setCalendars(res?.calendars || []); setCalendarDialogOpen(true); } catch (err) { alert(err.message || "Failed to load calendars"); } }
-  async function saveCalendars() { try { setSavingCalendars(true); const selected = calendars.filter((c) => c.selected).map((c) => c.id); await api(`/integrations/google/calendars`, { method: "POST", body: JSON.stringify({ selectedCalendarIds: selected }), }); setCalendarDialogOpen(false); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Failed to save selections"); } finally { setSavingCalendars(false); } }
-  async function syncGoogle() { try { const res = await api(`/integrations/google/sync`, { method: "POST" }); alert(`Synced: created=${res.created}, updated=${res.updated}, deleted=${res.deleted}`); await fetchGoogleStatus(); } catch (err) { alert(err.message || "Sync failed"); } }
+  async function openCalendars() {
+    try {
+      const res = await api(`/integrations/google/calendars`, { method: "GET" });
+      setCalendars(res?.calendars || []);
+      setCalendarDialogOpen(true);
+    } catch (err) {
+      toast.error(err.message || "Failed to load calendars");
+    }
+  }
+  async function saveCalendars() {
+    try {
+      setSavingCalendars(true);
+      const selected = calendars.filter((c) => c.selected).map((c) => c.id);
+      await api(`/integrations/google/calendars`, {
+        method: "POST",
+        body: JSON.stringify({ selectedCalendarIds: selected })
+      });
+      setCalendarDialogOpen(false);
+      await fetchGoogleStatus();
+      toast.success("Calendar selection saved");
+    } catch (err) {
+      toast.error(err.message || "Failed to save selections");
+    } finally {
+      setSavingCalendars(false);
+    }
+  }
+  async function syncGoogle() {
+    try {
+      const res = await api(`/integrations/google/sync`, { method: "POST" });
+      toast.success(`Synced: created=${res.created}, updated=${res.updated}, deleted=${res.deleted}`);
+      await fetchGoogleStatus();
+    } catch (err) {
+      toast.error(err.message || "Sync failed");
+    }
+  }
 
   // Load primary business phone setup status for dashboard card
   async function fetchPhoneSetupStatus() {
@@ -793,7 +793,7 @@ function HomeContent(props) {
     if (!bookingHandle) return;
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
     const url = `${baseUrl}/b/${bookingHandle}`;
-    navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(err => alert('Failed to copy: ' + err.message));
+    navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(err => toast.error('Failed to copy: ' + err.message));
   }
 
   function shareBookingLink(platform) {
@@ -993,6 +993,16 @@ function HomeContent(props) {
                   className="bg-background/50"
                   autoComplete={authMode === "login" ? "current-password" : "new-password"}
                 />
+                {authMode === "login" && (
+                  <div className="text-right mt-1">
+                    <Link
+                      href="/reset-password/request"
+                      className="text-sm text-brand-500 hover:text-brand-400"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                )}
                 {authMode === "register" && (
                   <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
                 )}
@@ -1026,7 +1036,12 @@ function HomeContent(props) {
                 {authMode === "login" ? (
                   <p>
                     Don&apos;t have an account?{" "}
-                    <button 
+                    <Link href="/setup" className="text-brand-500 hover:text-brand-400 font-medium">
+                      Get started
+                    </Link>
+                    {" · "}
+                    <button
+                      type="button"
                       className="text-brand-500 hover:text-brand-400 font-medium"
                       onClick={() => { setAuthMode("register"); setFormError(""); }}
                     >
@@ -1110,17 +1125,17 @@ function HomeContent(props) {
             {/* Plan badge for subscribed users */}
             {subscriptionChecked && isSubscribed && (
               billingSubscription?.status === 'trialing' && billingSubscription?.trialDaysLeft != null ? (
-                <span className={`hidden md:inline px-2 py-0.5 rounded-full text-xs font-medium ${
+                <span className={`inline px-2 py-0.5 rounded-full text-xs md:text-sm font-medium ${
                   billingSubscription.trialDaysLeft > 6
                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
                     : billingSubscription.trialDaysLeft > 2
                       ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100'
                       : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
                 }`}>
-                  Trial — {billingSubscription.trialDaysLeft} day{billingSubscription.trialDaysLeft !== 1 ? 's' : ''} left
+                  Trial — {billingSubscription.trialDaysLeft}d left
                 </span>
               ) : (
-                <span className={`hidden md:inline px-2 py-0.5 rounded-full text-xs font-medium ${
+                <span className={`inline px-2 py-0.5 rounded-full text-xs md:text-sm font-medium ${
                   planTier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
                   planTier === 'growth' ? 'bg-blue-100 text-blue-800' :
                   'bg-green-100 text-green-800'
@@ -1291,7 +1306,13 @@ function HomeContent(props) {
                               <span className="text-muted-foreground shrink-0">{formatCallTime(time)}</span>
                               <span className="text-foreground">{formatPhone(callerPhone)}</span>
                               <span className="text-muted-foreground">{formatDuration(duration)}</span>
-                              <span className={isSuccess ? "text-green-600" : "text-destructive"}>{isSuccess ? "✅" : "❌"}</span>
+                              <span className="inline-flex shrink-0" aria-hidden>
+                                {isSuccess ? (
+                                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 text-destructive" />
+                                )}
+                              </span>
                               {langCode ? (
                                 <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/25">
                                   {langCode.toUpperCase()}
@@ -1341,9 +1362,9 @@ function HomeContent(props) {
                         <div key={booking.id || booking._id || i} className="py-3 first:pt-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-foreground shrink-0">
-                              {start ? new Date(start).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"}
+                              {start ? new Date(start).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"}
                             </span>
-                            <span className="text-muted-foreground">│</span>
+                            <span className="w-px h-4 bg-border inline-block mx-1 shrink-0 self-center" aria-hidden />
                             <span className="text-foreground">{customer}</span>
                           </div>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
@@ -1361,20 +1382,6 @@ function HomeContent(props) {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 bg-card">
-            <CardHeader><CardTitle>Create Booking</CardTitle></CardHeader>
-            <CardContent>
-              <form onSubmit={createBooking} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2"><Label htmlFor="title">Title</Label><Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required /></div>
-                <div className="space-y-2"><Label htmlFor="customer">Customer</Label><Input id="customer" value={customerName} onChange={(e) => setCustomerName(e.target.value)} /></div>
-                <div className="space-y-2"><Label htmlFor="start">Start</Label><Input id="start" type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} required /></div>
-                <div className="space-y-2"><Label htmlFor="end">End</Label><Input id="end" type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} required /></div>
-                <div className="space-y-2 md:col-span-2"><Label htmlFor="notes">Notes</Label><Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-                <div className="md:col-span-2 flex gap-3"><Button type="submit">Create</Button><Button type="button" variant="secondary" onClick={refetchUpcomingBookings}>Refresh</Button></div>
-              </form>
-            </CardContent>
-          </Card>
-
           <Card className="bg-card">
             <CardHeader><CardTitle>Integrations</CardTitle></CardHeader>
             <CardContent className="space-y-3">
@@ -1404,7 +1411,7 @@ function HomeContent(props) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium flex items-center gap-2">
-                      Gmail
+                      Google Calendar
                       {!isSubscribed && <Lock className="w-3 h-3 text-muted-foreground" />}
                     </p>
                     <p className="text-xs text-muted-foreground break-words">
