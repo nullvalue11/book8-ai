@@ -26,7 +26,8 @@ import {
   Building2,
   X,
   Plus,
-  Lock
+  Lock,
+  Minus
 } from 'lucide-react'
 import TimeZonePicker from '@/components/TimeZonePicker'
 import { cn } from '@/lib/utils'
@@ -1411,7 +1412,16 @@ function WizardContent() {
     }} />
   }
 
-  const progressPct = (currentStep / 7) * 100
+  const setupPlanTier =
+    wizardData.subscriptionPlan != null && String(wizardData.subscriptionPlan).trim() !== ''
+      ? normalizePlanKey(wizardData.subscriptionPlan)
+      : null
+  const isStarterSetupProgress = setupPlanTier === 'starter'
+  const skippedStepNumbers = isStarterSetupProgress ? new Set([6]) : new Set()
+  const totalProgressSteps = isStarterSetupProgress ? 6 : 7
+  const progressNumerator =
+    !isStarterSetupProgress ? currentStep : currentStep <= 5 ? currentStep : 6
+  const progressPct = (progressNumerator / totalProgressSteps) * 100
 
   return (
     <main className="min-h-screen bg-[#0A0A0F]">
@@ -1419,25 +1429,45 @@ function WizardContent() {
       <div className="sticky top-0 z-10 bg-[#0A0A0F]/95 backdrop-blur border-b border-[#1e1e2e]">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-2 mb-2">
-            {STEP_LABELS.map((label, i) => (
-              <div
-                key={i}
-                className={`flex flex-col items-center min-w-0 ${i + 1 <= currentStep ? 'text-[#8B5CF6]' : 'text-[#64748B]'}`}
-              >
+            {STEP_LABELS.map((label, i) => {
+              const stepNum = i + 1
+              const isSkipped = skippedStepNumbers.has(stepNum)
+              const isCurrent = currentStep === stepNum
+              const isCompleted = !isSkipped && stepNum < currentStep
+              return (
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
-                    i + 1 < currentStep
-                      ? 'bg-[#8B5CF6] text-white'
-                      : i + 1 === currentStep
-                        ? 'bg-[#8B5CF6] text-white ring-2 ring-[#8B5CF6]/50 ring-offset-2 ring-offset-[#0A0A0F]'
-                        : 'bg-[#1e1e2e] text-[#64748B]'
+                  key={i}
+                  className={`flex flex-col items-center min-w-0 ${
+                    isSkipped
+                      ? 'text-[#64748B]'
+                      : isCurrent || isCompleted
+                        ? 'text-[#8B5CF6]'
+                        : 'text-[#64748B]'
                   }`}
                 >
-                  {i + 1 < currentStep ? <Check className="w-4 h-4" /> : i + 1}
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
+                      isSkipped
+                        ? 'bg-[#1e1e2e] text-[#64748B] ring-1 ring-dashed ring-[#475569]'
+                        : isCompleted
+                          ? 'bg-[#8B5CF6] text-white'
+                          : isCurrent
+                            ? 'bg-[#8B5CF6] text-white ring-2 ring-[#8B5CF6]/50 ring-offset-2 ring-offset-[#0A0A0F]'
+                            : 'bg-[#1e1e2e] text-[#64748B]'
+                    }`}
+                  >
+                    {isSkipped ? (
+                      <Minus className="w-4 h-4" />
+                    ) : isCompleted ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      stepNum
+                    )}
+                  </div>
+                  <span className="text-[10px] mt-1 hidden sm:block truncate max-w-full">{label}</span>
                 </div>
-                <span className="text-[10px] mt-1 hidden sm:block truncate max-w-full">{label}</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <div className="h-1.5 bg-[#1e1e2e] rounded-full overflow-hidden">
             <div

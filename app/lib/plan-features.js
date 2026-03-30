@@ -9,6 +9,7 @@ export const PLANS = {
     price: 29,
     features: {
       maxBusinesses: 1,
+      maxServices: 3,
       bookingChannels: ['web'],
       calendarProviders: ['google'],
       multilingual: false,
@@ -18,7 +19,10 @@ export const PLANS = {
       analytics: 'basic',
       maxCallMinutes: 0,
       teamMembers: 1,
-      apiAccess: false
+      apiAccess: false,
+      customVoice: false,
+      whiteLabel: false,
+      prioritySupport: false
     }
   },
   growth: {
@@ -43,6 +47,7 @@ export const PLANS = {
     price: 299,
     features: {
       maxBusinesses: -1,
+      maxServices: -1,
       bookingChannels: ['web', 'voice', 'sms'],
       calendarProviders: ['google', 'outlook'],
       multilingual: true,
@@ -52,7 +57,10 @@ export const PLANS = {
       analytics: 'full',
       maxCallMinutes: -1,
       teamMembers: -1,
-      apiAccess: true
+      apiAccess: true,
+      customVoice: true,
+      whiteLabel: true,
+      prioritySupport: true
     }
   }
 }
@@ -105,10 +113,14 @@ export function getUiPlanLimits(plan) {
   const key = normalizePlanKey(plan)
   const f = getPlanFeatures(key)
   return {
+    maxServices: typeof f.maxServices === 'number' ? f.maxServices : 3,
     aiPhoneAgent: !!f.aiPhoneAgent,
     smsConfirmations: !!f.smsConfirmations,
     advancedAnalytics: f.analytics === 'full',
     outlookCalendar: !!f.calendarProviders?.includes('outlook'),
-    multilingual: !!f.multilingual
+    multilingual: !!f.multilingual,
+    customVoice: !!f.customVoice,
+    whiteLabel: !!f.whiteLabel,
+    prioritySupport: !!f.prioritySupport
   }
 }

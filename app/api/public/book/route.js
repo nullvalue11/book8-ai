@@ -156,7 +156,8 @@ export async function POST(request) {
             serviceId: serviceId || 'manual-booking',
             slot,
             customer,
-            notes: notes || ''
+            notes: notes || '',
+            source: 'web'
           }
         }
 
@@ -190,6 +191,11 @@ export async function POST(request) {
           { status: 503 }
         )
       }
+    } else if (business && !coreSecret) {
+      return NextResponse.json(
+        { ok: false, error: 'Booking is temporarily unavailable. Please try again later.' },
+        { status: 503 }
+      )
     }
 
     // Check availability (FreeBusy) — only when NOT using core-api (user-only flow)

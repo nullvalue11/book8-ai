@@ -85,7 +85,8 @@ function ServicesContent() {
   }, [token]);
 
   const maxServices = typeof planLimits?.maxServices === "number" ? planLimits.maxServices : null;
-  const hasReachedServiceLimit = maxServices != null && services.length >= maxServices;
+  const hasReachedServiceLimit =
+    maxServices != null && maxServices > 0 && services.length >= maxServices;
 
   async function handleAddService(e) {
     e.preventDefault();

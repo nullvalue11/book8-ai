@@ -120,7 +120,7 @@ export function getPlanFeatures(tier) {
     agent: !!f.aiPhoneAgent,
     multiCalendar: !!f.calendarProviders?.includes('outlook'),
     advancedAnalytics: f.analytics === 'full',
-    prioritySupport: key === 'enterprise',
+    prioritySupport: !!f.prioritySupport,
     teamMembers: key === 'enterprise' || f.teamMembers === -1 || f.teamMembers > 1,
     maxCalendars: f.calendarProviders?.length || 1
   }
