@@ -10,6 +10,20 @@ import { Switch } from "@/components/ui/switch";
 import HeaderLogo from "@/components/HeaderLogo";
 import { ArrowLeft, Plus, Check, Loader2, AlertCircle } from "lucide-react";
 
+function parseOptionalPriceInput(str) {
+  if (str == null || String(str).trim() === "") return null;
+  const n = parseFloat(String(str).trim());
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
+function formatServicePriceLabel(p) {
+  if (p == null || p === "") return null;
+  const n = Number(p);
+  if (!Number.isFinite(n)) return null;
+  return n % 1 === 0 ? String(n) : n.toFixed(2);
+}
+
 function generateServiceId(name, durationMinutes) {
   const slug = name
     .toLowerCase()
@@ -35,7 +49,9 @@ function ServicesContent() {
   const [saving, setSaving] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDuration, setNewDuration] = useState(30);
+  const [newPrice, setNewPrice] = useState("");
   const [newActive, setNewActive] = useState(true);
+  const [editingServiceId, setEditingServiceId] = useState(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -88,45 +104,71 @@ function ServicesContent() {
   const hasReachedServiceLimit =
     maxServices != null && maxServices > 0 && services.length >= maxServices;
 
-  async function handleAddService(e) {
+  function resetServiceForm() {
+    setEditingServiceId(null);
+    setNewName("");
+    setNewDuration(30);
+    setNewPrice("");
+    setNewActive(true);
+  }
+
+  async function handleSaveService(e) {
     e.preventDefault();
-    if (hasReachedServiceLimit) return;
     if (!businessId || !newName.trim()) return;
+    if (!editingServiceId && hasReachedServiceLimit) return;
     setSaving(true);
     setError(null);
     setSuccessMessage(null);
+    const pricePayload = parseOptionalPriceInput(newPrice);
     try {
-      const serviceId = generateServiceId(newName.trim(), newDuration);
-      const res = await fetch(`/api/business/${businessId}/services`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          serviceId,
-          name: newName.trim(),
-          durationMinutes: Number(newDuration) || 30,
-          active: newActive
-        })
-      });
+      const commonBody = {
+        name: newName.trim(),
+        durationMinutes: Number(newDuration) || 30,
+        active: newActive,
+        price: pricePayload,
+        currency: "USD"
+      };
+
+      let res;
+      if (editingServiceId) {
+        res = await fetch(
+          `/api/business/${encodeURIComponent(businessId)}/services/${encodeURIComponent(editingServiceId)}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(commonBody)
+          }
+        );
+      } else {
+        const serviceId = generateServiceId(newName.trim(), newDuration);
+        res = await fetch(`/api/business/${businessId}/services`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            serviceId,
+            ...commonBody
+          })
+        });
+      }
+
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to add service");
+        throw new Error(data.error || (editingServiceId ? "Failed to update service" : "Failed to add service"));
       }
-      setSuccessMessage("Service added successfully.");
+      setSuccessMessage(editingServiceId ? "Service updated." : "Service added successfully.");
       setShowAddForm(false);
-      setNewName("");
-      setNewDuration(30);
-      setNewActive(true);
-      if (data.service) setServices((prev) => [...prev, data.service]);
-      else {
-        const listRes = await fetch(`/api/business/${businessId}/services`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const listData = await listRes.json();
-        if (listRes.ok && listData.services) setServices(listData.services);
-      }
+      resetServiceForm();
+      const listRes = await fetch(`/api/business/${businessId}/services`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const listData = await listRes.json();
+      if (listRes.ok && listData.services) setServices(listData.services);
       setTimeout(() => setSuccessMessage(null), 4000);
     } catch (e) {
       setError(e.message || "Failed to save");
@@ -171,17 +213,43 @@ function ServicesContent() {
                 <p className="text-muted-foreground text-center py-8">No services yet. Add one below.</p>
               ) : (
                 <ul className="divide-y divide-border">
-                  {services.map((s) => (
-                    <li key={s.serviceId || s.name} className="py-4 first:pt-0 last:pb-0 flex flex-wrap items-center justify-between gap-3">
+                  {services.map((s) => {
+                    const priceLbl = formatServicePriceLabel(s.price);
+                    const sid = s.serviceId || s.id;
+                    return (
+                    <li key={sid || s.name} className="py-4 first:pt-0 last:pb-0 flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="font-medium">{s.name}</p>
-                        <p className="text-sm text-muted-foreground">{s.durationMinutes} min</p>
+                        <p className="text-sm text-muted-foreground">
+                          {s.durationMinutes} min
+                          {priceLbl != null ? ` · $${priceLbl}` : ""}
+                        </p>
                       </div>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.active !== false ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-                        {s.active !== false ? <><Check className="w-3 h-3" /> Active</> : "Inactive"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowAddForm(true);
+                            setEditingServiceId(sid);
+                            setNewName(s.name || "");
+                            setNewDuration(Number(s.durationMinutes) || 30);
+                            setNewPrice(
+                              s.price != null && s.price !== "" ? String(s.price) : ""
+                            );
+                            setNewActive(s.active !== false);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.active !== false ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                          {s.active !== false ? <><Check className="w-3 h-3" /> Active</> : "Inactive"}
+                        </span>
+                      </div>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </CardContent>
@@ -208,11 +276,11 @@ function ServicesContent() {
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>Add Service</CardTitle>
-                <CardDescription>New service name and duration.</CardDescription>
+                <CardTitle>{editingServiceId ? "Edit service" : "Add service"}</CardTitle>
+                <CardDescription>Name, duration, and optional price (USD).</CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleAddService} className="space-y-4">
+                <form onSubmit={handleSaveService} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="service-name">Service Name</Label>
                     <Input
@@ -234,17 +302,37 @@ function ServicesContent() {
                       onChange={(e) => setNewDuration(Number(e.target.value) || 30)}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Price (optional, USD)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={newPrice}
+                      onChange={(e) => setNewPrice(e.target.value)}
+                      placeholder="e.g. 45"
+                    />
+                  </div>
                   <div className="flex items-center gap-2">
                     <Switch id="active" checked={newActive} onCheckedChange={setNewActive} />
                     <Label htmlFor="active">Active</Label>
                   </div>
                   <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => setShowAddForm(false)} disabled={saving}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowAddForm(false);
+                        resetServiceForm();
+                      }}
+                      disabled={saving}
+                    >
                       Cancel
                     </Button>
                     <Button type="submit" disabled={saving || !newName.trim()}>
                       {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Save Service
+                      {editingServiceId ? "Save changes" : "Save service"}
                     </Button>
                   </div>
                 </form>

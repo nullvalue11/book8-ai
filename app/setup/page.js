@@ -454,7 +454,7 @@ function WizardContent() {
   /** Step 5: core service IDs to remove when saving (e.g. provisioned defaults) */
   const [step5CoreServiceIds, setStep5CoreServiceIds] = useState([])
   const [step5Rows, setStep5Rows] = useState([
-    { rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30 }
+    { rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30, priceStr: '' }
   ])
   const [step5Ready, setStep5Ready] = useState(false)
   const step5ContinueState = useMemo(() => {
@@ -1151,7 +1151,7 @@ function WizardContent() {
     if (currentStep !== 5) {
       setStep5Ready(false)
       setStep5CoreServiceIds([])
-      setStep5Rows([{ rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30 }])
+      setStep5Rows([{ rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30, priceStr: '' }])
     }
   }, [currentStep])
 
@@ -1190,7 +1190,7 @@ function WizardContent() {
       }
       if (!cancelled) {
         setStep5CoreServiceIds(ids)
-        setStep5Rows([{ rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30 }])
+        setStep5Rows([{ rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30, priceStr: '' }])
         setStep5Ready(true)
       }
     })()
@@ -1208,7 +1208,7 @@ function WizardContent() {
     setError('')
     setStep5Rows((rows) => [
       ...rows,
-      { rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30 }
+      { rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30, priceStr: '' }
     ])
   }
 
@@ -1223,11 +1223,17 @@ function WizardContent() {
   async function handleStep5Submit() {
     if (!wizardData.businessId) return
     const trimmedRows = step5Rows
-      .map((r) => ({
-        rowKey: r.rowKey,
-        name: (r.name || '').trim(),
-        durationMinutes: Number(r.durationMinutes) || 30
-      }))
+      .map((r) => {
+        const name = (r.name || '').trim()
+        const durationMinutes = Number(r.durationMinutes) || 30
+        const rawPrice = (r.priceStr ?? '').trim()
+        let price = null
+        if (rawPrice !== '') {
+          const p = parseFloat(rawPrice)
+          if (Number.isFinite(p) && p >= 0) price = p
+        }
+        return { rowKey: r.rowKey, name, durationMinutes, price }
+      })
       .filter((r) => r.name.length > 0)
     if (trimmedRows.length === 0) {
       setError('Add at least one service with a name')
@@ -1271,7 +1277,9 @@ function WizardContent() {
             serviceId,
             name: r.name,
             durationMinutes: r.durationMinutes,
-            active: true
+            active: true,
+            price: r.price,
+            currency: 'USD'
           })
         })
         const pdata = await pr.json().catch(() => ({}))
@@ -1283,7 +1291,11 @@ function WizardContent() {
         businessId: wizardData.businessId,
         category: wizardData.category,
         customCategory: wizardData.category === 'other' ? wizardData.customCategory?.trim() || null : null,
-        services: trimmedRows.map((r) => ({ name: r.name, durationMinutes: r.durationMinutes }))
+        services: trimmedRows.map((r) => ({
+          name: r.name,
+          durationMinutes: r.durationMinutes,
+          price: r.price
+        }))
       }
       await fetch(`/api/business/${encodeURIComponent(wizardData.businessId)}`, {
         method: 'PATCH',
@@ -2058,7 +2070,7 @@ function WizardContent() {
             <div>
               <h1 className="text-2xl font-bold text-white">Add your services</h1>
               <p className="text-[#94A3B8] mt-1">
-                What do your customers book? Add at least one service.
+                What do your customers book? Add at least one service. Price is optional (USD) and shows on your public booking page.
               </p>
               <p className="text-sm !text-[#64748B] mt-3">
                 Services for:{' '}
@@ -2089,7 +2101,7 @@ function WizardContent() {
                             onChange={(e) => updateStep5Row(row.rowKey, { name: e.target.value })}
                             aria-label="Service name"
                           />
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
                             <select
                               className="h-9 rounded-md !border-[#1e1e2e] !bg-[#0A0A0F] !text-white text-sm px-2 border min-w-[5.5rem]"
                               value={String(row.durationMinutes)}
@@ -2106,6 +2118,18 @@ function WizardContent() {
                                 </option>
                               ))}
                             </select>
+                            <Input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              placeholder="Price"
+                              className={cn('w-[6.5rem] tabular-nums', WIZARD_INPUT_INLINE)}
+                              value={row.priceStr ?? ''}
+                              onChange={(e) =>
+                                updateStep5Row(row.rowKey, { priceStr: e.target.value })
+                              }
+                              aria-label="Price in USD (optional)"
+                            />
                             <Button
                               type="button"
                               variant="ghost"
