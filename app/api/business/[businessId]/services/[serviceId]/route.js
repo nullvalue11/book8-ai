@@ -41,10 +41,18 @@ async function verifyAuthAndOwnership(request, database, businessId) {
   return { payload }
 }
 
-function getCoreApiConfig() {
+function getCoreApiBaseUrl() {
   const baseUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
-  const apiKey = env.BOOK8_CORE_API_KEY || ''
-  return { baseUrl: baseUrl.replace(/\/$/, ''), apiKey }
+  return baseUrl.replace(/\/$/, '')
+}
+
+/** Same internal secret pattern as other core-api proxies (PATCH, bookings, etc.). */
+function getCoreApiAuthHeaders() {
+  const secret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
+  return {
+    'Content-Type': 'application/json',
+    ...(secret && { 'x-book8-internal-secret': secret })
+  }
 }
 
 export async function PATCH(request, { params }) {
@@ -60,14 +68,11 @@ export async function PATCH(request, { params }) {
     }
     const decodedId = decodeURIComponent(serviceId)
     const body = await request.json().catch(() => ({}))
-    const { baseUrl, apiKey } = getCoreApiConfig()
+    const baseUrl = getCoreApiBaseUrl()
     const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/services/${encodeURIComponent(decodedId)}`
     const res = await fetch(url, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(apiKey && { 'x-book8-api-key': apiKey })
-      },
+      headers: getCoreApiAuthHeaders(),
       body: JSON.stringify(body)
     })
     const data = await res.json().catch(() => ({}))
@@ -96,14 +101,11 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
     }
     const decodedId = decodeURIComponent(serviceId)
-    const { baseUrl, apiKey } = getCoreApiConfig()
+    const baseUrl = getCoreApiBaseUrl()
     const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/services/${encodeURIComponent(decodedId)}`
     const res = await fetch(url, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(apiKey && { 'x-book8-api-key': apiKey })
-      }
+      headers: getCoreApiAuthHeaders()
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
