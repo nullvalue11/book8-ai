@@ -669,10 +669,28 @@ function WizardContent() {
     const googleConnected = searchParams.get('google_connected')
     const outlookConnected = searchParams.get('outlook_connected')
     const bizId = searchParams.get('businessId')
-    if ((googleConnected || outlookConnected) && bizId && wizardData.businessId === bizId) {
+    if ((googleConnected || outlookConnected) && bizId) {
       loadInitialState()
     }
-  }, [searchParams, wizardData.businessId, loadInitialState])
+  }, [searchParams, loadInitialState])
+
+  // Keep wizard businessId aligned with ?businessId= (e.g. after Stripe redirect before local state catches up)
+  useEffect(() => {
+    const urlBiz = searchParams.get('businessId')
+    if (!token || !urlBiz || businesses.length === 0) return
+    if (wizardData.businessId === urlBiz) return
+    const match = businesses.find(
+      (b) => b.businessId === urlBiz || b.id === urlBiz
+    )
+    if (match) {
+      const resolved = match.businessId || match.id
+      if (resolved) {
+        setWizardData((prev) =>
+          prev.businessId === resolved ? prev : { ...prev, businessId: resolved }
+        )
+      }
+    }
+  }, [token, searchParams, businesses, wizardData.businessId])
 
   // Step 6: poll for assigned Twilio line after user submits phone preferences
   useEffect(() => {
@@ -1006,7 +1024,10 @@ function WizardContent() {
       })
       const refetchData = await refetchRes.json()
       if (refetchRes.ok && refetchData.businesses?.length) {
-        const biz = refetchData.businesses.find((b) => b.businessId === regData.businessId) || refetchData.businesses[0]
+        const biz =
+          refetchData.businesses.find(
+            (b) => b.businessId === regData.businessId || b.id === regData.businessId
+          ) || refetchData.businesses[0]
         updateWizard({ handle: biz.handle })
       }
       // Call confirm to provision
@@ -1038,7 +1059,8 @@ function WizardContent() {
 
   // Step 2: Plan selection -> Stripe checkout
   function handleStep2Submit(priceId) {
-    if (!priceId || !wizardData.businessId) {
+    const bid = wizardData.businessId || searchParams.get('businessId')
+    if (!priceId || !bid) {
       setError('Plan or business not available')
       return
     }
@@ -1079,13 +1101,23 @@ function WizardContent() {
   // Step 3: Calendar connect
   function handleConnectGoogle() {
     const base = typeof window !== 'undefined' ? window.location.origin : ''
-    const url = `${base}/api/integrations/google/auth?businessId=${encodeURIComponent(wizardData.businessId)}&jwt=${encodeURIComponent(token)}&returnTo=${encodeURIComponent(`${base}/setup?step=4&businessId=${wizardData.businessId}`)}`
+    const bid = wizardData.businessId || searchParams.get('businessId')
+    if (!bid || !token) {
+      setError('Missing business context for Google Calendar. Try refreshing the page.')
+      return
+    }
+    const url = `${base}/api/integrations/google/auth?businessId=${encodeURIComponent(bid)}&jwt=${encodeURIComponent(token)}&returnTo=${encodeURIComponent(`${base}/setup?step=4&businessId=${encodeURIComponent(bid)}`)}`
     window.location.href = url
   }
 
   function handleConnectOutlook() {
     const base = typeof window !== 'undefined' ? window.location.origin : ''
-    const url = `${base}/api/integrations/microsoft/auth?businessId=${encodeURIComponent(wizardData.businessId)}&jwt=${encodeURIComponent(token)}&returnTo=${encodeURIComponent(`${base}/setup?step=4&businessId=${wizardData.businessId}`)}`
+    const bid = wizardData.businessId || searchParams.get('businessId')
+    if (!bid || !token) {
+      setError('Missing business context for Outlook Calendar. Try refreshing the page.')
+      return
+    }
+    const url = `${base}/api/integrations/microsoft/auth?businessId=${encodeURIComponent(bid)}&jwt=${encodeURIComponent(token)}&returnTo=${encodeURIComponent(`${base}/setup?step=4&businessId=${encodeURIComponent(bid)}`)}`
     window.location.href = url
   }
 

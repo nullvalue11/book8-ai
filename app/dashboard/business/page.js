@@ -98,21 +98,21 @@ function getSubscriptionStatus(business, user) {
 /** Calendar status from user (Google OAuth) or business record */
 function getCalendarStatus(business, user) {
   // Source of truth for provider label should be the business calendar provider.
-  // This prevents showing "Google/Gmail" when Outlook is connected.
+  // This prevents showing "Google Calendar" when Outlook is connected.
   const provider =
     business?.calendar?.provider ||
     business?.calendarProvider ||
     (business?.googleCalendarConnected ? 'google' : null) ||
     null
 
-  // Back-compat: if calendar is marked connected but provider is missing, assume Google/Gmail.
+  // Back-compat: if calendar is marked connected but provider is missing, assume Google Calendar.
   const inferredProvider = !provider && business?.calendar?.connected ? 'google' : provider
 
   if (inferredProvider === 'microsoft') {
     return { connected: true, label: 'Connected (Outlook)', provider: 'microsoft' }
   }
   if (inferredProvider === 'google') {
-    return { connected: true, label: 'Connected (Gmail)', provider: 'google' }
+    return { connected: true, label: 'Connected (Google Calendar)', provider: 'google' }
   }
 
   return { connected: false, label: 'Not connected', provider: null }
@@ -534,7 +534,7 @@ function BusinessPageContent() {
         {searchParams.get('google_connected') === '1' && (
           <div className="mb-4 p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5" />
-            <p>Gmail Calendar connected successfully!</p>
+            <p>Google Calendar connected successfully!</p>
           </div>
         )}
 
@@ -697,7 +697,7 @@ function BusinessPageContent() {
                                         {connectingCalendar === biz.businessId ? (
                                           <Loader2 className="w-4 h-4 animate-spin" />
                                         ) : (
-                                          <>Gmail</>
+                                          <>Google</>
                                         )}
                                       </Button>
                                       <Button
@@ -1070,7 +1070,7 @@ function BusinessPageContent() {
                     <p className="text-sm font-medium">Next Steps:</p>
                     <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
                       <li>Subscribe to a plan to enable all features</li>
-                          <li>Connect your Gmail Calendar</li>
+                          <li>Connect your Google Calendar</li>
                       <li>Start using your AI phone agent</li>
                     </ol>
                   </div>

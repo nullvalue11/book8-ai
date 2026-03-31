@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env } from '@/lib/env'
+import { ensureStripeCustomerForBusiness } from '@/lib/stripeCustomerRecovery'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -149,28 +150,15 @@ export async function POST(request) {
     // 7. Initialize Stripe
     const stripe = await getStripe()
     
-    // 8. Get or create Stripe customer
-    let customerId = business.subscription?.stripeCustomerId || user.subscription?.stripeCustomerId
-    
-    if (!customerId) {
-      console.log('[api/subscribe] Creating new Stripe customer...')
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: business.name,
-        metadata: { 
-          userId: user.id, 
-          businessId: business.businessId 
-        }
-      })
-      customerId = customer.id
-      console.log('[api/subscribe] Created customer:', customerId)
-      
-      // Save customer ID
-      await db.collection('businesses').updateOne(
-        { businessId },
-        { $set: { 'subscription.stripeCustomerId': customerId, updatedAt: new Date() } }
-      )
-    }
+    // 8. Get, validate, or create Stripe customer (recover stale test-mode IDs)
+    const customerId = await ensureStripeCustomerForBusiness(stripe, {
+      business,
+      user,
+      businessesCollection: db.collection('businesses'),
+      usersCollection: db.collection('users'),
+      businessFilter: { businessId }
+    })
+    console.log('[api/subscribe] Stripe customer:', customerId)
     
     // 9. Create Checkout Session
     const baseUrl = env.BASE_URL

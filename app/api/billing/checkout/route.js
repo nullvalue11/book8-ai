@@ -31,7 +31,7 @@ import {
   buildSubscriptionLineItems,
   generateIdempotencyKey
 } from '@/lib/stripeSubscription'
-import { updateSubscriptionFields } from '@/lib/subscriptionUpdate'
+import { ensureStripeCustomerForUser } from '@/lib/stripeCustomerRecovery'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -113,26 +113,13 @@ export async function POST(request) {
       )
     }
     
-    // Get or create Stripe customer
-    let customerId = user.subscription?.stripeCustomerId
-    
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: user.name || undefined,
-        metadata: {
-          userId: user.id,
-          ...(businessId && { businessId })
-        }
-      })
-      customerId = customer.id
-      
-      // Store customer ID (using atomic update to handle subscription: null)
-      await updateSubscriptionFields(database.collection('users'), user.id, {
-        stripeCustomerId: customerId,
-        updatedAt: new Date().toISOString()
-      })
-    }
+    const trimmedBiz =
+      businessId && typeof businessId === 'string' ? businessId.trim() : undefined
+    const customerId = await ensureStripeCustomerForUser(stripe, {
+      user,
+      usersCollection: database.collection('users'),
+      businessId: trimmedBiz
+    })
     
     // Build line items (base plan + metered minutes)
     const lineItems = buildSubscriptionLineItems(priceId)

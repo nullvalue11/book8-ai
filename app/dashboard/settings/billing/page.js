@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import HeaderLogo from "@/components/HeaderLogo";
+import { toast } from "sonner";
+import { ENABLE_METERED_BILLING_UI } from "@/lib/publicRuntimeConfig";
 import { 
   CreditCard, 
   Check, 
@@ -117,7 +119,7 @@ function BillingContent() {
 
       window.location.href = data.checkoutUrl;
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message || "Checkout failed");
     } finally {
       setUpgradeLoading({ ...upgradeLoading, [planId]: false });
     }
@@ -232,29 +234,30 @@ function BillingContent() {
         </CardContent>
       </Card>
 
-      {/* Usage - Call Minutes */}
-      <Card className="bg-card/50 backdrop-blur border-white/10">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Phone className="w-5 h-5" /> Call Minutes Usage
-          </CardTitle>
-          <CardDescription>
-            AI phone agent minutes are billed at $0.10 CAD per minute
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
-            <div>
-              <p className="text-sm text-muted-foreground">Metered billing</p>
-              <p className="text-2xl font-bold">$0.10 <span className="text-sm font-normal text-muted-foreground">/ minute</span></p>
+      {ENABLE_METERED_BILLING_UI && (
+        <Card className="bg-card/50 backdrop-blur border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Phone className="w-5 h-5" /> Call Minutes Usage
+            </CardTitle>
+            <CardDescription>
+              AI phone agent minutes are billed at $0.10 CAD per minute
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
+              <div>
+                <p className="text-sm text-muted-foreground">Metered billing</p>
+                <p className="text-2xl font-bold">$0.10 <span className="text-sm font-normal text-muted-foreground">/ minute</span></p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Billed monthly</p>
+                <p className="text-sm">Usage appears on your invoice</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Billed monthly</p>
-              <p className="text-sm">Usage appears on your invoice</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Available Plans */}
       {isActive && (

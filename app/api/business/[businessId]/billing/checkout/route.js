@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken'
 import { env, debugLog } from '@/lib/env'
 import { corsHeaders } from '@/lib/cors-allow'
 import { COLLECTION_NAME, SUBSCRIPTION_STATUS } from '@/lib/schemas/business'
+import { ensureStripeCustomerForBusiness } from '@/lib/stripeCustomerRecovery'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -183,38 +184,13 @@ export async function POST(request, { params }) {
     }
     debugLog('[business/billing/checkout] Using price:', basePriceId)
     
-    // Get or create Stripe customer for business
-    let stripeCustomerId = business.subscription?.stripeCustomerId
-    
-    if (!stripeCustomerId) {
-      // Check if user already has a Stripe customer
-      if (user.subscription?.stripeCustomerId) {
-        stripeCustomerId = user.subscription.stripeCustomerId
-      } else {
-        // Create new Stripe customer
-        const customer = await stripe.customers.create({
-          email: user.email,
-          name: business.name,
-          metadata: {
-            userId: user.id,
-            businessId: business.businessId,
-            businessName: business.name
-          }
-        })
-        stripeCustomerId = customer.id
-      }
-      
-      // Save customer ID to business
-      await database.collection(COLLECTION_NAME).updateOne(
-        { businessId },
-        { 
-          $set: { 
-            'subscription.stripeCustomerId': stripeCustomerId,
-            updatedAt: new Date()
-          }
-        }
-      )
-    }
+    const stripeCustomerId = await ensureStripeCustomerForBusiness(stripe, {
+      business,
+      user,
+      businessesCollection: database.collection(COLLECTION_NAME),
+      usersCollection: database.collection('users'),
+      businessFilter: { businessId }
+    })
     
     // Build line items
     const lineItems = [

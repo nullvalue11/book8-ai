@@ -18,6 +18,10 @@ import { env, debugLog } from '@/lib/env'
 import { extractSubscriptionBillingFields } from '@/lib/stripeSubscription'
 import { updateSubscriptionFields } from '@/lib/subscriptionUpdate'
 import { isSubscribed, getSubscriptionDetails, getPlanTier } from '@/lib/subscription'
+import {
+  isStripeCustomerMissingError,
+  ensureStripeCustomerForUser
+} from '@/lib/stripeCustomerRecovery'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -69,26 +73,49 @@ export async function POST(request) {
     
     const stripe = await getStripe()
     
-    // Get customer ID - check both direct field and nested
     let customerId = user.subscription?.stripeCustomerId || user.stripeCustomerId
-    
-    // If no customer ID, try to find by email
+    let hadInvalidStoredId = false
+
+    if (customerId) {
+      try {
+        await stripe.customers.retrieve(customerId)
+      } catch (e) {
+        if (isStripeCustomerMissingError(e)) {
+          debugLog('[billing/sync] Stored customer invalid for current Stripe mode:', customerId)
+          customerId = null
+          hadInvalidStoredId = true
+        } else {
+          throw e
+        }
+      }
+    }
+
     if (!customerId) {
-      debugLog('[billing/sync] No customer ID found, searching by email...')
+      debugLog('[billing/sync] No valid customer ID yet, searching by email...')
       const customers = await stripe.customers.list({ email: user.email, limit: 1 })
-      
+
       if (customers.data.length > 0) {
         customerId = customers.data[0].id
         debugLog('[billing/sync] Found customer by email:', customerId)
-      } else {
-        debugLog('[billing/sync] No Stripe customer found for this user')
-        return NextResponse.json({
-          ok: true,
-          message: 'No Stripe customer found',
-          subscribed: false,
-          action: 'none'
-        })
       }
+    }
+
+    if (!customerId && hadInvalidStoredId) {
+      customerId = await ensureStripeCustomerForUser(stripe, {
+        user,
+        usersCollection: database.collection('users')
+      })
+      debugLog('[billing/sync] Created replacement customer:', customerId)
+    }
+
+    if (!customerId) {
+      debugLog('[billing/sync] No Stripe customer found for this user')
+      return NextResponse.json({
+        ok: true,
+        message: 'No Stripe customer found',
+        subscribed: false,
+        action: 'none'
+      })
     }
     
     debugLog('[billing/sync] Customer ID:', customerId)

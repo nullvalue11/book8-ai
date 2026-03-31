@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 import RateLimitStatus, { parseRateLimitHeaders } from '../_components/RateLimitStatus'
 
 interface RateLimitInfo {
@@ -99,7 +100,7 @@ export default function RequestsPage() {
       
       await fetchRequests()
     } catch (err: any) {
-      alert(`Approve failed: ${err.message}`)
+      toast.error(`Approve failed: ${err.message || 'Unknown error'}`)
     } finally {
       setActionLoading(null)
     }
@@ -122,7 +123,7 @@ export default function RequestsPage() {
       
       await fetchRequests()
     } catch (err: any) {
-      alert(`Execute failed: ${err.message}`)
+      toast.error(`Execute failed: ${err.message || 'Unknown error'}`)
     } finally {
       setActionLoading(null)
     }

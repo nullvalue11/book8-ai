@@ -8,6 +8,7 @@ import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/ui/select";
 import { Badge } from "../../../../components/ui/badge";
+import { toast } from "sonner";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function centsToAmount(obj) {
@@ -65,7 +66,7 @@ export default function AdminBillingLogsPage() {
       setPage(data.page || pg);
       setTotal(data.total || 0);
     } catch (e) {
-      alert(e.message);
+      toast.error(e.message || "Failed to load logs");
     } finally { setLoading(false); }
   }
 

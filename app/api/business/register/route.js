@@ -374,6 +374,7 @@ export async function GET(request) {
     const cleanedBusinesses = businesses.map(b => {
       const planKey = normalizePlanKey(b.plan || b.subscription?.plan)
       return {
+      id: b.id || b.businessId,
       businessId: b.businessId,
       name: b.name,
       timezone: b.timezone || null,
