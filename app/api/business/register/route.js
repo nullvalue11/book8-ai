@@ -248,6 +248,9 @@ export async function POST(request) {
     }
     businessData.provisioningOptions = { skipVoiceTest, skipBillingCheck }
     businessData.updatedAt = new Date()
+    if (businessData.businessId) {
+      businessData.id = businessData.businessId
+    }
     businessData.ops = updateBusinessOps(businessData, {
       requestId,
       requestType: 'plan',

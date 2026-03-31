@@ -80,10 +80,12 @@ export function createBusiness({
   skipBillingCheck = false
 }) {
   const now = new Date()
-  
+  const resolvedBusinessId = businessId || generateBusinessId()
+
   return {
-    // Core identity
-    businessId: businessId || generateBusinessId(),
+    // Core identity — `id` must match `businessId` (unique index on `id`; null duplicates break signups)
+    id: resolvedBusinessId,
+    businessId: resolvedBusinessId,
     name: name || 'Untitled Business',
     handle: null, // Set at registration, URL-friendly (e.g. dental-clinic)
     category: category || 'other',
@@ -206,6 +208,8 @@ export function validateBusinessInput(input) {
  */
 export const BUSINESS_INDEXES = [
   { key: { businessId: 1 }, unique: true },
+  /** Mirrors businessId; use sparse unique in Atlas so legacy docs without `id` do not all collide on null */
+  { key: { id: 1 }, unique: true, sparse: true },
   { key: { handle: 1 }, unique: true, sparse: true },
   { key: { ownerUserId: 1 } },
   { key: { ownerEmail: 1 } },
