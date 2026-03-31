@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
-import { Check, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar as CalendarIcon } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar as CalendarIcon, Phone } from 'lucide-react'
 
 function toLocalYmd(d) {
   if (!d || !(d instanceof Date) || Number.isNaN(d.getTime())) return ''
@@ -20,6 +20,32 @@ function formatHandleAsDisplayName(h) {
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ')
+}
+
+function sanitizePhoneHref(phone) {
+  if (!phone) return ''
+  return String(phone).replace(/[^\d+]/g, '')
+}
+
+/** Best-effort price label for service pills (core-api may add `price` later). */
+function formatPublicServicePrice(svc) {
+  if (!svc) return null
+  const { price, priceAmount, priceCents } = svc
+  if (price != null && price !== '') {
+    if (typeof price === 'number' && !Number.isNaN(price)) {
+      return price % 1 === 0 ? String(price) : price.toFixed(2)
+    }
+    const str = String(price).trim().replace(/^\$/, '').trim()
+    return str || null
+  }
+  if (priceAmount != null && priceAmount !== '') {
+    const n = Number(priceAmount)
+    if (!Number.isNaN(n)) return n % 1 === 0 ? String(n) : n.toFixed(2)
+  }
+  if (priceCents != null && typeof priceCents === 'number') {
+    return (priceCents / 100).toFixed(priceCents % 100 === 0 ? 0 : 2)
+  }
+  return null
 }
 
 export default function PublicBookingPage({ params }) {
@@ -215,6 +241,21 @@ export default function PublicBookingPage({ params }) {
       }
     }
   }, [handle, date, guestTz, hasServices, selectedService])
+
+  const resetBookingFlow = useCallback(() => {
+    setState('form')
+    setBookingResult(null)
+    setSelected(null)
+    setForm({ name: '', email: '', phone: '', notes: '' })
+    setNotesExpanded(false)
+    setError('')
+    setBooking(false)
+    const now = new Date()
+    setCurrentMonth({ year: now.getFullYear(), month: now.getMonth() })
+    setDate(toLocalYmd(now))
+    setSlots([])
+    if (services.length > 0) setSelectedService(services[0])
+  }, [services])
 
   // Fetch slots when date, tz, and service are ready
   useEffect(() => {
@@ -455,6 +496,7 @@ export default function PublicBookingPage({ params }) {
           <div className="space-y-3">
             {icsDownloadUrl && (
               <Button
+                type="button"
                 onClick={() => window.open(icsDownloadUrl, '_blank')}
                 className="w-full bg-violet-600 hover:bg-violet-500 text-white h-12"
                 size="lg"
@@ -463,31 +505,34 @@ export default function PublicBookingPage({ params }) {
                 Add to Calendar
               </Button>
             )}
-            <div className="flex flex-col gap-2">
-              {rescheduleUrl && (
-                <Button
-                  type="button"
-                  onClick={() => (window.location.href = rescheduleUrl)}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Reschedule
-                </Button>
-              )}
-              {cancelUrl && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full text-red-400/70 hover:text-red-400 text-sm"
-                  onClick={() => (window.location.href = cancelUrl)}
-                >
-                  Cancel booking
-                </Button>
-              )}
-            </div>
-            <Button onClick={() => window.location.reload()} variant="ghost" className="w-full">
+            {rescheduleUrl && (
+              <Button
+                type="button"
+                onClick={() => { window.location.href = rescheduleUrl }}
+                variant="outline"
+                className="w-full"
+              >
+                Reschedule
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-violet-400 border-violet-400/40 hover:bg-violet-400/10"
+              onClick={resetBookingFlow}
+            >
               Book another time
             </Button>
+            {cancelUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-red-400/70 hover:text-red-400 text-sm"
+                onClick={() => { window.location.href = cancelUrl }}
+              >
+                Cancel booking
+              </Button>
+            )}
           </div>
           {bookingResult?.bookingId && (
             <p className="text-xs text-gray-500 text-center">
@@ -516,6 +561,26 @@ export default function PublicBookingPage({ params }) {
               <p className="text-xs uppercase tracking-wide text-muted-foreground mt-0.5">
                 {businessMeta.category}
               </p>
+            ) : null}
+            {publicBookingPhone ? (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-400 text-sm mt-2">
+                <Phone className="w-4 h-4 shrink-0" aria-hidden />
+                <a
+                  href={`tel:${sanitizePhoneHref(publicBookingPhone)}`}
+                  className="hover:text-white transition-colors"
+                >
+                  {publicBookingPhone}
+                </a>
+                <span className="text-gray-600" aria-hidden>
+                  ·
+                </span>
+                <a
+                  href={`sms:${sanitizePhoneHref(publicBookingPhone)}`}
+                  className="hover:text-white transition-colors"
+                >
+                  Text us
+                </a>
+              </div>
             ) : null}
           </div>
           {businessMultilingual ? (
@@ -557,6 +622,7 @@ export default function PublicBookingPage({ params }) {
                           (selectedService?.serviceId && selectedService.serviceId === svc.serviceId) ||
                           (selectedService?.id && selectedService.id === svc.id) ||
                           selectedService?.name === svc.name
+                        const priceLabel = formatPublicServicePrice(svc)
                         return (
                           <button
                             key={svc.serviceId || svc.id || svc.name}
@@ -571,6 +637,13 @@ export default function PublicBookingPage({ params }) {
                             `}
                           >
                             {svc.name} • {svc.durationMinutes || svc.duration || 30} min
+                            {priceLabel != null ? (
+                              <span
+                                className={`ml-1 tabular-nums ${isSelected ? 'text-violet-100/85' : 'text-gray-400'}`}
+                              >
+                                • ${priceLabel}
+                              </span>
+                            ) : null}
                           </button>
                         )
                       })}

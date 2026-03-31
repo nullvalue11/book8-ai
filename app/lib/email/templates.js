@@ -67,6 +67,19 @@ function baseTemplate(content) {
 /**
  * Format date/time with timezone
  */
+function formatPhoneForEmail(phone) {
+  if (phone == null || String(phone).trim() === '') return ''
+  const raw = String(phone).trim()
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  }
+  return raw
+}
+
 function formatDateTime(dateTime, timezone) {
   const date = new Date(dateTime)
   const options = {
@@ -113,12 +126,25 @@ function calendarButtons(booking, baseUrl) {
  * Booking confirmation email
  * @param {string} [handle] - Booking page handle for reschedule URL (e.g. from /b/{handle}/reschedule)
  */
-export function bookingConfirmationEmail(booking, owner, baseUrl, rescheduleToken, cancelToken, guestTz = null, handle = null) {
+export function bookingConfirmationEmail(
+  booking,
+  owner,
+  baseUrl,
+  rescheduleToken,
+  cancelToken,
+  guestTz = null,
+  handle = null,
+  businessPhone = null
+) {
   const hostTz = owner.scheduling?.timeZone || 'UTC'
   const displayTz = guestTz || booking.timeZone || 'UTC'
   const guestName = booking.customerName || booking.guestEmail || 'there'
   const rescheduleHandle = handle || owner.scheduling?.handle || ''
   const rescheduleUrl = rescheduleHandle ? `${baseUrl}/b/${rescheduleHandle}/reschedule?token=${rescheduleToken}` : (rescheduleToken ? `${baseUrl}/bookings/reschedule/${rescheduleToken}` : '')
+  const phoneDisplay = formatPhoneForEmail(businessPhone)
+  const cancelSmsCopy = phoneDisplay
+    ? `Need to cancel? Text <strong>CANCEL BOOKING</strong> to ${phoneDisplay}, or call us to reschedule. You can also use the cancel link below.`
+    : `Need to cancel? Use the cancel link below, or text <strong>CANCEL BOOKING</strong> to your booking number, or call us to reschedule.`
   
   const content = `
     <h1 style="margin: 0 0 24px 0; font-size: 28px; font-weight: 700; color: #111827;">
@@ -171,7 +197,7 @@ export function bookingConfirmationEmail(booking, owner, baseUrl, rescheduleToke
         Need to make changes?
       </p>
       
-      <p style="margin: 0 0 12px 0; font-size: 14px; color: #6b7280;">Need to cancel? Use the link below, or text CANCEL BOOKING to your booking number, or call to reschedule.</p>
+      <p style="margin: 0 0 12px 0; font-size: 14px; color: #6b7280;">${cancelSmsCopy}</p>
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         ${rescheduleToken && rescheduleUrl ? `
           <a href="${rescheduleUrl}" style="display: inline-block; padding: 10px 20px; background-color: ${ACCENT_COLOR}; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;">

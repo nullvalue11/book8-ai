@@ -333,6 +333,10 @@ export async function POST(request, { params }) {
         const resend = new Resend(env.RESEND_API_KEY)
         const baseUrl = env.BASE_URL
 
+        const bookingLinePhone = business
+          ? (business.assignedTwilioNumber || business.phone || business.assigned_twilio_number || null)
+          : null
+
         const emailHtml = bookingConfirmationEmail(
           booking,
           owner,
@@ -340,7 +344,8 @@ export async function POST(request, { params }) {
           rescheduleToken,
           cancelToken,
           guestTimezone,
-          handle
+          handle,
+          bookingLinePhone
         )
 
         // Generate ICS

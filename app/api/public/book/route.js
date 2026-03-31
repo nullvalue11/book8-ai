@@ -372,6 +372,10 @@ export async function POST(request) {
           from: 'Book8 AI <bookings@book8.io>'
         })
 
+        const bookingLinePhone = business
+          ? (business.assignedTwilioNumber || business.phone || business.assigned_twilio_number || null)
+          : null
+
         const emailHtml = bookingConfirmationEmail(
           booking,
           owner,
@@ -379,7 +383,8 @@ export async function POST(request) {
           rescheduleToken,
           cancelToken,
           guestTimezone,
-          handle
+          handle,
+          bookingLinePhone
         )
 
         // Generate ICS
