@@ -35,6 +35,7 @@ import TimeZonePicker from '@/components/TimeZonePicker'
 import { cn } from '@/lib/utils'
 import { PRIMARY_LANGUAGE_OPTIONS } from '@/lib/primary-languages'
 import { hasOutlookCalendar, normalizePlanKey } from '@/lib/plan-features'
+import { currencyFromTimezone, detectCurrency } from '@/lib/currency'
 
 const CATEGORIES = [
   { value: 'barber', label: 'Barber' },
@@ -477,6 +478,11 @@ function WizardContent() {
     }
     return { canContinue: true, hint: '' }
   }, [step5Ready, saving, step5Rows])
+
+  const step5ServiceCurrency = useMemo(
+    () => currencyFromTimezone(wizardData.timezone) || detectCurrency(),
+    [wizardData.timezone]
+  )
 
   // Auth token
   useEffect(() => {
@@ -1311,7 +1317,7 @@ function WizardContent() {
             durationMinutes: r.durationMinutes,
             active: true,
             price: r.price,
-            currency: 'USD'
+            currency: step5ServiceCurrency
           })
         })
         const pdata = await pr.json().catch(() => ({}))
@@ -1326,7 +1332,8 @@ function WizardContent() {
         services: trimmedRows.map((r) => ({
           name: r.name,
           durationMinutes: r.durationMinutes,
-          price: r.price
+          price: r.price,
+          currency: step5ServiceCurrency
         }))
       }
       await fetch(`/api/business/${encodeURIComponent(wizardData.businessId)}`, {
@@ -2102,7 +2109,9 @@ function WizardContent() {
             <div>
               <h1 className="text-2xl font-bold text-white">Add your services</h1>
               <p className="text-[#94A3B8] mt-1">
-                What do your customers book? Add at least one service. Price is optional (USD) and shows on your public booking page.
+                {
+                  `What do your customers book? Add at least one service. Price is optional (${step5ServiceCurrency}) and shows on your public booking page.`
+                }
               </p>
               <p className="text-sm !text-[#64748B] mt-3">
                 Services for:{' '}
@@ -2160,7 +2169,7 @@ function WizardContent() {
                               onChange={(e) =>
                                 updateStep5Row(row.rowKey, { priceStr: e.target.value })
                               }
-                              aria-label="Price in USD (optional)"
+                              aria-label={`Price in ${step5ServiceCurrency} (optional)`}
                             />
                             <Button
                               type="button"

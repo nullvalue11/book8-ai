@@ -1,5 +1,6 @@
 "use client"
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { formatPublicServicePriceDisplay } from '@/lib/currency'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
@@ -25,27 +26,6 @@ function formatHandleAsDisplayName(h) {
 function sanitizePhoneHref(phone) {
   if (!phone) return ''
   return String(phone).replace(/[^\d+]/g, '')
-}
-
-/** Best-effort price label for service pills (core-api may add `price` later). */
-function formatPublicServicePrice(svc) {
-  if (!svc) return null
-  const { price, priceAmount, priceCents } = svc
-  if (price != null && price !== '') {
-    if (typeof price === 'number' && !Number.isNaN(price)) {
-      return price % 1 === 0 ? String(price) : price.toFixed(2)
-    }
-    const str = String(price).trim().replace(/^\$/, '').trim()
-    return str || null
-  }
-  if (priceAmount != null && priceAmount !== '') {
-    const n = Number(priceAmount)
-    if (!Number.isNaN(n)) return n % 1 === 0 ? String(n) : n.toFixed(2)
-  }
-  if (priceCents != null && typeof priceCents === 'number') {
-    return (priceCents / 100).toFixed(priceCents % 100 === 0 ? 0 : 2)
-  }
-  return null
 }
 
 export default function PublicBookingPage({ params }) {
@@ -622,7 +602,7 @@ export default function PublicBookingPage({ params }) {
                           (selectedService?.serviceId && selectedService.serviceId === svc.serviceId) ||
                           (selectedService?.id && selectedService.id === svc.id) ||
                           selectedService?.name === svc.name
-                        const priceLabel = formatPublicServicePrice(svc)
+                        const priceLabel = formatPublicServicePriceDisplay(svc)
                         return (
                           <button
                             key={svc.serviceId || svc.id || svc.name}
@@ -641,7 +621,7 @@ export default function PublicBookingPage({ params }) {
                               <span
                                 className={`ml-1 tabular-nums ${isSelected ? 'text-violet-100/85' : 'text-gray-400'}`}
                               >
-                                • ${priceLabel}
+                                • {priceLabel}
                               </span>
                             ) : null}
                           </button>

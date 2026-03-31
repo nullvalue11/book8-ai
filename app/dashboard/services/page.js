@@ -9,19 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import HeaderLogo from "@/components/HeaderLogo";
 import { ArrowLeft, Plus, Check, Loader2, AlertCircle } from "lucide-react";
+import { currencyFromTimezone, detectCurrency, formatPrice } from "@/lib/currency";
 
 function parseOptionalPriceInput(str) {
   if (str == null || String(str).trim() === "") return null;
   const n = parseFloat(String(str).trim());
   if (!Number.isFinite(n) || n < 0) return null;
   return n;
-}
-
-function formatServicePriceLabel(p) {
-  if (p == null || p === "") return null;
-  const n = Number(p);
-  if (!Number.isFinite(n)) return null;
-  return n % 1 === 0 ? String(n) : n.toFixed(2);
 }
 
 function generateServiceId(name, durationMinutes) {
@@ -52,6 +46,12 @@ function ServicesContent() {
   const [newPrice, setNewPrice] = useState("");
   const [newActive, setNewActive] = useState(true);
   const [editingServiceId, setEditingServiceId] = useState(null);
+  const [businessTimezone, setBusinessTimezone] = useState(null);
+
+  const detectedCurrency = React.useMemo(() => {
+    if (businessTimezone) return currencyFromTimezone(businessTimezone);
+    return detectCurrency();
+  }, [businessTimezone]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -121,12 +121,18 @@ function ServicesContent() {
     setSuccessMessage(null);
     const pricePayload = parseOptionalPriceInput(newPrice);
     try {
+      const editing =
+        editingServiceId &&
+        services.find((s) => (s.serviceId || s.id) === editingServiceId);
+      const currencyForSave = editingServiceId
+        ? editing?.currency ?? "USD"
+        : detectedCurrency;
       const commonBody = {
         name: newName.trim(),
         durationMinutes: Number(newDuration) || 30,
         active: newActive,
         price: pricePayload,
-        currency: "USD"
+        currency: currencyForSave
       };
 
       let res;
@@ -214,15 +220,20 @@ function ServicesContent() {
               ) : (
                 <ul className="divide-y divide-border">
                   {services.map((s) => {
-                    const priceLbl = formatServicePriceLabel(s.price);
                     const sid = s.serviceId || s.id;
+                    const priceNum =
+                      s.price != null && s.price !== "" ? Number(s.price) : NaN;
+                    const priceFormatted =
+                      Number.isFinite(priceNum)
+                        ? formatPrice(priceNum, s.currency || detectedCurrency)
+                        : null;
                     return (
                     <li key={sid || s.name} className="py-4 first:pt-0 last:pb-0 flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="font-medium">{s.name}</p>
                         <p className="text-sm text-muted-foreground">
                           {s.durationMinutes} min
-                          {priceLbl != null ? ` · $${priceLbl}` : ""}
+                          {priceFormatted != null ? ` · ${priceFormatted}` : ""}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -277,7 +288,9 @@ function ServicesContent() {
             <Card>
               <CardHeader>
                 <CardTitle>{editingServiceId ? "Edit service" : "Add service"}</CardTitle>
-                <CardDescription>Name, duration, and optional price (USD).</CardDescription>
+                <CardDescription>
+                  {`Name, duration, and optional price (${detectedCurrency}).`}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSaveService} className="space-y-4">
@@ -303,7 +316,7 @@ function ServicesContent() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="price">Price (optional, USD)</Label>
+                    <Label htmlFor="price">{`Price (optional, ${detectedCurrency})`}</Label>
                     <Input
                       id="price"
                       type="number"
