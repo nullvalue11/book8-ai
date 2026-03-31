@@ -32,11 +32,56 @@ function CheckRow({ label, check }) {
     <div className="flex items-center justify-between gap-4 py-3 px-4 border-b border-border last:border-0">
       <div className="flex items-center min-w-0">
         <StatusDot ok={n.ok} />
-        <span className="font-medium text-foreground capitalize">{label.replace(/_/g, ' ')}</span>
+        <span className="font-medium text-foreground">{label}</span>
       </div>
       <span className="text-sm text-muted-foreground text-right break-all max-w-[55%]">{n.detail}</span>
     </div>
   )
+}
+
+/** Customer-facing labels for dashboard (Mongo) checks */
+const DASHBOARD_LABELS = {
+  business_record: 'Business Status',
+  subscription: 'Subscription',
+  calendar_connection: 'Calendar',
+  handle: 'Public booking page',
+  timezone: 'Timezone'
+}
+
+/** Map core health check keys → customer labels; omit infra (ElevenLabs, webhooks, duplicate calendar). */
+const BOOKING_ENGINE_LABELS = {
+  business_record: 'Business Status',
+  businessrecord: 'Business Status',
+  services: 'Services',
+  service: 'Services',
+  schedule: 'Business Hours',
+  weekly_hours: 'Business Hours',
+  weeklyhours: 'Business Hours',
+  business_hours: 'Business Hours',
+  phone: 'Phone Number',
+  phone_number: 'Phone Number',
+  phonenumber: 'Phone Number',
+  twilio: 'Phone Number',
+  assigned_number: 'Phone Number'
+}
+
+function dashboardLabel(key) {
+  return DASHBOARD_LABELS[key] || String(key).replace(/_/g, ' ')
+}
+
+function bookingEngineLabel(rawKey) {
+  const key = String(rawKey || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '_')
+  if (/elevenlabs|webhook|calendar/.test(key)) return null
+  if (BOOKING_ENGINE_LABELS[key]) return BOOKING_ENGINE_LABELS[key]
+  return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function filterCoreChecks(checks) {
+  if (!checks || typeof checks !== 'object') return []
+  return Object.entries(checks).filter(([k]) => bookingEngineLabel(k))
 }
 
 function ProvisioningContent() {
@@ -155,10 +200,8 @@ function ProvisioningContent() {
               <Activity className="h-7 w-7" />
               System status
             </h1>
-            {status.businessName && status.businessId ? (
-              <p className="text-muted-foreground text-sm mt-1">
-                {status.businessName} — {status.businessId}
-              </p>
+            {status.businessName ? (
+              <p className="text-muted-foreground text-sm mt-1">{status.businessName}</p>
             ) : (
               <p className="text-muted-foreground text-sm mt-1">{status.message || 'No business yet'}</p>
             )}
@@ -195,14 +238,14 @@ function ProvisioningContent() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base text-violet-600 dark:text-violet-400">
-                  Dashboard (this app)
+                  Your account
                 </CardTitle>
-                <CardDescription>Data stored in your Book8 AI account</CardDescription>
+                <CardDescription>Settings and records stored in Book8 AI</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {status.dashboardChecks &&
                   Object.entries(status.dashboardChecks).map(([key, check]) => (
-                    <CheckRow key={key} label={key} check={check} />
+                    <CheckRow key={key} label={dashboardLabel(key)} check={check} />
                   ))}
               </CardContent>
             </Card>
@@ -210,29 +253,33 @@ function ProvisioningContent() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base text-sky-600 dark:text-sky-400">
-                  Core API
+                  Booking engine
                 </CardTitle>
-                <CardDescription className="flex items-center justify-between gap-2">
-                  <span>Phone, SMS, and booking engine</span>
-                  <span className="text-xs">
-                    {status.coreApi?.reachable ? 'Reached' : 'Unreachable'}
+                <CardDescription className="flex flex-wrap items-center justify-between gap-2">
+                  <span>Your phone line, services, and hours for bookings</span>
+                  <span className="text-xs text-muted-foreground">
+                    {status.coreApi?.reachable ? 'Online' : 'Unavailable'}
                   </span>
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {!status.coreApi?.reachable ? (
                   <div className="p-4 text-sm text-destructive">
-                    {status.coreApi?.message || 'Could not load core-api health.'}
+                    {status.coreApi?.message || 'Booking engine could not be reached.'}
                   </div>
-                ) : status.coreApi?.checks && typeof status.coreApi.checks === 'object' ? (
-                  Object.entries(status.coreApi.checks).map(([key, check]) => (
-                    <CheckRow key={key} label={key} check={check} />
-                  ))
-                ) : (
-                  <div className="p-4 text-sm text-muted-foreground">
-                    {status.coreApi?.status} — {status.coreApi?.message}
-                  </div>
-                )}
+                ) : (() => {
+                    const rows = filterCoreChecks(status.coreApi.checks)
+                    if (rows.length > 0) {
+                      return rows.map(([key, check]) => (
+                        <CheckRow key={key} label={bookingEngineLabel(key)} check={check} />
+                      ))
+                    }
+                    return (
+                      <div className="p-4 text-sm text-muted-foreground">
+                        {status.coreApi?.status} — {status.coreApi?.message}
+                      </div>
+                    )
+                  })()}
               </CardContent>
             </Card>
 
@@ -244,7 +291,7 @@ function ProvisioningContent() {
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Retrying…
                     </>
                   ) : (
-                    'Retry provisioning (core-api)'
+                    'Retry provisioning'
                   )}
                 </Button>
                 <Button variant="outline" onClick={fetchStatus} disabled={loading}>
@@ -265,9 +312,10 @@ function ProvisioningContent() {
 
         <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-4 text-sm text-muted-foreground">
           <p className="m-0">
-            <strong className="text-violet-600 dark:text-violet-400">How it works:</strong> Checkout creates
-            your business here, then provisioning mirrors it to the core API (calls, SMS, web bookings). Both
-            sides should show green. If anything is red, use retry or check core-api deployment and secrets.
+            <strong className="text-violet-600 dark:text-violet-400">How it works:</strong> This page summarizes
+            your business profile, subscription, calendar, public booking link, and booking engine status. Green
+            means things look good. If something needs attention, try <strong>Refresh</strong> or{' '}
+            <strong>Retry provisioning</strong>, or contact support.
           </p>
         </div>
       </div>

@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import HeaderLogo from "@/components/HeaderLogo";
-import { ArrowLeft, Plus, Check, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Check, Loader2, AlertCircle, Trash2 } from "lucide-react";
 import { currencyFromTimezone, detectCurrency, formatPrice } from "@/lib/currency";
+import { toast } from "sonner";
 
 function parseOptionalPriceInput(str) {
   if (str == null || String(str).trim() === "") return null;
@@ -47,6 +48,7 @@ function ServicesContent() {
   const [newActive, setNewActive] = useState(true);
   const [editingServiceId, setEditingServiceId] = useState(null);
   const [businessTimezone, setBusinessTimezone] = useState(null);
+  const [serviceActionId, setServiceActionId] = useState(null);
 
   const detectedCurrency = React.useMemo(() => {
     if (businessTimezone) return currencyFromTimezone(businessTimezone);
@@ -99,6 +101,82 @@ function ServicesContent() {
       }
     })();
   }, [token]);
+
+  async function refreshServiceList() {
+    if (!businessId || !token) return;
+    const listRes = await fetch(`/api/business/${businessId}/services`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const listData = await listRes.json();
+    if (listRes.ok && Array.isArray(listData.services)) {
+      setServices(listData.services);
+    } else if (listRes.ok && listData.ok && Array.isArray(listData.services)) {
+      setServices(listData.services);
+    }
+  }
+
+  async function handleToggleService(serviceId, active) {
+    if (!businessId || !token || !serviceId) return;
+    setServiceActionId(serviceId);
+    try {
+      const res = await fetch(
+        `/api/business/${encodeURIComponent(businessId)}/services/${encodeURIComponent(serviceId)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ active })
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success(active ? "Service activated" : "Service deactivated");
+        await refreshServiceList();
+      } else {
+        toast.error(data.error || "Failed to update service");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setServiceActionId(null);
+    }
+  }
+
+  async function handleDeleteService(serviceId) {
+    if (!businessId || !token || !serviceId) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this service? This cannot be undone."
+      )
+    ) {
+      return;
+    }
+    setServiceActionId(serviceId);
+    try {
+      const res = await fetch(
+        `/api/business/${encodeURIComponent(businessId)}/services/${encodeURIComponent(serviceId)}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success("Service deleted");
+        setShowAddForm(false);
+        resetServiceForm();
+        await refreshServiceList();
+      } else {
+        toast.error(data.error || "Failed to delete service");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setServiceActionId(null);
+    }
+  }
 
   const maxServices = typeof planLimits?.maxServices === "number" ? planLimits.maxServices : null;
   const hasReachedServiceLimit =
@@ -170,11 +248,7 @@ function ServicesContent() {
       setSuccessMessage(editingServiceId ? "Service updated." : "Service added successfully.");
       setShowAddForm(false);
       resetServiceForm();
-      const listRes = await fetch(`/api/business/${businessId}/services`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const listData = await listRes.json();
-      if (listRes.ok && listData.services) setServices(listData.services);
+      await refreshServiceList();
       setTimeout(() => setSuccessMessage(null), 4000);
     } catch (e) {
       setError(e.message || "Failed to save");
@@ -227,8 +301,13 @@ function ServicesContent() {
                       Number.isFinite(priceNum)
                         ? formatPrice(priceNum, s.currency || detectedCurrency)
                         : null;
+                    const isActive = s.active !== false;
+                    const busy = serviceActionId === sid;
                     return (
-                    <li key={sid || s.name} className="py-4 first:pt-0 last:pb-0 flex flex-wrap items-center justify-between gap-3">
+                    <li
+                      key={sid || s.name}
+                      className={`py-4 first:pt-0 last:pb-0 flex flex-wrap items-center justify-between gap-3 ${!isActive ? "opacity-60" : ""}`}
+                    >
                       <div>
                         <p className="font-medium">{s.name}</p>
                         <p className="text-sm text-muted-foreground">
@@ -236,7 +315,7 @@ function ServicesContent() {
                           {priceFormatted != null ? ` · ${priceFormatted}` : ""}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button
                           type="button"
                           variant="outline"
@@ -251,11 +330,58 @@ function ServicesContent() {
                             );
                             setNewActive(s.active !== false);
                           }}
+                          disabled={busy}
                         >
                           Edit
                         </Button>
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.active !== false ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-                          {s.active !== false ? <><Check className="w-3 h-3" /> Active</> : "Inactive"}
+                        {isActive ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-amber-600 hover:text-amber-500 dark:text-amber-500 dark:hover:text-amber-400"
+                            onClick={() => handleToggleService(sid, false)}
+                            disabled={busy}
+                          >
+                            Deactivate
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-green-600 hover:text-green-500 dark:text-green-500 dark:hover:text-green-400"
+                            onClick={() => handleToggleService(sid, true)}
+                            disabled={busy}
+                          >
+                            Activate
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive/80 hover:text-destructive"
+                          onClick={() => handleDeleteService(sid)}
+                          disabled={busy}
+                          aria-label={`Delete ${s.name}`}
+                        >
+                          {busy ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${isActive ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}
+                        >
+                          {isActive ? (
+                            <>
+                              <Check className="w-3 h-3" /> Active
+                            </>
+                          ) : (
+                            "Inactive"
+                          )}
                         </span>
                       </div>
                     </li>

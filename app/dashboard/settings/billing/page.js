@@ -315,14 +315,18 @@ function BillingContent() {
       {isActive && (
         <Card className="bg-card/50 backdrop-blur border-white/10">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="min-w-0">
                 <h3 className="font-medium">Manage Subscription</h3>
                 <p className="text-sm text-muted-foreground">
                   Update payment method, view invoices, or cancel
                 </p>
               </div>
-              <Button variant="outline" onClick={() => window.open("https://billing.stripe.com/p/login/test", "_blank")}>
+              <Button
+                variant="outline"
+                onClick={() => window.open("https://billing.stripe.com/p/login/test", "_blank")}
+                className="w-full sm:w-auto shrink-0 whitespace-nowrap"
+              >
                 <ExternalLink className="w-4 h-4 mr-2" /> Stripe Portal
               </Button>
             </div>

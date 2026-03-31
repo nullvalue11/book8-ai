@@ -215,11 +215,61 @@ function HomeContent(props) {
 
   const [recentCalls, setRecentCalls] = useState([]);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
+  const [callSearchQuery, setCallSearchQuery] = useState("");
+  const [callSortOrder, setCallSortOrder] = useState("newest");
+  const [bookingSearchQuery, setBookingSearchQuery] = useState("");
+  const [bookingSortOrder, setBookingSortOrder] = useState("newest");
   const [callsLoading, setCallsLoading] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [servicesMap, setServicesMap] = useState({});
   const [expandedCallId, setExpandedCallId] = useState(null);
   const [planLimits, setPlanLimits] = useState(null);
+
+  const filteredRecentCalls = useMemo(() => {
+    let calls = [...recentCalls];
+    const q = callSearchQuery.trim().toLowerCase();
+    if (q) {
+      calls = calls.filter((call) => {
+        const summary = String(call.elevenLabs?.transcriptSummary || call.summary || "").toLowerCase();
+        const callerPhone = String(call.callerPhone || call.fromNumber || "").toLowerCase();
+        const formatted = String(call.formattedPhone || "").toLowerCase();
+        const customerName = String(call.customerName || "").toLowerCase();
+        return (
+          callerPhone.includes(q) ||
+          formatted.includes(q) ||
+          customerName.includes(q) ||
+          summary.includes(q)
+        );
+      });
+    }
+    calls.sort((a, b) => {
+      const dateA = new Date(a.startTime || a.createdAt || 0).getTime();
+      const dateB = new Date(b.startTime || b.createdAt || 0).getTime();
+      return callSortOrder === "newest" ? dateB - dateA : dateA - dateB;
+    });
+    return calls;
+  }, [recentCalls, callSearchQuery, callSortOrder]);
+
+  const filteredUpcomingBookings = useMemo(() => {
+    let rows = [...upcomingBookings];
+    const q = bookingSearchQuery.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((booking) => {
+        const customer = String(booking.customer?.name || booking.customerName || "").toLowerCase();
+        const phone = String(booking.customer?.phone || booking.customerPhone || "").toLowerCase();
+        const serviceName = String(
+          servicesMap[booking.serviceId] || booking.serviceName || booking.serviceId || ""
+        ).toLowerCase();
+        return customer.includes(q) || phone.includes(q) || serviceName.includes(q);
+      });
+    }
+    rows.sort((a, b) => {
+      const startA = new Date(a.slot?.start || a.startTime || a.start || 0).getTime();
+      const startB = new Date(b.slot?.start || b.startTime || b.start || 0).getTime();
+      return bookingSortOrder === "newest" ? startA - startB : startB - startA;
+    });
+    return rows;
+  }, [upcomingBookings, bookingSearchQuery, bookingSortOrder, servicesMap]);
 
   const [formData, setFormData] = useState({ email: "", password: "", name: "" });
   const [formError, setFormError] = useState("");
@@ -1291,6 +1341,9 @@ function HomeContent(props) {
                 </CardTitle>
                 {recentCalls.length > 0 && (
                   <span className="text-sm text-muted-foreground">
+                    {callSearchQuery.trim()
+                      ? `${filteredRecentCalls.length} match${filteredRecentCalls.length !== 1 ? "es" : ""} · `
+                      : ""}
                     {recentCalls.length} call{recentCalls.length !== 1 ? "s" : ""} · last 7 days
                   </span>
                 )}
@@ -1303,8 +1356,31 @@ function HomeContent(props) {
                     No calls yet. When customers call your booking line, you&apos;ll see their calls here.
                   </p>
                 ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        type="search"
+                        placeholder="Search by phone number, name, or summary…"
+                        value={callSearchQuery}
+                        onChange={(e) => setCallSearchQuery(e.target.value)}
+                        className="flex-1 bg-background border-border text-foreground placeholder:text-muted-foreground"
+                        aria-label="Search recent calls"
+                      />
+                      <select
+                        value={callSortOrder}
+                        onChange={(e) => setCallSortOrder(e.target.value)}
+                        className="w-full sm:w-40 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shrink-0"
+                        aria-label="Sort calls by date"
+                      >
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                      </select>
+                    </div>
+                    {filteredRecentCalls.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">No calls match your search.</p>
+                    ) : (
                   <div className="divide-y divide-border">
-                    {recentCalls.map((call, i) => {
+                    {filteredRecentCalls.map((call, i) => {
                       const callId = call.callSid || call._id || i;
                       const isSuccess = call.elevenLabs?.callSuccessful === "success" || call.status === "completed";
                       const summary = call.elevenLabs?.transcriptSummary || call.summary || "";
@@ -1353,6 +1429,8 @@ function HomeContent(props) {
                       );
                     })}
                   </div>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1363,6 +1441,9 @@ function HomeContent(props) {
                 </CardTitle>
                 {upcomingBookings.length > 0 && (
                   <span className="text-sm text-muted-foreground">
+                    {bookingSearchQuery.trim()
+                      ? `${filteredUpcomingBookings.length} match${filteredUpcomingBookings.length !== 1 ? "es" : ""} · `
+                      : ""}
                     {upcomingBookings.length} upcoming · next 30 days
                   </span>
                 )}
@@ -1375,8 +1456,31 @@ function HomeContent(props) {
                     No upcoming bookings yet. When customers book through your AI assistant, they&apos;ll appear here.
                   </p>
                 ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        type="search"
+                        placeholder="Search by guest name, phone, or service…"
+                        value={bookingSearchQuery}
+                        onChange={(e) => setBookingSearchQuery(e.target.value)}
+                        className="flex-1 bg-background border-border text-foreground placeholder:text-muted-foreground"
+                        aria-label="Search upcoming bookings"
+                      />
+                      <select
+                        value={bookingSortOrder}
+                        onChange={(e) => setBookingSortOrder(e.target.value)}
+                        className="w-full sm:w-44 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shrink-0"
+                        aria-label="Sort upcoming bookings"
+                      >
+                        <option value="newest">Soonest first</option>
+                        <option value="oldest">Latest first</option>
+                      </select>
+                    </div>
+                    {filteredUpcomingBookings.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">No bookings match your search.</p>
+                    ) : (
                   <div className="divide-y divide-border">
-                    {upcomingBookings.map((booking, i) => {
+                    {filteredUpcomingBookings.map((booking, i) => {
                       const serviceName = servicesMap[booking.serviceId] || booking.serviceName || booking.serviceId || "Appointment";
                       const customer = booking.customer?.name || booking.customerName || "Unknown";
                       const phone = booking.customer?.phone || booking.customerPhone || "";
@@ -1405,6 +1509,8 @@ function HomeContent(props) {
                         </div>
                       );
                     })}
+                  </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -1440,7 +1546,14 @@ function HomeContent(props) {
 
               <div className="rounded-md border p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex items-start gap-3">
+                    <div
+                      className="w-9 h-9 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center shrink-0"
+                      aria-hidden
+                    >
+                      <Calendar className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div className="min-w-0">
                     <p className="font-medium flex items-center gap-2">
                       Google Calendar
                       {!isSubscribed && <Lock className="w-3 h-3 text-muted-foreground" />}
@@ -1453,6 +1566,7 @@ function HomeContent(props) {
                           : "Not connected"
                       }
                     </p>
+                    </div>
                   </div>
                   <Button 
                     size="sm" 
@@ -1495,7 +1609,14 @@ function HomeContent(props) {
               >
                 <div className="rounded-md border p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex items-start gap-3">
+                      <div
+                        className="w-9 h-9 rounded-lg bg-indigo-500/15 border border-indigo-500/35 flex items-center justify-center shrink-0"
+                        aria-hidden
+                      >
+                        <Calendar className="w-4 h-4 text-indigo-400" />
+                      </div>
+                      <div className="min-w-0">
                       <p className="font-medium flex items-center gap-2">
                         Microsoft Outlook
                         {(!isSubscribed || (planLimits && planLimits.outlookCalendar === false)) && (
@@ -1512,6 +1633,7 @@ function HomeContent(props) {
                             : "Not connected"
                         }
                       </p>
+                      </div>
                     </div>
                     <Button
                       size="sm"
