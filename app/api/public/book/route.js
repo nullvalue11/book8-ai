@@ -7,7 +7,8 @@ import { checkRateLimit } from '@/lib/rateLimiting'
 import { BookingTelemetry, RateLimitTelemetry, logError } from '@/lib/telemetry'
 import { generateCancelToken } from '@/lib/security/resetToken'
 import { generateRescheduleToken } from '@/lib/security/rescheduleToken'
-import { bookingConfirmationEmail } from '@/lib/email/templates'
+import { bookingConfirmationEmail, bookingConfirmationResendSubject } from '@/lib/email/templates'
+import { resolveBookingLanguage } from '@/lib/bookingLanguage'
 import { buildICS } from '@/lib/ics'
 import { calculateReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
@@ -44,7 +45,9 @@ export async function POST(request) {
     const handle = url.searchParams.get('handle')
     const eventSlug = url.searchParams.get('eventSlug')
     const body = await request.json()
-    const { name, email, phone, notes, start, end, guestTimezone, serviceId } = body
+    const { name, email, phone, notes, start, end, guestTimezone, serviceId, language: bodyLanguage } =
+      body
+    const language = resolveBookingLanguage(request, bodyLanguage)
 
     if (!handle) {
       return NextResponse.json(
@@ -157,7 +160,8 @@ export async function POST(request) {
             slot,
             customer,
             notes: notes || '',
-            source: 'web'
+            source: 'web',
+            language
           }
         }
 
@@ -282,6 +286,7 @@ export async function POST(request) {
       endTime: endTime.toISOString(),
       timeZone: owner.scheduling.timeZone || 'UTC',
       notes: notes || '',
+      language: language || 'en',
       status: 'confirmed',
       rescheduleCount: 0,
       rescheduleHistory: [],
@@ -384,7 +389,8 @@ export async function POST(request) {
           cancelToken,
           guestTimezone,
           handle,
-          bookingLinePhone
+          bookingLinePhone,
+          language
         )
 
         // Generate ICS
@@ -400,12 +406,11 @@ export async function POST(request) {
         })
 
         const guestTzLabel = guestTimezone || booking.timeZone
-        const dateStr = new Date(startTime).toLocaleString('en-US', { 
-          month: 'short', 
-          day: 'numeric', 
-          hour: 'numeric', 
-          minute: '2-digit',
-          timeZone: guestTzLabel
+        const emailSubject = bookingConfirmationResendSubject({
+          businessLabel: owner.name || owner.email || 'Book8',
+          startTime,
+          guestTzLabel,
+          language
         })
 
         let emailResult
@@ -414,7 +419,7 @@ export async function POST(request) {
             from: 'Book8 AI <bookings@book8.io>',
             to: email,
             cc: owner.email,
-            subject: `Your Book8 AI meeting is confirmed – ${dateStr} (${guestTzLabel})`,
+            subject: emailSubject,
             html: emailHtml,
             attachments: [
               {

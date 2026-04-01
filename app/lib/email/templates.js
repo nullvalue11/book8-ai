@@ -10,6 +10,115 @@ const ACCENT_COLOR = '#8FD0FF'
 const BG_DARK = '#0E1A26'
 const SURFACE_DARK = '#1B2733'
 
+const EMAIL_LABELS = {
+  en: {
+    subject: (biz) => `Booking Confirmed — ${biz}`,
+    title: 'Booking Confirmed! 🎉',
+    bodyConfirmed: (host) => `Your booking with <strong>${host}</strong> has been confirmed.`,
+    seeYou: 'See you then',
+    yourTime: 'Your Time:',
+    hostTime: "Host's Time:",
+    notes: 'Notes:',
+    addCalendar: 'Add to your calendar:',
+    googleCalendar: 'Google Calendar',
+    outlook: 'Outlook',
+    needChanges: 'Need to make changes?',
+    reschedule: 'Reschedule',
+    cancelBooking: 'Cancel Booking',
+    cancelNote: 'Need to cancel?',
+    cancelInstruction: (phone) =>
+      phone
+        ? `Text <strong>CANCEL BOOKING</strong> to ${phone}, or call us to reschedule.`
+        : 'Use the cancellation link in this email.'
+  },
+  fr: {
+    subject: (biz) => `Rendez-vous confirmé — ${biz}`,
+    title: 'Rendez-vous confirmé ! 🎉',
+    bodyConfirmed: (host) => `Votre rendez-vous avec <strong>${host}</strong> est confirmé.`,
+    seeYou: 'À bientôt',
+    yourTime: 'Votre heure :',
+    hostTime: "Heure de l'hôte :",
+    notes: 'Notes :',
+    addCalendar: 'Ajoutez à votre calendrier',
+    googleCalendar: 'Google Calendar',
+    outlook: 'Outlook',
+    needChanges: 'Besoin de modifier ?',
+    reschedule: 'Reporter',
+    cancelBooking: 'Annuler le rendez-vous',
+    cancelNote: "Besoin d'annuler ?",
+    cancelInstruction: (phone) =>
+      phone
+        ? `Envoyez <strong>CANCEL BOOKING</strong> au ${phone}, ou appelez-nous pour reporter.`
+        : "Utilisez le lien d'annulation dans ce courriel."
+  },
+  es: {
+    subject: (biz) => `Cita confirmada — ${biz}`,
+    title: '¡Cita confirmada! 🎉',
+    bodyConfirmed: (host) => `Su cita con <strong>${host}</strong> está confirmada.`,
+    seeYou: 'Nos vemos',
+    yourTime: 'Su hora:',
+    hostTime: 'Hora del anfitrión:',
+    notes: 'Notas:',
+    addCalendar: 'Agregue a su calendario',
+    googleCalendar: 'Google Calendar',
+    outlook: 'Outlook',
+    needChanges: '¿Necesita hacer cambios?',
+    reschedule: 'Reprogramar',
+    cancelBooking: 'Cancelar cita',
+    cancelNote: '¿Necesita cancelar?',
+    cancelInstruction: (phone) =>
+      phone
+        ? `Envíe <strong>CANCEL BOOKING</strong> al ${phone}, o llámenos para reprogramar.`
+        : 'Use el enlace de cancelación en este correo.'
+  },
+  ar: {
+    subject: (biz) => `تم تأكيد الحجز — ${biz}`,
+    title: 'تم تأكيد الحجز! 🎉',
+    bodyConfirmed: (host) => `تم تأكيد حجزك مع <strong>${host}</strong>.`,
+    seeYou: 'نراك قريباً',
+    yourTime: 'وقتك:',
+    hostTime: 'وقت المضيف:',
+    notes: 'ملاحظات:',
+    addCalendar: 'أضف إلى تقويمك',
+    googleCalendar: 'Google Calendar',
+    outlook: 'Outlook',
+    needChanges: 'هل تحتاج إلى تغيير الموعد؟',
+    reschedule: 'إعادة الجدولة',
+    cancelBooking: 'إلغاء الحجز',
+    cancelNote: 'هل تحتاج للإلغاء؟',
+    cancelInstruction: (phone) =>
+      phone
+        ? `أرسل <strong>CANCEL BOOKING</strong> إلى ${phone}، أو اتصل بنا لإعادة الجدولة.`
+        : 'استخدم رابط الإلغاء في هذا البريد الإلكتروني.'
+  }
+}
+
+export function getEmailLabels(language) {
+  const lang = (language || 'en').toLowerCase().slice(0, 2)
+  return EMAIL_LABELS[lang] || EMAIL_LABELS.en
+}
+
+function getEmailLocaleTag(language) {
+  const l = (language || 'en').toLowerCase().slice(0, 2)
+  if (l === 'ar') return 'ar'
+  if (l === 'fr') return 'fr'
+  if (l === 'es') return 'es'
+  return 'en-US'
+}
+
+export function bookingConfirmationResendSubject({ businessLabel, startTime, guestTzLabel, language }) {
+  const labels = getEmailLabels(language)
+  const tz = guestTzLabel || 'UTC'
+  const dateStr = new Date(startTime).toLocaleString(getEmailLocaleTag(language), {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: tz
+  })
+  return `${labels.subject(businessLabel)} · ${dateStr} (${tz})`
+}
+
 /**
  * Base email template with branding
  */
@@ -80,7 +189,7 @@ function formatPhoneForEmail(phone) {
   return raw
 }
 
-function formatDateTime(dateTime, timezone) {
+function formatDateTime(dateTime, timezone, language = 'en') {
   const date = new Date(dateTime)
   const options = {
     weekday: 'long',
@@ -92,30 +201,30 @@ function formatDateTime(dateTime, timezone) {
     timeZone: timezone,
     timeZoneName: 'short'
   }
-  return date.toLocaleString('en-US', options)
+  return date.toLocaleString(getEmailLocaleTag(language), options)
 }
 
 /**
- * Calendar button helper — Google + Outlook "Add to Calendar" links
+ * Calendar button helper — Google + Outlook (brand labels stay EN per product)
  */
-function calendarButtons(booking, baseUrl) {
+function calendarButtons(booking, baseUrl, labels) {
   const title = encodeURIComponent(booking.title)
   const startUTC = new Date(booking.startTime).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
   const endUTC = new Date(booking.endTime).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
   const details = encodeURIComponent((booking.notes || '') + '\n\nBooked via Book8 AI')
-  
+
   const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startUTC}/${endUTC}&details=${details}`
   const outlookUrl = `https://outlook.live.com/calendar/0/action/compose?subject=${title}&startdt=${encodeURIComponent(booking.startTime)}&enddt=${encodeURIComponent(booking.endTime)}&body=${details}`
-  
+
   return `
     <div style="margin: 24px 0; text-align: center;">
-      <p style="margin: 0 0 12px 0; font-size: 14px; color: #6b7280;">Add to your calendar:</p>
+      <p style="margin: 0 0 12px 0; font-size: 14px; color: #6b7280;">${labels.addCalendar}</p>
       <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
         <a href="${googleUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; background-color: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
-          Add to Google Calendar
+          ${labels.googleCalendar}
         </a>
         <a href="${outlookUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; background-color: ${ACCENT_COLOR}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
-          Add to Outlook
+          ${labels.outlook}
         </a>
       </div>
     </div>
@@ -134,84 +243,105 @@ export function bookingConfirmationEmail(
   cancelToken,
   guestTz = null,
   handle = null,
-  businessPhone = null
+  businessPhone = null,
+  language = 'en'
 ) {
+  const langKey = (language || 'en').toLowerCase().slice(0, 2)
+  const labels = getEmailLabels(langKey)
+  const isRtl = langKey === 'ar'
+  const dirStyle = isRtl ? 'direction: rtl; text-align: right;' : ''
+
   const hostTz = owner.scheduling?.timeZone || 'UTC'
   const displayTz = guestTz || booking.timeZone || 'UTC'
   const guestName = booking.customerName || booking.guestEmail || 'there'
+  const hostLine = owner.name || owner.email
   const rescheduleHandle = handle || owner.scheduling?.handle || ''
-  const rescheduleUrl = rescheduleHandle ? `${baseUrl}/b/${rescheduleHandle}/reschedule?token=${rescheduleToken}` : (rescheduleToken ? `${baseUrl}/bookings/reschedule/${rescheduleToken}` : '')
+  const rescheduleUrl = rescheduleHandle
+    ? `${baseUrl}/b/${rescheduleHandle}/reschedule?token=${rescheduleToken}`
+    : rescheduleToken
+      ? `${baseUrl}/bookings/reschedule/${rescheduleToken}`
+      : ''
   const phoneDisplay = formatPhoneForEmail(businessPhone)
-  const cancelSmsCopy = phoneDisplay
-    ? `Need to cancel? Text <strong>CANCEL BOOKING</strong> to ${phoneDisplay}, or call us to reschedule. You can also use the cancel link below.`
-    : `Need to cancel? Use the cancel link below, or text <strong>CANCEL BOOKING</strong> to your booking number, or call us to reschedule.`
-  
-  const content = `
+  const cancelDetailHtml =
+    typeof labels.cancelInstruction === 'function'
+      ? labels.cancelInstruction(phoneDisplay || '')
+      : String(labels.cancelInstruction)
+
+  const innerContent = `
     <h1 style="margin: 0 0 24px 0; font-size: 28px; font-weight: 700; color: #111827;">
-      Booking Confirmed! 🎉
+      ${labels.title}
     </h1>
-    
+
     <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
-      Your booking with <strong>${owner.name || owner.email}</strong> has been confirmed.
+      ${labels.bodyConfirmed(hostLine)}
     </p>
-    
+
     <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
-      See you then, ${guestName}!
+      ${labels.seeYou}, ${guestName}!
     </p>
-    
+
     <div style="background-color: #f9fafb; border-left: 4px solid ${BRAND_COLOR}; padding: 20px; margin: 24px 0; border-radius: 8px;">
       <h2 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #111827;">
         ${booking.title}
       </h2>
-      
+
       <div style="margin-bottom: 12px;">
-        <strong style="color: #6b7280;">Your Time:</strong>
+        <strong style="color: #6b7280;">${labels.yourTime}</strong>
         <p style="margin: 4px 0 0 0; font-size: 15px; color: #111827;">
-          📅 ${formatDateTime(booking.startTime, displayTz)}
+          📅 ${formatDateTime(booking.startTime, displayTz, langKey)}
         </p>
       </div>
-      
-      ${guestTz && guestTz !== hostTz ? `
+
+      ${guestTz && guestTz !== hostTz
+        ? `
         <div style="margin-bottom: 12px;">
-          <strong style="color: #6b7280;">Host's Time:</strong>
+          <strong style="color: #6b7280;">${labels.hostTime}</strong>
           <p style="margin: 4px 0 0 0; font-size: 15px; color: #6b7280;">
-            ${formatDateTime(booking.startTime, hostTz)}
+            ${formatDateTime(booking.startTime, hostTz, langKey)}
           </p>
         </div>
-      ` : ''}
-      
-      ${booking.notes ? `
+      `
+        : ''}
+
+      ${booking.notes
+        ? `
         <div style="margin-top: 16px;">
-          <strong style="color: #6b7280;">Notes:</strong>
+          <strong style="color: #6b7280;">${labels.notes}</strong>
           <p style="margin: 4px 0 0 0; font-size: 14px; color: #374151;">
             ${booking.notes}
           </p>
         </div>
-      ` : ''}
+      `
+        : ''}
     </div>
-    
-    ${calendarButtons(booking, baseUrl)}
-    
+
+    ${calendarButtons(booking, baseUrl, labels)}
+
     <div style="margin: 32px 0; padding-top: 24px; border-top: 1px solid #e5e7eb;">
       <p style="margin: 0 0 16px 0; font-size: 14px; color: #6b7280;">
-        Need to make changes?
+        ${labels.needChanges}
       </p>
-      
-      <p style="margin: 0 0 12px 0; font-size: 14px; color: #6b7280;">${cancelSmsCopy}</p>
+
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">${labels.cancelNote}</p>
+      <p style="margin: 0 0 12px 0; font-size: 14px; color: #6b7280;">${cancelDetailHtml}</p>
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-        ${rescheduleToken && rescheduleUrl ? `
+        ${rescheduleToken && rescheduleUrl
+          ? `
           <a href="${rescheduleUrl}" style="display: inline-block; padding: 10px 20px; background-color: ${ACCENT_COLOR}; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;">
-            Reschedule
+            ${labels.reschedule}
           </a>
-        ` : ''}
-        
+        `
+          : ''}
+
         <a href="${baseUrl}/api/public/bookings/cancel?token=${cancelToken}" style="display: inline-block; padding: 10px 20px; background-color: #ef4444; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;">
-          Cancel Booking
+          ${labels.cancelBooking}
         </a>
       </div>
     </div>
   `
-  
+
+  const content = `<div style="${dirStyle}">${innerContent}</div>`
+
   return baseTemplate(content)
 }
 
@@ -237,23 +367,23 @@ export function reminderEmail(booking, owner, hoursUntil, guestTz = null) {
       </h2>
       
       <div style="margin-bottom: 12px;">
-        <strong style="color: #78350f;">Your Time:</strong>
+        <strong style="color: #78350f;">${labels.yourTime}</strong>
         <p style="margin: 4px 0 0 0; font-size: 15px; color: #92400e;">
-          📅 ${formatDateTime(booking.startTime, displayTz)}
+          📅 ${formatDateTime(booking.startTime, displayTz, langKey)}
         </p>
       </div>
       
       ${guestTz && guestTz !== hostTz ? `
         <div style="margin-bottom: 12px;">
-          <strong style="color: #78350f;">Host's Time:</strong>
+          <strong style="color: #78350f;">${labels.hostTime}</strong>
           <p style="margin: 4px 0 0 0; font-size: 15px; color: #a16207;">
-            ${formatDateTime(booking.startTime, hostTz)}
+            ${formatDateTime(booking.startTime, hostTz, langKey)}
           </p>
         </div>
       ` : ''}
     </div>
     
-    ${calendarButtons(booking, env.BASE_URL)}
+    ${calendarButtons(booking, env.BASE_URL, labels)}
   `
   
   return baseTemplate(content)
@@ -284,21 +414,21 @@ export function rescheduleConfirmationEmail(booking, owner, rescheduleCount, bas
       <div style="margin-bottom: 12px;">
         <strong style="color: #0c4a6e;">New Time (Your Timezone):</strong>
         <p style="margin: 4px 0 0 0; font-size: 15px; color: #075985;">
-          📅 ${formatDateTime(booking.startTime, displayTz)}
+          📅 ${formatDateTime(booking.startTime, displayTz, langKey)}
         </p>
       </div>
       
       ${guestTz && guestTz !== hostTz ? `
         <div style="margin-bottom: 12px;">
-          <strong style="color: #0c4a6e;">Host's Time:</strong>
+          <strong style="color: #0c4a6e;">${labels.hostTime}</strong>
           <p style="margin: 4px 0 0 0; font-size: 15px; color: #0369a1;">
-            ${formatDateTime(booking.startTime, hostTz)}
+            ${formatDateTime(booking.startTime, hostTz, langKey)}
           </p>
         </div>
       ` : ''}
     </div>
     
-    ${calendarButtons(booking, baseUrl)}
+    ${calendarButtons(booking, baseUrl, labels)}
     
     ${remainingReschedules > 0 ? `
       <div style="margin: 24px 0; padding: 16px; background-color: #fef3c7; border-radius: 8px;">
@@ -310,7 +440,7 @@ export function rescheduleConfirmationEmail(booking, owner, rescheduleCount, bas
     
     <div style="margin: 32px 0; padding-top: 24px; border-top: 1px solid #e5e7eb;">
       <a href="${baseUrl}/api/public/bookings/cancel?token=${cancelToken}" style="display: inline-block; padding: 10px 20px; background-color: #ef4444; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;">
-        Cancel Booking
+        ${labels.cancelBooking}
       </a>
     </div>
   `

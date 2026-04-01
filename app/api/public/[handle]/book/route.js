@@ -5,7 +5,8 @@ import { checkRateLimit } from '../../../../lib/rateLimiting'
 import { BookingTelemetry, RateLimitTelemetry, logError } from '../../../../lib/telemetry'
 import { generateCancelToken } from '../../../../lib/security/resetToken'
 import { generateRescheduleToken } from '../../../../lib/security/rescheduleToken'
-import { bookingConfirmationEmail } from '../../../../lib/email/templates'
+import { bookingConfirmationEmail, bookingConfirmationResendSubject } from '@/lib/email/templates'
+import { resolveBookingLanguage } from '@/lib/bookingLanguage'
 import { buildICS } from '../../../../lib/ics'
 import { calculateReminders, normalizeReminderSettings } from '../../../../lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
@@ -153,7 +154,8 @@ export async function POST(request, { params }) {
             customerEmail: email,
             notes: notes || undefined,
             title: null,
-            source: 'web-booking'
+            source: 'web-booking',
+            language
           }
         }
         const coreRes = await fetch(`${baseUrl}/internal/execute-tool`, {
@@ -345,7 +347,8 @@ export async function POST(request, { params }) {
           cancelToken,
           guestTimezone,
           handle,
-          bookingLinePhone
+          bookingLinePhone,
+          language
         )
 
         // Generate ICS
@@ -361,19 +364,18 @@ export async function POST(request, { params }) {
         })
 
         const guestTzLabel = guestTimezone || booking.timeZone
-        const dateStr = new Date(startTime).toLocaleString('en-US', { 
-          month: 'short', 
-          day: 'numeric', 
-          hour: 'numeric', 
-          minute: '2-digit',
-          timeZone: guestTzLabel
+        const emailSubject = bookingConfirmationResendSubject({
+          businessLabel: owner.name || owner.email || 'Book8',
+          startTime,
+          guestTzLabel,
+          language
         })
 
         await resend.emails.send({
           from: 'Book8 AI <bookings@book8.io>',
           to: email,
           cc: owner.email,
-          subject: `Your Book8 AI meeting is confirmed – ${dateStr} (${guestTzLabel})`,
+          subject: emailSubject,
           html: emailHtml,
           attachments: [
             {

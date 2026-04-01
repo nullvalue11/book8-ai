@@ -19,7 +19,8 @@
  *   "guestEmail": "john@example.com",         // Required
  *   "guestPhone": "+1AAA...BBB",              // Optional
  *   "notes": "Wants a haircut fade",          // Optional
- *   "timezone": "America/Toronto"             // Optional - for display purposes
+ *   "timezone": "America/Toronto",            // Optional - for display purposes
+ *   "language": "fr"                          // Optional - en|fr|es|ar confirmation email; default en
  * }
  * 
  * Response (success):
@@ -55,7 +56,8 @@ import {
 } from '@/lib/phoneAgent'
 import { generateCancelToken } from '@/lib/security/resetToken'
 import { generateRescheduleToken } from '@/lib/security/rescheduleToken'
-import { bookingConfirmationEmail } from '@/lib/email/templates'
+import { bookingConfirmationEmail, bookingConfirmationResendSubject } from '@/lib/email/templates'
+import { normalizeBookingLanguage } from '@/lib/bookingLanguage'
 import { buildICS } from '@/lib/ics'
 import { calculateReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
@@ -109,8 +111,10 @@ export async function POST(request) {
       guestEmail, 
       guestPhone,
       notes,
-      timezone 
+      timezone,
+      language: languageRaw
     } = body
+    const language = normalizeBookingLanguage(languageRaw)
 
     // 1. Validate agentApiKey
     if (!agentApiKey) {
@@ -322,6 +326,7 @@ export async function POST(request) {
       endTime: endTime.toISOString(),
       timeZone: hostTimezone,
       notes: notes || '',
+      language: language || 'en',
       status: 'confirmed',
       source: 'phone-agent',  // Tag for tracking phone agent bookings
       agentLabel: agentLabel,
@@ -405,36 +410,61 @@ export async function POST(request) {
       // Continue - booking is still valid
     }
 
-    // 9. Send confirmation email
+    // 9. Send confirmation email (same template as web booking)
     try {
-      const baseUrl = env.BASE_URL || 'https://book8-ai.vercel.app'
-      const icsContent = buildICS({
-        id: bookingId,
-        title: bookingTitle,
-        start: startTime,
-        end: endTime,
-        hostEmail: owner.email,
-        guestEmail: guestEmail,
-        description: notes || '',
-        location: ''
-      })
+      if (!env.RESEND_API_KEY) {
+        console.warn('[agent:book] RESEND_API_KEY not set, skipping confirmation email')
+      } else {
+        const baseUrl = env.BASE_URL || 'https://book8-ai.vercel.app'
+        const { Resend } = await import('resend')
+        const resend = new Resend(env.RESEND_API_KEY)
 
-      await bookingConfirmationEmail({
-        to: guestEmail,
-        guestName: guestName,
-        hostName: owner.name || owner.email?.split('@')[0] || 'Host',
-        bookingTitle: bookingTitle,
-        startTime: startTime,
-        endTime: endTime,
-        timezone: resolvedTimezone,
-        hostTimezone: hostTimezone,
-        notes: notes || '',
-        rescheduleLink: `${baseUrl}/bookings/reschedule/${rescheduleToken}`,
-        cancelLink: `${baseUrl}/bookings/cancel/${cancelToken}`,
-        icsContent: icsContent
-      })
+        const emailHtml = bookingConfirmationEmail(
+          booking,
+          owner,
+          baseUrl,
+          rescheduleToken,
+          cancelToken,
+          resolvedTimezone,
+          null,
+          null,
+          language
+        )
 
-      console.log(`[agent:book] Confirmation email sent to ${guestEmail}`)
+        const icsContent = buildICS({
+          uid: `booking-${bookingId}@book8.ai`,
+          start: startTime.toISOString(),
+          end: endTime.toISOString(),
+          summary: bookingTitle,
+          description: `${notes || ''}\n\n---\nSource: Book8 AI Phone Agent\nBooking ID: ${bookingId}`,
+          organizer: 'noreply@book8.ai',
+          attendees: [{ email: guestEmail, name: guestName }],
+          method: 'REQUEST'
+        })
+
+        const emailSubject = bookingConfirmationResendSubject({
+          businessLabel: owner.name || owner.email || 'Book8',
+          startTime,
+          guestTzLabel: resolvedTimezone,
+          language
+        })
+
+        await resend.emails.send({
+          from: 'Book8 AI <bookings@book8.io>',
+          to: guestEmail,
+          cc: owner.email,
+          subject: emailSubject,
+          html: emailHtml,
+          attachments: [
+            {
+              filename: 'booking.ics',
+              content: Buffer.from(icsContent).toString('base64')
+            }
+          ]
+        })
+
+        console.log(`[agent:book] Confirmation email sent to ${guestEmail}`)
+      }
     } catch (error) {
       console.error('[agent:book] Email error:', error.message)
       // Continue - booking is still valid
