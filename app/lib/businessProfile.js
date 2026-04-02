@@ -150,6 +150,32 @@ export function parseBusinessProfileBody(raw) {
   return { ok: true, profile }
 }
 
+/**
+ * Map stored businessProfile → setup wizard `profile*` fields and optional businessHours.
+ */
+export function businessProfileToWizardPatch(profile) {
+  if (!profile || typeof profile !== 'object') return {}
+  const s = profile.social && typeof profile.social === 'object' ? profile.social : {}
+  const patch = {
+    profileStreet: trimOrEmpty(profile.street),
+    profileStreet2: trimOrEmpty(profile.street2),
+    profileCity: trimOrEmpty(profile.city),
+    profileProvinceState: trimOrEmpty(profile.provinceState),
+    profilePostalCode: trimOrEmpty(profile.postalCode),
+    profileCountry: trimOrEmpty(profile.country) || 'US',
+    profileBusinessPhone: trimOrEmpty(profile.phone),
+    profilePublicEmail: trimOrEmpty(profile.email),
+    profileDescription: trimOrEmpty(profile.description),
+    profileSocialInstagram: trimOrEmpty(s.instagram),
+    profileSocialFacebook: trimOrEmpty(s.facebook),
+    profileSocialTiktok: trimOrEmpty(s.tiktok)
+  }
+  if (profile.weeklyHours && typeof profile.weeklyHours === 'object') {
+    patch.businessHours = profile.weeklyHours
+  }
+  return patch
+}
+
 /** Whether any public-booking field is filled (hours alone can count). */
 export function businessProfileHasPublicDisplay(profile) {
   if (!profile || typeof profile !== 'object') return false
