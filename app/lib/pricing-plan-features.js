@@ -6,7 +6,6 @@ export const PRICING_CALL_MINUTES_FOOTNOTE =
 /** Shown on Starter only; all bright. */
 export const PRICING_STARTER_CARD_FEATURES = [
   "Unlimited bookings",
-  "Multilingual AI voice (English + auto-detect)",
   "Google Calendar sync",
   "Public booking page",
   "Email reminders",
