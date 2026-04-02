@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Loader2, Send, Calendar, Clock } from 'lucide-react'
+import { clientPreferredBookingLanguage } from '@/lib/bookingLanguage'
 
 function useGuestTz() {
   return useMemo(() => {
@@ -84,19 +85,27 @@ export default function AssistantPage() {
     if (!form.name || !form.email) return
     try {
       setThinking(true)
-      const res = await fetch(`/api/public/${encodeURIComponent(handle)}/book`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          title: form.title || 'Meeting',
-          notes: `Booked via assistant on ${new Date().toISOString()}`,
-          start: selected.start,
-          end: selected.end,
-          guestTimezone: guestTz
-        })
-      })
+      const res = await fetch(
+        `/api/public/book?handle=${encodeURIComponent(handle)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            notes: [
+              form.title && form.title !== 'Meeting' ? `Title: ${form.title}` : null,
+              `Booked via assistant on ${new Date().toISOString()}`
+            ]
+              .filter(Boolean)
+              .join('\n'),
+            start: selected.start,
+            end: selected.end,
+            guestTimezone: guestTz,
+            language: clientPreferredBookingLanguage()
+          })
+        }
+      )
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to book')
       setMessages(prev => [...prev, { id: 'book-' + Date.now(), role: 'assistant', content: `Booked ${selected?.guestLabel}. A confirmation was sent to ${form.email}.` }])

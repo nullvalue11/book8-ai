@@ -30,6 +30,7 @@ export const PLANS = {
     price: 99,
     features: {
       maxBusinesses: 5,
+      maxServices: -1,
       bookingChannels: ['web', 'voice', 'sms'],
       calendarProviders: ['google', 'outlook'],
       multilingual: true,

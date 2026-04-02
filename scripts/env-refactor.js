@@ -9,8 +9,8 @@ const path = require('path');
 
 // Files to update
 const files = [
-  'app/api/public/[handle]/availability/route.js',
-  'app/api/public/[handle]/book/route.js',
+  'app/api/public/availability/route.js',
+  'app/api/public/book/route.js',
   'app/api/public/bookings/reschedule/route.js',
   'app/api/public/bookings/cancel/route.js',
   'app/api/public/bookings/route.js',

@@ -35,7 +35,8 @@ import {
 import TimeZonePicker from '@/components/TimeZonePicker'
 import { cn } from '@/lib/utils'
 import { PRIMARY_LANGUAGE_OPTIONS } from '@/lib/primary-languages'
-import { hasOutlookCalendar, normalizePlanKey } from '@/lib/plan-features'
+import { getPlanFeatures, getUiPlanLimits, hasOutlookCalendar, normalizePlanKey } from '@/lib/plan-features'
+import { toast } from 'sonner'
 import { currencyFromTimezone, detectCurrency } from '@/lib/currency'
 
 const CATEGORIES = [
@@ -423,7 +424,7 @@ function WizardContent() {
     profileSocialFacebook: '',
     profileSocialTiktok: '',
     primaryLanguage: 'en',
-    multilingualEnabled: true,
+    multilingualEnabled: false,
     businessId: null,
     handle: null,
     planActive: false,
@@ -499,6 +500,14 @@ function WizardContent() {
     [wizardData.timezone]
   )
 
+  const step5MaxServices = useMemo(
+    () => getUiPlanLimits(wizardData.subscriptionPlan).maxServices,
+    [wizardData.subscriptionPlan]
+  )
+
+  const step5AtServiceLimit =
+    step5MaxServices !== -1 && step5Rows.length >= step5MaxServices
+
   // Auth token
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -560,7 +569,7 @@ function WizardContent() {
           city: '',
           timezone: prev.timezone || tz,
           primaryLanguage: prev.primaryLanguage || 'en',
-          multilingualEnabled: prev.multilingualEnabled !== false,
+          multilingualEnabled: false,
           planActive: false,
           calendarConnected: false,
           calendarProvider: null,
@@ -615,10 +624,11 @@ function WizardContent() {
             customCategory: primary.customCategory || '',
             city: primary.city || prev.city || '',
             primaryLanguage: primary.primaryLanguage || prev.primaryLanguage || 'en',
-            multilingualEnabled:
-              primary.multilingualEnabled !== undefined
-                ? primary.multilingualEnabled
-                : prev.multilingualEnabled !== false,
+            multilingualEnabled: planActive
+              ? !!getPlanFeatures(
+                  normalizePlanKey(primary.plan || primary.subscription?.plan)
+                ).multilingual
+              : primary.multilingualEnabled ?? false,
             planActive,
             calendarConnected,
             calendarProvider,
@@ -668,6 +678,32 @@ function WizardContent() {
         if (urlStep) {
           const s = parseInt(urlStep, 10)
           if (s >= 1 && s <= 7) step = s
+        }
+
+        if (planActive && primary.businessId) {
+          const wantMl = !!getPlanFeatures(
+            normalizePlanKey(primary.plan || primary.subscription?.plan)
+          ).multilingual
+          if (primary.multilingualEnabled !== wantMl && token) {
+            const tzForPatch =
+              primary.timezone ||
+              (typeof Intl !== 'undefined'
+                ? Intl.DateTimeFormat().resolvedOptions().timeZone
+                : 'UTC')
+            void fetch('/api/business/update-settings', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                businessId: primary.businessId,
+                timezone: tzForPatch,
+                primaryLanguage: primary.primaryLanguage || 'en',
+                multilingualEnabled: wantMl
+              })
+            }).catch(() => {})
+          }
         }
 
         setCurrentStep(step)
@@ -1044,7 +1080,7 @@ function WizardContent() {
           city: wizardData.city?.trim() || undefined,
           timezone: wizardData.timezone,
           primaryLanguage: wizardData.primaryLanguage,
-          multilingualEnabled: wizardData.multilingualEnabled,
+          multilingualEnabled: false,
           weeklyHours: wizardData.businessHours,
           businessProfile: {
             street: wizardData.profileStreet?.trim() || '',
@@ -1289,6 +1325,13 @@ function WizardContent() {
 
   function addStep5Row() {
     setError('')
+    const max = getUiPlanLimits(wizardData.subscriptionPlan).maxServices
+    if (max !== -1 && step5Rows.length >= max) {
+      toast.warning(
+        `Your ${wizardData.subscriptionPlan || 'current'} plan allows up to ${max} service rows. Upgrade to add more.`
+      )
+      return
+    }
     setStep5Rows((rows) => [
       ...rows,
       { rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30, priceStr: '' }
@@ -1334,6 +1377,27 @@ function WizardContent() {
     setSaving(true)
     setError('')
     try {
+      let planForStep = wizardData.subscriptionPlan
+      if (planForStep == null || String(planForStep).trim() === '') {
+        const bizRes = await fetch('/api/business/register', {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store'
+        })
+        const bizData = await bizRes.json().catch(() => ({}))
+        const b = (bizData.businesses || []).find(
+          (x) => x.businessId === wizardData.businessId || x.id === wizardData.businessId
+        )
+        const resolved = b?.plan || b?.subscription?.plan
+        if (resolved == null || String(resolved).trim() === '') {
+          toast.warning(
+            'Still loading your plan details. Please wait a moment and try again.'
+          )
+          return
+        }
+        planForStep = resolved
+        updateWizard({ subscriptionPlan: normalizePlanKey(resolved) })
+      }
+
       for (const serviceId of step5CoreServiceIds) {
         try {
           const dr = await fetch(
@@ -1390,7 +1454,7 @@ function WizardContent() {
         body: JSON.stringify({ onboardingServicesCatalog: catalogPayload })
       }).catch(() => {})
 
-      const tier = normalizePlanKey(wizardData.subscriptionPlan)
+      const tier = normalizePlanKey(planForStep)
       if (tier === 'starter') {
         setCurrentStep(7)
         setStep7LineState('live')
@@ -1894,25 +1958,9 @@ function WizardContent() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs !text-[#94A3B8] mt-2">
-                    Your AI receptionist greets callers in this language by default. It automatically switches
-                    to your customer&apos;s language during the call when multilingual is on.
+                    Your AI receptionist greets callers in this language by default. Growth and Enterprise plans
+                    add multilingual detection automatically after you choose a plan.
                   </p>
-                </div>
-                <div className="flex items-start gap-3 rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/60 p-4">
-                  <Switch
-                    id="setup-multilingual"
-                    checked={wizardData.multilingualEnabled}
-                    onCheckedChange={(on) => updateWizard({ multilingualEnabled: on })}
-                    className="data-[state=checked]:bg-[#8B5CF6] mt-0.5"
-                  />
-                  <div className="space-y-1">
-                    <Label htmlFor="setup-multilingual" className={cn(WIZARD_LABEL, '!text-white cursor-pointer')}>
-                      Enable multilingual (recommended)
-                    </Label>
-                    <p className="text-xs !text-[#94A3B8]">
-                      Automatically detect and respond fluently in 70+ languages — no extra setup.
-                    </p>
-                  </div>
                 </div>
                 <Button
                   className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white mt-4"
@@ -2408,6 +2456,7 @@ function WizardContent() {
                       variant="outline"
                       className={cn('w-full sm:w-auto', WIZARD_OUTLINE_MUTED)}
                       onClick={addStep5Row}
+                      disabled={step5AtServiceLimit}
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       Add another service
