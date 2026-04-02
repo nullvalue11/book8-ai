@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Book8 AI - Approval Lifecycle Workflow Testing
+Backend Test Suite for Book8-AI - Approval Lifecycle Workflow Testing
 Tests the complete create-approve-execute workflow for high-risk tool executions
 """
 

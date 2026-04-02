@@ -16,7 +16,7 @@ export default function DeviceMockup() {
           <div className={`${isPhone ? 'w-2.5 h-2.5' : 'w-4 h-4'} rounded bg-[#7C4DFF] flex items-center justify-center`}>
             <span className={`text-white ${isPhone ? 'text-[3px]' : 'text-[6px]'} font-bold`}>B8</span>
           </div>
-          <span className={`font-semibold text-white ${isPhone ? 'text-[4px]' : 'text-[8px]'}`}>Book8 AI</span>
+          <span className={`font-semibold text-white ${isPhone ? 'text-[4px]' : 'text-[8px]'}`}>Book8-AI</span>
         </div>
         <div className={`flex ${isPhone ? 'gap-0.5' : 'gap-1'}`}>
           <div className={`${isPhone ? 'px-0.5 py-0.5 text-[3px]' : 'px-1 py-0.5 text-[6px]'} rounded bg-white/10 text-white/70`}>Pricing</div>
@@ -102,7 +102,7 @@ export default function DeviceMockup() {
         {/* Mockup image - grayscale to neutralize green */}
         <img
           src="https://customer-assets.emergentagent.com/job_ops-api/artifacts/f3ldfcl8_iphone%20%2B%20laptop%20mockup_demo.jpg"
-          alt="Book8 AI on laptop and mobile"
+          alt="Book8-AI on laptop and mobile"
           className="w-full h-auto relative"
           style={{
             filter: 'grayscale(100%) brightness(0.7) contrast(1.2)',

@@ -198,7 +198,7 @@ export async function POST(request) {
 
         const event = {
           summary: booking.title,
-          description: `${booking.notes || ''}\n\n---\nSource: Book8 AI\nBooking ID: ${booking.id}\nRescheduled ${booking.rescheduleCount || 0} time(s)`,
+          description: `${booking.notes || ''}\n\n---\nSource: Book8-AI\nBooking ID: ${booking.id}\nRescheduled ${booking.rescheduleCount || 0} time(s)`,
           start: {
             dateTime: newStartTime.toISOString(),
             timeZone: owner.scheduling?.timeZone || 'UTC'
@@ -246,7 +246,7 @@ export async function POST(request) {
 
         // Send to guest
         await resend.emails.send({ 
-          from: 'Book8 AI <bookings@book8.io>', 
+          from: 'Book8-AI <bookings@book8.io>', 
           to: booking.guestEmail,
           cc: owner.email,
           subject: `Meeting rescheduled: ${booking.title}`,

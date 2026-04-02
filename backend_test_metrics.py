@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Backend Testing Script for Book8 AI - GET /api/internal/ops/metrics Endpoint
+Backend Testing Script for Book8-AI - GET /api/internal/ops/metrics Endpoint
 Tests the new ops metrics endpoint with comprehensive test cases.
 """
 

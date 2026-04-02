@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Stripe Diagnostic and Checkout Error Handling Test Suite for Book8 AI
+Stripe Diagnostic and Checkout Error Handling Test Suite for Book8-AI
 Tests the Stripe diagnostic and checkout error handling endpoints as requested in review.
 """
 

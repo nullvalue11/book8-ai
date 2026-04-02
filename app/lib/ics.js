@@ -6,7 +6,7 @@ export function buildICS({ uid, start, end, summary, description = '', organizer
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Book8 AI//EN',
+    'PRODID:-//Book8-AI//EN',
     `METHOD:${method}`,
     'BEGIN:VEVENT',
     `UID:${uid}`,

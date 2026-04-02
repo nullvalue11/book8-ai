@@ -436,7 +436,7 @@ export async function POST(request) {
           start: startTime.toISOString(),
           end: endTime.toISOString(),
           summary: bookingTitle,
-          description: `${notes || ''}\n\n---\nSource: Book8 AI Phone Agent\nBooking ID: ${bookingId}`,
+          description: `${notes || ''}\n\n---\nSource: Book8-AI Phone Agent\nBooking ID: ${bookingId}`,
           organizer: 'noreply@book8.ai',
           attendees: [{ email: guestEmail, name: guestName }],
           method: 'REQUEST'
@@ -450,7 +450,7 @@ export async function POST(request) {
         })
 
         await resend.emails.send({
-          from: 'Book8 AI <bookings@book8.io>',
+          from: 'Book8-AI <bookings@book8.io>',
           to: guestEmail,
           cc: owner.email,
           subject: emailSubject,

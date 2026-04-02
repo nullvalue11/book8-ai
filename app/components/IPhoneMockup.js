@@ -9,7 +9,7 @@ export default function IPhoneMockup() {
       <div className="relative" style={{ marginBottom: '-15%' }}>
         <img
           src="https://customer-assets.emergentagent.com/job_ops-api/artifacts/kexqk3mb_image.png"
-          alt="Book8 AI mobile app"
+          alt="Book8-AI mobile app"
           className="w-full h-auto"
           style={{
             clipPath: 'inset(8% 0 50% 0)',

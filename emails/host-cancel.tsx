@@ -46,7 +46,7 @@ export default function HostCancel({
               src="https://customer-assets.emergentagent.com/job_aibook-scheduler/artifacts/t5b2dg01_Book8-Agent-Logo.png"
               width="120"
               height="auto"
-              alt="Book8 AI"
+              alt="Book8-AI"
               style={logo}
             />
           </Section>
@@ -96,7 +96,7 @@ export default function HostCancel({
 
           <Section style={footerSection}>
             <Text style={footerText}>
-              Powered by <span style={brandText}>Book8 AI</span>
+              Powered by <span style={brandText}>Book8-AI</span>
             </Text>
             <Text style={footerSubtext}>Intelligent Booking & Automation</Text>
           </Section>

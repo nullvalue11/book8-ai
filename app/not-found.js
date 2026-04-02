@@ -7,7 +7,7 @@ export default function NotFound() {
       <div className="text-center">
         <Image
           src="/brand/book8_ai_icon_white.png"
-          alt="Book8 AI"
+          alt="Book8-AI"
           width={80}
           height={80}
           className="mx-auto mb-8 opacity-60"

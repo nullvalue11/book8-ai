@@ -226,8 +226,8 @@ export async function execute(args, ctx) {
       if (error.code === 'resource_missing') {
         await stripe.products.create({
           id: productId,
-          name: 'Book8 AI Services',
-          description: 'Book8 AI subscription and usage-based services'
+          name: 'Book8-AI Services',
+          description: 'Book8-AI subscription and usage-based services'
         })
         console.log(`[ops:${requestId}] billing.syncPrices: Created product ${productId}`)
       } else {

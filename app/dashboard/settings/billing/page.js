@@ -224,7 +224,7 @@ function BillingContent() {
               </div>
               <h3 className="text-lg font-medium mb-2">No active subscription</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Choose a plan below to get started with Book8 AI
+                Choose a plan below to get started with Book8-AI
               </p>
               <Button onClick={() => router.push("/pricing")}>
                 View Plans

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Review-specific Backend Testing for Book8 AI MVP
+Review-specific Backend Testing for Book8-AI MVP
 Tests the specific requirements from the review request:
-1. App Router presence: GET / should return 200 with 'Book8 AI Dashboard' text
+1. App Router presence: GET / should return 200 with 'Book8-AI Dashboard' text
 2. Tavily self-test endpoint: GET /api/search/_selftest returns JSON { ok: true, tavilyKeyPresent: boolean } and HTTP 200
 3. Catch-all placeholder: GET /api/test-search returns JSON with message containing 'Test search route working - DEBUG'
 4. Booking CRUD smoke without external keys
@@ -21,7 +21,7 @@ BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://config-guardian-1.preview.
 print(f"Testing against: {BASE_URL}")
 
 def test_app_router_presence():
-    """Test 1: App Router presence - GET / should return 200 with 'Book8 AI Dashboard' text"""
+    """Test 1: App Router presence - GET / should return 200 with 'Book8-AI Dashboard' text"""
     print("\n=== Test 1: App Router Presence ===")
     try:
         response = requests.get(f"{BASE_URL}/", timeout=10)
@@ -29,11 +29,11 @@ def test_app_router_presence():
         
         if response.status_code == 200:
             content = response.text
-            if 'Book8 AI Dashboard' in content:
-                print("✅ PASS: Found 'Book8 AI Dashboard' text in response")
+            if 'Book8-AI Dashboard' in content:
+                print("✅ PASS: Found 'Book8-AI Dashboard' text in response")
                 return True
             else:
-                print("❌ FAIL: 'Book8 AI Dashboard' text not found in response")
+                print("❌ FAIL: 'Book8-AI Dashboard' text not found in response")
                 print(f"Response content preview: {content[:500]}...")
                 return False
         else:

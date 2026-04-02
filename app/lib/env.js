@@ -149,7 +149,7 @@ function loadConfig() {
     
     // Email Service (Resend)
     const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', true)
-    const EMAIL_FROM = getEnvVar('EMAIL_FROM', false, 'Book8 AI <onboarding@resend.dev>')
+    const EMAIL_FROM = getEnvVar('EMAIL_FROM', false, 'Book8-AI <onboarding@resend.dev>')
     const EMAIL_REPLY_TO = getEnvVar('EMAIL_REPLY_TO', false, 'support@book8.ai')
     
     // Stripe (Payment Processing)

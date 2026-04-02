@@ -1,5 +1,5 @@
 /**
- * Book8 AI — Dashboard Database Purge
+ * Book8-AI — Dashboard Database Purge
  *
  * Removes all businesses, subscriptions, calendar connections,
  * and provisioning alerts EXCEPT Downtown Barber.

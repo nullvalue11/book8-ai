@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Backend Testing for Book8 AI - Critical Issues After Vercel Redeploy
+Backend Testing for Book8-AI - Critical Issues After Vercel Redeploy
 Testing Focus:
 1. Google Calendar Authentication Issue
 2. Environment Variable Configuration  

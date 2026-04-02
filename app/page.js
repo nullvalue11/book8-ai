@@ -928,7 +928,7 @@ function HomeContent(props) {
               <p className="text-sm text-muted-foreground text-center">
                 {authMode === "login" 
                   ? "Sign in to manage your bookings" 
-                  : "Get started with Book8 AI today"}
+                  : "Get started with Book8-AI today"}
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1157,7 +1157,7 @@ function HomeContent(props) {
                   <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
                     <span className="text-white text-xs font-bold">B8</span>
                   </div>
-                  <span className="text-white/80 font-medium">Book8 AI</span>
+                  <span className="text-white/80 font-medium">Book8-AI</span>
                 </div>
                 <nav
                   aria-label="Footer"
@@ -1180,7 +1180,7 @@ function HomeContent(props) {
                 </nav>
               </div>
               <p className="text-white/40 text-sm text-center border-t border-white/5 pt-6">
-                © {new Date().getFullYear()} Book8 AI Inc. All rights reserved.
+                © {new Date().getFullYear()} Book8-AI Inc. All rights reserved.
               </p>
             </div>
           </div>
@@ -1735,12 +1735,12 @@ function HomeContent(props) {
                         </p>
                         {phoneSetup.assignedTwilioNumber ? (
                           <p>
-                            <span className="font-medium">Book8 AI number:</span>{" "}
+                            <span className="font-medium">Book8-AI number:</span>{" "}
                             <span className="text-foreground">{formatPhone(phoneSetup.assignedTwilioNumber)}</span>
                           </p>
                         ) : (
                           <p>
-                            <span className="font-medium">Book8 AI number:</span>{" "}
+                            <span className="font-medium">Book8-AI number:</span>{" "}
                             <span className="text-muted-foreground">Pending assignment</span>
                           </p>
                         )}

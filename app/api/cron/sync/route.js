@@ -277,7 +277,7 @@ async function handleRemindersTask(db, runId, logsEnabled, request) {
             const idempotencyKey = `reminders/${booking.id}/${reminder.id}`
             
             await resend.emails.send({
-              from: 'Book8 AI <reminders@book8.io>',
+              from: 'Book8-AI <reminders@book8.io>',
               to: recipientEmail,
               subject,
               html: emailHtml,

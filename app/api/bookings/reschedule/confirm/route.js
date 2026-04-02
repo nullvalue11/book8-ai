@@ -243,7 +243,7 @@ export async function POST(request) {
 
         const event = {
           summary: booking.title,
-          description: `${booking.notes || ''}\n\n---\nSource: Book8 AI Public Booking (Rescheduled)\nGuest: ${booking.guestEmail}\nBooking ID: ${booking.id}\n\nManage:\nReschedule: ${baseUrl}/b/${owner.scheduling?.handle}/reschedule?token=${newRescheduleToken}\nCancel: ${baseUrl}/api/public/bookings/cancel?token=${newCancelToken}`,
+          description: `${booking.notes || ''}\n\n---\nSource: Book8-AI Public Booking (Rescheduled)\nGuest: ${booking.guestEmail}\nBooking ID: ${booking.id}\n\nManage:\nReschedule: ${baseUrl}/b/${owner.scheduling?.handle}/reschedule?token=${newRescheduleToken}\nCancel: ${baseUrl}/api/public/bookings/cancel?token=${newCancelToken}`,
           start: {
             dateTime: newStartTime.toISOString(),
             timeZone: booking.timeZone || 'UTC'
@@ -332,7 +332,7 @@ export async function POST(request) {
           start: newStartTime.toISOString(),
           end: newEndTime.toISOString(),
           summary: booking.title,
-          description: `${booking.notes || ''}\n\n---\nSource: Book8 AI Public Booking\nBooking ID: ${booking.id}`,
+          description: `${booking.notes || ''}\n\n---\nSource: Book8-AI Public Booking\nBooking ID: ${booking.id}`,
           organizer: 'noreply@book8.ai',
           attendees: [{ email: booking.guestEmail, name: booking.customerName }],
           method: 'REQUEST'
@@ -348,10 +348,10 @@ export async function POST(request) {
         })
 
         await resend.emails.send({
-          from: 'Book8 AI <bookings@book8.io>',
+          from: 'Book8-AI <bookings@book8.io>',
           to: booking.guestEmail,
           cc: owner.email,
-          subject: `Your Book8 AI meeting was rescheduled – ${dateStr} (${guestTzLabel})`,
+          subject: `Your Book8-AI meeting was rescheduled – ${dateStr} (${guestTzLabel})`,
           html: emailHtml,
           attachments: [
             {
@@ -374,7 +374,7 @@ export async function POST(request) {
           )
           
           await resend.emails.send({
-            from: 'Book8 AI <notifications@book8.io>',
+            from: 'Book8-AI <notifications@book8.io>',
             to: owner.email,
             subject: `Booking rescheduled: ${booking.customerName || 'Guest'} – ${booking.title}`,
             html: hostEmailHtml

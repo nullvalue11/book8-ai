@@ -320,7 +320,7 @@ export async function POST(request) {
         const baseUrl = env.BASE_URL || 'http://localhost:3000'
         const event = {
           summary: booking.title,
-          description: `${notes || ''}\n\n---\nSource: Book8 AI Public Booking\nGuest: ${email}\nBooking ID: ${bookingId}\n\nManage:\nReschedule: ${baseUrl}/b/${handle}/reschedule?token=${rescheduleToken}\nCancel: ${baseUrl}/api/public/bookings/cancel?token=${cancelToken}`,
+          description: `${notes || ''}\n\n---\nSource: Book8-AI Public Booking\nGuest: ${email}\nBooking ID: ${bookingId}\n\nManage:\nReschedule: ${baseUrl}/b/${handle}/reschedule?token=${rescheduleToken}\nCancel: ${baseUrl}/api/public/bookings/cancel?token=${cancelToken}`,
           start: {
             dateTime: startTime.toISOString(),
             timeZone: owner.scheduling.timeZone || 'UTC'
@@ -374,7 +374,7 @@ export async function POST(request) {
           toHost: owner.email,
           bookingId,
           hasApiKey: !!env.RESEND_API_KEY,
-          from: 'Book8 AI <bookings@book8.io>'
+          from: 'Book8-AI <bookings@book8.io>'
         })
 
         const bookingLinePhone = business
@@ -399,7 +399,7 @@ export async function POST(request) {
           start: startTime.toISOString(),
           end: endTime.toISOString(),
           summary: booking.title,
-          description: `${notes || ''}\n\n---\nSource: Book8 AI Public Booking\nBooking ID: ${bookingId}`,
+          description: `${notes || ''}\n\n---\nSource: Book8-AI Public Booking\nBooking ID: ${bookingId}`,
           organizer: 'noreply@book8.ai',
           attendees: [{ email, name }],
           method: 'REQUEST'
@@ -416,7 +416,7 @@ export async function POST(request) {
         let emailResult
         try {
           emailResult = await resend.emails.send({
-            from: 'Book8 AI <bookings@book8.io>',
+            from: 'Book8-AI <bookings@book8.io>',
             to: email,
             cc: owner.email,
             subject: emailSubject,

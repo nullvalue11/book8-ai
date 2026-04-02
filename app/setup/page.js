@@ -213,7 +213,7 @@ function SetupAuthScreen({ onAuthenticated, initialLoginMode = false }) {
         <div className="space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold text-white">
-              {initialLoginMode ? 'Sign in' : 'Get Started with Book8 AI'}
+              {initialLoginMode ? 'Sign in' : 'Get Started with Book8-AI'}
             </h1>
             <p className="text-[#94A3B8] text-sm">
               {initialLoginMode
@@ -1589,7 +1589,7 @@ function WizardContent() {
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">Welcome to Book8 AI!</h1>
+              <h1 className="text-2xl font-bold text-white">Welcome to Book8-AI!</h1>
               <p className="text-[#94A3B8] mt-1">
                 Let&apos;s set up your AI receptionist in under 5 minutes.
               </p>
@@ -2253,7 +2253,7 @@ function WizardContent() {
                           📱
                         </span>
                         <div className="space-y-1 min-w-0">
-                          <p className="font-semibold !text-white">Get a new Book8 AI number</p>
+                          <p className="font-semibold !text-white">Get a new Book8-AI number</p>
                           <p className="text-sm !text-[#94A3B8]">
                             We&apos;ll assign a dedicated phone number just for your business.
                           </p>
@@ -2305,7 +2305,7 @@ function WizardContent() {
                   <div className="rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-4 py-4 flex items-start gap-3">
                     <Loader2 className="w-5 h-5 text-[#8B5CF6] shrink-0 animate-spin mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium !text-white">Getting your Book8 AI number…</p>
+                      <p className="text-sm font-medium !text-white">Getting your Book8-AI number…</p>
                       <p className="text-xs !text-[#94A3B8] mt-1">
                         This usually takes a short time. We check every 15 seconds until your line is ready.
                       </p>
@@ -2335,7 +2335,7 @@ function WizardContent() {
 
                 {phoneStepPhase === 'new-ready' && wizardData.phoneNumber && (
                   <div className="rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/60 p-4 space-y-2">
-                    <p className="text-sm font-medium !text-white">Your Book8 AI number</p>
+                    <p className="text-sm font-medium !text-white">Your Book8-AI number</p>
                     <p className="text-xl font-mono !text-[#8B5CF6]">
                       {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber}
                     </p>
@@ -2348,7 +2348,7 @@ function WizardContent() {
                 {phoneStepPhase === 'forward-ready' && wizardData.phoneNumber && (
                   <div className="space-y-4 rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/60 p-4">
                     <div>
-                      <p className="text-lg font-semibold !text-white">Forward your calls to Book8 AI</p>
+                      <p className="text-lg font-semibold !text-white">Forward your calls to Book8-AI</p>
                       <p className="text-sm !text-[#94A3B8] mt-2">
                         When customers call your current number, calls can ring through to your AI receptionist once
                         forwarding is set up.
@@ -2490,7 +2490,7 @@ function WizardContent() {
                       </div>
                       <div className="rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/50 px-3 py-3">
                         <p className="text-xs font-medium uppercase tracking-wide !text-[#64748B]">
-                          Book8 AI number
+                          Book8-AI number
                         </p>
                         <p className="text-lg font-mono !text-[#8B5CF6] mt-1">
                           {wizardData.phoneNumber
@@ -2577,7 +2577,7 @@ function WizardContent() {
                       <>
                         <li>→ Call your existing business number and confirm the AI answers (forwarding must be on)</li>
                         <li>
-                          → Text your Book8 AI number: &quot;Book a cleaning tomorrow at 2pm&quot; — SMS uses your AI line
+                          → Text your Book8-AI number: &quot;Book a cleaning tomorrow at 2pm&quot; — SMS uses your AI line
                         </li>
                         <li>→ Visit your booking page</li>
                       </>

@@ -48,7 +48,7 @@ export async function GET(request) {
     // Get owner info for organizer email
     const owner = await database.collection('users').findOne({ id: booking.userId })
     const organizerEmail = owner?.email || 'noreply@book8.ai'
-    const organizerName = owner?.scheduling?.handle || 'Book8 AI'
+    const organizerName = owner?.scheduling?.handle || 'Book8-AI'
 
     // Generate ICS file
     const icsContent = buildICS({
@@ -56,7 +56,7 @@ export async function GET(request) {
       start: booking.startTime,
       end: booking.endTime,
       summary: booking.title,
-      description: `${booking.notes || ''}\n\n---\nSource: Book8 AI\nBooking ID: ${bookingId}`,
+      description: `${booking.notes || ''}\n\n---\nSource: Book8-AI\nBooking ID: ${bookingId}`,
       organizer: organizerEmail,
       organizerName: organizerName,
       attendees: [

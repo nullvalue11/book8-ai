@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MongoDB-Backed Rate Limiter Test Suite for Book8 AI
+MongoDB-Backed Rate Limiter Test Suite for Book8-AI
 
 Tests the MongoDB-backed rate limiter implementation for the ops control plane.
 Focuses on verifying all 7 test cases from the review request.

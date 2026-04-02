@@ -46,9 +46,9 @@ def run_focused_review_tests():
     
     tests = []
     
-    # Test 1: GET / -> 200 and contains 'Book8 AI Dashboard'
-    print("\n1. Testing GET / -> 200 and contains 'Book8 AI Dashboard'")
-    success, result = test_endpoint('GET', '/', 200, 'Book8 AI Dashboard')
+    # Test 1: GET / -> 200 and contains 'Book8-AI Dashboard'
+    print("\n1. Testing GET / -> 200 and contains 'Book8-AI Dashboard'")
+    success, result = test_endpoint('GET', '/', 200, 'Book8-AI Dashboard')
     tests.append(('GET /', success, result))
     print(f"   ✅ PASS: Root endpoint working" if success else f"   ❌ FAIL: {result}")
     

@@ -87,8 +87,8 @@ export async function POST(req) {
     try {
       const resend = new Resend(env.RESEND_API_KEY)
       const html = `<div style="font-family:Inter,system-ui,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
-  <h1 style="margin:0 0 16px">Reset your Book8 AI password</h1>
-  <p>We received a request to reset your Book8 AI password. Click the button below to set a new one.</p>
+  <h1 style="margin:0 0 16px">Reset your Book8-AI password</h1>
+  <p>We received a request to reset your Book8-AI password. Click the button below to set a new one.</p>
   <p style="margin:24px 0">
     <a href="${resetLink}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px">Reset Password</a>
   </p>
@@ -98,12 +98,12 @@ export async function POST(req) {
   <p style="color:#555;font-size:12px">If you didn't request this, you can ignore this email. This link expires in ${mins} minutes.</p>
   <p style="color:#555;font-size:12px">Need help? Reply to this email.</p>
 </div>`
-      const text = `Reset your Book8 AI password\n\nWe received a request to reset your Book8 AI password.\nReset link (expires in ${mins} minutes):\n${resetLink}\n\nIf you didn't request this, you can ignore this email. Need help? Reply to this email.`
+      const text = `Reset your Book8-AI password\n\nWe received a request to reset your Book8-AI password.\nReset link (expires in ${mins} minutes):\n${resetLink}\n\nIf you didn't request this, you can ignore this email. Need help? Reply to this email.`
       await resend.emails.send({
         from: env.EMAIL_FROM,
         to: user.email,
         reply_to: env.EMAIL_REPLY_TO,
-        subject: 'Reset your Book8 AI password',
+        subject: 'Reset your Book8-AI password',
         html,
         text,
       })

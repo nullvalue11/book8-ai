@@ -135,7 +135,7 @@ export async function POST(request) {
       title && typeof title === 'string' ? title.trim() : 'This appointment'
     const updatePayload = {
       summary: `CANCELLED — ${originalTitle}`,
-      description: `⛔ CANCELLED\n\n${originalTitle}\n\nCancelled via Book8 AI`,
+      description: `⛔ CANCELLED\n\n${originalTitle}\n\nCancelled via Book8-AI`,
       colorId: '4'
     }
     if (showAs === 'free') {

@@ -84,7 +84,7 @@
 }
 
 @layer utilities {
-  /* Book8 AI Brand Gradients */
+  /* Book8-AI Brand Gradients */
   .gradient-primary {
     background: linear-gradient(90deg, #7C4DFF 0%, #9867FF 100%);
   }

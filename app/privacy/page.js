@@ -23,7 +23,7 @@ export default function PrivacyPolicyPage() {
             <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
               <span className="text-white text-xs font-bold">B8</span>
             </div>
-            <span className="text-white font-semibold">Book8 AI</span>
+            <span className="text-white font-semibold">Book8-AI</span>
           </div>
         </div>
       </header>
@@ -36,7 +36,7 @@ export default function PrivacyPolicyPage() {
 
           <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8">
             <p className="text-zinc-300 m-0">
-              Book8 AI Inc. (&quot;Book8 AI,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting your privacy. 
+              Book8-AI Inc. (&quot;Book8-AI,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting your privacy. 
               This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our 
               AI-powered booking and scheduling platform.
             </p>
@@ -68,13 +68,13 @@ export default function PrivacyPolicyPage() {
           <section id="company-info" className="mb-10">
             <h2 className="text-2xl font-bold text-white mb-4">1. Company Information</h2>
             <p className="text-zinc-300">
-              11111221 Canada INC. (operating as Book8 AI) is a company incorporated in Canada, with its principal place of business in Ottawa, Ontario, Canada. 
+              11111221 Canada INC. (operating as Book8-AI) is a company incorporated in Canada, with its principal place of business in Ottawa, Ontario, Canada. 
               Our services are accessible globally to users worldwide.
             </p>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4 mt-4">
               <p className="text-zinc-300 m-0">
                 <strong className="text-white">Data Controller:</strong><br />
-                11111221 Canada INC. (operating as Book8 AI)<br />
+                11111221 Canada INC. (operating as Book8-AI)<br />
                 Ottawa, Ontario, Canada<br />
                 Email: privacy@book8.io
               </p>
@@ -122,7 +122,7 @@ export default function PrivacyPolicyPage() {
             
             <h3 className="text-xl font-semibold text-white mt-6 mb-3">2.5 SMS and Email Communications</h3>
             <p className="text-zinc-300">
-              When you book an appointment through a Book8 AI-powered business and provide your contact information:
+              When you book an appointment through a Book8-AI-powered business and provide your contact information:
             </p>
             <ul className="list-disc list-inside text-zinc-300 space-y-2">
               <li>Your phone number is used to send booking confirmation and appointment reminder SMS messages via Twilio</li>
@@ -201,7 +201,7 @@ export default function PrivacyPolicyPage() {
               </p>
               <p className="text-zinc-300 m-0">
                 <strong className="text-white">ElevenLabs Inc.</strong><br />
-                We use ElevenLabs for AI voice processing and conversation handling during phone bookings. When you call a Book8 AI-powered business, your voice is processed by ElevenLabs to understand and respond to your booking request. ElevenLabs&apos; privacy policy is available at{" "}
+                We use ElevenLabs for AI voice processing and conversation handling during phone bookings. When you call a Book8-AI-powered business, your voice is processed by ElevenLabs to understand and respond to your booking request. ElevenLabs&apos; privacy policy is available at{" "}
                 <a href="https://elevenlabs.io/privacy" target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300">
                   elevenlabs.io/privacy
                 </a>
@@ -440,13 +440,13 @@ export default function PrivacyPolicyPage() {
             </p>
             <div className="bg-white/5 border border-white/10 rounded-lg p-6">
               <p className="text-zinc-300 m-0">
-                <strong className="text-white">Book8 AI Inc.</strong><br /><br />
+                <strong className="text-white">Book8-AI Inc.</strong><br /><br />
                 <strong className="text-white">Email:</strong>{" "}
                 <a href="mailto:privacy@book8.io" className="text-brand-400 hover:text-brand-300">privacy@book8.io</a><br /><br />
                 <strong className="text-white">Data Protection Officer:</strong>{" "}
                 <a href="mailto:dpo@book8.io" className="text-brand-400 hover:text-brand-300">dpo@book8.io</a><br /><br />
                 <strong className="text-white">Mailing Address:</strong><br />
-                Book8 AI Inc.<br />
+                Book8-AI Inc.<br />
                 Ottawa, Ontario<br />
                 Canada<br /><br />
                 <strong className="text-white">Response Time:</strong> We aim to respond to all inquiries within 30 days.
@@ -457,7 +457,7 @@ export default function PrivacyPolicyPage() {
           {/* Footer */}
           <div className="border-t border-white/10 pt-8 mt-12">
             <p className="text-zinc-500 text-sm text-center">
-              © 2025 Book8 AI Inc. All rights reserved.
+              © 2025 Book8-AI Inc. All rights reserved.
             </p>
           </div>
         </div>

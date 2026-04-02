@@ -147,7 +147,7 @@ Manage your booking:
 Reschedule: ${baseUrl}/b/${owner.scheduling?.handle}/reschedule?token=${booking.rescheduleToken}
 Cancel: ${baseUrl}/api/public/bookings/cancel?token=${booking.cancelToken}
 
-Source: Book8 AI Public Booking
+Source: Book8-AI Public Booking
 Booking ID: ${booking.id}`,
     organizer: 'noreply@book8.ai',
     attendees: [{ email: booking.guestEmail, name: booking.customerName }],
@@ -175,7 +175,7 @@ const emailHtml = bookingConfirmationEmail(
 // Attach ICS
 const icsContent = generateBookingICS(booking, owner, 'REQUEST')
 await resend.emails.send({
-  from: 'Book8 AI <bookings@book8.ai>',
+  from: 'Book8-AI <bookings@book8.ai>',
   to: booking.guestEmail,
   cc: owner.email,
   subject: `Your Book8 meeting is confirmed – ${formatDate(booking.startTime, booking.guestTimezone)}`,
@@ -257,7 +257,7 @@ logError(error, { endpoint: '/api/bookings/reschedule', bookingId })
    description: `${booking.notes || 'No notes'}
 
 ---
-Source: Book8 AI Public Booking
+Source: Book8-AI Public Booking
 Guest: ${booking.guestEmail}
 Booking ID: ${booking.id}`
    ```

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase C.C adds real-time analytics and visualization to the Book8 AI dashboard, providing hosts with immediate visibility into booking trends, reschedule patterns, cancellations, and reminder effectiveness.
+Phase C.C adds real-time analytics and visualization to the Book8-AI dashboard, providing hosts with immediate visibility into booking trends, reschedule patterns, cancellations, and reminder effectiveness.
 
 ---
 

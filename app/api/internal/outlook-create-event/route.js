@@ -179,7 +179,7 @@ export async function POST(request) {
     const endGraph = formatDateTimeInZone(endStr, resolvedTimezone)
 
     const eventPayload = {
-      subject: String(title).trim() || 'Book8 AI Appointment',
+      subject: String(title).trim() || 'Book8-AI Appointment',
       start: {
         dateTime: startGraph,
         timeZone: resolvedTimezone

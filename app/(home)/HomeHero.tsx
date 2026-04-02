@@ -57,7 +57,7 @@ export default function HomeHero() {
             Everything You Need for Smart Scheduling
           </h2>
           <p className="text-white/60 max-w-2xl mx-auto">
-            Book8 AI is a comprehensive appointment scheduling platform that helps businesses and professionals manage their time efficiently with AI-powered features.
+            Book8-AI is a comprehensive appointment scheduling platform that helps businesses and professionals manage their time efficiently with AI-powered features.
           </p>
         </div>
         

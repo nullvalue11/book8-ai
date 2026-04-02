@@ -18,7 +18,7 @@ export default function HeaderLogo({
     <div className={className}>
       <Image
         src="/brand/book8_ai_logo.svg"
-        alt="Book8 AI"
+        alt="Book8-AI"
         width={width}
         height={height}
         className="h-auto w-32 sm:w-36 md:w-38"

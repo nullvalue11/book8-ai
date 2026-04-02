@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Subscription Update Fix Test for Book8 AI
+Subscription Update Fix Test for Book8-AI
 Tests the fix for MongoDB error: "Cannot create field 'stripeCustomerId' in element { subscription: null }"
 
 This test verifies that the updateSubscriptionFields function correctly handles users with subscription: null

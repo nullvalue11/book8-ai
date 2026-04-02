@@ -2,7 +2,7 @@
 export const faqItems = [
   {
     q: 'How does the AI voice agent work?',
-    a: 'When a customer calls your Book8 AI number, our AI answers using natural speech. It knows your services, hours, and availability. It has a natural conversation, finds a time that works, and books the appointment.'
+    a: 'When a customer calls your Book8-AI number, our AI answers using natural speech. It knows your services, hours, and availability. It has a natural conversation, finds a time that works, and books the appointment.'
   },
   {
     q: 'Do I need any special equipment?',
@@ -22,6 +22,6 @@ export const faqItems = [
   },
   {
     q: 'What languages does the AI support?',
-    a: "Book8 AI automatically detects your customer's language and responds in that language. We currently support 70+ languages including English, French, Spanish, Arabic, Mandarin, Hindi, Portuguese, German, Japanese, Korean, and many more. No configuration needed — it just works."
+    a: "Book8-AI automatically detects your customer's language and responds in that language. We currently support 70+ languages including English, French, Spanish, Arabic, Mandarin, Hindi, Portuguese, German, Japanese, Korean, and many more. No configuration needed — it just works."
   }
 ]

@@ -32,7 +32,7 @@ export default function SocialMediaLinks({ className = '' }) {
         href={INSTAGRAM_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Book8 AI on Instagram"
+        aria-label="Book8-AI on Instagram"
         className={`${linkBase} bg-gradient-to-br from-[#f09433] via-[#e6683c] to-[#bc1888] text-white shadow-md shadow-[#bc1888]/20 hover:brightness-110 hover:scale-105 focus-visible:ring-pink-400`}
       >
         <InstagramIcon className="w-5 h-5" />
@@ -41,7 +41,7 @@ export default function SocialMediaLinks({ className = '' }) {
         href={TIKTOK_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Book8 AI on TikTok"
+        aria-label="Book8-AI on TikTok"
         className={`${linkBase} bg-[#010101] text-white border border-white/15 hover:border-[#25F4EE]/60 hover:shadow-[0_0_20px_-4px_rgba(37,244,238,0.45)] hover:scale-105 focus-visible:ring-[#25F4EE]`}
       >
         <TikTokIcon className="w-5 h-5" />

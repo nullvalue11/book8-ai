@@ -1,9 +1,9 @@
 <<<<<<< HEAD
-# Book8 AI
+# Book8-AI
 
 **Scheduling, voice, and web search — wired with a modular workflow engine.**
 
-Book8 AI is a comprehensive appointment scheduling platform that combines traditional booking management with AI-powered integrations. Built with Next.js, MongoDB, and modern UI components, it provides a solid foundation for AI-enhanced scheduling workflows.
+Book8-AI is a comprehensive appointment scheduling platform that combines traditional booking management with AI-powered integrations. Built with Next.js, MongoDB, and modern UI components, it provides a solid foundation for AI-enhanced scheduling workflows.
 
 ## 🚀 Features
 
@@ -231,11 +231,11 @@ For support and questions:
 
 ---
 
-**Book8 AI** - Where scheduling meets AI intelligence.
+**Book8-AI** - Where scheduling meets AI intelligence.
 
 *Last updated: January 2025 - SSH signing enabled*
 =======
-# Book8 AI — MVP
+# Book8-AI — MVP
 
 A modern, modular scheduling and AI integration service.
 
@@ -342,7 +342,7 @@ Testing Vercel deployment with proper git configuration - January 2025
 
 ## 🔐 Environment Variables
 
-Book8 AI uses environment variables for configuration. Create a `.env.local` file or set these in your hosting platform (e.g., Vercel).
+Book8-AI uses environment variables for configuration. Create a `.env.local` file or set these in your hosting platform (e.g., Vercel).
 
 ### Required Variables
 

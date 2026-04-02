@@ -22,8 +22,8 @@ def test_basic_functionality():
     print("\n1. Testing App Router (Frontend)")
     try:
         response = requests.get(f"{BASE_URL}/", timeout=10)
-        if response.status_code == 200 and 'Book8 AI Dashboard' in response.text:
-            print("✅ App Router working - Found 'Book8 AI Dashboard'")
+        if response.status_code == 200 and 'Book8-AI Dashboard' in response.text:
+            print("✅ App Router working - Found 'Book8-AI Dashboard'")
             results['app_router'] = True
         else:
             print(f"❌ App Router issue - Status: {response.status_code}")

@@ -229,7 +229,7 @@ export default function LandingPage() {
                 num: 1,
                 icon: Calendar,
                 title: 'Connect Your Calendar',
-                desc: 'Link your Google or Outlook calendar. Book8 AI reads your availability in real-time.',
+                desc: 'Link your Google or Outlook calendar. Book8-AI reads your availability in real-time.',
               },
               {
                 num: 2,
@@ -313,7 +313,7 @@ export default function LandingPage() {
             className={`text-center text-[#94A3B8] text-sm max-w-2xl mx-auto mt-14 transition-all duration-700 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
           >
             <span className="text-[#F8FAFC] font-medium">Available worldwide.</span>{' '}
-            From barber shops to dental clinics, fitness studios to spas — Book8 AI runs wherever your business is.
+            From barber shops to dental clinics, fitness studios to spas — Book8-AI runs wherever your business is.
           </p>
         </div>
       </section>

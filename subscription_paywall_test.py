@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Subscription Paywall Test Suite for Book8 AI
+Subscription Paywall Test Suite for Book8-AI
 
 This test suite validates the subscription paywall implementation:
 1. GET /api/billing/me - Subscription status endpoint

@@ -56,7 +56,7 @@ const Header = ({ user, onLogout, banner }) => {
       <div className="container py-4">
         {banner && <div className="bg-blue-100 border border-blue-300 text-blue-800 px-4 py-2 rounded mb-4">{banner}</div>}
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Book8 AI</h1>
+          <h1 className="text-xl font-bold">Book8-AI</h1>
           <div className="flex items-center gap-4">
             {user ? (
               <>
@@ -207,7 +207,7 @@ const BookingsTable = ({ token, items, refresh }) => {
                   <td className="p-3">{formatInTz(b?.startTime, b?.timeZone)}</td>
                   <td className="p-3">{formatInTz(b?.endTime, b?.timeZone)}</td>
                   <td className="p-3"><span className="text-xs rounded bg-muted px-2 py-0.5">{b?.timeZone || '—'}</span></td>
-                  <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs ${b?.source === 'google' ? 'bg-secondary text-secondary-foreground' : 'bg-muted'}`}>{b?.source === 'google' ? 'Google' : 'Book8 AI'}</span></td>
+                  <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs ${b?.source === 'google' ? 'bg-secondary text-secondary-foreground' : 'bg-muted'}`}>{b?.source === 'google' ? 'Google' : 'Book8-AI'}</span></td>
                   <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs ${b?.status === 'canceled' ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-secondary-foreground'}`}>{b?.status}</span></td>
                   <td className="p-3">{b?.source === 'google' ? (b?.htmlLink ? <a className="underline" href={b.htmlLink} target="_blank" rel="noreferrer">Open</a> : <span className="text-muted-foreground">—</span>) : (b?.status !== 'canceled' ? (<button className="px-3 py-1 rounded-md bg-primary text-primary-foreground hover:opacity-90" onClick={() => cancelBooking(b?.id)}>Cancel</button>) : (<span className="text-muted-foreground">—</span>))}</td>
                 </tr>
@@ -665,7 +665,7 @@ export default function Home() {
         {!token ? (
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold">Book8 AI</h1>
+              <h1 className="text-3xl font-bold">Book8-AI</h1>
               <p className="text-muted-foreground mt-2">Scheduling, billing, and Google Calendar sync. Create an account to get started.</p>
             </div>
             <AuthCard onAuth={login} />

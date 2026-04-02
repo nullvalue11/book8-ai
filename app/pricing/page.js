@@ -210,7 +210,7 @@ function PricingContent() {
                 <p className="text-sm text-muted-foreground">
                   {feature && featureMessages[feature] 
                     ? featureMessages[feature] 
-                    : "Choose a plan below to unlock all features and start using Book8 AI."}
+                    : "Choose a plan below to unlock all features and start using Book8-AI."}
                 </p>
               </div>
             </div>

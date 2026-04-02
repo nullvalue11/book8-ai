@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Focused Tavily Live Web Search Tests for Book8 AI MVP
+Focused Tavily Live Web Search Tests for Book8-AI MVP
 Tests only the Tavily search endpoints to avoid memory issues
 """
 

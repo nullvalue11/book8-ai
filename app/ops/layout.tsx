@@ -9,8 +9,8 @@ import Link from 'next/link'
 import { ReactNode } from 'react'
 
 export const metadata = {
-  title: 'Ops Console - Book8 AI',
-  description: 'Internal operations console for Book8 AI'
+  title: 'Ops Console - Book8-AI',
+  description: 'Internal operations console for Book8-AI'
 }
 
 interface OpsLayoutProps {
@@ -53,7 +53,7 @@ export default function OpsLayout({ children }: OpsLayoutProps) {
       <footer className="bg-white border-t mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p className="text-sm text-gray-500 text-center">
-            Book8 AI Internal Operations Console • Protected by Basic Auth
+            Book8-AI Internal Operations Console • Protected by Basic Auth
           </p>
         </div>
       </footer>

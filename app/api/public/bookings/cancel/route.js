@@ -172,7 +172,7 @@ export async function POST(request) {
 
         // Send to guest
         await resend.emails.send({ 
-          from: 'Book8 AI <bookings@book8.io>', 
+          from: 'Book8-AI <bookings@book8.io>', 
           to: booking.guestEmail, 
           subject: `Meeting canceled: ${booking.title}`,
           html: `
@@ -205,7 +205,7 @@ export async function POST(request) {
           try {
             const hostEmailHtml = await renderHostCancel(booking, user, booking.guestTimezone)
             await resend.emails.send({
-              from: 'Book8 AI <notifications@book8.io>',
+              from: 'Book8-AI <notifications@book8.io>',
               to: user.email,
               subject: `Booking canceled: ${booking.customerName || 'Guest'} – ${booking.title}`,
               html: hostEmailHtml
@@ -288,7 +288,7 @@ export async function GET(request) {
       try {
         const hostEmailHtml = await renderHostCancel(booking, user, booking.guestTimezone)
         await resend.emails.send({
-          from: 'Book8 AI <notifications@book8.io>',
+          from: 'Book8-AI <notifications@book8.io>',
           to: user.email,
           subject: `Booking canceled: ${booking.customerName || 'Guest'} – ${booking.title}`,
           html: hostEmailHtml

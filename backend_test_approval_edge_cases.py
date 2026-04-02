@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Supplementary Backend Test Suite for Book8 AI - Approval Lifecycle Edge Cases
+Supplementary Backend Test Suite for Book8-AI - Approval Lifecycle Edge Cases
 Tests additional edge cases and specific scenarios from the review request
 """
 

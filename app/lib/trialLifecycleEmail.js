@@ -42,14 +42,14 @@ export async function sendTrialStartedEmail({
   const cal = calendarProvider || 'Not connected yet'
   const html = `
 <p>Hi ${businessName},</p>
-<p>Welcome to Book8 AI! Your ${env.TRIAL_PERIOD_DAYS ?? 14}-day free trial of the Growth plan is now active.</p>
+<p>Welcome to Book8-AI! Your ${env.TRIAL_PERIOD_DAYS ?? 14}-day free trial of the Growth plan is now active.</p>
 <p><strong>Here's what's set up for you:</strong></p>
 <ul>
 <li>Phone number: ${phone}</li>
 <li>Booking page: ${book}</li>
 <li>Calendar: ${cal}</li>
 </ul>
-<p>Your card will not be charged until <strong>${trialEndDate}</strong>. If Book8 AI isn't right for your business, cancel anytime before then.</p>
+<p>Your card will not be charged until <strong>${trialEndDate}</strong>. If Book8-AI isn't right for your business, cancel anytime before then.</p>
 <p><strong>What to do next:</strong></p>
 <ol>
 <li>Share your phone number with customers</li>
@@ -57,7 +57,7 @@ export async function sendTrialStartedEmail({
 <li>Watch the bookings roll in on your dashboard</li>
 </ol>
 <p>Questions? Reply to this email or visit <a href="${bu}/dashboard">${bu}/dashboard</a>.</p>
-<p>— The Book8 AI Team</p>`
+<p>— The Book8-AI Team</p>`
   return sendIfConfigured({
     to,
     subject: `Your ${env.TRIAL_PERIOD_DAYS ?? 14}-day free trial has started!`,
@@ -73,10 +73,10 @@ export async function sendTrialEndingEmail({ to, businessName, trialEndDate }) {
 <p>Your trial so far: check your <a href="${bu}/dashboard">dashboard</a> for calls answered and appointments booked.</p>
 <p>No action needed — your AI receptionist will keep working without interruption.</p>
 <p>Want to cancel? Go to <a href="${bu}/dashboard/settings/billing">${bu}/dashboard/settings/billing</a> before ${trialEndDate}.</p>
-<p>— The Book8 AI Team</p>`
+<p>— The Book8-AI Team</p>`
   return sendIfConfigured({
     to,
-    subject: 'Your Book8 AI trial ends in 3 days',
+    subject: 'Your Book8-AI trial ends in 3 days',
     html
   })
 }
@@ -85,10 +85,10 @@ export async function sendTrialConvertedEmail({ to, businessName }) {
   const bu = baseUrl()
   const html = `
 <p>Hi ${businessName},</p>
-<p>Your free trial has ended and your Growth plan is now active at $99/month. Thank you for choosing Book8 AI!</p>
+<p>Your free trial has ended and your Growth plan is now active at $99/month. Thank you for choosing Book8-AI!</p>
 <p>Your AI receptionist is answering calls 24/7. No changes needed — everything keeps working.</p>
 <p>Manage your subscription anytime at <a href="${bu}/dashboard/settings/billing">${bu}/dashboard/settings/billing</a>.</p>
-<p>— The Book8 AI Team</p>`
+<p>— The Book8-AI Team</p>`
   return sendIfConfigured({
     to,
     subject: "You're officially on the Growth plan!",
@@ -100,12 +100,12 @@ export async function sendPaymentFailedEmail({ to, businessName }) {
   const bu = baseUrl()
   const html = `
 <p>Hi ${businessName || 'there'},</p>
-<p>We couldn't charge your card for your Book8 AI subscription. Stripe will retry automatically — please update your payment method so your service isn't interrupted.</p>
+<p>We couldn't charge your card for your Book8-AI subscription. Stripe will retry automatically — please update your payment method so your service isn't interrupted.</p>
 <p><a href="${bu}/dashboard/settings/billing">Update payment method →</a></p>
-<p>— The Book8 AI Team</p>`
+<p>— The Book8-AI Team</p>`
   return sendIfConfigured({
     to,
-    subject: 'Book8 AI — payment failed',
+    subject: 'Book8-AI — payment failed',
     html
   })
 }

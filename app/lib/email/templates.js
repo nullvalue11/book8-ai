@@ -129,7 +129,7 @@ function baseTemplate(content) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Book8 AI</title>
+  <title>Book8-AI</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
   </style>
@@ -142,7 +142,7 @@ function baseTemplate(content) {
           <!-- Header with Logo -->
           <tr>
             <td style="background: linear-gradient(135deg, ${BRAND_COLOR}, ${ACCENT_COLOR}); padding: 48px 32px; text-align: center;">
-              <img src="${LOGO_URL}" alt="Book8 AI" style="height: 80px; width: auto; padding: 24px;">
+              <img src="${LOGO_URL}" alt="Book8-AI" style="height: 80px; width: auto; padding: 24px;">
             </td>
           </tr>
           
@@ -157,7 +157,7 @@ function baseTemplate(content) {
           <tr>
             <td style="background-color: ${BG_DARK}; padding: 24px 32px; text-align: center; border-top: 1px solid #2E3A47;">
               <p style="margin: 0 0 12px 0; font-size: 14px; color: #B6C4D1; font-weight: 500;">
-                Powered by <span style="background: linear-gradient(135deg, ${BRAND_COLOR}, ${ACCENT_COLOR}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600;">Book8 AI</span>
+                Powered by <span style="background: linear-gradient(135deg, ${BRAND_COLOR}, ${ACCENT_COLOR}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600;">Book8-AI</span>
               </p>
               <p style="margin: 0; font-size: 12px; color: #B6C4D1;">
                 Intelligent Booking & Automation
@@ -211,7 +211,7 @@ function calendarButtons(booking, baseUrl, labels) {
   const title = encodeURIComponent(booking.title)
   const startUTC = new Date(booking.startTime).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
   const endUTC = new Date(booking.endTime).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
-  const details = encodeURIComponent((booking.notes || '') + '\n\nBooked via Book8 AI')
+  const details = encodeURIComponent((booking.notes || '') + '\n\nBooked via Book8-AI')
 
   const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startUTC}/${endUTC}&details=${details}`
   const outlookUrl = `https://outlook.live.com/calendar/0/action/compose?subject=${title}&startdt=${encodeURIComponent(booking.startTime)}&enddt=${encodeURIComponent(booking.endTime)}&body=${details}`
