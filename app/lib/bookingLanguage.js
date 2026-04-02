@@ -22,3 +22,11 @@ export function resolveBookingLanguage(request, bodyLanguage) {
   }
   return detectLanguageFromRequest(request)
 }
+
+/** Browser-only: preferred language for public booking POST body (mirrors Accept-Language subset). */
+export function clientPreferredBookingLanguage() {
+  if (typeof navigator === 'undefined') return undefined
+  const raw = navigator.language || (navigator.languages && navigator.languages[0])
+  if (!raw || typeof raw !== 'string') return undefined
+  return normalizeBookingLanguage(raw)
+}

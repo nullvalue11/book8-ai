@@ -21,6 +21,7 @@ import { QRCodeSVG } from "qrcode.react";
 import UpgradePrompt from "./components/UpgradePrompt";
 import PlanFeatureLock from "./components/PlanFeatureLock";
 import { getPlanName, getUiPlanLimits, normalizePlanKey } from "./lib/plan-features";
+import { bookingLanguageBadge } from "./lib/bookingLanguageDisplay";
 import { toast } from "sonner";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
@@ -1488,6 +1489,10 @@ function HomeContent(props) {
                       const durationMin = booking.slot?.start && booking.slot?.end
                         ? Math.round((new Date(booking.slot.end) - new Date(booking.slot.start)) / 60000)
                         : booking.durationMinutes ?? null;
+                      const lang =
+                        booking.language != null && String(booking.language).trim() !== ""
+                          ? bookingLanguageBadge(booking.language)
+                          : null;
                       return (
                         <div key={booking.id || booking._id || i} className="py-3 first:pt-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -1496,6 +1501,15 @@ function HomeContent(props) {
                             </span>
                             <span className="w-px h-4 bg-border inline-block mx-1 shrink-0 self-center" aria-hidden />
                             <span className="text-foreground">{customer}</span>
+                            {lang ? (
+                              <span
+                                className="inline-flex items-center gap-0.5 rounded border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground"
+                                title={`Booked in ${lang.label}`}
+                              >
+                                <span aria-hidden>{lang.flag}</span>
+                                {lang.label}
+                              </span>
+                            ) : null}
                           </div>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
                             <span>{serviceName}{durationMin ? ` (${durationMin} min)` : ""}</span>

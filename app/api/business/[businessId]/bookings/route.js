@@ -72,8 +72,49 @@ export async function GET(request, { params }) {
     }
 
     const data = await res.json().catch(() => ({}))
-    const bookings = data?.bookings ?? data
-    return NextResponse.json(Array.isArray(bookings) ? { ok: true, bookings } : { ok: true, bookings: [] })
+    let bookings = Array.isArray(data?.bookings) ? data.bookings : Array.isArray(data) ? data : []
+    if (!Array.isArray(bookings)) bookings = []
+
+    // Merge `language` from local Mongo bookings (web flow stores here; core-api list may omit it)
+    try {
+      const business = await database.collection(BUSINESS_COLLECTION).findOne({ businessId })
+      const ownerId = business?.ownerUserId
+      if (ownerId) {
+        const locals = await database
+          .collection('bookings')
+          .find({
+            $or: [{ businessId }, { userId: ownerId }]
+          })
+          .project({ id: 1, language: 1, startTime: 1, guestEmail: 1 })
+          .limit(500)
+          .toArray()
+        const byId = new Map(locals.map((b) => [b.id, b.language]))
+        const byStartEmail = new Map(
+          locals
+            .filter((b) => b.startTime && b.guestEmail)
+            .map((b) => [`${new Date(b.startTime).toISOString()}|${String(b.guestEmail).toLowerCase()}`, b.language])
+        )
+        for (const b of bookings) {
+          if (b.language) continue
+          const id = b.id || b.bookingId
+          if (id && byId.has(id)) {
+            b.language = byId.get(id)
+            continue
+          }
+          const slot = b.slot || {}
+          const st = slot.start || b.startTime
+          const em = (b.customer?.email || b.guestEmail || '').toLowerCase()
+          if (st && em) {
+            const k = `${new Date(st).toISOString()}|${em}`
+            if (byStartEmail.has(k)) b.language = byStartEmail.get(k)
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[business/bookings] language merge skipped:', e?.message)
+    }
+
+    return NextResponse.json({ ok: true, bookings })
   } catch (err) {
     console.error('[business/bookings] Error:', err)
     return NextResponse.json({ ok: true, bookings: [] })

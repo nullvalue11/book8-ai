@@ -7,6 +7,7 @@ import { signIn } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
@@ -407,6 +408,20 @@ function WizardContent() {
     customCategory: '',
     city: '',
     timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+    profileStreet: '',
+    profileStreet2: '',
+    profileCity: '',
+    profileProvinceState: '',
+    profilePostalCode: '',
+    profileCountry: guessCountryFromTimeZone(
+      typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
+    ),
+    profileBusinessPhone: '',
+    profilePublicEmail: '',
+    profileDescription: '',
+    profileSocialInstagram: '',
+    profileSocialFacebook: '',
+    profileSocialTiktok: '',
     primaryLanguage: 'en',
     multilingualEnabled: true,
     businessId: null,
@@ -556,7 +571,19 @@ function WizardContent() {
           phoneSetup: null,
           existingBusinessNumber: null,
           bookingHandle: null,
-          subscriptionPlan: null
+          subscriptionPlan: null,
+          profileStreet: '',
+          profileStreet2: '',
+          profileCity: '',
+          profileProvinceState: '',
+          profilePostalCode: '',
+          profileCountry: guessCountryFromTimeZone(prev.timezone || tz),
+          profileBusinessPhone: '',
+          profilePublicEmail: '',
+          profileDescription: '',
+          profileSocialInstagram: '',
+          profileSocialFacebook: '',
+          profileSocialTiktok: ''
         }))
         setCurrentStep(1)
       } else if (bizList.length > 0) {
@@ -598,7 +625,8 @@ function WizardContent() {
             subscriptionPlan: normalizePlanKey(primary.plan || primary.subscription?.plan),
             phoneSetup: primary.phoneSetup ?? null,
             existingBusinessNumber: primary.existingBusinessNumber ?? null,
-            book8Number: primary.book8Number ?? null
+            book8Number: primary.book8Number ?? null,
+            ...businessProfileToWizardPatch(primary.businessProfile)
           }))
           step = 2
         }
@@ -1016,7 +1044,24 @@ function WizardContent() {
           city: wizardData.city?.trim() || undefined,
           timezone: wizardData.timezone,
           primaryLanguage: wizardData.primaryLanguage,
-          multilingualEnabled: wizardData.multilingualEnabled
+          multilingualEnabled: wizardData.multilingualEnabled,
+          weeklyHours: wizardData.businessHours,
+          businessProfile: {
+            street: wizardData.profileStreet?.trim() || '',
+            street2: wizardData.profileStreet2?.trim() || '',
+            city: wizardData.profileCity?.trim() || '',
+            provinceState: wizardData.profileProvinceState?.trim() || '',
+            postalCode: wizardData.profilePostalCode?.trim() || '',
+            country: wizardData.profileCountry || 'US',
+            phone: wizardData.profileBusinessPhone?.trim() || '',
+            email: wizardData.profilePublicEmail?.trim() || '',
+            description: wizardData.profileDescription?.trim()?.slice(0, 500) || '',
+            social: {
+              instagram: wizardData.profileSocialInstagram?.trim() || '',
+              facebook: wizardData.profileSocialFacebook?.trim() || '',
+              tiktok: wizardData.profileSocialTiktok?.trim() || ''
+            }
+          }
         })
       })
       const regData = await regRes.json()
@@ -1648,10 +1693,182 @@ function WizardContent() {
                     onChange={(e) => updateWizard({ city: e.target.value })}
                   />
                 </div>
+
+                <div className="border-t border-[#1e1e2e] pt-5 space-y-4">
+                  <div>
+                    <p className={cn(WIZARD_LABEL, '!text-white font-semibold')}>Your public booking page</p>
+                    <p className="text-xs !text-[#94A3B8] mt-1">
+                      Optional but recommended — clients see this on your Book8 booking link. This is not your Book8-AI
+                      phone number (you&apos;ll set that later).
+                    </p>
+                  </div>
+                  <div>
+                    <Label className={WIZARD_LABEL}>Street address</Label>
+                    <Input
+                      className={WIZARD_INPUT}
+                      placeholder="123 Main St"
+                      value={wizardData.profileStreet}
+                      onChange={(e) => updateWizard({ profileStreet: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className={WIZARD_LABEL}>Apt / suite (optional)</Label>
+                    <Input
+                      className={WIZARD_INPUT}
+                      placeholder="Suite 200"
+                      value={wizardData.profileStreet2}
+                      onChange={(e) => updateWizard({ profileStreet2: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className={WIZARD_LABEL}>City</Label>
+                      <Input
+                        className={WIZARD_INPUT}
+                        placeholder="City"
+                        value={wizardData.profileCity}
+                        onChange={(e) => updateWizard({ profileCity: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label className={WIZARD_LABEL}>Postal / ZIP code</Label>
+                      <Input
+                        className={WIZARD_INPUT}
+                        placeholder="Postal code"
+                        value={wizardData.profilePostalCode}
+                        onChange={(e) => updateWizard({ profilePostalCode: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className={WIZARD_LABEL}>Country</Label>
+                      <Select
+                        value={wizardData.profileCountry}
+                        onValueChange={(v) => updateWizard({ profileCountry: v, profileProvinceState: '' })}
+                      >
+                        <SelectTrigger className={WIZARD_SELECT_TRIGGER}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className={WIZARD_SELECT_CONTENT}>
+                          {COUNTRY_OPTIONS.map((c) => (
+                            <SelectItem key={c.code} value={c.code} className={WIZARD_SELECT_ITEM}>
+                              {c.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs !text-[#64748B] mt-1">Defaults from your timezone; change if needed.</p>
+                    </div>
+                    <div>
+                      <Label className={WIZARD_LABEL}>Province / state / region</Label>
+                      {getSubdivisionsForCountry(wizardData.profileCountry).length > 0 ? (
+                        <Select
+                          value={wizardData.profileProvinceState}
+                          onValueChange={(v) => updateWizard({ profileProvinceState: v })}
+                        >
+                          <SelectTrigger className={WIZARD_SELECT_TRIGGER}>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent className={WIZARD_SELECT_CONTENT}>
+                            {getSubdivisionsForCountry(wizardData.profileCountry).map((s) => (
+                              <SelectItem key={s.code} value={s.code} className={WIZARD_SELECT_ITEM}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          className={WIZARD_INPUT}
+                          placeholder="Region"
+                          value={wizardData.profileProvinceState}
+                          onChange={(e) => updateWizard({ profileProvinceState: e.target.value })}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className={WIZARD_LABEL}>
+                      Business phone number (shown on your booking page for clients)
+                    </Label>
+                    <Input
+                      className={WIZARD_INPUT}
+                      type="tel"
+                      placeholder="+1 555 123 4567"
+                      value={wizardData.profileBusinessPhone}
+                      onChange={(e) => updateWizard({ profileBusinessPhone: e.target.value })}
+                    />
+                    <p className="text-xs !text-[#64748B] mt-1">
+                      Your existing business line — not the Book8-AI number from phone setup.
+                    </p>
+                  </div>
+                  <div>
+                    <Label className={WIZARD_LABEL}>Business email (public)</Label>
+                    <Input
+                      className={WIZARD_INPUT}
+                      type="email"
+                      placeholder="hello@yourbusiness.com"
+                      value={wizardData.profilePublicEmail}
+                      onChange={(e) => updateWizard({ profilePublicEmail: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className={WIZARD_LABEL}>Short description (optional, max 500 characters)</Label>
+                    <Textarea
+                      className={cn(WIZARD_INPUT, 'min-h-[88px] resize-y')}
+                      placeholder="Tell clients what makes your business special…"
+                      value={wizardData.profileDescription}
+                      onChange={(e) =>
+                        updateWizard({ profileDescription: e.target.value.slice(0, 500) })
+                      }
+                      maxLength={500}
+                    />
+                    <p className="text-xs !text-[#64748B] mt-1 text-right">
+                      {wizardData.profileDescription.length}/500
+                    </p>
+                  </div>
+                  <p className="text-xs !text-[#94A3B8] font-medium">Social (optional)</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <Label className={WIZARD_LABEL}>Instagram</Label>
+                      <Input
+                        className={WIZARD_INPUT}
+                        placeholder="@handle or URL"
+                        value={wizardData.profileSocialInstagram}
+                        onChange={(e) => updateWizard({ profileSocialInstagram: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label className={WIZARD_LABEL}>Facebook</Label>
+                      <Input
+                        className={WIZARD_INPUT}
+                        placeholder="Page name or URL"
+                        value={wizardData.profileSocialFacebook}
+                        onChange={(e) => updateWizard({ profileSocialFacebook: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label className={WIZARD_LABEL}>TikTok</Label>
+                      <Input
+                        className={WIZARD_INPUT}
+                        placeholder="@handle or URL"
+                        value={wizardData.profileSocialTiktok}
+                        onChange={(e) => updateWizard({ profileSocialTiktok: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <TimeZonePicker
                     value={wizardData.timezone}
-                    onChange={(tz) => updateWizard({ timezone: tz })}
+                    onChange={(tz) =>
+                      updateWizard({
+                        timezone: tz,
+                        profileCountry: guessCountryFromTimeZone(tz)
+                      })
+                    }
                     labelClassName={WIZARD_LABEL}
                     hintClassName="!text-[#94A3B8]"
                     selectClassName="!bg-[#0A0A0F] !border-[#1e1e2e] !text-white"

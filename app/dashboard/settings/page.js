@@ -10,7 +10,7 @@ import TimeZonePicker from '@/components/TimeZonePicker'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { ArrowLeft, Loader2, Settings, Calendar, CreditCard } from 'lucide-react'
+import { ArrowLeft, Loader2, Settings, Calendar, CreditCard, Globe } from 'lucide-react'
 import { isValidIanaTimeZone } from '@/lib/timezones'
 import { PRIMARY_LANGUAGE_OPTIONS } from '@/lib/primary-languages'
 
@@ -165,6 +165,12 @@ function SettingsContent() {
             <CardDescription>Jump to detailed configuration</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/settings/public-profile">
+                <Globe className="h-4 w-4 mr-2" />
+                Public booking page
+              </Link>
+            </Button>
             <Button variant="outline" asChild>
               <Link href="/dashboard/settings/scheduling">
                 <Calendar className="h-4 w-4 mr-2" />

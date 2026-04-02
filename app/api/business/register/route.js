@@ -20,6 +20,7 @@ import { provisionOnCoreApi } from '@/lib/provision-business'
 import { isValidIanaTimeZone } from '@/lib/timezones'
 import { normalizePrimaryLanguage } from '@/lib/primary-languages'
 import { getUiPlanLimits, normalizePlanKey } from '@/lib/plan-features'
+import { parseBusinessProfileBody } from '@/lib/businessProfile'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -122,7 +123,9 @@ export async function POST(request) {
       skipBillingCheck = false,
       timezone: bodyTimezone,
       primaryLanguage: bodyPrimaryLanguage,
-      multilingualEnabled: bodyMultilingual
+      multilingualEnabled: bodyMultilingual,
+      businessProfile: rawBusinessProfile,
+      weeklyHours: bodyWeeklyHours
     } = body
 
     const cat = typeof category === 'string' ? category.trim() || 'other' : 'other'
@@ -233,6 +236,20 @@ export async function POST(request) {
     }
     if (bodyTimezone && typeof bodyTimezone === 'string' && isValidIanaTimeZone(bodyTimezone.trim())) {
       businessData.timezone = bodyTimezone.trim()
+    }
+
+    businessData.primaryLanguage = normalizePrimaryLanguage(bodyPrimaryLanguage)
+    businessData.multilingualEnabled = bodyMultilingual !== false
+
+    if (rawBusinessProfile != null && typeof rawBusinessProfile === 'object') {
+      const mergeInput = { ...rawBusinessProfile }
+      if (bodyWeeklyHours != null && typeof bodyWeeklyHours === 'object') {
+        mergeInput.weeklyHours = bodyWeeklyHours
+      }
+      const parsedProfile = parseBusinessProfileBody(mergeInput)
+      if (parsedProfile.ok) {
+        businessData.businessProfile = parsedProfile.profile
+      }
     }
 
     // Auto-generate handle for new businesses (URL-friendly from name)
@@ -406,6 +423,7 @@ export async function GET(request) {
       phoneSetup: b.phoneSetup || null,
       existingBusinessNumber: b.existingBusinessNumber || null,
       book8Number: b.book8Number || null,
+      businessProfile: b.businessProfile || null,
       createdAt: b.createdAt,
       updatedAt: b.updatedAt
     }

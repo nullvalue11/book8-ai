@@ -13,6 +13,7 @@ import {
   hasVoiceOrSmsBooking,
   normalizePlanKey
 } from '@/lib/plan-features'
+import { sanitizeBusinessProfileForPublic } from '@/lib/businessProfile'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -74,6 +75,8 @@ export async function GET(request) {
       null
     const showPhoneBookingChannel = hasVoiceOrSmsBooking(plan) && !!bookingPhone
 
+    const businessProfile = sanitizeBusinessProfileForPublic(business.businessProfile)
+
     return NextResponse.json({
       ok: true,
       services,
@@ -81,6 +84,8 @@ export async function GET(request) {
       businessName: business.name || null,
       category: business.category || null,
       city: business.city || null,
+      businessTimezone: business.timezone || null,
+      businessProfile,
       plan,
       multilingual,
       bookingPhone: showPhoneBookingChannel ? bookingPhone : null

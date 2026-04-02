@@ -6,6 +6,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Calendar, Clock, Check, X, Loader2, AlertCircle, Download, CalendarPlus } from 'lucide-react'
+import { clientPreferredBookingLanguage } from '@/lib/bookingLanguage'
 
 export default function EventTypeBookingPage({ params }) {
   const { handle, eventSlug } = params
@@ -119,7 +120,8 @@ export default function EventTypeBookingPage({ params }) {
             notes: form.notes,
             start: selected.start,
             end: selected.end,
-            guestTimezone: guestTz
+            guestTimezone: guestTz,
+            language: clientPreferredBookingLanguage()
           })
         }
       )

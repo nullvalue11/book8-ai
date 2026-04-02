@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
 import { Check, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar as CalendarIcon, Phone } from 'lucide-react'
+import PublicBusinessInfoPanel from '@/components/public/PublicBusinessInfoPanel'
+import { clientPreferredBookingLanguage } from '@/lib/bookingLanguage'
 
 function toLocalYmd(d) {
   if (!d || !(d instanceof Date) || Number.isNaN(d.getTime())) return ''
@@ -53,6 +55,8 @@ export default function PublicBookingPage({ params }) {
   const [businessPlanTier, setBusinessPlanTier] = useState('starter')
   const [businessMultilingual, setBusinessMultilingual] = useState(false)
   const [publicBookingPhone, setPublicBookingPhone] = useState(null)
+  const [businessProfile, setBusinessProfile] = useState(null)
+  const [businessTimezoneForProfile, setBusinessTimezoneForProfile] = useState(null)
   const slotsFetchSeq = useRef(0)
   const bookingFormRef = useRef(null)
   /** Consecutive auto day-advances when initial dates have no slots (max 7). */
@@ -92,6 +96,10 @@ export default function PublicBookingPage({ params }) {
           if (!cancelled) setPublicBookingPhone(data.bookingPhone)
         } else if (!cancelled) {
           setPublicBookingPhone(null)
+        }
+        if (!cancelled && res.ok) {
+          setBusinessProfile(data.businessProfile && typeof data.businessProfile === 'object' ? data.businessProfile : null)
+          setBusinessTimezoneForProfile(data.businessTimezone || null)
         }
         if (!cancelled && res.ok && Array.isArray(data?.services) && data.services.length > 0) {
           const seen = new Set()
@@ -301,7 +309,8 @@ export default function PublicBookingPage({ params }) {
           start: selected.start,
           end: selected.end,
           guestTimezone: guestTz,
-          serviceId: selectedService?.serviceId || selectedService?.id
+          serviceId: selectedService?.serviceId || selectedService?.id,
+          language: clientPreferredBookingLanguage()
         })
       })
 
@@ -532,7 +541,7 @@ export default function PublicBookingPage({ params }) {
       {/* Booking page is intentionally always-dark for brand consistency across all embedded contexts */}
       {/* Header */}
       <header className="border-b border-gray-800 px-4 py-4 md:px-6">
-        <div className="max-w-[900px] mx-auto flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="max-w-6xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">
               {ownerName?.trim() || formatHandleAsDisplayName(handle)}
@@ -572,10 +581,17 @@ export default function PublicBookingPage({ params }) {
         </div>
       </header>
 
-      <div className="max-w-[900px] mx-auto px-4 py-6 md:px-6 md:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          {/* Left: Services, Calendar, Slots */}
-          <div className="lg:col-span-3 space-y-6">
+      <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8">
+        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-8">
+          <div className="lg:col-span-3">
+            <PublicBusinessInfoPanel
+              businessProfile={businessProfile}
+              businessDisplayName={ownerName?.trim() || formatHandleAsDisplayName(handle)}
+              businessTimeZone={businessTimezoneForProfile || guestTz}
+            />
+          </div>
+          {/* Services, Calendar, Slots */}
+          <div className="lg:col-span-5 space-y-6 order-2">
             {!servicesLoading && !hasServices && services.length === 0 && (
               <div className="text-center p-6 bg-yellow-950/40 border border-yellow-700/50 rounded-lg">
                 <p className="text-yellow-200 font-medium">
@@ -735,7 +751,7 @@ export default function PublicBookingPage({ params }) {
           </div>
 
           {/* Right: Customer info - ONLY show when slot selected */}
-          <div className="lg:col-span-2" ref={bookingFormRef}>
+          <div className="lg:col-span-4 order-3" ref={bookingFormRef}>
             {selected ? (
             <div className="sticky top-4 animate-in slide-in-from-bottom-4 duration-200">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
@@ -847,7 +863,7 @@ export default function PublicBookingPage({ params }) {
           </div>
         </div>
       </div>
-      <footer className="max-w-[900px] mx-auto px-4 md:px-6 pb-10 pt-2 text-center text-xs text-gray-500">
+      <footer className="max-w-6xl mx-auto px-4 md:px-6 pb-10 pt-2 text-center text-xs text-gray-500">
         {publicBookingPhone ? (
           <p>
             {businessMultilingual ? (
