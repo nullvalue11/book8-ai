@@ -19,7 +19,8 @@ import {
 import { provisionOnCoreApi } from '@/lib/provision-business'
 import { isValidIanaTimeZone } from '@/lib/timezones'
 import { normalizePrimaryLanguage } from '@/lib/primary-languages'
-import { getUiPlanLimits, normalizePlanKey } from '@/lib/plan-features'
+import { getUiPlanLimits } from '@/lib/plan-features'
+import { resolveBusinessPlanKey } from '@/lib/subscription'
 import { parseBusinessProfileBody } from '@/lib/businessProfile'
 
 export const runtime = 'nodejs'
@@ -389,7 +390,7 @@ export async function GET(request) {
       .toArray()
     
     const cleanedBusinesses = businesses.map(b => {
-      const planKey = normalizePlanKey(b.plan || b.subscription?.plan)
+      const planKey = resolveBusinessPlanKey(b)
       return {
       id: b.id || b.businessId,
       businessId: b.businessId,

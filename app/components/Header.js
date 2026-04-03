@@ -66,6 +66,12 @@ export default function Header({ variant }) {
               <Shield className="w-3.5 h-3.5 rtl:scale-x-[-1]" />
               {h.privacy}
             </Link>
+            <Link
+              href="/terms"
+              className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {h.termsNav}
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -150,6 +156,13 @@ export default function Header({ variant }) {
               onClick={() => setMobileMenuOpen(false)}
             >
               <Shield className="w-4 h-4 rtl:scale-x-[-1]" /> {h.privacy}
+            </Link>
+            <Link
+              href="/terms"
+              className={`py-3 transition-colors ${isLanding ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {h.termsNav}
             </Link>
             {isLoggedIn ? (
               <>

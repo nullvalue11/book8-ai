@@ -494,6 +494,23 @@ export default function LandingPage() {
           </Link>
         </div>
       </section>
+
+      <footer className="border-t border-[#1e1e2e] py-10 px-4">
+        <nav
+          aria-label="Footer"
+          className="mx-auto max-w-6xl flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm text-[#94A3B8]"
+        >
+          <Link href="/pricing" className="hover:text-[#F8FAFC] transition-colors">
+            {h.pricing}
+          </Link>
+          <Link href="/privacy" className="hover:text-[#F8FAFC] transition-colors">
+            {h.privacy}
+          </Link>
+          <Link href="/terms" className="hover:text-[#F8FAFC] transition-colors">
+            {h.termsNav}
+          </Link>
+        </nav>
+      </footer>
     </div>
   );
 }

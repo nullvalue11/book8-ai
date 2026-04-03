@@ -7,6 +7,8 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
+import { getUiPlanLimits } from '@/lib/plan-features'
+import { resolveBusinessPlanKey } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -82,8 +84,38 @@ export async function POST(request, { params }) {
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
     }
-    const body = await request.json()
     const { baseUrl, apiKey } = getCoreApiConfig()
+    const business = await database.collection(BUSINESS_COLLECTION).findOne({ businessId })
+    const planKey = resolveBusinessPlanKey(business)
+    const maxServices = getUiPlanLimits(planKey).maxServices
+    if (maxServices !== -1) {
+      const listRes = await fetch(`${baseUrl}/api/businesses/${businessId}/services`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiKey && { 'x-book8-api-key': apiKey })
+        },
+        cache: 'no-store'
+      })
+      const listData = await listRes.json().catch(() => ({}))
+      const list = Array.isArray(listData?.services)
+        ? listData.services
+        : Array.isArray(listData)
+          ? listData
+          : []
+      const count = list.length
+      if (count >= maxServices) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: `Your plan allows up to ${maxServices} service${maxServices === 1 ? '' : 's'}. Upgrade to add more.`
+          },
+          { status: 403 }
+        )
+      }
+    }
+
+    const body = await request.json()
     const res = await fetch(`${baseUrl}/api/businesses/${businessId}/services`, {
       method: 'POST',
       headers: {

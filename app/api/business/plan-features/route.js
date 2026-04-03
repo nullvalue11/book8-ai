@@ -3,12 +3,8 @@ import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
-import {
-  getPlanFeatures,
-  getPlanName,
-  getUiPlanLimits,
-  normalizePlanKey
-} from '@/lib/plan-features'
+import { getPlanFeatures, getPlanName, getUiPlanLimits } from '@/lib/plan-features'
+import { resolveBusinessPlanKey } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -64,7 +60,7 @@ export async function GET(request) {
       return NextResponse.json({ ok: false, error: 'Business not found' }, { status: 404 })
     }
 
-    const plan = normalizePlanKey(business.plan || business.subscription?.plan)
+    const plan = resolveBusinessPlanKey(business)
     const features = getPlanFeatures(plan)
     const name = getPlanName(plan)
 

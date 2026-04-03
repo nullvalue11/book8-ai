@@ -5,7 +5,31 @@
  * Used for paywall enforcement across the application.
  */
 
+import { env } from './env'
 import { getPlanFeatures as getCorePlanFeatures, normalizePlanKey } from './plan-features'
+
+/**
+ * Canonical plan tier from a business document (handles Stripe price IDs on plan / subscription.plan / stripePriceId).
+ * @param {object | null | undefined} business
+ * @returns {'starter'|'growth'|'enterprise'}
+ */
+export function resolveBusinessPlanKey(business) {
+  if (!business) return normalizePlanKey(null)
+  const raw = business.plan ?? business.subscription?.plan
+  if (raw != null && String(raw).trim() !== '') {
+    const str = String(raw).trim()
+    const lower = str.toLowerCase()
+    if (lower === 'starter' || lower === 'growth' || lower === 'enterprise') return lower
+    const tier = getPlanTier(str, env)
+    if (tier !== 'free') return tier
+  }
+  const priceId = business.subscription?.stripePriceId
+  if (priceId) {
+    const tier = getPlanTier(String(priceId), env)
+    if (tier !== 'free') return tier
+  }
+  return normalizePlanKey(null)
+}
 
 /**
  * Check if a user has an active subscription

@@ -73,9 +73,17 @@ function SettingsContent() {
         'UTC'
       setTimezone(tz)
       setPrimaryLanguage(biz.primaryLanguage || 'en')
-      setMultilingualEnabled(biz.multilingualEnabled !== false)
+      const mlAllowed = biz.planLimits?.multilingual === true
+      const stored = biz.multilingualEnabled !== false
+      setMultilingualEnabled(mlAllowed ? stored : false)
     }
   }, [selectedBusinessId, businesses])
+
+  const selectedBiz =
+    selectedBusinessId && businesses.length
+      ? businesses.find((b) => b.businessId === selectedBusinessId)
+      : null
+  const multilingualAllowed = selectedBiz?.planLimits?.multilingual === true
 
   const saveSettings = async () => {
     if (!token || !selectedBusinessId) return
@@ -254,8 +262,11 @@ function SettingsContent() {
                 <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
                   <Switch
                     id="dash-multilingual"
-                    checked={multilingualEnabled}
-                    onCheckedChange={setMultilingualEnabled}
+                    checked={multilingualAllowed ? multilingualEnabled : false}
+                    onCheckedChange={(v) => {
+                      if (multilingualAllowed) setMultilingualEnabled(v)
+                    }}
+                    disabled={!multilingualAllowed}
                     className="mt-0.5"
                   />
                   <div className="space-y-1">
@@ -265,6 +276,11 @@ function SettingsContent() {
                     <p className="text-xs text-muted-foreground">
                       Automatically detect and respond fluently in 70+ languages (recommended).
                     </p>
+                    {!multilingualAllowed && businesses.length > 0 ? (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        Included on Growth and Enterprise. Upgrade to enable multilingual AI voice.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 

@@ -65,8 +65,10 @@ const PLAN_BADGE_COLORS = {
 /** Subscription status from user (Stripe webhook) or business record */
 function getSubscriptionStatus(business, user) {
   if (user?.subscription?.status === 'active' || user?.subscription?.status === 'trialing') {
-    // Prefer explicit plan, but fall back to the business-level plan if the user record is missing it.
-    const plan = user.subscription?.plan || business?.subscription?.plan || business?.plan || 'starter'
+    // Prefer cleaned business.plan from API, then user.subscription.plan (may be a Stripe price id on stale rows).
+    const raw =
+      business?.plan || user.subscription?.plan || business?.subscription?.plan || 'starter'
+    const plan = typeof raw === 'string' && raw.startsWith('price_') ? business?.plan || 'starter' : raw
     return {
       status: 'active',
       plan,
@@ -74,7 +76,8 @@ function getSubscriptionStatus(business, user) {
     }
   }
   if (business?.subscription?.status === 'active' || business?.subscription?.status === 'trialing') {
-    const plan = business?.plan || business?.subscription?.plan || 'starter'
+    const raw = business?.plan || business?.subscription?.plan || 'starter'
+    const plan = typeof raw === 'string' && raw.startsWith('price_') ? 'starter' : raw
     return {
       status: 'active',
       plan,

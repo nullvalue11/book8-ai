@@ -5,6 +5,8 @@ import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 import { isValidIanaTimeZone } from '@/lib/timezones'
 import { normalizePrimaryLanguage } from '@/lib/primary-languages'
 import { syncTimezoneToCore } from '@/lib/sync-calendar-to-core'
+import { getPlanFeatures } from '@/lib/plan-features'
+import { resolveBusinessPlanKey } from '@/lib/subscription'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -89,15 +91,19 @@ export async function POST(request) {
 
     const bid = business.businessId || business.id
 
+    const planKey = resolveBusinessPlanKey(business)
+    const multilingualCapable = !!getPlanFeatures(planKey).multilingual
+
     const primaryLanguage = normalizePrimaryLanguage(
       typeof bodyPrimaryLanguage === 'string' && bodyPrimaryLanguage.trim()
         ? bodyPrimaryLanguage
         : business.primaryLanguage
     )
-    const multilingualEnabled =
+    let multilingualEnabled =
       typeof bodyMultilingual === 'boolean'
         ? bodyMultilingual
         : business.multilingualEnabled !== false
+    if (!multilingualCapable) multilingualEnabled = false
 
     await database.collection(BUSINESS_COLLECTION).updateOne(
       {

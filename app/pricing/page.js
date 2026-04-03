@@ -193,7 +193,11 @@ function PricingContent() {
 
   const featureMessages = {
     calendar: h.needSubCalendar,
-    phone: h.needSubPhone
+    phone: h.needSubPhone,
+    services: h.needSubServices,
+    analytics: h.needSubAnalytics,
+    scheduling: h.needSubScheduling,
+    "event-types": h.needSubEventTypes
   };
 
   const isLoggedIn = !!token || (status === "authenticated" && session?.user);
@@ -210,7 +214,7 @@ function PricingContent() {
               <div>
                 <p className="font-medium text-brand-600 dark:text-brand-400">{h.subscriptionRequired}</p>
                 <p className="text-sm text-muted-foreground">
-                  {feature && featureMessages[feature] ? featureMessages[feature] : h.choosePlanBelow}
+                  {(feature && featureMessages[feature]) || h.needSubGeneric}
                 </p>
               </div>
             </div>

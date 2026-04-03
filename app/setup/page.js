@@ -757,12 +757,33 @@ function WizardContent() {
     if (match) {
       const resolved = match.businessId || match.id
       if (resolved) {
-        setWizardData((prev) =>
-          prev.businessId === resolved ? prev : { ...prev, businessId: resolved }
-        )
+        const planFromList = match.plan ? normalizePlanKey(match.plan) : null
+        setWizardData((prev) => {
+          const sameBiz = prev.businessId === resolved
+          const samePlan = !planFromList || prev.subscriptionPlan === planFromList
+          if (sameBiz && samePlan) return prev
+          return {
+            ...prev,
+            businessId: resolved,
+            ...(planFromList ? { subscriptionPlan: planFromList } : {})
+          }
+        })
       }
     }
   }, [token, searchParams, businesses, wizardData.businessId])
+
+  useEffect(() => {
+    if (!token || !wizardData.businessId || businesses.length === 0) return
+    const match = businesses.find(
+      (b) => b.businessId === wizardData.businessId || b.id === wizardData.businessId
+    )
+    const p = match?.plan
+    if (!p) return
+    const normalized = normalizePlanKey(p)
+    setWizardData((prev) =>
+      prev.subscriptionPlan === normalized ? prev : { ...prev, subscriptionPlan: normalized }
+    )
+  }, [token, businesses, wizardData.businessId])
 
   // Step 6: poll for assigned Twilio line after user submits phone preferences
   useEffect(() => {
@@ -1311,7 +1332,18 @@ function WizardContent() {
       }
       if (!cancelled) {
         setStep5CoreServiceIds(ids)
-        setStep5Rows([{ rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30, priceStr: '' }])
+        setStep5Rows((prev) => {
+          if (prev.some((r) => (r.name || '').trim().length > 0)) return prev
+          if (Array.isArray(list) && list.length > 0) {
+            return list.map((s) => ({
+              rowKey: generateServiceDraftRowKey(),
+              name: (s.name || '').trim(),
+              durationMinutes: Number(s.durationMinutes) || 30,
+              priceStr: s.price != null && s.price !== '' ? String(s.price) : ''
+            }))
+          }
+          return [{ rowKey: generateServiceDraftRowKey(), name: '', durationMinutes: 30, priceStr: '' }]
+        })
         setStep5Ready(true)
       }
     })()
