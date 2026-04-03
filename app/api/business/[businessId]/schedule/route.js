@@ -1,7 +1,7 @@
 /**
  * Proxy to core-api schedule API.
  * BOO-49: Retries + Mongo fallback when core tenant lags.
- * Performance: GET uses tight timeouts + few attempts so /setup does not spin for 30–60s on slow core.
+ * BOO-51: ?onboarding=true — 2 quick attempts (1s timeout), then immediate Mongo fallback (setup must not wait on core).
  */
 
 import { NextResponse } from 'next/server'
@@ -85,26 +85,77 @@ async function fetchCoreJson(url, init, timeoutMs) {
 
 const RETRIABLE_STATUS = new Set([404, 408, 502, 503, 504])
 
-/** Short reads for dashboard/setup — avoids multi-minute hangs */
+function isOnboardingFastPath(request) {
+  try {
+    return new URL(request.url).searchParams.get('onboarding') === 'true'
+  } catch {
+    return false
+  }
+}
+
+/** Dashboard / default GET */
 const GET_TIMEOUT_MS = 7000
 const GET_MAX_ATTEMPTS = 2
 const GET_BACKOFF_MS = 350
 
-/** Writes can wait a bit longer for tenant rollout */
+/** Dashboard PUT — full patience when business should exist in core */
 const PUT_TIMEOUT_MS = 12000
-const PUT_MAX_ATTEMPTS = 6
+const PUT_MAX_ATTEMPTS = 10
 const PUT_INITIAL_BACKOFF_MS = 400
 
-async function getScheduleFromCoreWithRetry(baseUrl, businessId, headers) {
+/** Setup wizard: fast fail then Mongo (BOO-51) */
+const ONBOARDING_MAX_ATTEMPTS = 2
+const ONBOARDING_TIMEOUT_MS = 1000
+const ONBOARDING_BACKOFF_MS = 0
+
+function scheduleGetProfile(onboarding) {
+  if (onboarding) {
+    return {
+      maxAttempts: ONBOARDING_MAX_ATTEMPTS,
+      timeoutMs: ONBOARDING_TIMEOUT_MS,
+      backoffMs: ONBOARDING_BACKOFF_MS,
+      exponentialBackoff: false
+    }
+  }
+  return {
+    maxAttempts: GET_MAX_ATTEMPTS,
+    timeoutMs: GET_TIMEOUT_MS,
+    backoffMs: GET_BACKOFF_MS,
+    exponentialBackoff: false
+  }
+}
+
+function schedulePutProfile(onboarding) {
+  if (onboarding) {
+    return {
+      maxAttempts: ONBOARDING_MAX_ATTEMPTS,
+      timeoutMs: ONBOARDING_TIMEOUT_MS,
+      backoffMs: ONBOARDING_BACKOFF_MS,
+      exponentialBackoff: false
+    }
+  }
+  return {
+    maxAttempts: PUT_MAX_ATTEMPTS,
+    timeoutMs: PUT_TIMEOUT_MS,
+    backoffMs: PUT_INITIAL_BACKOFF_MS,
+    exponentialBackoff: true
+  }
+}
+
+async function getScheduleFromCoreWithRetry(baseUrl, businessId, headers, profile) {
   const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/schedule`
   let lastRes = null
   let lastData = null
-  for (let attempt = 0; attempt < GET_MAX_ATTEMPTS; attempt++) {
+  const { maxAttempts, timeoutMs, backoffMs, exponentialBackoff } = profile
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
-      await sleep(GET_BACKOFF_MS)
+      const delay = exponentialBackoff
+        ? Math.min(PUT_INITIAL_BACKOFF_MS * 2 ** (attempt - 1), 5000)
+        : backoffMs
+      await sleep(delay)
     }
     try {
-      const { res, data } = await fetchCoreJson(url, { method: 'GET', headers }, GET_TIMEOUT_MS)
+      const { res, data } = await fetchCoreJson(url, { method: 'GET', headers }, timeoutMs)
       lastRes = res
       lastData = data
       if (res.ok) return { ok: true, res, data }
@@ -112,19 +163,22 @@ async function getScheduleFromCoreWithRetry(baseUrl, businessId, headers) {
     } catch (e) {
       lastRes = { status: 503, ok: false }
       lastData = { error: e?.name === 'AbortError' ? 'Request timeout' : String(e?.message || e) }
-      if (attempt + 1 >= GET_MAX_ATTEMPTS) break
+      if (attempt + 1 >= maxAttempts) break
     }
   }
   return { ok: false, res: lastRes, data: lastData }
 }
 
-async function putScheduleToCoreWithRetry(baseUrl, businessId, headers, body) {
+async function putScheduleToCoreWithRetry(baseUrl, businessId, headers, body, profile) {
   const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/schedule`
   let lastRes = null
   let lastData = null
-  for (let attempt = 0; attempt < PUT_MAX_ATTEMPTS; attempt++) {
+  const { maxAttempts, timeoutMs, backoffMs, exponentialBackoff } = profile
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
-      const delay = Math.min(PUT_INITIAL_BACKOFF_MS * 2 ** (attempt - 1), 5000)
+      const delay = exponentialBackoff
+        ? Math.min(PUT_INITIAL_BACKOFF_MS * 2 ** (attempt - 1), 5000)
+        : backoffMs
       await sleep(delay)
     }
     try {
@@ -135,7 +189,7 @@ async function putScheduleToCoreWithRetry(baseUrl, businessId, headers, body) {
           headers,
           body: JSON.stringify(body)
         },
-        PUT_TIMEOUT_MS
+        timeoutMs
       )
       lastRes = res
       lastData = data
@@ -144,7 +198,7 @@ async function putScheduleToCoreWithRetry(baseUrl, businessId, headers, body) {
     } catch (e) {
       lastRes = { status: 503, ok: false }
       lastData = { error: e?.name === 'AbortError' ? 'Request timeout' : String(e?.message || e) }
-      if (attempt + 1 >= PUT_MAX_ATTEMPTS) break
+      if (attempt + 1 >= maxAttempts) break
     }
   }
   return { ok: false, res: lastRes, data: lastData }
@@ -171,7 +225,13 @@ export async function GET(request, segmentCtx) {
 
     const baseUrl = getCoreApiBaseUrl()
     const headers = getCoreProxyHeaders()
-    const coreResult = await getScheduleFromCoreWithRetry(baseUrl, businessId, headers)
+    const onboarding = isOnboardingFastPath(request)
+    const coreResult = await getScheduleFromCoreWithRetry(
+      baseUrl,
+      businessId,
+      headers,
+      scheduleGetProfile(onboarding)
+    )
 
     if (coreResult.ok) {
       return NextResponse.json(coreResult.data)
@@ -221,7 +281,14 @@ export async function PUT(request, segmentCtx) {
     const headers = getCoreProxyHeaders()
     const payload = { timezone, weeklyHours }
 
-    const coreResult = await putScheduleToCoreWithRetry(baseUrl, businessId, headers, payload)
+    const onboarding = isOnboardingFastPath(request)
+    const coreResult = await putScheduleToCoreWithRetry(
+      baseUrl,
+      businessId,
+      headers,
+      payload,
+      schedulePutProfile(onboarding)
+    )
 
     if (coreResult.ok) {
       await database.collection(BUSINESS_COLLECTION).updateOne(

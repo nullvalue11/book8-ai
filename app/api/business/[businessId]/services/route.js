@@ -1,7 +1,7 @@
 /**
  * Proxy to core-api services API.
  * BOO-50: Retries + Mongo fallback when core tenant lags (n8n provisioning delay).
- * Mirrors app/api/business/[businessId]/schedule/route.js.
+ * BOO-51: ?onboarding=true — 2 quick attempts (1s timeout), then Mongo fallback; dashboard keeps full retries.
  */
 
 import { NextResponse } from 'next/server'
@@ -80,14 +80,61 @@ async function fetchCoreJson(url, init, timeoutMs) {
 
 const RETRIABLE_STATUS = new Set([404, 408, 502, 503, 504])
 
+function isOnboardingFastPath(request) {
+  try {
+    return new URL(request.url).searchParams.get('onboarding') === 'true'
+  } catch {
+    return false
+  }
+}
+
 const GET_TIMEOUT_MS = 7000
 const GET_MAX_ATTEMPTS = 2
 const GET_BACKOFF_MS = 350
 
-/** Writes: wait for tenant rollout (BOO-50 — up to 10 attempts on 404/502/503/504) */
+/** Dashboard POST: full retries (BOO-50) */
 const POST_TIMEOUT_MS = 12000
 const POST_MAX_ATTEMPTS = 10
 const POST_INITIAL_BACKOFF_MS = 400
+
+/** Setup wizard (BOO-51) */
+const ONBOARDING_MAX_ATTEMPTS = 2
+const ONBOARDING_TIMEOUT_MS = 1000
+const ONBOARDING_BACKOFF_MS = 0
+
+function servicesGetProfile(onboarding) {
+  if (onboarding) {
+    return {
+      maxAttempts: ONBOARDING_MAX_ATTEMPTS,
+      timeoutMs: ONBOARDING_TIMEOUT_MS,
+      backoffMs: ONBOARDING_BACKOFF_MS,
+      exponentialBackoff: false
+    }
+  }
+  return {
+    maxAttempts: GET_MAX_ATTEMPTS,
+    timeoutMs: GET_TIMEOUT_MS,
+    backoffMs: GET_BACKOFF_MS,
+    exponentialBackoff: false
+  }
+}
+
+function servicesPostProfile(onboarding) {
+  if (onboarding) {
+    return {
+      maxAttempts: ONBOARDING_MAX_ATTEMPTS,
+      timeoutMs: ONBOARDING_TIMEOUT_MS,
+      backoffMs: ONBOARDING_BACKOFF_MS,
+      exponentialBackoff: false
+    }
+  }
+  return {
+    maxAttempts: POST_MAX_ATTEMPTS,
+    timeoutMs: POST_TIMEOUT_MS,
+    backoffMs: POST_INITIAL_BACKOFF_MS,
+    exponentialBackoff: true
+  }
+}
 
 function getCoreApiBaseUrl() {
   const baseUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
@@ -104,16 +151,20 @@ function getCoreApiProxyHeaders() {
   }
 }
 
-async function getServicesFromCoreWithRetry(baseUrl, businessId, headers) {
+async function getServicesFromCoreWithRetry(baseUrl, businessId, headers, profile) {
   const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/services`
   let lastRes = null
   let lastData = null
-  for (let attempt = 0; attempt < GET_MAX_ATTEMPTS; attempt++) {
+  const { maxAttempts, timeoutMs, backoffMs, exponentialBackoff } = profile
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
-      await sleep(GET_BACKOFF_MS)
+      const delay = exponentialBackoff
+        ? Math.min(POST_INITIAL_BACKOFF_MS * 2 ** (attempt - 1), 5000)
+        : backoffMs
+      await sleep(delay)
     }
     try {
-      const { res, data } = await fetchCoreJson(url, { method: 'GET', headers }, GET_TIMEOUT_MS)
+      const { res, data } = await fetchCoreJson(url, { method: 'GET', headers }, timeoutMs)
       lastRes = res
       lastData = data
       if (res.ok) return { ok: true, res, data }
@@ -121,19 +172,22 @@ async function getServicesFromCoreWithRetry(baseUrl, businessId, headers) {
     } catch (e) {
       lastRes = { status: 503, ok: false }
       lastData = { error: e?.name === 'AbortError' ? 'Request timeout' : String(e?.message || e) }
-      if (attempt + 1 >= GET_MAX_ATTEMPTS) break
+      if (attempt + 1 >= maxAttempts) break
     }
   }
   return { ok: false, res: lastRes, data: lastData }
 }
 
-async function postServiceToCoreWithRetry(baseUrl, businessId, headers, body) {
+async function postServiceToCoreWithRetry(baseUrl, businessId, headers, body, profile) {
   const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/services`
   let lastRes = null
   let lastData = null
-  for (let attempt = 0; attempt < POST_MAX_ATTEMPTS; attempt++) {
+  const { maxAttempts, timeoutMs, backoffMs, exponentialBackoff } = profile
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
-      const delay = Math.min(POST_INITIAL_BACKOFF_MS * 2 ** (attempt - 1), 5000)
+      const delay = exponentialBackoff
+        ? Math.min(POST_INITIAL_BACKOFF_MS * 2 ** (attempt - 1), 5000)
+        : backoffMs
       await sleep(delay)
     }
     try {
@@ -144,7 +198,7 @@ async function postServiceToCoreWithRetry(baseUrl, businessId, headers, body) {
           headers,
           body: JSON.stringify(body)
         },
-        POST_TIMEOUT_MS
+        timeoutMs
       )
       lastRes = res
       lastData = data
@@ -153,7 +207,7 @@ async function postServiceToCoreWithRetry(baseUrl, businessId, headers, body) {
     } catch (e) {
       lastRes = { status: 503, ok: false }
       lastData = { error: e?.name === 'AbortError' ? 'Request timeout' : String(e?.message || e) }
-      if (attempt + 1 >= POST_MAX_ATTEMPTS) break
+      if (attempt + 1 >= maxAttempts) break
     }
   }
   return { ok: false, res: lastRes, data: lastData }
@@ -235,7 +289,13 @@ export async function GET(request, { params }) {
     }
     const baseUrl = getCoreApiBaseUrl()
     const headers = getCoreApiProxyHeaders()
-    const coreResult = await getServicesFromCoreWithRetry(baseUrl, businessId, headers)
+    const onboarding = isOnboardingFastPath(request)
+    const coreResult = await getServicesFromCoreWithRetry(
+      baseUrl,
+      businessId,
+      headers,
+      servicesGetProfile(onboarding)
+    )
 
     if (coreResult.ok) {
       return NextResponse.json(coreResult.data)
@@ -286,8 +346,11 @@ export async function POST(request, { params }) {
 
     const body = await request.json().catch(() => ({}))
 
+    const onboarding = isOnboardingFastPath(request)
+    const listProfile = servicesGetProfile(onboarding)
+
     if (maxServices !== -1) {
-      const coreListResult = await getServicesFromCoreWithRetry(baseUrl, businessId, headers)
+      const coreListResult = await getServicesFromCoreWithRetry(baseUrl, businessId, headers, listProfile)
       let count = 0
       if (coreListResult.ok) {
         count = normalizeServicesList(coreListResult.data).length
@@ -311,7 +374,13 @@ export async function POST(request, { params }) {
       return NextResponse.json({ ok: false, error: 'serviceId required' }, { status: 400 })
     }
 
-    const coreResult = await postServiceToCoreWithRetry(baseUrl, businessId, headers, body)
+    const coreResult = await postServiceToCoreWithRetry(
+      baseUrl,
+      businessId,
+      headers,
+      body,
+      servicesPostProfile(onboarding)
+    )
 
     if (coreResult.ok) {
       await clearLocalServiceAfterCoreSync(database, businessId, row.serviceId)

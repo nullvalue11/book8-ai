@@ -714,7 +714,7 @@ function WizardContent() {
         } else if (step === 4) {
           try {
             const schedRes = await fetch(
-              `/api/business/${encodeURIComponent(primary.businessId)}/schedule`,
+              `/api/business/${encodeURIComponent(primary.businessId)}/schedule?onboarding=true`,
               {
                 headers: { Authorization: `Bearer ${token}` },
                 cache: 'no-store'
@@ -1349,17 +1349,20 @@ function WizardContent() {
     setSaving(true)
     setError('')
     try {
-      const res = await fetch(`/api/business/${wizardData.businessId}/schedule`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          timezone: wizardData.timezone,
-          weeklyHours: wizardData.businessHours
-        })
-      })
+      const res = await fetch(
+        `/api/business/${encodeURIComponent(wizardData.businessId)}/schedule?onboarding=true`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            timezone: wizardData.timezone,
+            weeklyHours: wizardData.businessHours
+          })
+        }
+      )
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save hours')
       setCurrentStep(5)
@@ -1396,10 +1399,13 @@ function WizardContent() {
           if (data.ok && Array.isArray(data.services)) list = data.services
         }
         if (!list.length && wizardData.businessId) {
-          const r = await fetch(`/api/business/${encodeURIComponent(wizardData.businessId)}/services`, {
-            headers: { Authorization: `Bearer ${token}` },
-            cache: 'no-store'
-          })
+          const r = await fetch(
+            `/api/business/${encodeURIComponent(wizardData.businessId)}/services?onboarding=true`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+              cache: 'no-store'
+            }
+          )
           const data = await r.json().catch(() => ({}))
           list = data.services ?? (Array.isArray(data) ? data : [])
         }
@@ -1517,7 +1523,7 @@ function WizardContent() {
       for (const serviceId of step5CoreServiceIds) {
         try {
           const dr = await fetch(
-            `/api/business/${encodeURIComponent(wizardData.businessId)}/services/${encodeURIComponent(serviceId)}`,
+            `/api/business/${encodeURIComponent(wizardData.businessId)}/services/${encodeURIComponent(serviceId)}?onboarding=true`,
             { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
           )
           if (!dr.ok && dr.status !== 404) {
@@ -1530,21 +1536,24 @@ function WizardContent() {
       }
       for (const r of trimmedRows) {
         const serviceId = generateServiceIdForCore(r.name, r.durationMinutes)
-        const pr = await fetch(`/api/business/${wizardData.businessId}/services`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            serviceId,
-            name: r.name,
-            durationMinutes: r.durationMinutes,
-            active: true,
-            price: r.price,
-            currency: step5ServiceCurrency
-          })
-        })
+        const pr = await fetch(
+          `/api/business/${encodeURIComponent(wizardData.businessId)}/services?onboarding=true`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              serviceId,
+              name: r.name,
+              durationMinutes: r.durationMinutes,
+              active: true,
+              price: r.price,
+              currency: step5ServiceCurrency
+            })
+          }
+        )
         const pdata = await pr.json().catch(() => ({}))
         if (!pr.ok) {
           throw new Error(pdata.error || `Could not save service: ${r.name}`)
