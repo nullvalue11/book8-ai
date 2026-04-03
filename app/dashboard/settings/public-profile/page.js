@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Loader2, Globe } from 'lucide-react'
 import Header from '@/components/Header'
 import PublicBusinessInfoPanel from '@/components/public/PublicBusinessInfoPanel'
+import { getBookingTranslations } from '@/lib/translations'
 import { COUNTRY_OPTIONS, getSubdivisionsForCountry } from '@/lib/region-data'
 import { sanitizeBusinessProfileForPublic } from '@/lib/businessProfile'
 
@@ -571,6 +572,7 @@ export default function PublicProfileSettingsPage() {
                   businessProfile={previewProfile}
                   businessDisplayName={businessName || 'Your business'}
                   businessTimeZone={tz}
+                  t={getBookingTranslations('en')}
                 />
               ) : (
                 <p className="text-sm text-gray-500">

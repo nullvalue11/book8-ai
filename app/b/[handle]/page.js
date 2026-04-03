@@ -6,7 +6,9 @@ import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
 import { Check, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar as CalendarIcon, Phone } from 'lucide-react'
 import PublicBusinessInfoPanel from '@/components/public/PublicBusinessInfoPanel'
-import { clientPreferredBookingLanguage } from '@/lib/bookingLanguage'
+import LanguageSelector from '@/components/LanguageSelector'
+import { useBookingLanguage } from '@/hooks/useBookingLanguage'
+import { bookingLocaleBcp47, trFormat } from '@/lib/translations'
 
 function toLocalYmd(d) {
   if (!d || !(d instanceof Date) || Number.isNaN(d.getTime())) return ''
@@ -32,6 +34,7 @@ function sanitizePhoneHref(phone) {
 
 export default function PublicBookingPage({ params }) {
   const handle = params.handle
+  const { language, setLanguage, t } = useBookingLanguage()
 
   const [guestTz, setGuestTz] = useState('')
   const [currentMonth, setCurrentMonth] = useState(null)
@@ -145,6 +148,10 @@ export default function PublicBookingPage({ params }) {
     autoSkipAdvancesDone.current = 0
   }, [handle])
 
+  useEffect(() => {
+    setError('')
+  }, [language])
+
   const loadSlots = useCallback(async () => {
     if (!date || !guestTz) return
     const duration = selectedService?.durationMinutes || selectedService?.duration || 30
@@ -162,14 +169,14 @@ export default function PublicBookingPage({ params }) {
       } catch (networkErr) {
         if (seq !== slotsFetchSeq.current) return
         console.error('[booking] Failed to load slots:', networkErr)
-        setError('Failed to connect. Please check your internet connection.')
+        setError(t.errFailedConnect)
         setSlots([])
         return
       }
 
       if (!res) {
         if (seq !== slotsFetchSeq.current) return
-        setError('Failed to connect. Please check your internet connection.')
+        setError(t.errFailedConnect)
         setSlots([])
         return
       }
@@ -179,7 +186,7 @@ export default function PublicBookingPage({ params }) {
         data = await res.json()
       } catch {
         if (seq !== slotsFetchSeq.current) return
-        setError('Unable to read availability response.')
+        setError(t.errReadAvailability)
         setSlots([])
         return
       }
@@ -187,20 +194,20 @@ export default function PublicBookingPage({ params }) {
       if (!res.ok) {
         if (seq !== slotsFetchSeq.current) return
         if (data.code === 'GOOGLE_INVALID_GRANT') {
-          setError(data.hint || 'Calendar needs to be reconnected.')
+          setError(data.hint || t.errCalendarReconnect)
           setState('error')
         } else if (res.status === 404) {
           if (data.error?.includes('not configured')) {
-            setError('This booking page is being set up. Please check back later.')
+            setError(t.errBeingSetup)
             setState('error')
           } else {
-            setError('Booking page not found.')
+            setError(t.errPageNotFound)
             setState('error')
           }
         } else if (res.status === 429) {
-          setError('Too many requests. Please wait a moment.')
+          setError(t.errTooManyRequests)
         } else {
-          setError(data.error || data.message || 'Failed to load availability.')
+          setError(data.error || data.message || t.errLoadAvailability)
         }
         setSlots([])
         return
@@ -221,14 +228,14 @@ export default function PublicBookingPage({ params }) {
     } catch (err) {
       if (seq !== slotsFetchSeq.current) return
       console.error('[booking] Failed to load slots:', err)
-      setError('Unable to load available times. Please try again.')
+      setError(t.errUnableLoadTimes)
       setSlots([])
     } finally {
       if (seq === slotsFetchSeq.current) {
         setLoading(false)
       }
     }
-  }, [handle, date, guestTz, hasServices, selectedService])
+  }, [handle, date, guestTz, hasServices, selectedService, t])
 
   const resetBookingFlow = useCallback(() => {
     setState('form')
@@ -274,15 +281,15 @@ export default function PublicBookingPage({ params }) {
 
   async function handleBooking() {
     if (!selected) {
-      setError('Please select a time slot')
+      setError(t.errSelectSlot)
       return
     }
     if (!form.name?.trim()) {
-      setError('Please enter your name')
+      setError(t.errEnterName)
       return
     }
     if (!form.email?.trim()?.includes('@')) {
-      setError('Please enter your email')
+      setError(t.errEnterEmail)
       return
     }
 
@@ -293,7 +300,7 @@ export default function PublicBookingPage({ params }) {
       const e = (form.email || '').trim()
       const p = (form.phone || '').trim()
       if (!e || !e.includes('@')) {
-        setError('Email is required for confirmation')
+        setError(t.errEmailRequiredConfirm)
         setBooking(false)
         return
       }
@@ -310,7 +317,7 @@ export default function PublicBookingPage({ params }) {
           end: selected.end,
           guestTimezone: guestTz,
           serviceId: selectedService?.serviceId || selectedService?.id,
-          language: clientPreferredBookingLanguage()
+          language
         })
       })
 
@@ -318,12 +325,12 @@ export default function PublicBookingPage({ params }) {
 
       if (!res.ok) {
         if (res.status === 409) {
-          setError('That slot was just taken. Please pick another.')
+          setError(t.errSlotTaken)
           loadSlots()
         } else if (res.status === 429) {
-          setError('Too many attempts. Please wait a moment.')
+          setError(t.errTooManyAttempts)
         } else {
-          setError(data.error || 'Booking failed. Please try again.')
+          setError(data.error || t.errBookingFailed)
         }
         return
       }
@@ -332,14 +339,16 @@ export default function PublicBookingPage({ params }) {
       setState('success')
     } catch (err) {
       console.error('Booking error:', err)
-      setError('Failed to complete booking. Please try again.')
+      setError(t.errCompleteBooking)
     } finally {
       setBooking(false)
     }
   }
 
+  const bookingLocale = bookingLocaleBcp47(language)
+
   function formatTime(isoString) {
-    return new Date(isoString).toLocaleTimeString([], {
+    return new Date(isoString).toLocaleTimeString(bookingLocale, {
       hour: '2-digit',
       minute: '2-digit',
       timeZone: guestTz
@@ -347,7 +356,7 @@ export default function PublicBookingPage({ params }) {
   }
 
   function formatDate(isoString) {
-    return new Date(isoString).toLocaleDateString(undefined, {
+    return new Date(isoString).toLocaleDateString(bookingLocale, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
@@ -366,8 +375,14 @@ export default function PublicBookingPage({ params }) {
     !booking
 
   // --- Calendar helpers ---
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-  const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const dayHeaders = [t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri, t.daySat]
+  const monthYearLabel =
+    currentMonth != null
+      ? new Date(currentMonth.year, currentMonth.month, 15).toLocaleDateString(bookingLocale, {
+          month: 'long',
+          year: 'numeric'
+        })
+      : ''
 
   const calendarDays = useMemo(() => {
     if (!currentMonth) return []
@@ -430,15 +445,19 @@ export default function PublicBookingPage({ params }) {
   // --- Error screen ---
   if (state === 'error') {
     return (
-      <main className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
+      <main
+        lang={language}
+        dir={language === 'ar' ? 'rtl' : 'ltr'}
+        className="min-h-screen bg-gray-950 flex items-center justify-center p-6"
+      >
         <div className="max-w-md w-full text-center space-y-6">
           <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto">
             <AlertCircle className="w-8 h-8 text-amber-500" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Setup Required</h1>
+          <h1 className="text-2xl font-bold text-white">{t.setupRequired}</h1>
           <p className="text-gray-400">{error}</p>
           <Button onClick={() => window.location.reload()} variant="outline">
-            Refresh Page
+            {t.refreshPage}
           </Button>
         </div>
       </main>
@@ -456,7 +475,11 @@ export default function PublicBookingPage({ params }) {
     const contactDisplay = form.email || form.phone || ''
 
     return (
-      <main className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
+      <main
+        lang={language}
+        dir={language === 'ar' ? 'rtl' : 'ltr'}
+        className="min-h-screen bg-gray-950 flex items-center justify-center p-6"
+      >
         <div className="max-w-md w-full space-y-8">
           <div className="flex justify-center">
             <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
@@ -464,7 +487,7 @@ export default function PublicBookingPage({ params }) {
             </div>
           </div>
           <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bold text-white">You&apos;re all set!</h1>
+            <h1 className="text-3xl font-bold text-white">{t.allSet}</h1>
             {selectedService && (
               <p className="text-gray-300 font-medium">
                 {selectedService.name} • {selected && formatTime(selected.start)}
@@ -477,7 +500,7 @@ export default function PublicBookingPage({ params }) {
             )}
             {contactDisplay && (
               <p className="text-sm text-gray-400">
-                Confirmation sent to {contactDisplay}
+                {t.confirmationSentTo} {contactDisplay}
               </p>
             )}
           </div>
@@ -490,8 +513,8 @@ export default function PublicBookingPage({ params }) {
                 className="w-full bg-violet-600 hover:bg-violet-500 text-white h-12"
                 size="lg"
               >
-                <CalendarIcon className="w-5 h-5 mr-2" />
-                Add to Calendar
+                <CalendarIcon className="w-5 h-5 me-2 rtl:-scale-x-100" />
+                {t.addToCalendar}
               </Button>
             )}
             {rescheduleUrl && (
@@ -501,7 +524,7 @@ export default function PublicBookingPage({ params }) {
                 variant="outline"
                 className="w-full"
               >
-                Reschedule
+                {t.reschedule}
               </Button>
             )}
             <Button
@@ -510,7 +533,7 @@ export default function PublicBookingPage({ params }) {
               className="w-full text-violet-400 border-violet-400/40 hover:bg-violet-400/10"
               onClick={resetBookingFlow}
             >
-              Book another time
+              {t.bookAnotherTime}
             </Button>
             {cancelUrl && (
               <Button
@@ -519,13 +542,13 @@ export default function PublicBookingPage({ params }) {
                 className="w-full text-red-400/70 hover:text-red-400 text-sm"
                 onClick={() => { window.location.href = cancelUrl }}
               >
-                Cancel booking
+                {t.cancelBooking}
               </Button>
             )}
           </div>
           {bookingResult?.bookingId && (
             <p className="text-xs text-gray-500 text-center">
-              Booking ID: <span className="font-mono">{bookingResult.bookingId}</span>
+              {t.bookingId} <span className="font-mono">{bookingResult.bookingId}</span>
             </p>
           )}
         </div>
@@ -534,10 +557,12 @@ export default function PublicBookingPage({ params }) {
   }
 
   // --- Main booking flow ---
-  const effectiveService = hasServices ? selectedService : { name: 'Appointment', durationMinutes: 30, duration: 30 }
+  const effectiveService = hasServices
+    ? selectedService
+    : { name: t.defaultAppointment, durationMinutes: 30, duration: 30 }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white dark">
+    <main lang={language} dir={language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-gray-950 text-white dark">
       {/* Booking page is intentionally always-dark for brand consistency across all embedded contexts */}
       {/* Header */}
       <header className="border-b border-gray-800 px-4 py-4 md:px-6">
@@ -567,17 +592,20 @@ export default function PublicBookingPage({ params }) {
                   href={`sms:${sanitizePhoneHref(publicBookingPhone)}`}
                   className="hover:text-white transition-colors"
                 >
-                  Text us
+                  {t.textUs}
                 </a>
               </div>
             ) : null}
           </div>
-          {businessMultilingual ? (
-            <span className="inline-flex items-center gap-1.5 shrink-0 text-xs font-medium text-violet-300 bg-violet-500/10 border border-violet-500/25 rounded-full px-2.5 py-1 self-start">
-              <span aria-hidden>🌐</span>
-              70+ languages supported
-            </span>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end self-start">
+            {businessMultilingual ? (
+              <span className="inline-flex items-center gap-1.5 shrink-0 text-xs font-medium text-violet-300 bg-violet-500/10 border border-violet-500/25 rounded-full px-2.5 py-1">
+                <span aria-hidden>🌐</span>
+                {t.languages}
+              </span>
+            ) : null}
+            <LanguageSelector value={language} onChange={setLanguage} t={t} className="shrink-0" />
+          </div>
         </div>
       </header>
 
@@ -588,6 +616,7 @@ export default function PublicBookingPage({ params }) {
               businessProfile={businessProfile}
               businessDisplayName={ownerName?.trim() || formatHandleAsDisplayName(handle)}
               businessTimeZone={businessTimezoneForProfile || guestTz}
+              t={t}
             />
           </div>
           {/* Services, Calendar, Slots */}
@@ -595,17 +624,17 @@ export default function PublicBookingPage({ params }) {
             {!servicesLoading && !hasServices && services.length === 0 && (
               <div className="text-center p-6 bg-yellow-950/40 border border-yellow-700/50 rounded-lg">
                 <p className="text-yellow-200 font-medium">
-                  This business hasn&apos;t configured their services yet.
+                  {t.noServicesTitle}
                 </p>
                 <p className="text-yellow-400/90 text-sm mt-1">
-                  Please call or text them directly to book an appointment.
+                  {t.noServicesHint}
                 </p>
               </div>
             )}
             {/* Service pills */}
             {hasServices && (
               <section>
-                <p className="text-xs uppercase tracking-wide text-gray-400 mb-3">Service</p>
+                <p className="text-xs uppercase tracking-wide text-gray-400 mb-3">{t.service}</p>
                 {servicesLoading ? (
                   <div className="flex items-center justify-center py-6">
                     <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
@@ -632,7 +661,7 @@ export default function PublicBookingPage({ params }) {
                               }
                             `}
                           >
-                            {svc.name} • {svc.durationMinutes || svc.duration || 30} min
+                            {svc.name} • {svc.durationMinutes || svc.duration || 30} {t.minSuffix}
                             {priceLabel != null ? (
                               <span
                                 className={`ml-1 tabular-nums ${isSelected ? 'text-violet-100/85' : 'text-gray-400'}`}
@@ -652,27 +681,27 @@ export default function PublicBookingPage({ params }) {
             {/* Calendar */}
             {(!hasServices || selectedService) && (
               <section>
-                <p className="text-xs uppercase tracking-wide text-gray-400 mb-3">Date</p>
+                <p className="text-xs uppercase tracking-wide text-gray-400 mb-3">{t.date}</p>
                 <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <button
                       type="button"
                       onClick={goPrevMonth}
                       className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded hover:bg-gray-800 transition-colors text-white"
-                      aria-label="Previous month"
+                      aria-label={t.ariaPrevMonth}
                     >
-                      <ChevronLeft className="w-5 h-5" />
+                      <ChevronLeft className="w-5 h-5 rtl:rotate-180" />
                     </button>
                     <span className="text-sm font-medium">
-                      {currentMonth && monthNames[currentMonth.month]} {currentMonth?.year}
+                      {monthYearLabel}
                     </span>
                     <button
                       type="button"
                       onClick={goNextMonth}
                       className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded hover:bg-gray-800 transition-colors text-white"
-                      aria-label="Next month"
+                      aria-label={t.ariaNextMonth}
                     >
-                      <ChevronRight className="w-5 h-5" />
+                      <ChevronRight className="w-5 h-5 rtl:rotate-180" />
                     </button>
                   </div>
                   <div className="grid grid-cols-7 gap-1 text-center">
@@ -711,7 +740,7 @@ export default function PublicBookingPage({ params }) {
             {/* Time slots */}
             {(!hasServices || selectedService) && (
               <section>
-                <p className="text-xs uppercase tracking-wide text-gray-400 mb-3">Time</p>
+                <p className="text-xs uppercase tracking-wide text-gray-400 mb-3">{t.time}</p>
                 {loading ? (
                   <div className="flex justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
@@ -720,7 +749,7 @@ export default function PublicBookingPage({ params }) {
                   <div className="text-center py-8 text-gray-400">{error}</div>
                 ) : slots.length === 0 ? (
                   <div className="text-center py-8 text-gray-400">
-                    No availability on this date. Try another day.
+                    {t.noAvailabilityTryAnother}
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
@@ -755,11 +784,11 @@ export default function PublicBookingPage({ params }) {
             {selected ? (
             <div className="sticky top-4 animate-in slide-in-from-bottom-4 duration-200">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
-                <p className="text-xs uppercase tracking-wide text-gray-400">Your details</p>
+                <p className="text-xs uppercase tracking-wide text-gray-400">{t.yourDetails}</p>
 
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium mb-1.5 text-gray-300">
-                    Your name *
+                    {t.yourName}
                   </label>
                   <Input
                     id="name"
@@ -772,7 +801,7 @@ export default function PublicBookingPage({ params }) {
 
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium mb-1.5 text-gray-300">
-                    Email *
+                    {t.emailStar}
                   </label>
                   <Input
                     id="email"
@@ -785,15 +814,15 @@ export default function PublicBookingPage({ params }) {
                 </div>
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium mb-1.5 text-gray-300">
-                    Phone{' '}
+                    {t.phone}{' '}
                     <span className="text-gray-500 font-normal">
-                      {businessPlanTier === 'starter' ? '(optional)' : '(optional, for SMS)'}
+                      {businessPlanTier === 'starter' ? t.phoneOptional : t.phoneOptionalSms}
                     </span>
                   </label>
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="Phone number"
+                    placeholder={t.placeholderPhone}
                     value={form.phone}
                     onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                     className="min-h-[44px] bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
@@ -803,11 +832,11 @@ export default function PublicBookingPage({ params }) {
                 {notesExpanded ? (
                   <div>
                     <label htmlFor="notes" className="block text-sm font-medium mb-1.5 text-gray-300">
-                      Notes (optional)
+                      {t.notesOptional}
                     </label>
                     <Textarea
                       id="notes"
-                      placeholder="Anything you'd like to share..."
+                      placeholder={t.notesPlaceholder}
                       value={form.notes}
                       onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                       rows={3}
@@ -818,7 +847,7 @@ export default function PublicBookingPage({ params }) {
                       onClick={() => setNotesExpanded(false)}
                       className="text-sm text-gray-500 hover:text-gray-300 transition-colors mt-1"
                     >
-                      Collapse
+                      {t.collapse}
                     </button>
                   </div>
                 ) : (
@@ -827,13 +856,13 @@ export default function PublicBookingPage({ params }) {
                     onClick={() => setNotesExpanded(true)}
                     className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
                   >
-                    Add notes +
+                    {t.addNotes}
                   </button>
                 )}
 
                 {selected && (
                   <p className="text-xs text-gray-400">
-                    {effectiveService?.name} at {formatTime(selected.start)}
+                    {effectiveService?.name} {t.atTime} {formatTime(selected.start)}
                   </p>
                 )}
 
@@ -844,11 +873,11 @@ export default function PublicBookingPage({ params }) {
                 >
                   {booking ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Confirming...
+                      <Loader2 className="w-4 h-4 me-2 animate-spin" />
+                      {t.confirming}
                     </>
                   ) : (
-                    `Confirm Booking`
+                    t.confirmBooking
                   )}
                 </Button>
 
@@ -857,7 +886,7 @@ export default function PublicBookingPage({ params }) {
             </div>
             ) : (
               <div className="sticky top-4 flex items-center justify-center min-h-[200px] text-gray-500 text-sm border border-dashed border-gray-700 rounded-xl">
-                Select a time to continue
+                {t.selectTime}
               </div>
             )}
           </div>
@@ -868,22 +897,21 @@ export default function PublicBookingPage({ params }) {
           <p>
             {businessMultilingual ? (
               <>
-                Our AI receptionist speaks 70+ languages.{' '}
+                {t.footerAiAndPhone}{' '}
                 <span className="text-gray-400">
-                  Or call or text to book: <span className="text-gray-300 font-medium">{publicBookingPhone}</span>
+                  {t.footerOrCallText}{' '}
+                  <span className="text-gray-300 font-medium">{publicBookingPhone}</span>
                 </span>
               </>
             ) : (
               <span className="text-gray-400">
-                Or call or text to book: <span className="text-gray-300 font-medium">{publicBookingPhone}</span>
+                {t.footerOrCallText} <span className="text-gray-300 font-medium">{publicBookingPhone}</span>
               </span>
             )}
           </p>
         ) : (
           <p>
-            {businessMultilingual
-              ? 'Our AI receptionist speaks 70+ languages on eligible plans.'
-              : 'Book online — fast and simple.'}
+            {businessMultilingual ? t.footerAiOnly : t.footerBookOnline}
           </p>
         )}
       </footer>

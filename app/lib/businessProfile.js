@@ -285,21 +285,37 @@ export function getLocalDayKeyInTimeZone(ianaTz) {
   }
 }
 
-export function formatHoursRange(segments) {
-  if (!Array.isArray(segments) || segments.length === 0) return 'Closed'
+export function formatHoursRange(segments, closedWord = 'Closed') {
+  if (!Array.isArray(segments) || segments.length === 0) return closedWord
   return segments.map((s) => `${s.start}–${s.end}`).join(', ')
 }
 
-export function weeklyHoursForDisplay(weeklyHours, todayKey) {
+/**
+ * @param {Record<string, unknown> | null | undefined} weeklyHours
+ * @param {string} todayKey
+ * @param {{ dayLabels?: Record<string, string>, closedLabel?: string }} [opts]
+ */
+export function weeklyHoursForDisplay(weeklyHours, todayKey, opts = {}) {
   if (!weeklyHours || typeof weeklyHours !== 'object') return { today: null, week: [] }
-  const week = DAY_ORDER.map((key) => ({
-    key,
-    label: DAY_LABEL[key],
-    text: formatHoursRange(weeklyHours[key])
-  }))
+  const dayLabels = opts.dayLabels && typeof opts.dayLabels === 'object' ? opts.dayLabels : null
+  const labelFor = (key) => (dayLabels && dayLabels[key]) || DAY_LABEL[key]
+  const closedWord = opts.closedLabel != null ? opts.closedLabel : 'Closed'
+  const week = DAY_ORDER.map((key) => {
+    const segs = weeklyHours[key]
+    const isClosed = !Array.isArray(segs) || segs.length === 0
+    return {
+      key,
+      label: labelFor(key),
+      text: formatHoursRange(segs, closedWord),
+      isClosed
+    }
+  })
   const today = weeklyHours[todayKey]
+  const todayClosed = !Array.isArray(today) || today.length === 0
   return {
-    today: today ? { label: DAY_LABEL[todayKey], text: formatHoursRange(today) } : null,
+    today: today
+      ? { label: labelFor(todayKey), text: formatHoursRange(today, closedWord), isClosed: todayClosed }
+      : null,
     week
   }
 }

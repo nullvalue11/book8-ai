@@ -8,6 +8,7 @@ import {
   weeklyHoursForDisplay,
   businessProfileHasPublicDisplay
 } from '@/lib/businessProfile'
+import { trFormat } from '@/lib/translations'
 
 function InstagramIcon({ className = 'w-4 h-4' }) {
   return (
@@ -44,7 +45,8 @@ function socialUrl(network, raw) {
   return null
 }
 
-export default function PublicBusinessInfoPanel({ businessProfile, businessDisplayName, businessTimeZone }) {
+/** @param {{ businessProfile: any, businessDisplayName: string, businessTimeZone?: string, t: import('@/lib/translations').BookingTranslations }} props */
+export default function PublicBusinessInfoPanel({ businessProfile, businessDisplayName, businessTimeZone, t }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [weekExpanded, setWeekExpanded] = useState(false)
 
@@ -57,9 +59,26 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
 
   const tz = businessTimeZone || 'UTC'
   const todayKey = useMemo(() => getLocalDayKeyInTimeZone(tz), [tz])
+  const dayLabels = useMemo(
+    () => ({
+      sunday: t.sunday,
+      monday: t.monday,
+      tuesday: t.tuesday,
+      wednesday: t.wednesday,
+      thursday: t.thursday,
+      friday: t.friday,
+      saturday: t.saturday
+    }),
+    [t]
+  )
+
   const hoursDisplay = useMemo(
-    () => weeklyHoursForDisplay(businessProfile?.weeklyHours, todayKey),
-    [businessProfile, todayKey]
+    () =>
+      weeklyHoursForDisplay(businessProfile?.weeklyHours, todayKey, {
+        dayLabels,
+        closedLabel: t.closed
+      }),
+    [businessProfile, todayKey, dayLabels, t.closed]
   )
 
   if (!hasContent) return null
@@ -71,7 +90,11 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
   const body = (
     <div className="rounded-xl border border-gray-800 bg-gray-900/80 p-4 md:p-5 space-y-4 text-sm text-gray-200">
       <div>
-        <h2 className="text-base font-semibold text-white">About {businessDisplayName || 'this business'}</h2>
+        <h2 className="text-base font-semibold text-white">
+          {businessDisplayName?.trim()
+            ? trFormat(t.aboutBusiness, { name: businessDisplayName.trim() })
+            : t.aboutThisBusiness}
+        </h2>
         {p.description ? <p className="text-gray-400 mt-2 text-sm leading-relaxed">{p.description}</p> : null}
       </div>
 
@@ -129,13 +152,13 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
           </div>
         ) : null}
 
-        {hoursDisplay.today || hoursDisplay.week.some((d) => d.text !== 'Closed') ? (
+        {hoursDisplay.today || hoursDisplay.week.some((d) => !d.isClosed) ? (
           <div className="flex gap-2">
             <Clock className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" aria-hidden />
             <div className="flex-1 min-w-0">
               {hoursDisplay.today ? (
                 <p className="text-white font-medium">
-                  Today ({hoursDisplay.today.label}):{' '}
+                  {trFormat(t.todayHours, { day: hoursDisplay.today.label })}{' '}
                   <span className="font-normal text-gray-300">{hoursDisplay.today.text}</span>
                 </p>
               ) : null}
@@ -144,7 +167,7 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
                 onClick={() => setWeekExpanded((e) => !e)}
                 className="text-xs text-violet-400 hover:text-violet-300 mt-1"
               >
-                {weekExpanded ? 'Hide full week' : 'See full week'}
+                {weekExpanded ? t.hideFullWeek : t.seeFullWeek}
               </button>
               {weekExpanded ? (
                 <ul className="mt-2 space-y-1 text-gray-400 text-xs">
@@ -162,7 +185,7 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
 
         {p.social && (p.social.instagram || p.social.facebook || p.social.tiktok) ? (
           <div className="flex items-center gap-2 pt-1 flex-wrap">
-            <span className="text-xs text-gray-500 uppercase tracking-wide">Social</span>
+            <span className="text-xs text-gray-500 uppercase tracking-wide">{t.social}</span>
             <div className="flex gap-2">
               {p.social.instagram && socialUrl('instagram', p.social.instagram) ? (
                 <a
@@ -213,7 +236,7 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
           className="w-full flex items-center justify-between rounded-xl border border-gray-800 bg-gray-900/80 px-4 py-3 text-left"
           aria-expanded={mobileOpen}
         >
-          <span className="font-medium text-white text-sm">Business details &amp; contact</span>
+          <span className="font-medium text-white text-sm">{t.businessDetailsContact}</span>
           {mobileOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
         </button>
       </div>
