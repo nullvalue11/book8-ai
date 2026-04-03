@@ -25,6 +25,18 @@ async function connect() {
   return db
 }
 
+/** Next.js 15+ may pass `params` as a Promise */
+async function resolveBusinessId(rawParams) {
+  const p = rawParams instanceof Promise ? await rawParams : rawParams
+  const id = p?.businessId
+  if (id == null || typeof id !== 'string' || !String(id).trim()) return null
+  try {
+    return decodeURIComponent(String(id).trim())
+  } catch {
+    return String(id).trim()
+  }
+}
+
 async function verifyAuthAndOwnership(request, database, businessId) {
   const auth = request.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
@@ -61,7 +73,10 @@ function getCoreApiProxyHeaders() {
 export async function GET(request, { params }) {
   try {
     const database = await connect()
-    const { businessId } = params
+    const businessId = await resolveBusinessId(params)
+    if (!businessId) {
+      return NextResponse.json({ ok: false, error: 'businessId required' }, { status: 400 })
+    }
     const authResult = await verifyAuthAndOwnership(request, database, businessId)
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
@@ -86,7 +101,10 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   try {
     const database = await connect()
-    const { businessId } = params
+    const businessId = await resolveBusinessId(params)
+    if (!businessId) {
+      return NextResponse.json({ ok: false, error: 'businessId required' }, { status: 400 })
+    }
     const authResult = await verifyAuthAndOwnership(request, database, businessId)
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })

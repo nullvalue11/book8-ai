@@ -1385,21 +1385,22 @@ function WizardContent() {
     setStep5Ready(false)
     ;(async () => {
       const ids = []
+      /** Declared outside `try` — used in setStep5Rows below (block scope would throw ReferenceError). */
+      let list = []
       try {
-        let list = []
         if (wizardData.handle) {
           const r = await fetch(`/api/public/services?handle=${encodeURIComponent(wizardData.handle)}`, {
             cache: 'no-store'
           })
-          const data = await r.json()
+          const data = await r.json().catch(() => ({}))
           if (data.ok && Array.isArray(data.services)) list = data.services
         }
         if (!list.length && wizardData.businessId) {
-          const r = await fetch(`/api/business/${wizardData.businessId}/services`, {
+          const r = await fetch(`/api/business/${encodeURIComponent(wizardData.businessId)}/services`, {
             headers: { Authorization: `Bearer ${token}` },
             cache: 'no-store'
           })
-          const data = await r.json()
+          const data = await r.json().catch(() => ({}))
           list = data.services ?? (Array.isArray(data) ? data : [])
         }
         if (Array.isArray(list)) {

@@ -24,6 +24,32 @@ async function connect() {
   return db
 }
 
+/** Next.js 15+ may pass `params` as a Promise */
+async function resolveIds(rawParams) {
+  const p = rawParams instanceof Promise ? await rawParams : rawParams
+  let businessId = p?.businessId
+  let serviceId = p?.serviceId
+  if (businessId != null && typeof businessId === 'string' && String(businessId).trim()) {
+    try {
+      businessId = decodeURIComponent(String(businessId).trim())
+    } catch {
+      businessId = String(businessId).trim()
+    }
+  } else {
+    businessId = null
+  }
+  if (serviceId != null && typeof serviceId === 'string' && String(serviceId).trim()) {
+    try {
+      serviceId = decodeURIComponent(String(serviceId).trim())
+    } catch {
+      serviceId = String(serviceId).trim()
+    }
+  } else {
+    serviceId = null
+  }
+  return { businessId, serviceId }
+}
+
 async function verifyAuthAndOwnership(request, database, businessId) {
   const auth = request.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
@@ -60,7 +86,7 @@ function getCoreApiAuthHeaders() {
 export async function PATCH(request, { params }) {
   try {
     const database = await connect()
-    const { businessId, serviceId } = params
+    const { businessId, serviceId } = await resolveIds(params)
     if (!businessId || !serviceId) {
       return NextResponse.json({ ok: false, error: 'businessId and serviceId required' }, { status: 400 })
     }
@@ -68,7 +94,7 @@ export async function PATCH(request, { params }) {
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
     }
-    const decodedId = decodeURIComponent(serviceId)
+    const decodedId = serviceId
     const body = await request.json().catch(() => ({}))
     const baseUrl = getCoreApiBaseUrl()
     const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/services/${encodeURIComponent(decodedId)}`
@@ -94,7 +120,7 @@ export async function PATCH(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const database = await connect()
-    const { businessId, serviceId } = params
+    const { businessId, serviceId } = await resolveIds(params)
     if (!businessId || !serviceId) {
       return NextResponse.json({ ok: false, error: 'businessId and serviceId required' }, { status: 400 })
     }
@@ -102,7 +128,7 @@ export async function DELETE(request, { params }) {
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
     }
-    const decodedId = decodeURIComponent(serviceId)
+    const decodedId = serviceId
     const baseUrl = getCoreApiBaseUrl()
     const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/services/${encodeURIComponent(decodedId)}`
     const res = await fetch(url, {
