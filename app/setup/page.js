@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { signIn } from 'next-auth/react'
+import { signIn, signOut } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +44,43 @@ import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { currencyFromTimezone, detectCurrency } from '@/lib/currency'
 import LanguageSelector from '@/components/LanguageSelector'
 import { trFormat } from '@/lib/translations'
+
+const SETUP_WIZARD_DRAFT_KEY = 'book8_setup_wizard_draft_v1'
+const SETUP_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
+
+function getBook8UserId() {
+  if (typeof window === 'undefined') return null
+  try {
+    const u = JSON.parse(localStorage.getItem('book8_user') || '{}')
+    return u.id || null
+  } catch {
+    return null
+  }
+}
+
+function readSetupWizardDraft(userId) {
+  if (!userId || typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(SETUP_WIZARD_DRAFT_KEY)
+    if (!raw) return null
+    const d = JSON.parse(raw)
+    if (d.v !== 1 || d.userId !== userId) return null
+    if (typeof d.savedAt !== 'number' || Date.now() - d.savedAt > SETUP_DRAFT_MAX_AGE_MS) return null
+    return d
+  } catch {
+    return null
+  }
+}
+
+function writeSetupWizardDraft(payload) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(SETUP_WIZARD_DRAFT_KEY, JSON.stringify({ v: 1, ...payload }))
+}
+
+function clearSetupWizardDraft() {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem(SETUP_WIZARD_DRAFT_KEY)
+}
 
 const SETUP_CATEGORY_ORDER = ['barber', 'dental', 'spa', 'fitness', 'medical', 'restaurant', 'other']
 
@@ -707,6 +744,26 @@ function WizardContent() {
         }
 
         setCurrentStep(step)
+      }
+
+      // Resume "new business" wizard from local draft (Save & exit)
+      const draftUserId = getBook8UserId()
+      if (registerNewBusiness && draftUserId) {
+        const draft = readSetupWizardDraft(draftUserId)
+        if (draft?.isNewBusinessFlow && draft.wizardData && typeof draft.wizardData === 'object') {
+          const step = Math.min(7, Math.max(1, Number(draft.currentStep) || 1))
+          setCurrentStep(step)
+          setWizardData((prev) => ({ ...prev, ...draft.wizardData }))
+          if (Array.isArray(draft.step5Rows) && draft.step5Rows.length > 0) {
+            setStep5Rows(draft.step5Rows)
+          }
+          if (typeof draft.step2CheckoutPhase === 'string') setStep2CheckoutPhase(draft.step2CheckoutPhase)
+          if (typeof draft.phoneStepPhase === 'string') setPhoneStepPhase(draft.phoneStepPhase)
+          if (typeof draft.phoneStepChoice === 'string') setPhoneStepChoice(draft.phoneStepChoice)
+          if (draft.phoneStepExistingInput != null) {
+            setPhoneStepExistingInput(String(draft.phoneStepExistingInput))
+          }
+        }
       }
 
       // Load plans for step 2
@@ -1605,8 +1662,56 @@ function WizardContent() {
   ])
 
   function handleGoToDashboard() {
+    clearSetupWizardDraft()
     router.push('/dashboard')
   }
+
+  const handleSaveAndExit = useCallback(() => {
+    const uid = getBook8UserId()
+    if (!uid) {
+      toast.error('Could not save progress')
+      return
+    }
+    const isNew =
+      searchParams.get('newBusiness') === '1' || searchParams.get('registerNew') === '1'
+    try {
+      writeSetupWizardDraft({
+        userId: uid,
+        isNewBusinessFlow: isNew,
+        currentStep,
+        wizardData,
+        step5Rows,
+        step2CheckoutPhase,
+        phoneStepPhase,
+        phoneStepChoice,
+        phoneStepExistingInput,
+        savedAt: Date.now()
+      })
+      toast.success('Progress saved. Open Setup from your dashboard when you are ready to continue.')
+      router.push('/dashboard')
+    } catch {
+      toast.error('Could not save progress')
+    }
+  }, [
+    currentStep,
+    wizardData,
+    step5Rows,
+    step2CheckoutPhase,
+    phoneStepPhase,
+    phoneStepChoice,
+    phoneStepExistingInput,
+    searchParams,
+    router
+  ])
+
+  const handleSetupLogout = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('book8_token')
+      localStorage.removeItem('book8_user')
+    }
+    setToken(null)
+    void signOut({ callbackUrl: '/' })
+  }, [])
 
   function copyBookingLink() {
     const base = typeof window !== 'undefined' ? window.location.origin : ''
@@ -1652,7 +1757,30 @@ function WizardContent() {
     <main id="main-content" className="min-h-screen bg-[#0A0A0F]">
       {/* Progress bar */}
       <div className="sticky top-0 z-10 bg-[#0A0A0F]/95 backdrop-blur border-b border-[#1e1e2e]">
-        <div className="max-w-2xl mx-auto px-4 py-4">
+        <div className="max-w-2xl mx-auto px-4 pt-3 flex flex-wrap items-center justify-end gap-1 sm:gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-[#94A3B8] hover:text-white hover:bg-white/5 h-9 text-xs sm:text-sm"
+            onClick={handleSaveAndExit}
+          >
+            Save &amp; exit
+          </Button>
+          <span className="text-[#475569] hidden sm:inline" aria-hidden>
+            ·
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-[#94A3B8] hover:text-white hover:bg-white/5 h-9 text-xs sm:text-sm"
+            onClick={handleSetupLogout}
+          >
+            Log out
+          </Button>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 py-4 pt-2">
           <div className="flex items-center justify-between gap-2 mb-2">
             {t.setupSteps.map((label, i) => {
               const stepNum = i + 1
