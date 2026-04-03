@@ -1,5 +1,5 @@
 "use client"
-import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
 import { formatPublicServicePriceDisplay } from '@/lib/currency'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -64,6 +64,99 @@ export default function PublicBookingPage({ params }) {
   const bookingFormRef = useRef(null)
   /** Consecutive auto day-advances when initial dates have no slots (max 7). */
   const autoSkipAdvancesDone = useRef(0)
+  const servicesScrollRef = useRef(null)
+  const pillRailPointerRef = useRef(null)
+  const pillClickSuppressedRef = useRef(false)
+  const [servicePillScroll, setServicePillScroll] = useState({ moreLeft: false, moreRight: false })
+
+  const updateServicePillScroll = useCallback(() => {
+    const el = servicesScrollRef.current
+    if (!el) return
+    const maxScroll = el.scrollWidth - el.clientWidth
+    const eps = 4
+    if (maxScroll <= eps) {
+      setServicePillScroll({ moreLeft: false, moreRight: false })
+      return
+    }
+    setServicePillScroll({
+      moreLeft: el.scrollLeft > eps,
+      moreRight: el.scrollLeft < maxScroll - eps
+    })
+  }, [])
+
+  const scrollServicePills = useCallback((direction) => {
+    const el = servicesScrollRef.current
+    if (!el) return
+    const delta = Math.max(120, Math.floor(el.clientWidth * 0.65)) * direction
+    el.scrollBy({ left: delta, behavior: 'smooth' })
+  }, [])
+
+  const onPillRailPointerDownCapture = useCallback((e) => {
+    if (e.pointerType === 'touch') return
+    if (e.button !== 0) return
+    pillClickSuppressedRef.current = false
+    const el = servicesScrollRef.current
+    if (!el || el.scrollWidth <= el.clientWidth + 4) return
+    pillRailPointerRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startScroll: el.scrollLeft,
+      dragging: false
+    }
+  }, [])
+
+  const onPillRailPointerMove = useCallback((e) => {
+    const st = pillRailPointerRef.current
+    const el = servicesScrollRef.current
+    if (!st || e.pointerId !== st.pointerId || !el) return
+    const dx = e.clientX - st.startX
+    if (!st.dragging && Math.abs(dx) < 8) return
+    if (!st.dragging) {
+      st.dragging = true
+      try {
+        el.setPointerCapture(e.pointerId)
+      } catch {
+        /* ignore */
+      }
+    }
+    el.scrollLeft = st.startScroll - dx
+    e.preventDefault()
+  }, [])
+
+  const onPillRailPointerUpOrCancel = useCallback((e) => {
+    const st = pillRailPointerRef.current
+    const el = servicesScrollRef.current
+    if (!st || e.pointerId !== st.pointerId) return
+    if (st.dragging) {
+      pillClickSuppressedRef.current = true
+      try {
+        el?.releasePointerCapture(e.pointerId)
+      } catch {
+        /* ignore */
+      }
+      updateServicePillScroll()
+    }
+    pillRailPointerRef.current = null
+  }, [updateServicePillScroll])
+
+  useLayoutEffect(() => {
+    if (!hasServices || servicesLoading) return
+    updateServicePillScroll()
+  }, [hasServices, servicesLoading, services, selectedService, updateServicePillScroll])
+
+  useEffect(() => {
+    const el = servicesScrollRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      updateServicePillScroll()
+    })
+    ro.observe(el)
+    window.addEventListener('resize', updateServicePillScroll)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', updateServicePillScroll)
+    }
+  }, [hasServices, servicesLoading, updateServicePillScroll])
 
   // Detect timezone
   useEffect(() => {
@@ -640,38 +733,104 @@ export default function PublicBookingPage({ params }) {
                     <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
                   </div>
                 ) : (
-                  <div className="w-full overflow-x-auto scrollbar-hide">
-                    <div className="flex gap-2 pb-2" style={{ minWidth: 'min-content' }}>
-                      {services.map((svc) => {
-                        const isSelected =
-                          (selectedService?.serviceId && selectedService.serviceId === svc.serviceId) ||
-                          (selectedService?.id && selectedService.id === svc.id) ||
-                          selectedService?.name === svc.name
-                        const priceLabel = formatPublicServicePriceDisplay(svc)
-                        return (
-                          <button
-                            key={svc.serviceId || svc.id || svc.name}
-                            onClick={() => setSelectedService(svc)}
-                            className={`
-                              whitespace-nowrap flex-shrink-0 px-4 py-2.5 rounded-full text-sm font-medium
-                              transition-all duration-150 cursor-pointer
-                              ${isSelected
-                                ? 'bg-violet-600 text-white border-2 border-violet-400 scale-105'
-                                : 'bg-gray-800 text-gray-300 border border-gray-600 hover:border-gray-400'
-                              }
-                            `}
-                          >
-                            {svc.name} • {svc.durationMinutes || svc.duration || 30} {t.minSuffix}
-                            {priceLabel != null ? (
-                              <span
-                                className={`ml-1 tabular-nums ${isSelected ? 'text-violet-100/85' : 'text-gray-400'}`}
-                              >
-                                • {priceLabel}
-                              </span>
-                            ) : null}
-                          </button>
-                        )
-                      })}
+                  <div className="relative -mx-1" dir="ltr">
+                    <div
+                      className={[
+                        'pointer-events-none absolute inset-y-0 left-0 z-10 w-10 sm:w-12',
+                        'bg-gradient-to-r from-gray-950 from-25% to-transparent',
+                        'transition-opacity duration-200',
+                        servicePillScroll.moreLeft ? 'opacity-100' : 'opacity-0'
+                      ].join(' ')}
+                      aria-hidden
+                    />
+                    <div
+                      className={[
+                        'pointer-events-none absolute inset-y-0 right-0 z-10 w-10 sm:w-12',
+                        'bg-gradient-to-l from-gray-950 from-25% to-transparent',
+                        'transition-opacity duration-200',
+                        servicePillScroll.moreRight ? 'opacity-100' : 'opacity-0'
+                      ].join(' ')}
+                      aria-hidden
+                    />
+                    <button
+                      type="button"
+                      className={[
+                        'absolute left-0 top-0 bottom-0 z-20 flex w-10 sm:w-11 items-center justify-center rounded-md',
+                        'text-white/90 hover:text-white hover:bg-white/5 active:bg-white/10',
+                        'transition-opacity duration-200 min-h-[44px]',
+                        servicePillScroll.moreLeft ? 'opacity-100' : 'pointer-events-none opacity-0'
+                      ].join(' ')}
+                      onClick={() => scrollServicePills(-1)}
+                      aria-label={t.scrollServicesPrev}
+                    >
+                      <ChevronLeft className="h-6 w-6 drop-shadow" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className={[
+                        'absolute right-0 top-0 bottom-0 z-20 flex w-10 sm:w-11 items-center justify-center rounded-md',
+                        'text-white/90 hover:text-white hover:bg-white/5 active:bg-white/10',
+                        'transition-opacity duration-200 min-h-[44px]',
+                        servicePillScroll.moreRight ? 'opacity-100' : 'pointer-events-none opacity-0'
+                      ].join(' ')}
+                      onClick={() => scrollServicePills(1)}
+                      aria-label={t.scrollServicesNext}
+                    >
+                      <ChevronRight className="h-6 w-6 drop-shadow" aria-hidden />
+                    </button>
+                    <div
+                      ref={servicesScrollRef}
+                      onScroll={updateServicePillScroll}
+                      onPointerDownCapture={onPillRailPointerDownCapture}
+                      onPointerMove={onPillRailPointerMove}
+                      onPointerUp={onPillRailPointerUpOrCancel}
+                      onPointerCancel={onPillRailPointerUpOrCancel}
+                      className={[
+                        'w-full overflow-x-auto scrollbar-hide scroll-smooth touch-pan-x',
+                        'snap-x snap-mandatory cursor-grab active:cursor-grabbing',
+                        'ps-1 pe-1 sm:ps-2 sm:pe-2',
+                        '[overscroll-behavior-x:contain]'
+                      ].join(' ')}
+                    >
+                      <div className="flex w-max gap-2 pb-2 pt-0.5">
+                        {services.map((svc) => {
+                          const isSelected =
+                            (selectedService?.serviceId && selectedService.serviceId === svc.serviceId) ||
+                            (selectedService?.id && selectedService.id === svc.id) ||
+                            selectedService?.name === svc.name
+                          const priceLabel = formatPublicServicePriceDisplay(svc)
+                          return (
+                            <button
+                              key={svc.serviceId || svc.id || svc.name}
+                              type="button"
+                              onClick={(ev) => {
+                                if (pillClickSuppressedRef.current) {
+                                  ev.preventDefault()
+                                  pillClickSuppressedRef.current = false
+                                  return
+                                }
+                                setSelectedService(svc)
+                              }}
+                              className={[
+                                'snap-start whitespace-nowrap shrink-0 px-4 py-2.5 rounded-full text-sm font-medium',
+                                'transition-all duration-150 cursor-pointer select-none',
+                                isSelected
+                                  ? 'bg-violet-600 text-white border-2 border-violet-400 scale-105'
+                                  : 'bg-gray-800 text-gray-300 border border-gray-600 hover:border-gray-400'
+                              ].join(' ')}
+                            >
+                              {svc.name} • {svc.durationMinutes || svc.duration || 30} {t.minSuffix}
+                              {priceLabel != null ? (
+                                <span
+                                  className={`ms-1 tabular-nums ${isSelected ? 'text-violet-100/85' : 'text-gray-400'}`}
+                                >
+                                  • {priceLabel}
+                                </span>
+                              ) : null}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
