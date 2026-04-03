@@ -46,11 +46,13 @@ function getCoreApiBaseUrl() {
   return baseUrl.replace(/\/$/, '')
 }
 
-/** Same internal secret pattern as other core-api proxies (PATCH, bookings, etc.). */
+/** Same pattern as BOO-42 bookings proxy: API key + internal secret when set. */
 function getCoreApiAuthHeaders() {
+  const apiKey = env.BOOK8_CORE_API_KEY || ''
   const secret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
   return {
     'Content-Type': 'application/json',
+    ...(apiKey && { 'x-book8-api-key': apiKey }),
     ...(secret && { 'x-book8-internal-secret': secret })
   }
 }

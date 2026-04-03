@@ -42,10 +42,20 @@ async function verifyAuthAndOwnership(request, database, businessId) {
   return { payload }
 }
 
-function getCoreApiConfig() {
+function getCoreApiBaseUrl() {
   const baseUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
+  return baseUrl.replace(/\/$/, '')
+}
+
+/** Same headers as BOO-42 bookings proxy: API key + internal secret when set. */
+function getCoreApiProxyHeaders() {
   const apiKey = env.BOOK8_CORE_API_KEY || ''
-  return { baseUrl, apiKey }
+  const internalSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
+  return {
+    'Content-Type': 'application/json',
+    ...(apiKey && { 'x-book8-api-key': apiKey }),
+    ...(internalSecret && { 'x-book8-internal-secret': internalSecret })
+  }
 }
 
 export async function GET(request, { params }) {
@@ -56,13 +66,10 @@ export async function GET(request, { params }) {
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
     }
-    const { baseUrl, apiKey } = getCoreApiConfig()
+    const baseUrl = getCoreApiBaseUrl()
     const res = await fetch(`${baseUrl}/api/businesses/${businessId}/services`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(apiKey && { 'x-book8-api-key': apiKey })
-      },
+      headers: getCoreApiProxyHeaders(),
       cache: 'no-store'
     })
     const data = await res.json().catch(() => ({}))
@@ -84,17 +91,14 @@ export async function POST(request, { params }) {
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
     }
-    const { baseUrl, apiKey } = getCoreApiConfig()
+    const baseUrl = getCoreApiBaseUrl()
     const business = await database.collection(BUSINESS_COLLECTION).findOne({ businessId })
     const planKey = resolveBusinessPlanKey(business)
     const maxServices = getUiPlanLimits(planKey).maxServices
     if (maxServices !== -1) {
       const listRes = await fetch(`${baseUrl}/api/businesses/${businessId}/services`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(apiKey && { 'x-book8-api-key': apiKey })
-        },
+        headers: getCoreApiProxyHeaders(),
         cache: 'no-store'
       })
       const listData = await listRes.json().catch(() => ({}))
@@ -118,10 +122,7 @@ export async function POST(request, { params }) {
     const body = await request.json()
     const res = await fetch(`${baseUrl}/api/businesses/${businessId}/services`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(apiKey && { 'x-book8-api-key': apiKey })
-      },
+      headers: getCoreApiProxyHeaders(),
       body: JSON.stringify(body)
     })
     const data = await res.json().catch(() => ({}))
