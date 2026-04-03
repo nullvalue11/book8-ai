@@ -72,14 +72,14 @@ export async function execute(args, ctx) {
   
   const checks = []
   
-  // Check 1: Core API health
+  // Check 1: App health (public /api/health)
   const baseUrl = env.BASE_URL || 'http://localhost:3000'
-  const coreApiCheck = await checkEndpoint(
-    'core_api_health',
+  const appHealthCheck = await checkEndpoint(
+    'app_health',
     `${baseUrl}/api/health`,
     5000
   )
-  checks.push(coreApiCheck)
+  checks.push(appHealthCheck)
   
   // Check 2: Agent availability endpoint
   const agentAvailCheck = await checkEndpoint(

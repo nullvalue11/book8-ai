@@ -93,7 +93,7 @@ export async function POST(request) {
     const secret = env.CORE_API_INTERNAL_SECRET || ''
     if (!secret) {
       return NextResponse.json(
-        { ok: false, error: 'Core API internal secret not configured' },
+        { ok: false, error: 'Booking service is not configured on this server.' },
         { status: 500 }
       )
     }

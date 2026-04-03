@@ -106,7 +106,7 @@ export async function PATCH(request, { params }) {
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       return NextResponse.json(
-        data && typeof data === 'object' ? { ...data, ok: false } : { ok: false, error: 'Core API error' },
+        data && typeof data === 'object' ? { ...data, ok: false } : { ok: false, error: 'Booking service unavailable. Please try again.' },
         { status: res.status }
       )
     }
@@ -138,7 +138,7 @@ export async function DELETE(request, { params }) {
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       return NextResponse.json(
-        data && typeof data === 'object' ? { ...data, ok: false } : { ok: false, error: 'Core API error' },
+        data && typeof data === 'object' ? { ...data, ok: false } : { ok: false, error: 'Booking service unavailable. Please try again.' },
         { status: res.status }
       )
     }

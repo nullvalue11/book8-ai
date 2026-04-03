@@ -103,7 +103,7 @@ export async function GET(request) {
         status: 'NO_BUSINESS',
         message: 'No business found for this account',
         dashboardChecks: {},
-        coreApi: { reachable: false, status: 'UNKNOWN', message: 'No business', checks: null }
+        bookingEngine: { reachable: false, status: 'UNKNOWN', message: 'No business', checks: null }
       })
     }
 
@@ -142,13 +142,13 @@ export async function GET(request) {
     )
     const secret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
 
-    let coreApiChecks = null
-    let coreApiStatus = 'UNKNOWN'
-    let coreApiMessage = 'Could not reach core-api'
-    let coreApiReachable = false
+    let bookingEngineChecks = null
+    let bookingEngineStatus = 'UNKNOWN'
+    let bookingEngineMessage = 'Could not reach the booking service'
+    let bookingEngineReachable = false
 
     if (!secret) {
-      coreApiMessage = 'CORE_API_INTERNAL_SECRET not configured'
+      bookingEngineMessage = 'Server booking sync is not configured'
     } else {
       try {
         const controller = new AbortController()
@@ -163,29 +163,29 @@ export async function GET(request) {
         clearTimeout(t)
 
         if (healthRes.ok) {
-          coreApiReachable = true
+          bookingEngineReachable = true
           const healthData = await healthRes.json().catch(() => ({}))
-          coreApiChecks = healthData.checks ?? null
-          coreApiStatus = healthData.status || 'OK'
-          coreApiMessage = healthData.message || 'OK'
+          bookingEngineChecks = healthData.checks ?? null
+          bookingEngineStatus = healthData.status || 'OK'
+          bookingEngineMessage = healthData.message || 'OK'
         } else {
           const text = await healthRes.text().catch(() => '')
-          coreApiMessage = `Core API returned ${healthRes.status}${text ? `: ${text.slice(0, 200)}` : ''}`
+          bookingEngineMessage = `Booking service returned ${healthRes.status}${text ? `: ${text.slice(0, 200)}` : ''}`
         }
       } catch (fetchErr) {
-        coreApiMessage = `Core API unreachable: ${fetchErr.message || fetchErr}`
+        bookingEngineMessage = `Booking service unreachable: ${fetchErr.message || fetchErr}`
       }
     }
 
     const dashboardOk =
       dashboardChecks.business_record.ok && dashboardChecks.subscription.ok
-    const coreApiOk =
-      coreApiReachable &&
-      (coreApiStatus === 'FULLY_PROVISIONED' ||
-        coreApiStatus === 'PARTIALLY_PROVISIONED' ||
-        coreApiStatus === 'OK' ||
-        coreApiStatus === 'HEALTHY')
-    const overallOk = dashboardOk && coreApiOk
+    const bookingEngineOk =
+      bookingEngineReachable &&
+      (bookingEngineStatus === 'FULLY_PROVISIONED' ||
+        bookingEngineStatus === 'PARTIALLY_PROVISIONED' ||
+        bookingEngineStatus === 'OK' ||
+        bookingEngineStatus === 'HEALTHY')
+    const overallOk = dashboardOk && bookingEngineOk
 
     return NextResponse.json({
       ok: overallOk,
@@ -193,11 +193,11 @@ export async function GET(request) {
       businessName: business.name,
       overallStatus: overallOk ? 'HEALTHY' : 'NEEDS_ATTENTION',
       dashboardChecks,
-      coreApi: {
-        reachable: coreApiReachable,
-        status: coreApiStatus,
-        message: coreApiMessage,
-        checks: coreApiChecks
+      bookingEngine: {
+        reachable: bookingEngineReachable,
+        status: bookingEngineStatus,
+        message: bookingEngineMessage,
+        checks: bookingEngineChecks
       }
     })
   } catch (err) {

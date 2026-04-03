@@ -135,7 +135,7 @@ export async function POST(request, { params }) {
     const logo = logoFromCoreResponse(data)
     if (!logo?.url) {
       return NextResponse.json(
-        { ok: false, error: 'Core API did not return a logo URL' },
+        { ok: false, error: 'Could not save your logo. Please try again.' },
         { status: 502 }
       )
     }

@@ -112,7 +112,7 @@ function SettingsContent() {
       if (!res.ok) throw new Error(data.error || 'Save failed')
       setMessage({
         type: 'success',
-        text: 'Settings saved. Core API sync attempted in the background.'
+        text: 'Settings saved. Your booking line will update in the background.'
       })
       setBusinesses((prev) =>
         prev.map((b) =>
@@ -162,8 +162,7 @@ function SettingsContent() {
             Business settings
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Timezone and voice language apply to your AI receptionist and availability. They sync to the core engine
-            after you save.
+            Timezone and voice language apply to your AI receptionist and availability. Changes apply after you save.
           </p>
         </div>
 

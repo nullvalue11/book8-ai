@@ -105,7 +105,10 @@ export async function POST(request, { params }) {
 
     const avatar = avatarFromResponse(data)
     if (!avatar?.url) {
-      return NextResponse.json({ ok: false, error: 'Core API did not return an avatar URL' }, { status: 502 })
+      return NextResponse.json(
+        { ok: false, error: 'Could not save your photo. Please try again.' },
+        { status: 502 }
+      )
     }
 
     const list = Array.isArray(auth.business.providers) ? [...auth.business.providers] : []

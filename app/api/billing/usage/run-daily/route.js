@@ -150,7 +150,7 @@ async function fetchUsageFromCoreApi(businessId, from, to) {
     
     if (!response.ok) {
       const text = await response.text()
-      return { minutes: 0, error: `Core API error: ${response.status} ${text}` }
+      return { minutes: 0, error: `Booking service error: ${response.status} ${text}` }
     }
     
     const data = await response.json()
@@ -161,7 +161,7 @@ async function fetchUsageFromCoreApi(businessId, from, to) {
     return { minutes: Math.floor(minutes), error: null }
     
   } catch (error) {
-    return { minutes: 0, error: `Core API fetch failed: ${error.message}` }
+    return { minutes: 0, error: `Booking service fetch failed: ${error.message}` }
   }
 }
 
@@ -320,7 +320,7 @@ async function runDailyUsageReport(request, overrideDate = null) {
         const usageResult = await fetchUsageFromCoreApi(businessId, dateWindow.from, dateWindow.to)
         
         if (usageResult.error) {
-          console.error(`[billing/usage/run-daily] Tenant ${tenantId}: Core API error - ${usageResult.error}`)
+          console.error(`[billing/usage/run-daily] Tenant ${tenantId}: booking service error - ${usageResult.error}`)
           summary.failed++
           summary.failedIds.push(tenantId)
           summary.details.push({ tenantId, error: usageResult.error })

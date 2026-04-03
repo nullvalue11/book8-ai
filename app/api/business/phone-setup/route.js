@@ -126,12 +126,12 @@ export async function GET(request) {
           provisioningPending: true
         })
       }
-      console.error('[business/phone-setup] Core API GET failed', {
+      console.error('[business/phone-setup] Booking service GET failed', {
         status: coreRes.status,
         body: text
       })
       return NextResponse.json(
-        { ok: false, error: 'Failed to load phone setup from core-api' },
+        { ok: false, error: 'Could not load phone setup. Please try again.' },
         { status: 502 }
       )
     }
@@ -277,12 +277,12 @@ export async function POST(request) {
     const result = await coreRes.json().catch(() => ({}))
 
     if (!coreRes.ok) {
-      console.error('[business/phone-setup] Core API POST failed', {
+      console.error('[business/phone-setup] Booking service POST failed', {
         status: coreRes.status,
         error: result?.error
       })
       return NextResponse.json(
-        { ok: false, error: 'Failed to update phone setup in core-api' },
+        { ok: false, error: 'Could not update phone setup. Please try again.' },
         { status: 502 }
       )
     }

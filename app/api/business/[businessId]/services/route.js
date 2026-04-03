@@ -120,7 +120,7 @@ async function getServicesFromCoreWithRetry(baseUrl, businessId, headers) {
       if (!RETRIABLE_STATUS.has(res.status)) break
     } catch (e) {
       lastRes = { status: 503, ok: false }
-      lastData = { error: e?.name === 'AbortError' ? 'Core timeout' : String(e?.message || e) }
+      lastData = { error: e?.name === 'AbortError' ? 'Request timeout' : String(e?.message || e) }
       if (attempt + 1 >= GET_MAX_ATTEMPTS) break
     }
   }
@@ -152,7 +152,7 @@ async function postServiceToCoreWithRetry(baseUrl, businessId, headers, body) {
       if (!RETRIABLE_STATUS.has(res.status)) break
     } catch (e) {
       lastRes = { status: 503, ok: false }
-      lastData = { error: e?.name === 'AbortError' ? 'Core timeout' : String(e?.message || e) }
+      lastData = { error: e?.name === 'AbortError' ? 'Request timeout' : String(e?.message || e) }
       if (attempt + 1 >= POST_MAX_ATTEMPTS) break
     }
   }
@@ -255,7 +255,7 @@ export async function GET(request, { params }) {
     return NextResponse.json(
       coreResult.data && typeof coreResult.data === 'object'
         ? { ...coreResult.data, ok: false }
-        : { ok: false, error: 'Core API error' },
+        : { ok: false, error: 'Booking service unavailable. Please try again.' },
       {
         status:
           coreResult.res?.status && coreResult.res.status >= 400 ? coreResult.res.status : 502
@@ -318,7 +318,7 @@ export async function POST(request, { params }) {
       return NextResponse.json(coreResult.data)
     }
 
-    console.warn('[business/services] Core POST failed after retries; persisting service on business doc', {
+    console.warn('[business/services] Booking service POST failed after retries; persisting service on business doc', {
       businessId,
       serviceId: row.serviceId,
       status: coreResult.res?.status

@@ -2264,7 +2264,7 @@ function WizardContent() {
                           {[
                             'Calendar sync and booking page',
                             'Email reminders',
-                            'Core analytics',
+                            'Essential analytics',
                             'Metered call minutes'
                           ].map((line) => (
                             <li key={line} className="flex gap-2.5">

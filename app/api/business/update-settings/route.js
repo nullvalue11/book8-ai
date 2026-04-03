@@ -133,7 +133,7 @@ export async function POST(request) {
       timezone: tz,
       primaryLanguage,
       multilingualEnabled,
-      coreApiSync: coreSync
+      bookingEngineSync: coreSync
     })
   } catch (err) {
     console.error('[business/update-settings]', err)

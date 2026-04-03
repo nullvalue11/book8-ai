@@ -240,14 +240,14 @@ const TOOL_PLANS = {
   'voice.smokeTest': {
     description: 'Health check voice/AI calling services',
     steps: [
-      { order: 1, name: 'checkCoreApi', description: 'Test core API health endpoint', mutates: false, estimatedMs: 50 },
+      { order: 1, name: 'checkCoreApi', description: 'Test app health endpoint', mutates: false, estimatedMs: 50 },
       { order: 2, name: 'checkAgentAvailability', description: 'Test agent availability endpoint', mutates: false, estimatedMs: 50 },
       { order: 3, name: 'checkAgentBook', description: 'Test agent booking endpoint', mutates: false, estimatedMs: 50 },
       { order: 4, name: 'checkBillingUsage', description: 'Test billing usage endpoint', mutates: false, estimatedMs: 50 }
     ],
     sideEffects: [],
     requiredSecrets: [
-      { name: 'CORE_API_URL', description: 'Core API base URL', required: true },
+      { name: 'CORE_API_URL', description: 'Booking service base URL (server-to-server)', required: true },
       { name: 'CORE_API_INTERNAL_SECRET', description: 'Internal API auth', required: true }
     ],
     estimatedRisk: 'low',

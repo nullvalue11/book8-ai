@@ -79,7 +79,7 @@ function bookingEngineLabel(rawKey) {
   return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function filterCoreChecks(checks) {
+function filterBookingEngineChecks(checks) {
   if (!checks || typeof checks !== 'object') return []
   return Object.entries(checks).filter(([k]) => bookingEngineLabel(k))
 }
@@ -224,7 +224,7 @@ function ProvisioningContent() {
             <CardHeader>
               <CardTitle>No business yet</CardTitle>
               <CardDescription>
-                Create a business first, then return here to verify dashboard and core-api sync.
+                Create a business first, then return here to verify your account and booking line setup.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -258,17 +258,17 @@ function ProvisioningContent() {
                 <CardDescription className="flex flex-wrap items-center justify-between gap-2">
                   <span>Your phone line, services, and hours for bookings</span>
                   <span className="text-xs text-muted-foreground">
-                    {status.coreApi?.reachable ? 'Online' : 'Unavailable'}
+                    {status.bookingEngine?.reachable ? 'Online' : 'Unavailable'}
                   </span>
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                {!status.coreApi?.reachable ? (
+                {!status.bookingEngine?.reachable ? (
                   <div className="p-4 text-sm text-destructive">
-                    {status.coreApi?.message || 'Booking engine could not be reached.'}
+                    {status.bookingEngine?.message || 'Booking engine could not be reached.'}
                   </div>
                 ) : (() => {
-                    const rows = filterCoreChecks(status.coreApi.checks)
+                    const rows = filterBookingEngineChecks(status.bookingEngine.checks)
                     if (rows.length > 0) {
                       return rows.map(([key, check]) => (
                         <CheckRow key={key} label={bookingEngineLabel(key)} check={check} />
@@ -276,7 +276,7 @@ function ProvisioningContent() {
                     }
                     return (
                       <div className="p-4 text-sm text-muted-foreground">
-                        {status.coreApi?.status} — {status.coreApi?.message}
+                        {status.bookingEngine?.status} — {status.bookingEngine?.message}
                       </div>
                     )
                   })()}

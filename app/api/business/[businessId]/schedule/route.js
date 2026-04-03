@@ -111,7 +111,7 @@ async function getScheduleFromCoreWithRetry(baseUrl, businessId, headers) {
       if (!RETRIABLE_STATUS.has(res.status)) break
     } catch (e) {
       lastRes = { status: 503, ok: false }
-      lastData = { error: e?.name === 'AbortError' ? 'Core timeout' : String(e?.message || e) }
+      lastData = { error: e?.name === 'AbortError' ? 'Request timeout' : String(e?.message || e) }
       if (attempt + 1 >= GET_MAX_ATTEMPTS) break
     }
   }
@@ -143,7 +143,7 @@ async function putScheduleToCoreWithRetry(baseUrl, businessId, headers, body) {
       if (!RETRIABLE_STATUS.has(res.status)) break
     } catch (e) {
       lastRes = { status: 503, ok: false }
-      lastData = { error: e?.name === 'AbortError' ? 'Core timeout' : String(e?.message || e) }
+      lastData = { error: e?.name === 'AbortError' ? 'Request timeout' : String(e?.message || e) }
       if (attempt + 1 >= PUT_MAX_ATTEMPTS) break
     }
   }
@@ -193,7 +193,7 @@ export async function GET(request, segmentCtx) {
     return NextResponse.json(
       coreResult.data && typeof coreResult.data === 'object'
         ? { ...coreResult.data, ok: false }
-        : { ok: false, error: 'Core API error' },
+        : { ok: false, error: 'Booking service unavailable. Please try again.' },
       { status: coreResult.res?.status && coreResult.res.status >= 400 ? coreResult.res.status : 502 }
     )
   } catch (e) {
@@ -234,7 +234,7 @@ export async function PUT(request, segmentCtx) {
       return NextResponse.json(coreResult.data)
     }
 
-    console.warn('[business/schedule] Core PUT failed after retries; persisting hours on business doc', {
+    console.warn('[business/schedule] Booking service PUT failed after retries; persisting hours on business doc', {
       businessId,
       status: coreResult.res?.status
     })
