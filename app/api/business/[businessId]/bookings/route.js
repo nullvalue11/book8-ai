@@ -51,13 +51,15 @@ export async function GET(request, { params }) {
 
     const baseUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
     const apiKey = env.BOOK8_CORE_API_KEY || ''
+    const internalSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
 
     const res = await fetch(
       `${baseUrl}/api/bookings?businessId=${encodeURIComponent(businessId)}`,
       {
         headers: {
           'Content-Type': 'application/json',
-          ...(apiKey && { 'x-book8-api-key': apiKey })
+          ...(apiKey && { 'x-book8-api-key': apiKey }),
+          ...(internalSecret && { 'x-book8-internal-secret': internalSecret })
         },
         cache: 'no-store'
       }

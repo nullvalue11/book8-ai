@@ -99,17 +99,22 @@ export async function GET(request) {
     let calls = []
     const baseUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
     const apiKey = env.BOOK8_CORE_API_KEY || ''
-    const internalSecret = env.CORE_API_INTERNAL_SECRET || ''
+    const internalSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
 
     if (businessId) {
       try {
+        const coreHeaders = {
+          'Content-Type': 'application/json',
+          ...(apiKey && { 'x-book8-api-key': apiKey }),
+          ...(internalSecret && { 'x-book8-internal-secret': internalSecret })
+        }
         const [bookingsRes, callsRes] = await Promise.all([
           fetch(`${baseUrl}/api/bookings?businessId=${encodeURIComponent(businessId)}`, {
-            headers: { 'Content-Type': 'application/json', ...(apiKey && { 'x-book8-api-key': apiKey }) },
+            headers: coreHeaders,
             cache: 'no-store'
           }).then(r => r.json().catch(() => ({}))),
           fetch(`${baseUrl}/internal/calls/by-business/${businessId}?limit=500`, {
-            headers: { 'Content-Type': 'application/json', ...(internalSecret && { 'x-book8-internal-secret': internalSecret }) },
+            headers: coreHeaders,
             cache: 'no-store'
           }).then(r => r.json().catch(() => ({})))
         ])
