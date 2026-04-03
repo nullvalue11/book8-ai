@@ -39,6 +39,7 @@ import { getPlanFeatures, getUiPlanLimits, hasOutlookCalendar, normalizePlanKey 
 import { businessProfileToWizardPatch } from '@/lib/businessProfile'
 import { guessCountryFromTimeZone } from '@/lib/region-data'
 import { toast } from 'sonner'
+import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { currencyFromTimezone, detectCurrency } from '@/lib/currency'
 
 const CATEGORIES = [
@@ -400,6 +401,8 @@ function SetupAuthScreen({ onAuthenticated, initialLoginMode = false }) {
 function WizardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { t } = useBookingLanguage()
+  const cf = t.callForwarding
   const isLoginMode = searchParams.get('mode') === 'login'
   const [token, setToken] = useState(null)
   const [appReady, setAppReady] = useState(false)
@@ -2593,6 +2596,15 @@ function WizardContent() {
                                 onChange={(e) => setPhoneStepExistingInput(e.target.value)}
                                 autoComplete="tel"
                               />
+                              <p className="text-xs !text-[#A78BFA] mt-2">
+                                {cf.needHelpPrefix}{' '}
+                                <Link
+                                  href="/help/call-forwarding"
+                                  className="underline font-medium hover:text-[#E9D5FF]"
+                                >
+                                  {cf.forwardingHelpLink}
+                                </Link>
+                              </p>
                             </div>
                           )}
                         </div>
@@ -2652,6 +2664,15 @@ function WizardContent() {
                       <p className="text-sm !text-[#94A3B8] mt-2">
                         When customers call your current number, calls can ring through to your AI receptionist once
                         forwarding is set up.
+                      </p>
+                      <p className="text-xs !text-[#A78BFA] mt-2">
+                        {cf.needHelpPrefix}{' '}
+                        <Link
+                          href={`/help/call-forwarding?number=${encodeURIComponent(wizardData.phoneNumber)}`}
+                          className="underline font-medium hover:text-[#E9D5FF]"
+                        >
+                          {cf.forwardingHelpLink}
+                        </Link>
                       </p>
                     </div>
                     <div>

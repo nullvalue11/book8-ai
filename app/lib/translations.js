@@ -129,6 +129,36 @@ const translations = {
     lngSpanish: 'Español',
     lngArabic: 'العربية',
     lngAria: 'Language',
+    callForwarding: {
+      title: 'How to Forward Your Business Phone to Book8',
+      subtitle: 'Follow the instructions for your carrier below. It takes less than 2 minutes.',
+      searchPlaceholder: 'Search for your carrier...',
+      toCancel: 'To cancel',
+      yourBook8NumberLabel: 'Your Book8 number',
+      placeholderBracket: '[your Book8 number]',
+      findInDashboard:
+        'Find your Book8 number in your dashboard, or open this page from setup after your line is assigned.',
+      stillNeedHelp: 'Still need help?',
+      contactSupport: 'Contact our support team',
+      canada: 'Canada',
+      unitedStates: 'United States',
+      unitedKingdom: 'United Kingdom',
+      australia: 'Australia',
+      international: 'International / GSM Standard',
+      conditionalForwarding: 'Conditional Forwarding Options',
+      forwardNoAnswer: 'Forward when no answer',
+      forwardBusy: 'Forward when busy',
+      forwardUnreachable: 'Forward when unreachable',
+      cancelAll: 'Cancel all conditional forwarding',
+      backHome: 'Back to home',
+      noCarriersMatch: 'No carriers match your search. Try another name or clear the search.',
+      pressCallSuffix: '→ then press call',
+      gsmNote:
+        'If the codes above do not work, contact your carrier and ask for unconditional call forwarding to {book8Number}.',
+      needHelpPrefix: 'Need help?',
+      forwardingHelpLink: 'See forwarding instructions for your carrier →',
+      dashboardForwardHelp: 'How to forward your existing number →'
+    },
     homepage: homepageByLocale.en
   },
   fr: {
@@ -257,6 +287,37 @@ const translations = {
     lngSpanish: 'Español',
     lngArabic: 'العربية',
     lngAria: 'Langue',
+    callForwarding: {
+      title: 'Comment transférer la ligne de votre entreprise vers Book8',
+      subtitle:
+        'Suivez les instructions de votre opérateur ci-dessous. Cela prend moins de 2 minutes.',
+      searchPlaceholder: 'Rechercher votre opérateur...',
+      toCancel: 'Pour annuler',
+      yourBook8NumberLabel: 'Votre numéro Book8',
+      placeholderBracket: '[votre numéro Book8]',
+      findInDashboard:
+        'Retrouvez votre numéro Book8 dans le tableau de bord, ou rouvrez cette page depuis l’assistant une fois la ligne attribuée.',
+      stillNeedHelp: 'Encore besoin d’aide ?',
+      contactSupport: 'Contacter le support',
+      canada: 'Canada',
+      unitedStates: 'États-Unis',
+      unitedKingdom: 'Royaume-Uni',
+      australia: 'Australie',
+      international: 'International / norme GSM',
+      conditionalForwarding: 'Renvoi conditionnel',
+      forwardNoAnswer: 'Renvoi si non réponse',
+      forwardBusy: 'Renvoi si ligne occupée',
+      forwardUnreachable: 'Renvoi si indisponible',
+      cancelAll: 'Annuler tous les renvois conditionnels',
+      backHome: 'Retour à l’accueil',
+      noCarriersMatch: 'Aucun opérateur ne correspond. Essayez un autre nom ou effacez la recherche.',
+      pressCallSuffix: '→ puis appelez',
+      gsmNote:
+        'Si les codes ci-dessus ne fonctionnent pas, contactez votre opérateur pour un renvoi inconditionnel vers {book8Number}.',
+      needHelpPrefix: 'Besoin d’aide ?',
+      forwardingHelpLink: 'Voir les instructions de renvoi pour votre opérateur →',
+      dashboardForwardHelp: 'Comment transférer votre numéro actuel →'
+    },
     homepage: homepageByLocale.fr
   },
   es: {
@@ -385,6 +446,36 @@ const translations = {
     lngSpanish: 'Español',
     lngArabic: 'العربية',
     lngAria: 'Idioma',
+    callForwarding: {
+      title: 'Cómo desviar el teléfono de tu negocio a Book8',
+      subtitle: 'Sigue las instrucciones de tu operador. Tarda menos de 2 minutos.',
+      searchPlaceholder: 'Busca tu operador...',
+      toCancel: 'Para cancelar',
+      yourBook8NumberLabel: 'Tu número Book8',
+      placeholderBracket: '[tu número Book8]',
+      findInDashboard:
+        'Encuentra tu número Book8 en el panel, o abre esta página desde la configuración cuando tengas la línea.',
+      stillNeedHelp: '¿Necesitas más ayuda?',
+      contactSupport: 'Contactar con soporte',
+      canada: 'Canadá',
+      unitedStates: 'Estados Unidos',
+      unitedKingdom: 'Reino Unido',
+      australia: 'Australia',
+      international: 'Internacional / estándar GSM',
+      conditionalForwarding: 'Desvío condicional',
+      forwardNoAnswer: 'Desviar si no hay respuesta',
+      forwardBusy: 'Desviar si está ocupado',
+      forwardUnreachable: 'Desviar si no hay cobertura',
+      cancelAll: 'Cancelar todo el desvío condicional',
+      backHome: 'Volver al inicio',
+      noCarriersMatch: 'Ningún operador coincide. Prueba otro nombre o borra la búsqueda.',
+      pressCallSuffix: '→ y pulsa llamar',
+      gsmNote:
+        'Si los códigos no funcionan, pide a tu operador el desvío incondicional a {book8Number}.',
+      needHelpPrefix: '¿Necesitas ayuda?',
+      forwardingHelpLink: 'Ver instrucciones de desvío para tu operador →',
+      dashboardForwardHelp: 'Cómo desviar tu número actual →'
+    },
     homepage: homepageByLocale.es
   },
   ar: {
@@ -513,6 +604,35 @@ const translations = {
     lngSpanish: 'Español',
     lngArabic: 'العربية',
     lngAria: 'اللغة',
+    callForwarding: {
+      title: 'كيفية تحويل هاتف عملك إلى Book8',
+      subtitle: 'اتبع تعليمات مزوّد الخدمة أدناه. الأمر يستغرق أقل من دقيقتين.',
+      searchPlaceholder: 'ابحث عن مزوّد الخدمة...',
+      toCancel: 'للإلغاء',
+      yourBook8NumberLabel: 'رقم Book8 الخاص بك',
+      placeholderBracket: '[رقم Book8 الخاص بك]',
+      findInDashboard: 'اعثر على رقم Book8 في لوحة التحكم، أو افتح هذه الصفحة من الإعداد بعد تفعيل الخط.',
+      stillNeedHelp: 'ما زلت تحتاج مساعدة؟',
+      contactSupport: 'تواصل مع الدعم',
+      canada: 'كندا',
+      unitedStates: 'الولايات المتحدة',
+      unitedKingdom: 'المملكة المتحدة',
+      australia: 'أستراليا',
+      international: 'دولي / معيار GSM',
+      conditionalForwarding: 'تحويل مشروط',
+      forwardNoAnswer: 'تحويل عند عدم الرد',
+      forwardBusy: 'تحويل عند الانشغال',
+      forwardUnreachable: 'تحويل عند عدم التوفر',
+      cancelAll: 'إلغاء كل التحويل المشروط',
+      backHome: 'العودة للرئيسية',
+      noCarriersMatch: 'لا يوجد مزوّد مطابق. جرّب اسماً آخر أو امسح البحث.',
+      pressCallSuffix: '→ ثم اضغط اتصال',
+      gsmNote:
+        'إذا لم تعمل الأكواد أعلاه، اتصل بمزوّد الخدمة واطلب التحويل غير المشروط إلى {book8Number}.',
+      needHelpPrefix: 'تحتاج مساعدة؟',
+      forwardingHelpLink: 'تعليمات التحويل لمزوّد الخدمة ←',
+      dashboardForwardHelp: 'كيفية تحويل رقمك الحالي ←'
+    },
     homepage: homepageByLocale.ar
   }
 }

@@ -175,7 +175,7 @@ function HomeContent(props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const forceDashboard = !!props?.forceDashboard;
-  const { language } = useBookingLanguage();
+  const { language, t } = useBookingLanguage();
   const { theme, setTheme, systemTheme } = useTheme();
   const resolved = theme === "system" ? systemTheme : theme;
 
@@ -1767,6 +1767,16 @@ function HomeContent(props) {
                             {phoneSetup.forwardingFrom.map(formatPhone).join(", ")}
                           </p>
                         )}
+                        {phoneSetup.assignedTwilioNumber ? (
+                          <p className="pt-1">
+                            <Link
+                              href={`/help/call-forwarding?number=${encodeURIComponent(phoneSetup.assignedTwilioNumber)}`}
+                              className="text-sm text-brand-600 dark:text-brand-400 hover:underline font-medium"
+                            >
+                              {t.callForwarding.dashboardForwardHelp}
+                            </Link>
+                          </p>
+                        ) : null}
                       </div>
                       <div className="flex flex-wrap gap-2 pt-2">
                         <Button
