@@ -155,6 +155,7 @@ function loadConfig() {
     // Stripe (Payment Processing)
     const STRIPE_SECRET_KEY = getEnvVar('STRIPE_SECRET_KEY', true)
     const STRIPE_PUBLISHABLE_KEY = getEnvVar('STRIPE_PUBLISHABLE_KEY', false)
+    const NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = getEnvVar('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', false)
     const STRIPE_WEBHOOK_SECRET = getEnvVar('STRIPE_WEBHOOK_SECRET', false)
     
     // Stripe Price IDs
@@ -187,6 +188,10 @@ function loadConfig() {
     const TRIAL_PERIOD_DAYS = Math.max(1, Math.min(90, parseInt(TRIAL_PERIOD_DAYS_RAW, 10) || 14))
     
     const hasStripe = STRIPE_SECRET_KEY && STRIPE_PUBLISHABLE_KEY && STRIPE_WEBHOOK_SECRET
+    const stripePublishableKeyForElements =
+      (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && String(NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).trim()) ||
+      (STRIPE_PUBLISHABLE_KEY && String(STRIPE_PUBLISHABLE_KEY).trim()) ||
+      null
     if (!hasStripe && NODE_ENV === 'production') {
       console.warn('[env] WARNING: Stripe not configured. Billing features will be disabled.')
     }
@@ -282,6 +287,8 @@ function loadConfig() {
         PRICE_ENTERPRISE: STRIPE_PRICE_ENTERPRISE,
         PRICE_CALL_MINUTE_METERED: STRIPE_PRICE_CALL_MINUTE_METERED
       } : null,
+      /** Publishable key for Stripe Elements APIs (NEXT_PUBLIC_* or STRIPE_PUBLISHABLE_KEY). */
+      STRIPE_PUBLISHABLE_KEY_FOR_ELEMENTS: stripePublishableKeyForElements,
       
       // Admin
       ADMIN_TOKEN,

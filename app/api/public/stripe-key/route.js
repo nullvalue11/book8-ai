@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic'
 
 /** Public Stripe publishable key for Elements (safe to expose). */
 export async function GET() {
-  const key =
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || env.STRIPE?.PUBLISHABLE_KEY || null
+  const key = env.STRIPE_PUBLISHABLE_KEY_FOR_ELEMENTS
   return NextResponse.json({ ok: !!key, publishableKey: key })
 }
