@@ -26,6 +26,7 @@ export default function EventTypeBookingPage({ params }) {
   const [ownerName, setOwnerName] = useState('')
   const [bookingResult, setBookingResult] = useState(null)
   const [eventType, setEventType] = useState(null)
+  const [brandLogoUrl, setBrandLogoUrl] = useState(null)
 
   const bookingLocale = bookingLocaleBcp47(language)
 
@@ -102,6 +103,24 @@ export default function EventTypeBookingPage({ params }) {
 
     loadEventType()
   }, [loadEventType])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/public/services?handle=${encodeURIComponent(handle)}`)
+        const data = await res.json().catch(() => ({}))
+        const url = data?.businessProfile?.logo?.url
+        if (!cancelled && res.ok && typeof url === 'string' && url) setBrandLogoUrl(url)
+        else if (!cancelled) setBrandLogoUrl(null)
+      } catch {
+        if (!cancelled) setBrandLogoUrl(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [handle])
 
   // Load slots when date or timezone changes
   useEffect(() => {
@@ -264,9 +283,20 @@ export default function EventTypeBookingPage({ params }) {
       <div className="max-w-4xl mx-auto">
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <Calendar className="h-4 w-4" />
-              <span>{trFormat(t.eventBookingWith, { name: ownerName })}</span>
+            <div className="flex items-center gap-3 mb-2 min-w-0">
+              {brandLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={brandLogoUrl}
+                  alt={`${ownerName} logo`}
+                  className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-full object-cover"
+                  loading="lazy"
+                />
+              ) : null}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                <Calendar className="h-4 w-4 shrink-0" />
+                <span>{trFormat(t.eventBookingWith, { name: ownerName })}</span>
+              </div>
             </div>
             <CardTitle className="text-2xl">{eventType?.name || t.eventBookMeeting}</CardTitle>
             {eventType?.description && <p className="text-muted-foreground">{eventType.description}</p>}

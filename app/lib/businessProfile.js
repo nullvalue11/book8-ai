@@ -44,6 +44,15 @@ function trimOrEmpty(s) {
   return s.trim()
 }
 
+/** @param {unknown} logo */
+export function normalizeBusinessLogo(logo) {
+  if (!logo || typeof logo !== 'object') return null
+  const url = trimOrEmpty(/** @type {{ url?: string }} */ (logo).url)
+  if (!url) return null
+  if (!/^https?:\/\//i.test(url)) return null
+  return { url: url.slice(0, 2048) }
+}
+
 function normalizeUrl(input) {
   const t = trimOrEmpty(input)
   if (!t) return ''
@@ -180,6 +189,7 @@ export function businessProfileToWizardPatch(profile) {
 export function businessProfileHasPublicDisplay(profile) {
   if (!profile || typeof profile !== 'object') return false
   const p = profile
+  if (normalizeBusinessLogo(p.logo)) return true
   const addr =
     trimOrEmpty(p.street) ||
     trimOrEmpty(p.city) ||
@@ -203,6 +213,7 @@ export function sanitizeBusinessProfileForPublic(profile) {
   if (!profile || typeof profile !== 'object') return null
   if (!businessProfileHasPublicDisplay(profile)) return null
   const p = profile
+  const logo = normalizeBusinessLogo(p.logo)
   return {
     street: trimOrEmpty(p.street) || null,
     street2: trimOrEmpty(p.street2) || null,
@@ -219,7 +230,8 @@ export function sanitizeBusinessProfileForPublic(profile) {
       facebook: trimOrEmpty(p.social?.facebook) || null,
       tiktok: trimOrEmpty(p.social?.tiktok) || null
     },
-    weeklyHours: p.weeklyHours && typeof p.weeklyHours === 'object' ? p.weeklyHours : null
+    weeklyHours: p.weeklyHours && typeof p.weeklyHours === 'object' ? p.weeklyHours : null,
+    ...(logo ? { logo } : {})
   }
 }
 

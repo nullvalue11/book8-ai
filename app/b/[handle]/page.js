@@ -678,7 +678,17 @@ export default function PublicBookingPage({ params }) {
       {/* Header */}
       <header className="border-b border-gray-800 px-4 py-4 md:px-6">
         <div className="max-w-6xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+          <div className="flex items-start gap-3 min-w-0">
+            {businessProfile?.logo?.url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={businessProfile.logo.url}
+                alt={`${ownerName?.trim() || formatHandleAsDisplayName(handle)} logo`}
+                className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-full object-cover"
+                loading="lazy"
+              />
+            ) : null}
+            <div className="min-w-0">
             <h1 className="text-2xl font-bold text-white">
               {ownerName?.trim() || formatHandleAsDisplayName(handle)}
             </h1>
@@ -707,6 +717,7 @@ export default function PublicBookingPage({ params }) {
                 </a>
               </div>
             ) : null}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end self-start">
             {businessMultilingual ? (

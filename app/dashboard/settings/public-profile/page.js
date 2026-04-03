@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react'
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowLeft, Loader2, Globe } from 'lucide-react'
+import { ArrowLeft, Loader2, Globe, ImageIcon } from 'lucide-react'
 import Header from '@/components/Header'
 import PublicBusinessInfoPanel from '@/components/public/PublicBusinessInfoPanel'
 import { getBookingTranslations } from '@/lib/translations'
@@ -78,6 +78,12 @@ export default function PublicProfileSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
+  const [logoUrl, setLogoUrl] = useState('')
+  const [logoUploading, setLogoUploading] = useState(false)
+  const logoInputRef = useRef(null)
+
+  const LOGO_MAX_BYTES = 2 * 1024 * 1024
+  const LOGO_ACCEPT_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
   const patchForm = useCallback((part) => {
     setForm((f) => ({ ...f, ...part }))
@@ -143,6 +149,7 @@ export default function PublicProfileSettingsPage() {
           : 'UTC')
         const p = data.businessProfile
         const s = p?.social || {}
+        setLogoUrl(typeof p?.logo?.url === 'string' ? p.logo.url : '')
         if (p && typeof p === 'object') {
           setForm({
             street: p.street || '',
@@ -164,6 +171,7 @@ export default function PublicProfileSettingsPage() {
                 : { ...DEFAULT_HOURS }
           })
         } else {
+          setLogoUrl('')
           setForm(emptyForm())
         }
       } catch (e) {
@@ -191,10 +199,65 @@ export default function PublicProfileSettingsPage() {
         facebook: form.socialFacebook,
         tiktok: form.socialTiktok
       },
-      weeklyHours: form.weeklyHours
+      weeklyHours: form.weeklyHours,
+      ...(logoUrl ? { logo: { url: logoUrl } } : {})
     }
     return sanitizeBusinessProfileForPublic(raw)
-  }, [form])
+  }, [form, logoUrl])
+
+  const uploadLogo = async (fileList) => {
+    const file = fileList?.[0]
+    if (!file || !token || !selectedBusinessId) return
+    if (!LOGO_ACCEPT_TYPES.includes(file.type)) {
+      setMessage({ type: 'error', text: 'Use PNG, JPG, or WEBP only.' })
+      return
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      setMessage({ type: 'error', text: 'Logo must be 2MB or smaller.' })
+      return
+    }
+    setLogoUploading(true)
+    setMessage({ type: '', text: '' })
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`/api/business/${encodeURIComponent(selectedBusinessId)}/logo`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      const url = data.url || data.logo?.url
+      if (!url) throw new Error('No logo URL returned')
+      setLogoUrl(url)
+      setMessage({ type: 'success', text: 'Logo saved.' })
+    } catch (e) {
+      setMessage({ type: 'error', text: e.message || 'Upload failed' })
+    } finally {
+      setLogoUploading(false)
+    }
+  }
+
+  const removeLogo = async () => {
+    if (!token || !selectedBusinessId) return
+    setLogoUploading(true)
+    setMessage({ type: '', text: '' })
+    try {
+      const res = await fetch(`/api/business/${encodeURIComponent(selectedBusinessId)}/logo`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Remove failed')
+      setLogoUrl('')
+      setMessage({ type: 'success', text: 'Logo removed.' })
+    } catch (e) {
+      setMessage({ type: 'error', text: e.message || 'Remove failed' })
+    } finally {
+      setLogoUploading(false)
+    }
+  }
 
   const save = async () => {
     if (!token || !selectedBusinessId) return
@@ -342,6 +405,61 @@ export default function PublicProfileSettingsPage() {
                       </Select>
                     </div>
                   ) : null}
+
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <Label>Business logo</Label>
+                    <p className="text-xs text-muted-foreground">
+                  Shown on your public booking page next to your business name. PNG, JPG, or WEBP. Max 2MB.
+                    </p>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                      <div
+                        className="w-24 h-24 rounded-full border-2 border-dashed border-muted-foreground/30 bg-muted/40 flex items-center justify-center overflow-hidden shrink-0"
+                        aria-hidden={!!logoUrl}
+                      >
+                        {logoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={logoUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        ) : (
+                          <ImageIcon className="w-10 h-10 text-muted-foreground" aria-hidden />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <input
+                          ref={logoInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            uploadLogo(e.target.files)
+                            e.target.value = ''
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="w-fit"
+                          disabled={logoUploading}
+                          onClick={() => logoInputRef.current?.click()}
+                        >
+                          {logoUploading ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : null}
+                          Upload logo
+                        </Button>
+                        {logoUrl ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="w-fit text-destructive hover:text-destructive"
+                            disabled={logoUploading}
+                            onClick={removeLogo}
+                          >
+                            Remove logo
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
 
                   <div>
                     <Label>Street address</Label>

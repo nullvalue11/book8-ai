@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME } from '@/lib/schemas/business'
-import { parseBusinessProfileBody } from '@/lib/businessProfile'
+import { parseBusinessProfileBody, normalizeBusinessLogo } from '@/lib/businessProfile'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -110,14 +110,22 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 })
     }
 
+    const existingProfile =
+      auth.business.businessProfile && typeof auth.business.businessProfile === 'object'
+        ? auth.business.businessProfile
+        : {}
+    const mergedProfile = { ...parsed.profile }
+    const preservedLogo = normalizeBusinessLogo(existingProfile.logo)
+    if (preservedLogo) mergedProfile.logo = preservedLogo
+
     await database.collection(COLLECTION_NAME).updateOne(
       { businessId },
-      { $set: { businessProfile: parsed.profile, updatedAt: new Date() } }
+      { $set: { businessProfile: mergedProfile, updatedAt: new Date() } }
     )
 
-    void syncCoreApiProfile(businessId, parsed.profile)
+    void syncCoreApiProfile(businessId, mergedProfile)
 
-    return NextResponse.json({ ok: true, businessProfile: parsed.profile })
+    return NextResponse.json({ ok: true, businessProfile: mergedProfile })
   } catch (e) {
     console.error('[business/profile PATCH]', e)
     return NextResponse.json({ ok: false, error: e.message || 'Server error' }, { status: 500 })

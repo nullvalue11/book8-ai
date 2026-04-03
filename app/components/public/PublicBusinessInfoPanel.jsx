@@ -89,13 +89,28 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
 
   const body = (
     <div className="rounded-xl border border-gray-800 bg-gray-900/80 p-4 md:p-5 space-y-4 text-sm text-gray-200">
-      <div>
-        <h2 className="text-base font-semibold text-white">
-          {businessDisplayName?.trim()
-            ? trFormat(t.aboutBusiness, { name: businessDisplayName.trim() })
-            : t.aboutThisBusiness}
-        </h2>
-        {p.description ? <p className="text-gray-400 mt-2 text-sm leading-relaxed">{p.description}</p> : null}
+      <div className="flex items-start gap-3">
+        {p.logo?.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={p.logo.url}
+            alt={
+              businessDisplayName?.trim()
+                ? `${businessDisplayName.trim()} logo`
+                : 'Business logo'
+            }
+            className="w-12 h-12 shrink-0 rounded-full object-cover"
+            loading="lazy"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold text-white">
+            {businessDisplayName?.trim()
+              ? trFormat(t.aboutBusiness, { name: businessDisplayName.trim() })
+              : t.aboutThisBusiness}
+          </h2>
+          {p.description ? <p className="text-gray-400 mt-2 text-sm leading-relaxed">{p.description}</p> : null}
+        </div>
       </div>
 
       <div className="space-y-3">
