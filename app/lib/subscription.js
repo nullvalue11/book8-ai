@@ -161,16 +161,19 @@ export function getSubscriptionDetails(user, env = null) {
   const subscription = user?.subscription || {};
   const priceId = subscription.stripePriceId || null;
   const tier = env ? getPlanTier(priceId, env) : (priceId ? 'starter' : 'free');
+  const subscribed = isSubscribed(user);
   const trialEnd = subscription.trialEnd || null;
   const trialDaysLeft =
     subscription.status === 'trialing' && trialEnd ? trialDaysRemaining(trialEnd) : null;
 
   return {
-    subscribed: isSubscribed(user),
+    subscribed,
     status: subscription.status || null,
-    planTier: tier,
-    planName: env ? getPlanName(priceId, env) : tier.charAt(0).toUpperCase() + tier.slice(1),
-    features: getPlanFeatures(tier),
+    planTier: subscribed ? tier : 'free',
+    planName: subscribed
+      ? (env ? getPlanName(priceId, env) : tier.charAt(0).toUpperCase() + tier.slice(1))
+      : 'No plan',
+    features: getPlanFeatures(subscribed ? tier : 'free'),
     stripeCustomerId: subscription.stripeCustomerId || null,
     stripeSubscriptionId: subscription.stripeSubscriptionId || null,
     stripeCallMinutesItemId: subscription.stripeCallMinutesItemId || null,
@@ -180,5 +183,5 @@ export function getSubscriptionDetails(user, env = null) {
     trialStart: subscription.trialStart || null,
     trialEnd,
     trialDaysLeft
-  };
+  }
 }

@@ -13,7 +13,8 @@ import { ArrowLeft, Loader2, Globe, ImageIcon } from 'lucide-react'
 import Header from '@/components/Header'
 import PublicBusinessInfoPanel from '@/components/public/PublicBusinessInfoPanel'
 import { getBookingTranslations } from '@/lib/translations'
-import { COUNTRY_OPTIONS, getSubdivisionsForCountry } from '@/lib/region-data'
+import { COUNTRY_OPTIONS } from '@/lib/countries'
+import { getSubdivisionsForCountry } from '@/lib/region-data'
 import { sanitizeBusinessProfileForPublic } from '@/lib/businessProfile'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']

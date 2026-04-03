@@ -20,7 +20,11 @@ export default function UpgradePrompt({
         {feature} requires the {requiredPlan} plan
       </p>
       <p className="mt-2 text-sm text-muted-foreground">
-        You&apos;re on the {currentPlan} plan. Upgrade to unlock this feature.
+        {currentPlan === 'No plan' ? (
+          <>You don&apos;t have an active subscription yet. Choose a plan to unlock this feature.</>
+        ) : (
+          <>You&apos;re on the {currentPlan} plan. Upgrade to unlock this feature.</>
+        )}
       </p>
       <Button asChild className="mt-4 bg-brand-600 hover:bg-brand-700 text-white">
         <Link href="/pricing">Upgrade plan</Link>

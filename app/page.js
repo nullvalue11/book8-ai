@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { signIn, signOut } from "next-auth/react";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
@@ -25,6 +25,7 @@ import PlanFeatureLock from "./components/PlanFeatureLock";
 import { getPlanName, getUiPlanLimits, normalizePlanKey } from "./lib/plan-features";
 import { bookingLanguageBadge } from "./lib/bookingLanguageDisplay";
 import { toast } from "sonner";
+import { SETUP_NEW_BUSINESS_PATH } from "@/lib/setup-entry";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function formatDuration(seconds) {
@@ -192,6 +193,7 @@ function HomeLoading() {
 // Main home content component
 function HomeContent(props) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const forceDashboard = !!props?.forceDashboard;
   const { language, t } = useBookingLanguage();
@@ -206,7 +208,10 @@ function HomeContent(props) {
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [planTier, setPlanTier] = useState('free');
-  const [planName, setPlanName] = useState('Free');
+  const [planName, setPlanName] = useState('No plan');
+  /** BOO-47: after /api/business/register resolves — drive onboarding redirect */
+  const [businessesResolved, setBusinessesResolved] = useState(false);
+  const [hasNoBusiness, setHasNoBusiness] = useState(false);
   const [billingSubscription, setBillingSubscription] = useState(null);
   const [features, setFeatures] = useState({});
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
@@ -348,9 +353,7 @@ function HomeContent(props) {
             localStorage.setItem('book8_user', JSON.stringify(syncData.user));
             setToken(syncData.token);
             setUser(syncData.user);
-            
-            const redirect = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') : null;
-            window.location.replace(redirect || '/dashboard');
+            // BOO-47: Do not hard-navigate here — / onboarding effect routes to /setup or /dashboard after business list loads
           }
         }
       } catch (err) {
@@ -362,6 +365,13 @@ function HomeContent(props) {
       syncOAuthSession();
     }
   }, [appReady, token]);
+
+  useEffect(() => {
+    if (!token) {
+      setBusinessesResolved(false);
+      setHasNoBusiness(false);
+    }
+  }, [token]);
 
   // Show auth section only when Sign In clicked (#auth) or redirect with #auth
   useEffect(() => {
@@ -382,15 +392,31 @@ function HomeContent(props) {
     }
   }, [showAuth, token]);
 
-  // Redirect away from marketing when logged in (or to redirect param if coming from sign-in flow)
+  // BOO-47: Logged-in users on `/` — wait for business list, then setup (no biz) or dashboard
   useEffect(() => {
-    if (appReady && token && typeof window !== 'undefined' && window.location.pathname === '/') {
-      try {
-        const redirect = searchParams.get('redirect');
-        window.location.replace(redirect || '/dashboard');
-      } catch {}
-    }
-  }, [appReady, token, searchParams]);
+    if (!appReady || !token || typeof window === 'undefined') return;
+    if (window.location.pathname !== '/') return;
+    if (!businessesResolved) return;
+    try {
+      const redirect = searchParams.get('redirect');
+      if (hasNoBusiness) {
+        const q = new URLSearchParams();
+        q.set('newBusiness', '1');
+        if (redirect) q.set('redirect', redirect);
+        window.location.replace(`/setup?${q.toString()}`);
+        return;
+      }
+      window.location.replace(redirect || '/dashboard');
+    } catch {}
+  }, [appReady, token, searchParams, businessesResolved, hasNoBusiness]);
+
+  // BOO-47: Direct visits to `/dashboard` with no businesses → setup wizard
+  useEffect(() => {
+    if (!token || !businessesResolved || !hasNoBusiness) return;
+    if (pathname.startsWith('/setup')) return;
+    if (pathname !== '/dashboard' && !forceDashboard) return;
+    router.replace(SETUP_NEW_BUSINESS_PATH);
+  }, [token, businessesResolved, hasNoBusiness, pathname, forceDashboard, router]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchOutlookStatus(); fetchArchivedCount(); checkSubscription(); } }, [token]);
@@ -547,7 +573,7 @@ function HomeContent(props) {
       if (data.ok) {
         setIsSubscribed(data.subscribed);
         setPlanTier(data.planTier || 'free');
-        setPlanName(data.planName || 'Free');
+        setPlanName(data.planName || (data.subscribed ? 'Free' : 'No plan'));
         setFeatures(data.features || {});
         setBillingSubscription(data.subscription || null);
         
@@ -758,8 +784,11 @@ function HomeContent(props) {
     if (!token) return;
     try {
       setPhoneSetupLoading(true);
+      setBusinessesResolved(false);
       const bizRes = await api(`/business/register`, { method: "GET" });
       const businesses = bizRes.businesses || [];
+      setHasNoBusiness(businesses.length === 0);
+      setBusinessesResolved(true);
       if (!businesses.length) {
         setPrimaryBusinessId(null);
         setPrimaryBusinessName(null);
@@ -791,6 +820,8 @@ function HomeContent(props) {
     } catch (err) {
       console.error('[Dashboard] Failed to load phone setup status:', err);
       setPhoneSetup(null);
+      setHasNoBusiness(false);
+      setBusinessesResolved(true);
     } finally {
       setPhoneSetupLoading(false);
     }
@@ -905,7 +936,7 @@ function HomeContent(props) {
     setBookings([]);
     setIsSubscribed(false);
     setPlanTier("free");
-    setPlanName("Free");
+    setPlanName("No plan");
     setFeatures({});
     setSubscriptionChecked(false);
     // Clear NextAuth session and redirect home (otherwise syncOAuthSession on "/" can log us back in)
@@ -1016,6 +1047,10 @@ function HomeContent(props) {
         </div>
       </main>
     );
+  }
+
+  if (token && !businessesResolved && (forceDashboard || pathname === '/')) {
+    return <HomeLoading />;
   }
 
   if (!token && !forceDashboard) {
@@ -1942,7 +1977,11 @@ function HomeContent(props) {
                   {planLimits && planLimits.aiPhoneAgent === false ? (
                     <UpgradePrompt
                       feature="AI phone agent & booking line"
-                      currentPlan={planName || getPlanName(normalizePlanKey(planTier))}
+                      currentPlan={
+                        isSubscribed
+                          ? (planName || getPlanName(normalizePlanKey(planTier)))
+                          : 'No plan'
+                      }
                       requiredPlan="Growth"
                     />
                   ) : (
