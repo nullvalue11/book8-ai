@@ -37,12 +37,14 @@ function formatPhone(phone) {
   const raw = String(phone).trim();
   const digits = raw.replace(/\D/g, "");
   if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
   }
   if (digits.length === 11 && digits.startsWith("1")) {
     return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
   }
-  return raw.startsWith("+") ? raw : `+${digits || raw}`;
+  if (raw.startsWith("+")) return raw;
+  if (digits.length > 0) return `+${digits}`;
+  return raw;
 }
 function formatCallTime(iso) {
   if (!iso) return "—";
@@ -895,7 +897,7 @@ function HomeContent(props) {
 
   if (!appReady) {
     return (
-      <main className="min-h-screen bg-background">
+      <main id="main-content" className="min-h-screen bg-background">
         <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container mx-auto max-w-6xl px-6 py-4 flex items-center justify-between gap-4">
             <div className="h-6 w-24 bg-muted rounded" />
@@ -916,9 +918,8 @@ function HomeContent(props) {
   }
 
   if (!token && !forceDashboard) {
-    const landingDir = language === "ar" ? "rtl" : "ltr";
     return (
-      <main className="min-h-screen bg-[#0A0A0F] text-white" dir={landingDir} lang={language}>
+      <>
         <Header variant="landing" />
         <LandingPage />
 
@@ -1189,12 +1190,12 @@ function HomeContent(props) {
             </div>
           </div>
         </footer>
-      </main>
+      </>
     );
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main id="main-content" className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">

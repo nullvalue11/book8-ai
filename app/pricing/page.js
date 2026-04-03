@@ -56,7 +56,7 @@ function PricingContent() {
         description: h.pricingEnterpriseBlurb,
         icon: Building2,
         popular: false,
-        color: "from-amber-400 to-yellow-300",
+        color: "from-slate-600 to-slate-500",
         trial: false
       }
     ],
@@ -203,7 +203,7 @@ function PricingContent() {
   const isLoggedIn = !!token || (status === "authenticated" && session?.user);
 
   return (
-    <main className="min-h-screen bg-background text-foreground" dir={isRtl ? "rtl" : "ltr"} lang={language}>
+    <main id="main-content" className="min-h-screen bg-background text-foreground" dir={isRtl ? "rtl" : "ltr"} lang={language}>
       <Header />
 
       {isPaywall && isLoggedIn && (
@@ -356,7 +356,7 @@ function PricingContent() {
 
 function LoadingFallback() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main id="main-content" className="min-h-screen bg-background text-foreground">
       <Header />
       <div className="pt-20 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">

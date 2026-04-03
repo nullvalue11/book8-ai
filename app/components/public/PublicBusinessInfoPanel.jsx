@@ -121,7 +121,7 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
         ) : null}
 
         {p.phone ? (
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             <Phone className="w-4 h-4 text-violet-400 shrink-0" aria-hidden />
             <a href={`tel:${sanitizeTel(p.phone)}`} className="text-white hover:text-violet-200">
               {p.phone}
@@ -229,6 +229,14 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
 
   return (
     <aside className="lg:sticky lg:top-4 self-start w-full order-1 lg:order-none">
+      {p.phone ? (
+        <div className="md:hidden mb-3 flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-900/80 px-4 py-3">
+          <Phone className="w-4 h-4 text-violet-400 shrink-0" aria-hidden />
+          <a href={`tel:${sanitizeTel(p.phone)}`} className="text-white text-sm font-medium hover:text-violet-200">
+            {p.phone}
+          </a>
+        </div>
+      ) : null}
       <div className="md:hidden mb-3">
         <button
           type="button"

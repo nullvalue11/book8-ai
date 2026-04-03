@@ -1,7 +1,7 @@
 import "./globals.css";
 import { Providers } from "./components/Providers";
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://book8-ai.vercel.app";
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.book8.io";
 
 export const metadata = {
   metadataBase: new URL(baseUrl),

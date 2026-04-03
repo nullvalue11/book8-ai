@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Phone,
@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import PricingPlanFeatureList from '@/components/PricingPlanFeatureList';
 import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from '@/lib/setup-entry';
 import { useBookingLanguage } from '@/hooks/useBookingLanguage';
-import { getHomepagePricingDisplay } from '@/lib/translations';
+import { getHomepagePricingDisplay, trFormat, bookingLocaleBcp47 } from '@/lib/translations';
 
 function useIntersectionObserver(ref) {
   const [isVisible, setIsVisible] = useState(false);
@@ -51,6 +51,17 @@ export default function LandingPage() {
   const heroVisible = useIntersectionObserver(heroRef);
   const howVisible = useIntersectionObserver(howRef);
   const featuresVisible = useIntersectionObserver(featuresRef);
+
+  const mockSlotTimes = useMemo(() => {
+    const loc = bookingLocaleBcp47(language);
+    return [9, 10, 11, 12, 13, 14, 15, 16].map((hour) =>
+      new Date(2000, 0, 1, hour, 0, 0).toLocaleTimeString(loc, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })
+    );
+  }, [language]);
 
   const howCards = [
     { num: 1, icon: Calendar, title: h.step1Title, desc: h.step1Desc },
@@ -108,7 +119,12 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="font-landing-body" dir={isRtl ? 'rtl' : 'ltr'} lang={language}>
+    <main
+      id="main-content"
+      className="font-landing-body min-h-screen bg-[#0A0A0F] text-white"
+      dir={isRtl ? 'rtl' : 'ltr'}
+      lang={language}
+    >
       <section
         ref={heroRef}
         className="relative min-h-[85vh] flex items-center overflow-hidden"
@@ -373,7 +389,7 @@ export default function LandingPage() {
                 })}
               </div>
               <div className="grid grid-cols-4 gap-2">
-                {['9:00', '10:00', '11:00', '12:00', '1:00', '2:00', '3:00', '4:00'].map((time) => (
+                {mockSlotTimes.map((time) => (
                   <div
                     key={time}
                     className="py-2 rounded-lg border border-[#1e1e2e] text-center text-sm font-medium text-white/70"
@@ -446,6 +462,11 @@ export default function LandingPage() {
                       {tier.cta}
                     </Button>
                   </Link>
+                  {tier.planId === 'starter' || tier.planId === 'enterprise' ? (
+                    <p className="text-xs text-center text-[#94A3B8] mt-3 px-1 leading-snug">
+                      {tier.planId === 'starter' ? h.landingStarterPlanNote : h.landingEnterprisePlanNote}
+                    </p>
+                  ) : null}
                 </div>
               );
             })}
@@ -510,7 +531,23 @@ export default function LandingPage() {
             {h.termsNav}
           </Link>
         </nav>
+        <div className="mx-auto max-w-6xl mt-8 pt-6 border-t border-[#1e1e2e] flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 sm:gap-x-4 text-xs text-[#64748B] text-center">
+          <span>{trFormat(h.footerCopyright, { year: String(new Date().getFullYear()) })}</span>
+          <span className="hidden sm:inline" aria-hidden>
+            ·
+          </span>
+          <a
+            href={`mailto:${h.footerSupportEmail}`}
+            className="text-[#94A3B8] hover:text-[#F8FAFC] transition-colors"
+          >
+            {h.footerSupportLabel}: {h.footerSupportEmail}
+          </a>
+          <span className="hidden sm:inline" aria-hidden>
+            ·
+          </span>
+          <span className="text-[#94A3B8]">{t.poweredBy}</span>
+        </div>
       </footer>
-    </div>
+    </main>
   );
 }

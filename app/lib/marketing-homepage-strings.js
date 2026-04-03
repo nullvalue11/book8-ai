@@ -122,6 +122,11 @@ export const homepageByLocale = {
     landingGetStarted: 'Get started',
     growthTrialHeadline: 'Start your 14-day free trial',
     pricingCallFootnote: 'AI phone agent minutes are metered at $0.10 CAD/min. Usage is tracked automatically.',
+    landingStarterPlanNote: 'Billed monthly after signup. No free trial on Starter.',
+    landingEnterprisePlanNote: 'Custom billing, contracts, and annual options — contact us for details.',
+    footerCopyright: '© {year} 11111221 Canada Inc. All rights reserved.',
+    footerSupportEmail: 'support@book8.io',
+    footerSupportLabel: 'Support',
 
     readyToStop: 'Ready to stop missing calls?',
     startFreeTrialToday: 'Start your free trial today',
@@ -308,6 +313,11 @@ export const homepageByLocale = {
     growthTrialHeadline: 'Commencez votre essai gratuit de 14 jours',
     pricingCallFootnote:
       'Les minutes d’agent téléphonique IA sont facturées à 0,10 $ CAD/min. La consommation est suivie automatiquement.',
+    landingStarterPlanNote: 'Facturation mensuelle après inscription. Pas d’essai gratuit sur Starter.',
+    landingEnterprisePlanNote: 'Facturation personnalisée et options annuelles — contactez-nous.',
+    footerCopyright: '© {year} 11111221 Canada Inc. Tous droits réservés.',
+    footerSupportEmail: 'support@book8.io',
+    footerSupportLabel: 'Assistance',
 
     readyToStop: 'Prêt à ne plus manquer d’appels ?',
     startFreeTrialToday: "Commencez votre essai gratuit aujourd'hui",
@@ -495,6 +505,11 @@ export const homepageByLocale = {
     growthTrialHeadline: 'Comienza tu prueba gratis de 14 días',
     pricingCallFootnote:
       'Los minutos del agente telefónico IA se facturan a 0,10 CAD/min. El uso se contabiliza automáticamente.',
+    landingStarterPlanNote: 'Facturación mensual tras el registro. Sin prueba gratis en Starter.',
+    landingEnterprisePlanNote: 'Facturación y contratos a medida — contáctenos.',
+    footerCopyright: '© {year} 11111221 Canada Inc. Todos los derechos reservados.',
+    footerSupportEmail: 'support@book8.io',
+    footerSupportLabel: 'Soporte',
 
     readyToStop: '¿Listo para dejar de perder llamadas?',
     startFreeTrialToday: 'Comienza tu prueba gratis hoy',
@@ -677,6 +692,11 @@ export const homepageByLocale = {
     growthTrialHeadline: 'ابدأ تجربتك المجانية لمدة 14 يومًا',
     pricingCallFootnote:
       'دقائق وكيل الهاتف الذكي تُقاس بـ 0.10 دولار كندي/الدقيقة. يتم تتبع الاستخدام تلقائيًا.',
+    landingStarterPlanNote: 'فوترة شهرية بعد التسجيل. لا تجربة مجانية على Starter.',
+    landingEnterprisePlanNote: 'فوترة وعقود مخصصة — تواصل معنا.',
+    footerCopyright: '© {year} 11111221 Canada Inc. جميع الحقوق محفوظة.',
+    footerSupportEmail: 'support@book8.io',
+    footerSupportLabel: 'الدعم',
 
     readyToStop: 'هل سئمت من تفويت المكالمات؟',
     startFreeTrialToday: 'ابدأ تجربتك المجانية اليوم',

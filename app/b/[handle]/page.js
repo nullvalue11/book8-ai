@@ -9,6 +9,7 @@ import PublicBusinessInfoPanel from '@/components/public/PublicBusinessInfoPanel
 import LanguageSelector from '@/components/LanguageSelector'
 import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { bookingLocaleBcp47, trFormat } from '@/lib/translations'
+import { businessProfileHasPublicDisplay } from '@/lib/businessProfile'
 
 function toLocalYmd(d) {
   if (!d || !(d instanceof Date) || Number.isNaN(d.getTime())) return ''
@@ -68,6 +69,18 @@ export default function PublicBookingPage({ params }) {
   const pillRailPointerRef = useRef(null)
   const pillClickSuppressedRef = useRef(false)
   const [servicePillScroll, setServicePillScroll] = useState({ moreLeft: false, moreRight: false })
+
+  const hasProfileDisplay = useMemo(
+    () => businessProfile != null && businessProfileHasPublicDisplay(businessProfile),
+    [businessProfile]
+  )
+
+  const bookingFlowStep = useMemo(() => {
+    if (selected) return 4
+    if (date) return 3
+    if (!hasServices || selectedService) return 2
+    return 1
+  }, [selected, date, hasServices, selectedService])
 
   const updateServicePillScroll = useCallback(() => {
     const el = servicesScrollRef.current
@@ -655,7 +668,12 @@ export default function PublicBookingPage({ params }) {
     : { name: t.defaultAppointment, durationMinutes: 30, duration: 30 }
 
   return (
-    <main lang={language} dir={language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-gray-950 text-white dark">
+    <main
+      id="main-content"
+      lang={language}
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+      className="min-h-screen bg-gray-950 text-white dark"
+    >
       {/* Booking page is intentionally always-dark for brand consistency across all embedded contexts */}
       {/* Header */}
       <header className="border-b border-gray-800 px-4 py-4 md:px-6">
@@ -702,18 +720,54 @@ export default function PublicBookingPage({ params }) {
         </div>
       </header>
 
+      <div className="max-w-6xl mx-auto px-4 md:px-6 pt-4">
+        <nav className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-x-5 text-xs text-gray-500" aria-label={t.bookingFlowAria}>
+          {[
+            { n: 1, label: t.service },
+            { n: 2, label: t.date },
+            { n: 3, label: t.time },
+            { n: 4, label: t.yourDetails }
+          ].map(({ n, label }, idx) => (
+            <React.Fragment key={n}>
+              {idx > 0 ? (
+                <span className="hidden sm:inline text-gray-600" aria-hidden>
+                  →
+                </span>
+              ) : null}
+              <span className="inline-flex items-center gap-2">
+                <span
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold shrink-0 ${
+                    bookingFlowStep === n
+                      ? 'bg-violet-600 text-white'
+                      : bookingFlowStep > n
+                        ? 'bg-gray-700 text-gray-300'
+                        : 'bg-gray-800 text-gray-500'
+                  }`}
+                  aria-current={bookingFlowStep === n ? 'step' : undefined}
+                >
+                  {n}
+                </span>
+                <span className={bookingFlowStep === n ? 'text-white font-medium' : ''}>{label}</span>
+              </span>
+            </React.Fragment>
+          ))}
+        </nav>
+      </div>
+
       <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8">
         <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-8">
-          <div className="lg:col-span-3">
-            <PublicBusinessInfoPanel
-              businessProfile={businessProfile}
-              businessDisplayName={ownerName?.trim() || formatHandleAsDisplayName(handle)}
-              businessTimeZone={businessTimezoneForProfile || guestTz}
-              t={t}
-            />
-          </div>
+          {hasProfileDisplay ? (
+            <div className="lg:col-span-3">
+              <PublicBusinessInfoPanel
+                businessProfile={businessProfile}
+                businessDisplayName={ownerName?.trim() || formatHandleAsDisplayName(handle)}
+                businessTimeZone={businessTimezoneForProfile || guestTz}
+                t={t}
+              />
+            </div>
+          ) : null}
           {/* Services, Calendar, Slots */}
-          <div className="lg:col-span-5 space-y-6 order-2">
+          <div className={`space-y-6 order-2 ${hasProfileDisplay ? 'lg:col-span-5' : 'lg:col-span-8'}`}>
             {!servicesLoading && !hasServices && services.length === 0 && (
               <div className="text-center p-6 bg-yellow-950/40 border border-yellow-700/50 rounded-lg">
                 <p className="text-yellow-200 font-medium">
@@ -875,11 +929,20 @@ export default function PublicBookingPage({ params }) {
                       const isPast = dStr < todayStr
                       const isToday = dStr === todayStr
                       const isSelected = dStr === date
+                      const ariaDayLabel = d.toLocaleDateString(bookingLocale, {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })
                       return (
                         <button
                           key={dStr}
+                          type="button"
                           onClick={() => onDateClick(d)}
                           disabled={isPast}
+                          aria-label={ariaDayLabel}
+                          aria-pressed={isSelected}
                           className={`
                             aspect-square rounded-full text-sm font-medium transition-all
                             ${isPast ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-gray-800 cursor-pointer'}
@@ -919,6 +982,7 @@ export default function PublicBookingPage({ params }) {
                           key={slot.start}
                           type="button"
                           onClick={() => handleSlotSelect(slot)}
+                          aria-pressed={isSelected}
                           className={`
                             min-h-[44px] px-3 py-2.5 rounded-lg text-sm font-medium
                             transition-all duration-150
@@ -951,7 +1015,9 @@ export default function PublicBookingPage({ params }) {
                   </label>
                   <Input
                     id="name"
-                    placeholder="John Doe"
+                    name="name"
+                    autoComplete="name"
+                    placeholder={t.placeholderName}
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     className="min-h-[44px] bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
@@ -964,8 +1030,10 @@ export default function PublicBookingPage({ params }) {
                   </label>
                   <Input
                     id="email"
+                    name="email"
                     type="email"
-                    placeholder="john@example.com"
+                    autoComplete="email"
+                    placeholder={t.placeholderEmail}
                     value={form.email}
                     onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                     className="min-h-[44px] bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
@@ -980,7 +1048,9 @@ export default function PublicBookingPage({ params }) {
                   </label>
                   <Input
                     id="phone"
+                    name="tel"
                     type="tel"
+                    autoComplete="tel"
                     placeholder={t.placeholderPhone}
                     value={form.phone}
                     onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}

@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import HeaderLogo from "./HeaderLogo";
-import { Shield, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SETUP_NEW_BUSINESS_PATH } from "@/lib/setup-entry";
 import LanguageSelector from "@/components/LanguageSelector";
 import { useBookingLanguage } from "@/hooks/useBookingLanguage";
 
 export default function Header({ variant }) {
+  const pathname = usePathname();
   const { data: session, status } = useSession();
   const { language, setLanguage, t } = useBookingLanguage();
   const h = t.homepage;
@@ -55,19 +57,21 @@ export default function Header({ variant }) {
           <nav className="hidden md:flex items-center gap-6">
             <Link
               href="/pricing"
+              aria-current={pathname === "/pricing" ? "page" : undefined}
               className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             >
               {h.pricing}
             </Link>
             <Link
               href="/privacy"
-              className={`text-sm transition-colors flex items-center gap-1.5 ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+              aria-current={pathname === "/privacy" ? "page" : undefined}
+              className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             >
-              <Shield className="w-3.5 h-3.5 rtl:scale-x-[-1]" />
               {h.privacy}
             </Link>
             <Link
               href="/terms"
+              aria-current={pathname === "/terms" ? "page" : undefined}
               className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             >
               {h.termsNav}
@@ -145,6 +149,7 @@ export default function Header({ variant }) {
             </div>
             <Link
               href="/pricing"
+              aria-current={pathname === "/pricing" ? "page" : undefined}
               className={`py-3 transition-colors ${isLanding ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -152,13 +157,15 @@ export default function Header({ variant }) {
             </Link>
             <Link
               href="/privacy"
-              className={`py-3 transition-colors flex items-center gap-2 ${isLanding ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
+              aria-current={pathname === "/privacy" ? "page" : undefined}
+              className={`py-3 transition-colors ${isLanding ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
               onClick={() => setMobileMenuOpen(false)}
             >
-              <Shield className="w-4 h-4 rtl:scale-x-[-1]" /> {h.privacy}
+              {h.privacy}
             </Link>
             <Link
               href="/terms"
+              aria-current={pathname === "/terms" ? "page" : undefined}
               className={`py-3 transition-colors ${isLanding ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
               onClick={() => setMobileMenuOpen(false)}
             >
