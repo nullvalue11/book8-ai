@@ -1,5 +1,7 @@
 /** @typedef {typeof translations.en} BookingTranslations */
 
+import { homepageByLocale } from './marketing-homepage-strings'
+
 const translations = {
   en: {
     service: 'Service',
@@ -126,7 +128,8 @@ const translations = {
     lngFrench: 'Français',
     lngSpanish: 'Español',
     lngArabic: 'العربية',
-    lngAria: 'Language'
+    lngAria: 'Language',
+    homepage: homepageByLocale.en
   },
   fr: {
     service: 'Service',
@@ -253,7 +256,8 @@ const translations = {
     lngFrench: 'Français',
     lngSpanish: 'Español',
     lngArabic: 'العربية',
-    lngAria: 'Langue'
+    lngAria: 'Langue',
+    homepage: homepageByLocale.fr
   },
   es: {
     service: 'Servicio',
@@ -380,7 +384,8 @@ const translations = {
     lngFrench: 'Français',
     lngSpanish: 'Español',
     lngArabic: 'العربية',
-    lngAria: 'Idioma'
+    lngAria: 'Idioma',
+    homepage: homepageByLocale.es
   },
   ar: {
     service: 'الخدمة',
@@ -507,11 +512,59 @@ const translations = {
     lngFrench: 'Français',
     lngSpanish: 'Español',
     lngArabic: 'العربية',
-    lngAria: 'اللغة'
+    lngAria: 'اللغة',
+    homepage: homepageByLocale.ar
   }
 }
 
 export const BOOKING_LANG_STORAGE_KEY = 'book8-booking-lang'
+
+/**
+ * @param {import('./marketing-homepage-strings').HomepageStrings} h
+ * @param {"starter"|"growth"|"enterprise"} planId
+ * @returns {{ ack: string | null, features: string[] }}
+ */
+export function getHomepagePricingDisplay(h, planId) {
+  if (planId === 'starter') {
+    return {
+      ack: null,
+      features: [
+        h.unlimitedBookings,
+        h.googleCalendarSync,
+        h.publicBookingPage,
+        h.emailReminders,
+        h.basicAnalytics
+      ]
+    }
+  }
+  if (planId === 'growth') {
+    return {
+      ack: h.includesAllStarter,
+      features: [
+        h.multilingualVoice70,
+        h.aiPhoneAgent,
+        h.outlookGoogleCalendars,
+        h.smsEmailConfirmationsFeature,
+        h.fullAnalytics,
+        h.prioritySupport
+      ]
+    }
+  }
+  if (planId === 'enterprise') {
+    return {
+      ack: h.includesAllGrowth,
+      features: [
+        h.customVoicePerLanguage,
+        h.unlimitedTeamMembers,
+        h.dedicatedAccountManager,
+        h.slaGuarantee,
+        h.apiAccess,
+        h.whiteLabelOptions
+      ]
+    }
+  }
+  return { ack: null, features: [] }
+}
 
 export function bookingLocaleBcp47(lang) {
   const m = { en: 'en-US', fr: 'fr', es: 'es', ar: 'ar' }

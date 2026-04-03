@@ -3,36 +3,45 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import LanguageSelector from "@/components/LanguageSelector";
+import { useBookingLanguage } from "@/hooks/useBookingLanguage";
 
 export default function PrivacyPolicyPage() {
+  const { language, setLanguage, t } = useBookingLanguage();
+  const h = t.homepage;
+  const isRtl = language === "ar";
+
   useEffect(() => {
-    // Scroll to top on page load
     window.scrollTo(0, 0);
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
-      {/* Header */}
+    <div className="min-h-screen bg-[#0a0a0f]" dir={isRtl ? "rtl" : "ltr"} lang={language}>
       <header className="border-b border-white/10 sticky top-0 bg-[#0a0a0f]/95 backdrop-blur-sm z-50">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Home</span>
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors min-w-0"
+          >
+            <ArrowLeft className="w-4 h-4 shrink-0 rtl:rotate-180" />
+            <span className="truncate">{h.privacyBackHome}</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">B8</span>
+          <div className="flex items-center gap-3 shrink-0">
+            <LanguageSelector value={language} onChange={setLanguage} t={t} className="border-white/20 bg-white/5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
+                <span className="text-white text-xs font-bold">B8</span>
+              </div>
+              <span className="text-white font-semibold hidden sm:inline">Book8-AI</span>
             </div>
-            <span className="text-white font-semibold">Book8-AI</span>
           </div>
         </div>
       </header>
 
-      {/* Content */}
       <main className="max-w-4xl mx-auto px-4 py-12">
         <div className="prose prose-invert prose-zinc max-w-none">
-          <h1 className="text-4xl font-bold text-white mb-2">Privacy Policy</h1>
-          <p className="text-zinc-400 text-sm mb-8">Last Updated: March 17, 2026</p>
+          <h1 className="text-4xl font-bold text-white mb-2">{h.privacyTitle}</h1>
+          <p className="text-zinc-400 text-sm mb-8">{h.privacyLastUpdated}</p>
 
           <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8">
             <p className="text-zinc-300 m-0">

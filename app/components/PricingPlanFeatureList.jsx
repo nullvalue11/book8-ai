@@ -7,9 +7,11 @@ import { getPricingFeatureDisplay } from "@/lib/pricing-plan-features";
  * @param {object} props
  * @param {"starter"|"growth"|"enterprise"} props.planId
  * @param {"default"|"landing"} [props.theme] — landing uses dark-page tokens
+ * @param {{ ack: string | null, features: string[] } | null} [props.override] — translated feature lines for marketing locales
  */
-export default function PricingPlanFeatureList({ planId, theme = "default" }) {
-  const { ack, features } = getPricingFeatureDisplay(planId);
+export default function PricingPlanFeatureList({ planId, theme = "default", override = null }) {
+  const fromDefault = getPricingFeatureDisplay(planId);
+  const { ack, features } = override || fromDefault;
   const isLanding = theme === "landing";
 
   const ackCls = isLanding ? "text-xs text-white/45" : "text-xs text-muted-foreground";

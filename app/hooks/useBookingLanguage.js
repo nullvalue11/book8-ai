@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { normalizeBookingLanguage, clientPreferredBookingLanguage } from '@/lib/bookingLanguage'
 import { BOOKING_LANG_STORAGE_KEY, getBookingTranslations } from '@/lib/translations'
 
@@ -19,7 +19,9 @@ export function readInitialBookingLanguage() {
   return normalizeBookingLanguage(fromNav || 'en')
 }
 
-export function useBookingLanguage() {
+const SiteLanguageContext = createContext(null)
+
+export function SiteLanguageProvider({ children }) {
   const [language, setLanguageState] = useState('en')
 
   useEffect(() => {
@@ -43,6 +45,16 @@ export function useBookingLanguage() {
     }
   }, [])
 
-  const t = getBookingTranslations(language)
-  return { language, setLanguage, t }
+  const t = useMemo(() => getBookingTranslations(language), [language])
+  const value = useMemo(() => ({ language, setLanguage, t }), [language, setLanguage, t])
+
+  return <SiteLanguageContext.Provider value={value}>{children}</SiteLanguageContext.Provider>
+}
+
+export function useBookingLanguage() {
+  const ctx = useContext(SiteLanguageContext)
+  if (!ctx) {
+    throw new Error('useBookingLanguage must be used within SiteLanguageProvider')
+  }
+  return ctx
 }

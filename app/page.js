@@ -13,6 +13,7 @@ import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
 import LandingPage from "./(home)/LandingPage";
+import { useBookingLanguage } from "@/hooks/useBookingLanguage";
 import DataPrivacy from "./(home)/DataPrivacy";
 import SocialMediaLinks from "./components/SocialMediaLinks";
 import { useTheme } from "next-themes";
@@ -174,6 +175,7 @@ function HomeContent(props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const forceDashboard = !!props?.forceDashboard;
+  const { language } = useBookingLanguage();
   const { theme, setTheme, systemTheme } = useTheme();
   const resolved = theme === "system" ? systemTheme : theme;
 
@@ -914,8 +916,9 @@ function HomeContent(props) {
   }
 
   if (!token && !forceDashboard) {
+    const landingDir = language === "ar" ? "rtl" : "ltr";
     return (
-      <main className="min-h-screen bg-[#0A0A0F] text-white">
+      <main className="min-h-screen bg-[#0A0A0F] text-white" dir={landingDir} lang={language}>
         <Header variant="landing" />
         <LandingPage />
 
