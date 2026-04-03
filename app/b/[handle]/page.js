@@ -61,6 +61,9 @@ export default function PublicBookingPage({ params }) {
   const [publicBookingPhone, setPublicBookingPhone] = useState(null)
   const [businessProfile, setBusinessProfile] = useState(null)
   const [businessTimezoneForProfile, setBusinessTimezoneForProfile] = useState(null)
+  const [providers, setProviders] = useState([])
+  /** null = any team member */
+  const [selectedProviderId, setSelectedProviderId] = useState(null)
   const slotsFetchSeq = useRef(0)
   const bookingFormRef = useRef(null)
   /** Consecutive auto day-advances when initial dates have no slots (max 7). */
@@ -75,12 +78,45 @@ export default function PublicBookingPage({ params }) {
     [businessProfile]
   )
 
-  const bookingFlowStep = useMemo(() => {
+  const baseFlowStep = useMemo(() => {
     if (selected) return 4
     if (date) return 3
     if (!hasServices || selectedService) return 2
     return 1
   }, [selected, date, hasServices, selectedService])
+
+  const bookingFlowStep = useMemo(() => {
+    if (providers.length === 0) return baseFlowStep
+    return baseFlowStep === 1 ? 1 : baseFlowStep + 1
+  }, [providers.length, baseFlowStep])
+
+  const flowSteps = useMemo(() => {
+    if (providers.length > 0) {
+      return [
+        { n: 1, label: t.service },
+        { n: 2, label: t.bookingFlowStaff },
+        { n: 3, label: t.date },
+        { n: 4, label: t.time },
+        { n: 5, label: t.yourDetails }
+      ]
+    }
+    return [
+      { n: 1, label: t.service },
+      { n: 2, label: t.date },
+      { n: 3, label: t.time },
+      { n: 4, label: t.yourDetails }
+    ]
+  }, [providers.length, t])
+
+  const visibleServices = useMemo(() => {
+    if (!hasServices || services.length === 0) return services
+    if (selectedProviderId == null) return services
+    const p = providers.find((pr) => pr.id === selectedProviderId)
+    if (!p) return services
+    const ids = p.serviceIds || []
+    if (!ids.length) return services
+    return services.filter((s) => ids.includes(String(s.serviceId || s.id || '')))
+  }, [hasServices, services, providers, selectedProviderId])
 
   const updateServicePillScroll = useCallback(() => {
     const el = servicesScrollRef.current
@@ -155,7 +191,7 @@ export default function PublicBookingPage({ params }) {
   useLayoutEffect(() => {
     if (!hasServices || servicesLoading) return
     updateServicePillScroll()
-  }, [hasServices, servicesLoading, services, selectedService, updateServicePillScroll])
+  }, [hasServices, servicesLoading, services, visibleServices, selectedService, updateServicePillScroll])
 
   useEffect(() => {
     const el = servicesScrollRef.current
@@ -210,6 +246,9 @@ export default function PublicBookingPage({ params }) {
           setBusinessProfile(data.businessProfile && typeof data.businessProfile === 'object' ? data.businessProfile : null)
           setBusinessTimezoneForProfile(data.businessTimezone || null)
         }
+        if (!cancelled && res.ok) {
+          setProviders(Array.isArray(data.providers) ? data.providers : [])
+        }
         if (!cancelled && res.ok && Array.isArray(data?.services) && data.services.length > 0) {
           const seen = new Set()
           const deduped = data.services.filter((s) => {
@@ -243,6 +282,20 @@ export default function PublicBookingPage({ params }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- omit selectedService to avoid loop
   }, [services])
 
+  // Keep selected service in sync when provider filter narrows the list
+  useEffect(() => {
+    if (!hasServices || visibleServices.length === 0) return
+    const sid = (s) => String(s?.serviceId || s?.id || '')
+    const curId = selectedService ? sid(selectedService) : ''
+    const ok =
+      curId &&
+      visibleServices.some(
+        (s) => sid(s) === curId || (selectedService?.name && s.name === selectedService.name)
+      )
+    if (!ok) setSelectedService(visibleServices[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional when filter list changes
+  }, [hasServices, visibleServices, providers, selectedProviderId])
+
   // Initialize date to today
   useEffect(() => {
     const now = new Date()
@@ -268,7 +321,10 @@ export default function PublicBookingPage({ params }) {
       setLoading(true)
       setError('')
       setSelected(null)
-      const url = `/api/public/availability?handle=${encodeURIComponent(handle)}&date=${date}&tz=${encodeURIComponent(guestTz)}&duration=${duration}`
+      let url = `/api/public/availability?handle=${encodeURIComponent(handle)}&date=${date}&tz=${encodeURIComponent(guestTz)}&duration=${duration}`
+      if (selectedProviderId) {
+        url += `&providerId=${encodeURIComponent(selectedProviderId)}`
+      }
       let res
       try {
         res = await fetch(url)
@@ -341,7 +397,7 @@ export default function PublicBookingPage({ params }) {
         setLoading(false)
       }
     }
-  }, [handle, date, guestTz, hasServices, selectedService, t])
+  }, [handle, date, guestTz, hasServices, selectedService, selectedProviderId, t])
 
   const resetBookingFlow = useCallback(() => {
     setState('form')
@@ -356,6 +412,7 @@ export default function PublicBookingPage({ params }) {
     setDate(toLocalYmd(now))
     setSlots([])
     if (services.length > 0) setSelectedService(services[0])
+    setSelectedProviderId(null)
   }, [services])
 
   // Fetch slots when date, tz, and service are ready
@@ -411,6 +468,10 @@ export default function PublicBookingPage({ params }) {
         return
       }
 
+      const provName =
+        selectedProviderId && providers.length
+          ? providers.find((x) => x.id === selectedProviderId)?.name?.trim() || ''
+          : ''
       const res = await fetch(`/api/public/book?handle=${encodeURIComponent(handle)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -423,7 +484,10 @@ export default function PublicBookingPage({ params }) {
           end: selected.end,
           guestTimezone: guestTz,
           serviceId: selectedService?.serviceId || selectedService?.id,
-          language
+          language,
+          ...(selectedProviderId
+            ? { providerId: selectedProviderId, providerName: provName || 'Provider' }
+            : {})
         })
       })
 
@@ -599,6 +663,14 @@ export default function PublicBookingPage({ params }) {
                 {selectedService.name} • {selected && formatTime(selected.start)}
               </p>
             )}
+            {selectedProviderId &&
+            providers.find((x) => x.id === selectedProviderId)?.name?.trim() ? (
+              <p className="text-sm text-violet-200/90">
+                {trFormat(t.upcomingBookingWithProvider, {
+                  name: providers.find((x) => x.id === selectedProviderId).name.trim()
+                })}
+              </p>
+            ) : null}
             {selected && (
               <p className="text-sm text-gray-400">
                 {formatDate(selected.start)}
@@ -733,12 +805,7 @@ export default function PublicBookingPage({ params }) {
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 pt-4">
         <nav className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-x-5 text-xs text-gray-500" aria-label={t.bookingFlowAria}>
-          {[
-            { n: 1, label: t.service },
-            { n: 2, label: t.date },
-            { n: 3, label: t.time },
-            { n: 4, label: t.yourDetails }
-          ].map(({ n, label }, idx) => (
+          {flowSteps.map(({ n, label }, idx) => (
             <React.Fragment key={n}>
               {idx > 0 ? (
                 <span className="hidden sm:inline text-gray-600" aria-hidden>
@@ -858,7 +925,7 @@ export default function PublicBookingPage({ params }) {
                       ].join(' ')}
                     >
                       <div className="flex w-max gap-2 pb-2 pt-0.5">
-                        {services.map((svc) => {
+                        {visibleServices.map((svc) => {
                           const isSelected =
                             (selectedService?.serviceId && selectedService.serviceId === svc.serviceId) ||
                             (selectedService?.id && selectedService.id === svc.id) ||
@@ -899,6 +966,66 @@ export default function PublicBookingPage({ params }) {
                     </div>
                   </div>
                 )}
+              </section>
+            )}
+
+            {providers.length > 0 && !servicesLoading && (
+              <section className={language === 'ar' ? 'rtl:text-right' : ''}>
+                <p className="text-xs uppercase tracking-wide text-gray-400 mb-3">{t.bookingFlowStaff}</p>
+                <div
+                  className={[
+                    'flex gap-2 overflow-x-auto pb-2 -mx-1 px-1',
+                    'scrollbar-hide scroll-smooth touch-pan-x [overscroll-behavior-x:contain]'
+                  ].join(' ')}
+                  dir="ltr"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedProviderId(null)
+                      setSelected(null)
+                    }}
+                    className={[
+                      'snap-start shrink-0 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-150',
+                      selectedProviderId == null
+                        ? 'bg-violet-600 text-white border-2 border-violet-400'
+                        : 'bg-gray-800 text-gray-300 border border-gray-600 hover:border-gray-400'
+                    ].join(' ')}
+                  >
+                    {t.providerAnyAvailable}
+                  </button>
+                  {providers.map((p) => {
+                    const sel = selectedProviderId === p.id
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedProviderId(p.id)
+                          setSelected(null)
+                        }}
+                        className={[
+                          'snap-start shrink-0 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-150',
+                          'inline-flex items-center gap-2 max-w-[220px]',
+                          sel
+                            ? 'bg-violet-600 text-white border-2 border-violet-400'
+                            : 'bg-gray-800 text-gray-300 border border-gray-600 hover:border-gray-400'
+                        ].join(' ')}
+                      >
+                        {p.avatar?.url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={p.avatar.url}
+                            alt=""
+                            className="w-7 h-7 rounded-full object-cover shrink-0"
+                            loading="lazy"
+                          />
+                        ) : null}
+                        <span className="truncate">{p.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </section>
             )}
 

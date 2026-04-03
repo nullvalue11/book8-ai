@@ -99,6 +99,49 @@ function isSlotBusy(slotStart, slotEnd, busySlots) {
   return false
 }
 
+function timeToMinutes(t) {
+  const [h, m] = String(t || '0:0').split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}
+
+/** Keep slots fully inside one of the provider's blocks for this calendar date (hostTz). */
+function filterSlotsByProviderWorkingHours(slots, dateYmd, hostTz, weeklyHours, _durationMin) {
+  if (!weeklyHours || typeof weeklyHours !== 'object') return slots
+  const noonUtc = zonedTimeToUtc(`${dateYmd}T12:00:00`, hostTz)
+  const abbrev = formatInTimeZone(noonUtc, hostTz, 'EEE', { locale: enUS }).toLowerCase().replace(/\./g, '')
+  const short = abbrev.slice(0, 3)
+  const mapShortToFull = {
+    sun: 'sunday',
+    mon: 'monday',
+    tue: 'tuesday',
+    wed: 'wednesday',
+    thu: 'thursday',
+    fri: 'friday',
+    sat: 'saturday'
+  }
+  const fullDay = mapShortToFull[short]
+  if (!fullDay) return slots
+  const daySegs = weeklyHours[fullDay]
+  if (!Array.isArray(daySegs) || daySegs.length === 0) return []
+
+  return slots.filter((slot) => {
+    const slotStart = new Date(slot.start)
+    const slotEnd = new Date(slot.end)
+    const startLabel = formatInTimeZone(slotStart, hostTz, 'HH:mm')
+    const endLabel = formatInTimeZone(slotEnd, hostTz, 'HH:mm')
+    const sm = timeToMinutes(startLabel)
+    const em = timeToMinutes(endLabel)
+    for (const block of daySegs) {
+      if (!block?.start || !block?.end) continue
+      const bm = timeToMinutes(block.start)
+      let bme = timeToMinutes(block.end)
+      if (String(block.end) === '23:59') bme = 24 * 60
+      if (sm >= bm && em <= bme) return true
+    }
+    return false
+  })
+}
+
 export async function GET(request) {
   try {
     const url = new URL(request.url)
@@ -107,6 +150,7 @@ export async function GET(request) {
     const guestTz = url.searchParams.get('tz') || 'UTC'
     const duration = parseInt(url.searchParams.get('duration') || '0')
     const eventSlug = url.searchParams.get('eventSlug')
+    const providerId = url.searchParams.get('providerId')
 
     if (!handle) {
       return NextResponse.json(
@@ -394,11 +438,27 @@ export async function GET(request) {
     }
 
     // Filter out busy slots
-    const availableSlots = slots.filter(slot => {
+    let availableSlots = slots.filter(slot => {
       const slotStart = new Date(slot.start)
       const slotEnd = new Date(slot.end)
       return !isSlotBusy(slotStart, slotEnd, freeBusyResult.busy)
     })
+
+    if (business && providerId) {
+      const provList = business.providers || []
+      const prov = provList.find(
+        (p) => p && p.active !== false && String(p.id) === String(providerId)
+      )
+      if (prov?.weeklyHours && typeof prov.weeklyHours === 'object') {
+        availableSlots = filterSlotsByProviderWorkingHours(
+          availableSlots,
+          date,
+          hostTz,
+          prov.weeklyHours,
+          durationMin
+        )
+      }
+    }
 
     return NextResponse.json({
       ok: true,

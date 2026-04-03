@@ -14,6 +14,7 @@ import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
 import LandingPage from "./(home)/LandingPage";
 import { useBookingLanguage } from "@/hooks/useBookingLanguage";
+import { trFormat } from "@/lib/translations";
 import DataPrivacy from "./(home)/DataPrivacy";
 import SocialMediaLinks from "./components/SocialMediaLinks";
 import { useTheme } from "next-themes";
@@ -1497,6 +1498,11 @@ function HomeContent(props) {
                         booking.language != null && String(booking.language).trim() !== ""
                           ? bookingLanguageBadge(booking.language)
                           : null;
+                      const providerName =
+                        booking.providerName ||
+                        booking.metadata?.providerName ||
+                        (booking.provider && typeof booking.provider === "object" && booking.provider.name) ||
+                        "";
                       return (
                         <div key={booking.id || booking._id || i} className="py-3 first:pt-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -1516,7 +1522,13 @@ function HomeContent(props) {
                             ) : null}
                           </div>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
-                            <span>{serviceName}{durationMin ? ` (${durationMin} min)` : ""}</span>
+                            <span>
+                              {serviceName}
+                              {durationMin ? ` (${durationMin} min)` : ""}
+                              {String(providerName).trim()
+                                ? ` ${trFormat(t.upcomingBookingWithProvider, { name: String(providerName).trim() })}`
+                                : ""}
+                            </span>
                             {phone ? (
                               <span className="inline-flex items-center gap-1">
                                 <Phone className="w-3.5 h-3.5 shrink-0 opacity-70" aria-hidden />

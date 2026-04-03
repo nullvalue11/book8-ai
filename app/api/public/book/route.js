@@ -45,8 +45,19 @@ export async function POST(request) {
     const handle = url.searchParams.get('handle')
     const eventSlug = url.searchParams.get('eventSlug')
     const body = await request.json()
-    const { name, email, phone, notes, start, end, guestTimezone, serviceId, language: bodyLanguage } =
-      body
+    const {
+      name,
+      email,
+      phone,
+      notes,
+      start,
+      end,
+      guestTimezone,
+      serviceId,
+      language: bodyLanguage,
+      providerId: bodyProviderId,
+      providerName: bodyProviderName
+    } = body
     const language = resolveBookingLanguage(request, bodyLanguage)
 
     if (!handle) {
@@ -161,7 +172,9 @@ export async function POST(request) {
             customer,
             notes: notes || '',
             source: 'web',
-            language
+            language,
+            ...(bodyProviderId ? { providerId: String(bodyProviderId) } : {}),
+            ...(bodyProviderName ? { providerName: String(bodyProviderName).slice(0, 200) } : {})
           }
         }
 
@@ -287,6 +300,8 @@ export async function POST(request) {
       timeZone: owner.scheduling.timeZone || 'UTC',
       notes: notes || '',
       language: language || 'en',
+      providerId: bodyProviderId ? String(bodyProviderId) : null,
+      providerName: bodyProviderName ? String(bodyProviderName).slice(0, 200) : null,
       status: 'confirmed',
       rescheduleCount: 0,
       rescheduleHistory: [],
