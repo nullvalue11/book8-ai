@@ -259,21 +259,48 @@ export async function GET(request) {
     let settings = owner.scheduling || {}
     const eventSettings = eventType?.scheduling || {}
 
-    // For businesses: try to get schedule from core-api (services + weekly hours)
+    // For businesses: weekly hours from core-api, else Mongo localSchedule (BOO-49 pending sync)
     if (business && env.CORE_API_BASE_URL) {
+      const dayMap = {
+        sunday: 'sun', sun: 'sun', 0: 'sun',
+        monday: 'mon', mon: 'mon', 1: 'mon',
+        tuesday: 'tue', tue: 'tue', 2: 'tue',
+        wednesday: 'wed', wed: 'wed', 3: 'wed',
+        thursday: 'thu', thu: 'thu', 4: 'thu',
+        friday: 'fri', fri: 'fri', 5: 'fri',
+        saturday: 'sat', sat: 'sat', 6: 'sat'
+      }
+      const rawToWorkingHours = (raw) => {
+        if (!raw || typeof raw !== 'object' || !Object.keys(raw).length) return null
+        const workingHours = {}
+        for (const [k, v] of Object.entries(raw)) {
+          const canon = dayMap[String(k).toLowerCase()] || k.toLowerCase().slice(0, 3)
+          if (Array.isArray(v) && v.length) {
+            workingHours[canon] = v
+          } else if (v && typeof v === 'object' && (v.enabled === true || v.enabled === undefined) && v.start && v.end) {
+            workingHours[canon] = [{ start: v.start, end: v.end }]
+          }
+        }
+        return Object.keys(workingHours).length ? workingHours : null
+      }
+
+      let mergedHours = false
       try {
         const baseUrl = (env.CORE_API_BASE_URL || '').replace(/\/$/, '')
         const apiKey = env.BOOK8_CORE_API_KEY || ''
+        const internalSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
         const scheduleRes = await fetch(
           `${baseUrl}/api/businesses/${business.businessId}/schedule`,
           {
-            headers: { ...(apiKey && { 'x-book8-api-key': apiKey }) },
+            headers: {
+              ...(apiKey && { 'x-book8-api-key': apiKey }),
+              ...(internalSecret && { 'x-book8-internal-secret': internalSecret })
+            },
             cache: 'no-store'
           }
         )
         if (scheduleRes.ok) {
           const scheduleData = await scheduleRes.json()
-          // Core-api uses weeklySchedule.weeklyHours; fallbacks for other formats
           const raw =
             scheduleData?.weeklySchedule?.weeklyHours ||
             scheduleData?.weeklyHours ||
@@ -281,38 +308,29 @@ export async function GET(request) {
             scheduleData?.schedule ||
             scheduleData?.workingHours ||
             scheduleData
-          if (raw && typeof raw === 'object' && Object.keys(raw).length) {
-            // Map full day names (core-api: "monday") and abbreviations to canonical
-            const dayMap = {
-              sunday: 'sun', sun: 'sun', 0: 'sun',
-              monday: 'mon', mon: 'mon', 1: 'mon',
-              tuesday: 'tue', tue: 'tue', 2: 'tue',
-              wednesday: 'wed', wed: 'wed', 3: 'wed',
-              thursday: 'thu', thu: 'thu', 4: 'thu',
-              friday: 'fri', fri: 'fri', 5: 'fri',
-              saturday: 'sat', sat: 'sat', 6: 'sat'
+          const workingHours = rawToWorkingHours(raw)
+          if (workingHours) {
+            settings = {
+              ...settings,
+              workingHours,
+              timeZone: scheduleData?.schedule?.timezone || scheduleData?.timezone || settings.timeZone || 'UTC'
             }
-            const workingHours = {}
-            for (const [k, v] of Object.entries(raw)) {
-              const canon = dayMap[String(k).toLowerCase()] || k.toLowerCase().slice(0, 3)
-              if (Array.isArray(v) && v.length) {
-                workingHours[canon] = v
-              } else if (v && typeof v === 'object' && (v.enabled === true || v.enabled === undefined) && v.start && v.end) {
-                // Format: { enabled: true, start: "09:00", end: "17:00" }
-                workingHours[canon] = [{ start: v.start, end: v.end }]
-              }
-            }
-            if (Object.keys(workingHours).length) {
-              settings = {
-                ...settings,
-                workingHours,
-                timeZone: scheduleData?.schedule?.timezone || scheduleData?.timezone || settings.timeZone || 'UTC'
-              }
-            }
+            mergedHours = true
           }
         }
       } catch (e) {
         if (env.DEBUG_LOGS) console.log('[availability] core-api schedule fetch failed:', e?.message)
+      }
+
+      if (!mergedHours && business.localSchedule?.weeklyHours) {
+        const workingHours = rawToWorkingHours(business.localSchedule.weeklyHours)
+        if (workingHours) {
+          settings = {
+            ...settings,
+            workingHours,
+            timeZone: business.localSchedule.timezone || settings.timeZone || 'UTC'
+          }
+        }
       }
     }
 
