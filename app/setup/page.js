@@ -478,7 +478,7 @@ function WizardContent() {
     subscriptionPlan: null
   })
 
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [businesses, setBusinesses] = useState([])
@@ -545,11 +545,12 @@ function WizardContent() {
   const step5AtServiceLimit =
     step5MaxServices !== -1 && step5Rows.length >= step5MaxServices
 
-  // Auth token
+  // Auth token — if we have a session, show loading until loadInitialState finishes (avoid empty wizard flash)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const t = localStorage.getItem('book8_token')
       setToken(t)
+      if (t) setLoading(true)
       setBookingHost(window.location.host || 'book8.io')
     }
     setAppReady(true)
@@ -569,7 +570,10 @@ function WizardContent() {
 
   // Load existing state for returning users
   const loadInitialState = useCallback(async () => {
-    if (!token) return
+    if (!token) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError('')
     try {
@@ -577,7 +581,12 @@ function WizardContent() {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store'
       })
-      const bizData = await bizRes.json()
+      let bizData = {}
+      try {
+        bizData = await bizRes.json()
+      } catch {
+        throw new Error('Invalid response while loading your account')
+      }
       if (!bizRes.ok || !bizData.ok) {
         throw new Error(bizData.error || 'Failed to load businesses')
       }
@@ -680,12 +689,18 @@ function WizardContent() {
         if (planActive) step = 3
         if (calendarConnected || calendarProvider) step = 4
 
-        // Check if we have phone setup and schedule
-        const setupRes = await fetch(
-          `/api/business/phone-setup?businessId=${encodeURIComponent(primary.businessId)}`,
-          { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
-        )
-        const setupData = await setupRes.json()
+        // Check if we have phone setup and schedule (isolate failures — slow core must not brick onboarding)
+        let setupRes = { ok: false }
+        let setupData = {}
+        try {
+          setupRes = await fetch(
+            `/api/business/phone-setup?businessId=${encodeURIComponent(primary.businessId)}`,
+            { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
+          )
+          setupData = await setupRes.json().catch(() => ({}))
+        } catch (e) {
+          console.warn('[setup] phone-setup fetch failed', e?.message || e)
+        }
         let hasAssignedLine = false
         if (setupRes.ok && setupData.ok && setupData.assignedTwilioNumber) {
           hasAssignedLine = true
@@ -697,13 +712,20 @@ function WizardContent() {
             bookingHandle: primary.handle
           }))
         } else if (step === 4) {
-          const schedRes = await fetch(`/api/business/${primary.businessId}/schedule`, {
-            headers: { Authorization: `Bearer ${token}` },
-            cache: 'no-store'
-          })
-          const schedData = await schedRes.json()
-          if (schedRes.ok && schedData.ok && schedData.schedule?.weeklyHours) {
-            step = 5
+          try {
+            const schedRes = await fetch(
+              `/api/business/${encodeURIComponent(primary.businessId)}/schedule`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+                cache: 'no-store'
+              }
+            )
+            const schedData = await schedRes.json().catch(() => ({}))
+            if (schedRes.ok && schedData.ok && schedData.schedule?.weeklyHours) {
+              step = 5
+            }
+          } catch (e) {
+            console.warn('[setup] schedule fetch failed', e?.message || e)
           }
         }
 
@@ -767,17 +789,21 @@ function WizardContent() {
       }
 
       // Load plans for step 2
-      const plansRes = await fetch('/api/billing/plans', {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store'
-      })
-      const plansData = await plansRes.json()
-      if (plansRes.ok && plansData.plans) {
-        setPlanPriceIds({
-          starter: plansData.plans.starter ?? null,
-          growth: plansData.plans.growth ?? null,
-          enterprise: plansData.plans.enterprise ?? null
+      try {
+        const plansRes = await fetch('/api/billing/plans', {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store'
         })
+        const plansData = await plansRes.json().catch(() => ({}))
+        if (plansRes.ok && plansData.plans) {
+          setPlanPriceIds({
+            starter: plansData.plans.starter ?? null,
+            growth: plansData.plans.growth ?? null,
+            enterprise: plansData.plans.enterprise ?? null
+          })
+        }
+      } catch (e) {
+        console.warn('[setup] billing/plans fetch failed', e?.message || e)
       }
     } catch (err) {
       console.error('[setup] Load error', err)

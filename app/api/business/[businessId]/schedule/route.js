@@ -1,7 +1,7 @@
 /**
  * Proxy to core-api schedule API.
- * BOO-49: Retries on 404/503 (core tenant lag after n8n) + Mongo fallback so onboarding can save hours.
- * GET/PUT /api/business/[businessId]/schedule
+ * BOO-49: Retries + Mongo fallback when core tenant lags.
+ * Performance: GET uses tight timeouts + few attempts so /setup does not spin for 30–60s on slow core.
  */
 
 import { NextResponse } from 'next/server'
@@ -22,6 +22,18 @@ async function connect() {
     db = client.db(env.DB_NAME)
   }
   return db
+}
+
+/** Next.js 15+ may pass `params` as a Promise */
+async function resolveBusinessId(rawParams) {
+  const p = rawParams instanceof Promise ? await rawParams : rawParams
+  const id = p?.businessId
+  if (id == null || typeof id !== 'string' || !String(id).trim()) return null
+  try {
+    return decodeURIComponent(String(id).trim())
+  } catch {
+    return String(id).trim()
+  }
 }
 
 async function verifyAuthAndOwnership(request, database, businessId) {
@@ -59,49 +71,81 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** Core may return 404 until tenant provisioning finishes (n8n / async). */
+async function fetchCoreJson(url, init, timeoutMs) {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { ...init, signal: ctrl.signal, cache: 'no-store' })
+    const data = await res.json().catch(() => ({}))
+    return { res, data }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 const RETRIABLE_STATUS = new Set([404, 408, 502, 503, 504])
-const MAX_CORE_ATTEMPTS = 10
-const INITIAL_BACKOFF_MS = 400
+
+/** Short reads for dashboard/setup — avoids multi-minute hangs */
+const GET_TIMEOUT_MS = 7000
+const GET_MAX_ATTEMPTS = 2
+const GET_BACKOFF_MS = 350
+
+/** Writes can wait a bit longer for tenant rollout */
+const PUT_TIMEOUT_MS = 12000
+const PUT_MAX_ATTEMPTS = 6
+const PUT_INITIAL_BACKOFF_MS = 400
 
 async function getScheduleFromCoreWithRetry(baseUrl, businessId, headers) {
+  const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/schedule`
   let lastRes = null
   let lastData = null
-  const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/schedule`
-  for (let attempt = 0; attempt < MAX_CORE_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < GET_MAX_ATTEMPTS; attempt++) {
     if (attempt > 0) {
-      const delay = Math.min(INITIAL_BACKOFF_MS * 2 ** (attempt - 1), 5000)
-      await sleep(delay)
+      await sleep(GET_BACKOFF_MS)
     }
-    lastRes = await fetch(url, {
-      method: 'GET',
-      headers,
-      cache: 'no-store'
-    })
-    lastData = await lastRes.json().catch(() => ({}))
-    if (lastRes.ok) return { ok: true, res: lastRes, data: lastData }
-    if (!RETRIABLE_STATUS.has(lastRes.status)) break
+    try {
+      const { res, data } = await fetchCoreJson(url, { method: 'GET', headers }, GET_TIMEOUT_MS)
+      lastRes = res
+      lastData = data
+      if (res.ok) return { ok: true, res, data }
+      if (!RETRIABLE_STATUS.has(res.status)) break
+    } catch (e) {
+      lastRes = { status: 503, ok: false }
+      lastData = { error: e?.name === 'AbortError' ? 'Core timeout' : String(e?.message || e) }
+      if (attempt + 1 >= GET_MAX_ATTEMPTS) break
+    }
   }
   return { ok: false, res: lastRes, data: lastData }
 }
 
 async function putScheduleToCoreWithRetry(baseUrl, businessId, headers, body) {
+  const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/schedule`
   let lastRes = null
   let lastData = null
-  const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/schedule`
-  for (let attempt = 0; attempt < MAX_CORE_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < PUT_MAX_ATTEMPTS; attempt++) {
     if (attempt > 0) {
-      const delay = Math.min(INITIAL_BACKOFF_MS * 2 ** (attempt - 1), 5000)
+      const delay = Math.min(PUT_INITIAL_BACKOFF_MS * 2 ** (attempt - 1), 5000)
       await sleep(delay)
     }
-    lastRes = await fetch(url, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(body)
-    })
-    lastData = await lastRes.json().catch(() => ({}))
-    if (lastRes.ok) return { ok: true, res: lastRes, data: lastData }
-    if (!RETRIABLE_STATUS.has(lastRes.status)) break
+    try {
+      const { res, data } = await fetchCoreJson(
+        url,
+        {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(body)
+        },
+        PUT_TIMEOUT_MS
+      )
+      lastRes = res
+      lastData = data
+      if (res.ok) return { ok: true, res, data }
+      if (!RETRIABLE_STATUS.has(res.status)) break
+    } catch (e) {
+      lastRes = { status: 503, ok: false }
+      lastData = { error: e?.name === 'AbortError' ? 'Core timeout' : String(e?.message || e) }
+      if (attempt + 1 >= PUT_MAX_ATTEMPTS) break
+    }
   }
   return { ok: false, res: lastRes, data: lastData }
 }
@@ -112,10 +156,14 @@ function normalizeScheduleBody(body) {
   return { timezone, weeklyHours }
 }
 
-export async function GET(request, { params }) {
+export async function GET(request, segmentCtx) {
   try {
+    const businessId = await resolveBusinessId(segmentCtx.params)
+    if (!businessId) {
+      return NextResponse.json({ ok: false, error: 'businessId required' }, { status: 400 })
+    }
+
     const database = await connect()
-    const { businessId } = params
     const authResult = await verifyAuthAndOwnership(request, database, businessId)
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
@@ -146,7 +194,7 @@ export async function GET(request, { params }) {
       coreResult.data && typeof coreResult.data === 'object'
         ? { ...coreResult.data, ok: false }
         : { ok: false, error: 'Core API error' },
-      { status: coreResult.res?.status || 502 }
+      { status: coreResult.res?.status && coreResult.res.status >= 400 ? coreResult.res.status : 502 }
     )
   } catch (e) {
     console.error('[business/schedule] GET error', e)
@@ -154,10 +202,14 @@ export async function GET(request, { params }) {
   }
 }
 
-export async function PUT(request, { params }) {
+export async function PUT(request, segmentCtx) {
   try {
+    const businessId = await resolveBusinessId(segmentCtx.params)
+    if (!businessId) {
+      return NextResponse.json({ ok: false, error: 'businessId required' }, { status: 400 })
+    }
+
     const database = await connect()
-    const { businessId } = params
     const authResult = await verifyAuthAndOwnership(request, database, businessId)
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
