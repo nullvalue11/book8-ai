@@ -15,6 +15,7 @@ import {
 } from '@/lib/plan-features'
 import { sanitizeBusinessProfileForPublic } from '@/lib/businessProfile'
 import { sanitizeProvidersForPublic } from '@/lib/staff-providers'
+import { sanitizeNoShowForPublic } from '@/lib/no-show-protection'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -78,6 +79,7 @@ export async function GET(request) {
 
     const businessProfile = sanitizeBusinessProfileForPublic(business.businessProfile)
     const providers = sanitizeProvidersForPublic(business.providers || [])
+    const noShowProtection = sanitizeNoShowForPublic(business)
 
     return NextResponse.json({
       ok: true,
@@ -89,6 +91,7 @@ export async function GET(request) {
       businessTimezone: business.timezone || null,
       businessProfile,
       providers,
+      noShowProtection,
       plan,
       multilingual,
       bookingPhone: showPhoneBookingChannel ? bookingPhone : null

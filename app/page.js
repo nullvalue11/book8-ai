@@ -79,6 +79,22 @@ function callLanguageDisplayLabel(code) {
   return CALL_LANGUAGE_LABELS[key] || String(code).toUpperCase();
 }
 
+/** BOO-45B: display fee from snapshot for confirm dialogs */
+function policyFeeDisplayForConfirm(booking) {
+  const pol = booking.noShowPolicySnapshot;
+  if (!pol || !pol.enabled) return "";
+  if (pol.feeType === "percentage") return `${pol.feeAmount ?? 0}%`;
+  const cur = String(pol.currency || "cad").toUpperCase();
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: cur.length === 3 ? cur : "USD"
+    }).format(Number(pol.feeAmount) || 0);
+  } catch {
+    return String(pol.feeAmount ?? "");
+  }
+}
+
 /** ElevenLabs / core-api may expose detected language on call payloads */
 function callDetectedLanguageCode(call) {
   const raw =
@@ -221,6 +237,8 @@ function HomeContent(props) {
 
   const [recentCalls, setRecentCalls] = useState([]);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
+  /** Recent past bookings (14d) for no-show actions — BOO-45B */
+  const [recentPastBookings, setRecentPastBookings] = useState([]);
   const [callSearchQuery, setCallSearchQuery] = useState("");
   const [callSortOrder, setCallSortOrder] = useState("newest");
   const [bookingSearchQuery, setBookingSearchQuery] = useState("");
@@ -595,8 +613,75 @@ function HomeContent(props) {
         .sort((a, b) => new Date(a.slot?.start || a.startTime || 0) - new Date(b.slot?.start || b.startTime || 0))
         .slice(0, 10);
       setUpcomingBookings(upcoming);
+      const ms14d = 14 * 24 * 3600000;
+      const pastCutoff = now.getTime() - ms14d;
+      const pastRecent = (Array.isArray(list) ? list : [])
+        .filter((b) => {
+          const st = new Date(b.slot?.start || b.startTime || 0).getTime();
+          if (Number.isNaN(st)) return false;
+          const status = (b.status || "confirmed").toLowerCase();
+          if (status === "canceled" || status === "cancelled") return false;
+          return st < now.getTime() && st >= pastCutoff;
+        })
+        .sort((a, b) => new Date(b.slot?.start || b.startTime || 0) - new Date(a.slot?.start || a.startTime || 0))
+        .slice(0, 25);
+      setRecentPastBookings(pastRecent);
     } catch (err) {
       console.error("[refetchUpcomingBookings]", err);
+    }
+  }
+
+  async function markBookingNoShow(booking) {
+    if (!token || !primaryBusinessId) return;
+    const id = booking.id || booking.bookingId;
+    if (!id) return;
+    const feeHint = policyFeeDisplayForConfirm(booking);
+    const msg = feeHint
+      ? `${t.noShow.confirmMarkNoShow}\n${trFormat(t.noShow.confirmMarkNoShowAuto, { amount: feeHint })}`
+      : t.noShow.confirmMarkNoShow;
+    if (!window.confirm(msg)) return;
+    try {
+      const res = await fetch(
+        `/api/business/${encodeURIComponent(primaryBusinessId)}/bookings/${encodeURIComponent(id)}/mark-no-show`,
+        { method: "PATCH", headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Request failed");
+      toast.success("Updated");
+      await refetchUpcomingBookings();
+    } catch (e) {
+      toast.error(e.message || "Failed");
+    }
+  }
+
+  async function chargeBookingNoShow(booking) {
+    if (!token || !primaryBusinessId) return;
+    const id = booking.id || booking.bookingId;
+    if (!id) return;
+    const customer = booking.customer?.name || booking.customerName || "Guest";
+    const amountStr =
+      booking.noShowChargeAmountCents != null
+        ? new Intl.NumberFormat(undefined, { style: "currency", currency: "CAD" }).format(
+            booking.noShowChargeAmountCents / 100
+          )
+        : policyFeeDisplayForConfirm(booking) || "—";
+    if (
+      !window.confirm(
+        trFormat(t.noShow.confirmChargeNoShow, { name: customer, amount: amountStr })
+      )
+    )
+      return;
+    try {
+      const res = await fetch(
+        `/api/business/${encodeURIComponent(primaryBusinessId)}/bookings/${encodeURIComponent(id)}/charge-no-show`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Charge failed");
+      toast.success("Charged");
+      await refetchUpcomingBookings();
+    } catch (e) {
+      toast.error(e.message || "Failed");
     }
   }
 
@@ -749,6 +834,7 @@ function HomeContent(props) {
     const businessId = primaryBusinessId;
     if (!token || !businessId) {
       setUpcomingBookings([]);
+      setRecentPastBookings([]);
       setServicesMap({});
       setBookingsLoading(false);
       return;
@@ -778,10 +864,24 @@ function HomeContent(props) {
           .sort((a, b) => new Date(a.slot?.start || a.startTime || 0) - new Date(b.slot?.start || b.startTime || 0))
           .slice(0, 10);
         setUpcomingBookings(upcoming);
+        const ms14d = 14 * 24 * 3600000;
+        const pastCutoff = now.getTime() - ms14d;
+        const pastRecent = (Array.isArray(list) ? list : [])
+          .filter((b) => {
+            const st = new Date(b.slot?.start || b.startTime || 0).getTime();
+            if (Number.isNaN(st)) return false;
+            const status = (b.status || "confirmed").toLowerCase();
+            if (status === "canceled" || status === "cancelled") return false;
+            return st < now.getTime() && st >= pastCutoff;
+          })
+          .sort((a, b) => new Date(b.slot?.start || b.startTime || 0) - new Date(a.slot?.start || a.startTime || 0))
+          .slice(0, 25);
+        setRecentPastBookings(pastRecent);
       })
       .catch(() => {
         if (!cancelled) {
           setUpcomingBookings([]);
+          setRecentPastBookings([]);
           setServicesMap({});
         }
       })
@@ -1339,6 +1439,7 @@ function HomeContent(props) {
         )}
         {/* Recent Activity — calls and bookings from AI booking line */}
         {phoneSetup?.businessId && (
+          <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <Card className="bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1546,6 +1647,105 @@ function HomeContent(props) {
               </CardContent>
             </Card>
           </div>
+
+            <Card className="bg-card mb-6">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden />
+                  Recent past bookings
+                </CardTitle>
+                {recentPastBookings.length > 0 && (
+                  <span className="text-sm text-muted-foreground">Last 14 days · no-show actions</span>
+                )}
+              </CardHeader>
+              <CardContent>
+                {bookingsLoading ? (
+                  <p className="text-muted-foreground text-sm">Loading…</p>
+                ) : recentPastBookings.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    No recent past appointments in the last 14 days. Web bookings with a card on file will appear
+                    here for no-show follow-up.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {recentPastBookings.map((booking, i) => {
+                      const id = booking.id || booking.bookingId || i;
+                      const serviceName =
+                        servicesMap[booking.serviceId] || booking.serviceName || booking.serviceId || "Appointment";
+                      const customer = booking.customer?.name || booking.customerName || "Unknown";
+                      const start = booking.slot?.start || booking.startTime || booking.start;
+                      const last4 = booking.paymentMethodSummary?.last4 || "";
+                      const brand = booking.paymentMethodSummary?.brand || "";
+                      const cardLabel =
+                        last4
+                          ? `${t.noShow.cardOnFileLabel}: •••• ${last4}${brand ? ` (${brand})` : ""}`
+                          : null;
+                      const isNoShow = booking.noShowStatus === "no_show";
+                      const charged = booking.noShowChargeStatus === "charged";
+                      const pendingCharge =
+                        isNoShow && !charged && !!booking.stripePaymentMethodId;
+                      const showMark =
+                        !isNoShow &&
+                        (booking.status == null ||
+                          String(booking.status).toLowerCase() === "confirmed");
+                      return (
+                        <div key={id} className="py-3 first:pt-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium text-foreground text-sm">
+                                {start
+                                  ? new Date(start).toLocaleString(undefined, {
+                                      weekday: "short",
+                                      month: "short",
+                                      day: "numeric",
+                                      hour: "numeric",
+                                      minute: "2-digit"
+                                    })
+                                  : "—"}
+                              </span>
+                              {isNoShow ? (
+                                <span className="text-xs font-semibold text-red-600 dark:text-red-400 border border-red-500/40 rounded px-2 py-0.5">
+                                  {t.noShow.noShowBadge}
+                                </span>
+                              ) : null}
+                              {charged && booking.noShowChargeAmountCents != null ? (
+                                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 rounded px-2 py-0.5">
+                                  {trFormat(t.noShow.chargedBadge, {
+                                    amount: new Intl.NumberFormat(undefined, {
+                                      style: "currency",
+                                      currency: "CAD"
+                                    }).format(booking.noShowChargeAmountCents / 100)
+                                  })}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-sm text-foreground">
+                              {customer} · {serviceName}
+                            </p>
+                            {cardLabel ? (
+                              <p className="text-xs text-muted-foreground">{cardLabel}</p>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-wrap gap-2 shrink-0">
+                            {showMark ? (
+                              <Button size="sm" variant="outline" onClick={() => markBookingNoShow(booking)}>
+                                {t.noShow.markNoShow}
+                              </Button>
+                            ) : null}
+                            {pendingCharge ? (
+                              <Button size="sm" variant="secondary" onClick={() => chargeBookingNoShow(booking)}>
+                                {t.noShow.chargeNoShow}
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

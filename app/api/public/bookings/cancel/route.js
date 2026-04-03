@@ -26,6 +26,9 @@ import { buildICS } from '@/lib/ics'
 import { verifyActionToken, verifyCancelToken } from '@/lib/security/resetToken'
 import { renderHostCancel } from '@/lib/emailRenderer'
 import { env } from '@/lib/env'
+import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
+import { cancellationFeeApplies, computeNoShowFeeCents } from '@/lib/no-show-protection'
+import { createOffSessionCharge } from '@/lib/no-show-stripe'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -73,7 +76,7 @@ async function propagateCancellationToCoreApi(booking) {
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { token } = body
+    const { token, acceptLateCancellationFee } = body
 
     if (!token) {
       return NextResponse.json(
@@ -105,6 +108,63 @@ export async function POST(request) {
         { ok: false, error: 'Booking not found or already canceled' },
         { status: 404 }
       )
+    }
+
+    if (booking.businessId && booking.stripeCustomerId && booking.stripePaymentMethodId) {
+      const business = await database.collection(BUSINESS_COLLECTION).findOne({
+        businessId: booking.businessId
+      })
+      const { applies, policy } = cancellationFeeApplies(booking, business)
+      const feeCents = policy ? computeNoShowFeeCents(policy, booking.servicePriceCents) : 0
+      if (applies && feeCents > 0) {
+        if (!acceptLateCancellationFee) {
+          return NextResponse.json(
+            {
+              ok: false,
+              code: 'LATE_CANCEL_FEE_REQUIRED',
+              error: 'A cancellation fee applies. Confirm to proceed.',
+              feeCents,
+              currency: policy?.currency || 'cad'
+            },
+            { status: 402 }
+          )
+        }
+        const Stripe = (await import('stripe')).default
+        if (!env.STRIPE?.SECRET_KEY) {
+          return NextResponse.json(
+            { ok: false, error: 'Payment processing unavailable' },
+            { status: 503 }
+          )
+        }
+        const stripe = new Stripe(env.STRIPE.SECRET_KEY, { apiVersion: '2023-10-16' })
+        const charge = await createOffSessionCharge(stripe, {
+          customerId: booking.stripeCustomerId,
+          paymentMethodId: booking.stripePaymentMethodId,
+          amountCents: feeCents,
+          currency: policy?.currency || 'cad',
+          metadata: {
+            bookingId: booking.id,
+            type: 'late_cancellation'
+          }
+        })
+        if (!charge.ok) {
+          return NextResponse.json(
+            { ok: false, error: charge.error || 'Could not charge cancellation fee' },
+            { status: 402 }
+          )
+        }
+        await database.collection('bookings').updateOne(
+          { id: booking.id },
+          {
+            $set: {
+              cancellationFeeChargedAt: new Date().toISOString(),
+              cancellationFeePaymentIntentId: charge.paymentIntentId || null,
+              cancellationFeeCents: feeCents,
+              updatedAt: new Date().toISOString()
+            }
+          }
+        )
+      }
     }
 
     // Delete Google event if present

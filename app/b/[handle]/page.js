@@ -10,6 +10,7 @@ import LanguageSelector from '@/components/LanguageSelector'
 import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { bookingLocaleBcp47, trFormat } from '@/lib/translations'
 import { businessProfileHasPublicDisplay } from '@/lib/businessProfile'
+import StripeCardStep from '@/components/StripeCardStep'
 
 function toLocalYmd(d) {
   if (!d || !(d instanceof Date) || Number.isNaN(d.getTime())) return ''
@@ -64,6 +65,9 @@ export default function PublicBookingPage({ params }) {
   const [providers, setProviders] = useState([])
   /** null = any team member */
   const [selectedProviderId, setSelectedProviderId] = useState(null)
+  const [noShowProtection, setNoShowProtection] = useState(null)
+  const [stripePublishableKey, setStripePublishableKey] = useState(null)
+  const [bookingSubStep, setBookingSubStep] = useState('details')
   const slotsFetchSeq = useRef(0)
   const bookingFormRef = useRef(null)
   /** Consecutive auto day-advances when initial dates have no slots (max 7). */
@@ -248,6 +252,11 @@ export default function PublicBookingPage({ params }) {
         }
         if (!cancelled && res.ok) {
           setProviders(Array.isArray(data.providers) ? data.providers : [])
+          setNoShowProtection(
+            data.noShowProtection && typeof data.noShowProtection === 'object'
+              ? data.noShowProtection
+              : null
+          )
         }
         if (!cancelled && res.ok && Array.isArray(data?.services) && data.services.length > 0) {
           const seen = new Set()
@@ -273,6 +282,30 @@ export default function PublicBookingPage({ params }) {
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedService intentionally omitted to avoid loop
   }, [handle])
+
+  useEffect(() => {
+    if (!noShowProtection?.enabled) {
+      setStripePublishableKey(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch('/api/public/stripe-key')
+        const d = await r.json()
+        if (!cancelled && d.publishableKey) setStripePublishableKey(d.publishableKey)
+      } catch {
+        if (!cancelled) setStripePublishableKey(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [noShowProtection?.enabled])
+
+  useEffect(() => {
+    setBookingSubStep('details')
+  }, [selected])
 
   // Auto-select first service when services load
   useEffect(() => {
@@ -413,6 +446,7 @@ export default function PublicBookingPage({ params }) {
     setSlots([])
     if (services.length > 0) setSelectedService(services[0])
     setSelectedProviderId(null)
+    setBookingSubStep('details')
   }, [services])
 
   // Fetch slots when date, tz, and service are ready
@@ -442,7 +476,45 @@ export default function PublicBookingPage({ params }) {
     setCurrentMonth({ year: cur.getFullYear(), month: cur.getMonth() })
   }, [loading, slots.length, date])
 
-  async function handleBooking() {
+  const needsCardStep = !!(noShowProtection?.enabled && stripePublishableKey)
+  const noShowConfigButNoStripe = !!(noShowProtection?.enabled && !stripePublishableKey)
+
+  const bookingLocale = bookingLocaleBcp47(language)
+
+  const noShowFeeDisplay = useMemo(() => {
+    if (!noShowProtection?.enabled) return ''
+    if (noShowProtection.feeType === 'percentage') {
+      return `${noShowProtection.feeAmount}%`
+    }
+    const cur = String(noShowProtection.currency || 'cad').toUpperCase()
+    try {
+      return new Intl.NumberFormat(bookingLocale, {
+        style: 'currency',
+        currency: cur.length === 3 ? cur : 'CAD'
+      }).format(Number(noShowProtection.feeAmount) || 0)
+    } catch {
+      return `$${noShowProtection.feeAmount ?? 0}`
+    }
+  }, [noShowProtection, bookingLocale])
+
+  function servicePriceCentsFromSelected() {
+    const s = selectedService
+    if (!s) return undefined
+    if (typeof s.priceCents === 'number' && !Number.isNaN(s.priceCents)) return s.priceCents
+    if (typeof s.priceAmount === 'number' && !Number.isNaN(s.priceAmount)) {
+      return Math.round(s.priceAmount * 100)
+    }
+    if (s.price != null && s.price !== '') {
+      const n =
+        typeof s.price === 'number'
+          ? s.price
+          : parseFloat(String(s.price).replace(/^\$/, '').trim())
+      if (Number.isFinite(n)) return Math.round(n * 100)
+    }
+    return undefined
+  }
+
+  async function handleBooking(setupIntentIdParam) {
     if (!selected) {
       setError(t.errSelectSlot)
       return
@@ -453,6 +525,14 @@ export default function PublicBookingPage({ params }) {
     }
     if (!form.email?.trim()?.includes('@')) {
       setError(t.errEnterEmail)
+      return
+    }
+    if (needsCardStep && !setupIntentIdParam) {
+      setError(t.noShow.cardError)
+      return
+    }
+    if (noShowConfigButNoStripe) {
+      setError(t.noShow.cardError)
       return
     }
 
@@ -472,6 +552,7 @@ export default function PublicBookingPage({ params }) {
         selectedProviderId && providers.length
           ? providers.find((x) => x.id === selectedProviderId)?.name?.trim() || ''
           : ''
+      const svcCents = servicePriceCentsFromSelected()
       const res = await fetch(`/api/public/book?handle=${encodeURIComponent(handle)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -487,7 +568,11 @@ export default function PublicBookingPage({ params }) {
           language,
           ...(selectedProviderId
             ? { providerId: selectedProviderId, providerName: provName || 'Provider' }
-            : {})
+            : {}),
+          ...(needsCardStep && setupIntentIdParam
+            ? { setupIntentId: String(setupIntentIdParam) }
+            : {}),
+          ...(svcCents != null ? { servicePriceCents: svcCents } : {})
         })
       })
 
@@ -515,8 +600,6 @@ export default function PublicBookingPage({ params }) {
     }
   }
 
-  const bookingLocale = bookingLocaleBcp47(language)
-
   function formatTime(isoString) {
     return new Date(isoString).toLocaleTimeString(bookingLocale, {
       hour: '2-digit',
@@ -542,7 +625,8 @@ export default function PublicBookingPage({ params }) {
     selected &&
     form.name?.trim() &&
     form.email?.trim()?.includes('@') &&
-    !booking
+    !booking &&
+    !noShowConfigButNoStripe
 
   // --- Calendar helpers ---
   const dayHeaders = [t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri, t.daySat]
@@ -1145,6 +1229,14 @@ export default function PublicBookingPage({ params }) {
             {selected ? (
             <div className="sticky top-4 animate-in slide-in-from-bottom-4 duration-200">
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
+                {noShowConfigButNoStripe ? (
+                  <p className="text-sm text-amber-400">
+                    {t.noShow.cardError}
+                  </p>
+                ) : null}
+
+                {bookingSubStep === 'details' ? (
+                  <>
                 <p className="text-xs uppercase tracking-wide text-gray-400">{t.yourDetails}</p>
 
                 <div>
@@ -1234,7 +1326,14 @@ export default function PublicBookingPage({ params }) {
                 )}
 
                 <Button
-                  onClick={handleBooking}
+                  onClick={() => {
+                    if (needsCardStep) {
+                      if (!canSubmit) return
+                      setBookingSubStep('card')
+                    } else {
+                      handleBooking()
+                    }
+                  }}
                   disabled={!canSubmit}
                   className="w-full bg-violet-600 hover:bg-violet-500 text-white h-12 text-base font-medium"
                 >
@@ -1243,10 +1342,27 @@ export default function PublicBookingPage({ params }) {
                       <Loader2 className="w-4 h-4 me-2 animate-spin" />
                       {t.confirming}
                     </>
+                  ) : needsCardStep ? (
+                    t.noShow.continueToCard
                   ) : (
                     t.confirmBooking
                   )}
                 </Button>
+                  </>
+                ) : (
+                  <StripeCardStep
+                    handle={handle}
+                    email={(form.email || '').trim()}
+                    name={(form.name || '').trim()}
+                    t={t}
+                    noShowProtection={noShowProtection}
+                    feeDisplay={noShowFeeDisplay}
+                    publishableKey={stripePublishableKey}
+                    onSuccess={({ setupIntentId }) => handleBooking(setupIntentId)}
+                    onBack={() => setBookingSubStep('details')}
+                    disabled={booking}
+                  />
+                )}
 
                 {error && <p className="text-sm text-red-400 text-center">{error}</p>}
               </div>

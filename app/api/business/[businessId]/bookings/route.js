@@ -111,6 +111,74 @@ export async function GET(request, { params }) {
             if (byStartEmail.has(k)) b.language = byStartEmail.get(k)
           }
         }
+
+        const localsExtra = await database
+          .collection('bookings')
+          .find({ businessId })
+          .project({
+            id: 1,
+            startTime: 1,
+            guestEmail: 1,
+            noShowStatus: 1,
+            noShowMarkedAt: 1,
+            noShowChargeStatus: 1,
+            noShowChargedAt: 1,
+            noShowChargeAmountCents: 1,
+            noShowChargeError: 1,
+            paymentMethodSummary: 1,
+            stripePaymentMethodId: 1,
+            stripeCustomerId: 1,
+            cancellationFeeChargedAt: 1,
+            cancellationFeeCents: 1,
+            servicePriceCents: 1,
+            noShowPolicySnapshot: 1
+          })
+          .limit(500)
+          .toArray()
+        const mergeNoShow = (target, src) => {
+          if (!src) return
+          const fields = [
+            'noShowStatus',
+            'noShowMarkedAt',
+            'noShowChargeStatus',
+            'noShowChargedAt',
+            'noShowChargeAmountCents',
+            'noShowChargeError',
+            'paymentMethodSummary',
+            'stripePaymentMethodId',
+            'stripeCustomerId',
+            'cancellationFeeChargedAt',
+            'cancellationFeeCents',
+            'servicePriceCents',
+            'noShowPolicySnapshot'
+          ]
+          for (const f of fields) {
+            if (src[f] !== undefined) target[f] = src[f]
+          }
+        }
+        const byIdExtra = new Map(localsExtra.map((x) => [x.id, x]))
+        const byStartEmailExtra = new Map(
+          localsExtra
+            .filter((x) => x.startTime && x.guestEmail)
+            .map((x) => [
+              `${new Date(x.startTime).toISOString()}|${String(x.guestEmail).toLowerCase()}`,
+              x
+            ])
+        )
+        for (const b of bookings) {
+          const id = b.id || b.bookingId
+          let src = id && byIdExtra.has(id) ? byIdExtra.get(id) : null
+          if (!src) {
+            const slot = b.slot || {}
+            const st = slot.start || b.startTime
+            const em = (b.customer?.email || b.guestEmail || '').toLowerCase()
+            if (st && em) {
+              const k = `${new Date(st).toISOString()}|${em}`
+              if (byStartEmailExtra.has(k)) src = byStartEmailExtra.get(k)
+            }
+          }
+          mergeNoShow(b, src)
+        }
       }
     } catch (e) {
       console.warn('[business/bookings] language merge skipped:', e?.message)

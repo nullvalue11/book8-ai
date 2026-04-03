@@ -12,6 +12,8 @@ import { resolveBookingLanguage } from '@/lib/bookingLanguage'
 import { buildICS } from '@/lib/ics'
 import { calculateReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
+import { sanitizeNoShowForPublic, noShowPolicyPayload } from '@/lib/no-show-protection'
+import { verifySetupIntentForBooking } from '@/lib/no-show-stripe'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,6 +27,12 @@ async function connect() {
     db = client.db(env.DB_NAME)
   }
   return db
+}
+
+async function getBookingStripe() {
+  const Stripe = (await import('stripe')).default
+  if (!env.STRIPE?.SECRET_KEY) return null
+  return new Stripe(env.STRIPE.SECRET_KEY, { apiVersion: '2023-10-16' })
 }
 
 export async function OPTIONS() {
@@ -56,7 +64,9 @@ export async function POST(request) {
       serviceId,
       language: bodyLanguage,
       providerId: bodyProviderId,
-      providerName: bodyProviderName
+      providerName: bodyProviderName,
+      setupIntentId: bodySetupIntentId,
+      servicePriceCents: bodyServicePriceCents
     } = body
     const language = resolveBookingLanguage(request, bodyLanguage)
 
@@ -147,6 +157,34 @@ export async function POST(request) {
       )
     }
 
+    const noShowPub = business ? sanitizeNoShowForPublic(business) : { enabled: false }
+    let verifiedCard = null
+    if (business && noShowPub.enabled) {
+      const stripeInst = await getBookingStripe()
+      if (!stripeInst) {
+        return NextResponse.json(
+          { ok: false, error: 'Card hold is temporarily unavailable' },
+          { status: 503 }
+        )
+      }
+      if (!bodySetupIntentId) {
+        return NextResponse.json(
+          { ok: false, error: 'Please complete card verification to book' },
+          { status: 400 }
+        )
+      }
+      const v = await verifySetupIntentForBooking(
+        stripeInst,
+        bodySetupIntentId,
+        business.businessId,
+        email
+      )
+      if (!v.ok) {
+        return NextResponse.json({ ok: false, error: v.error }, { status: 400 })
+      }
+      verifiedCard = v
+    }
+
     // When we have a business: call core-api for SMS + email + calendar (bypass local creation for those)
     const baseUrl = (env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com').replace(/\/$/, '')
     const coreSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
@@ -174,7 +212,8 @@ export async function POST(request) {
             source: 'web',
             language,
             ...(bodyProviderId ? { providerId: String(bodyProviderId) } : {}),
-            ...(bodyProviderName ? { providerName: String(bodyProviderName).slice(0, 200) } : {})
+            ...(bodyProviderName ? { providerName: String(bodyProviderName).slice(0, 200) } : {}),
+            ...(noShowPolicyPayload(business) ? { noShowPolicy: noShowPolicyPayload(business) } : {})
           }
         }
 
@@ -302,6 +341,27 @@ export async function POST(request) {
       language: language || 'en',
       providerId: bodyProviderId ? String(bodyProviderId) : null,
       providerName: bodyProviderName ? String(bodyProviderName).slice(0, 200) : null,
+      servicePriceCents:
+        bodyServicePriceCents != null
+          ? Math.max(0, Math.floor(Number(bodyServicePriceCents)))
+          : null,
+      ...(verifiedCard
+        ? {
+            stripeCustomerId: verifiedCard.stripeCustomerId,
+            stripePaymentMethodId: verifiedCard.stripePaymentMethodId,
+            paymentMethodSummary: verifiedCard.paymentMethodSummary,
+            setupIntentId: bodySetupIntentId ? String(bodySetupIntentId) : null,
+            noShowPolicySnapshot: noShowPolicyPayload(business)
+          }
+        : {}),
+      noShowStatus: null,
+      noShowMarkedAt: null,
+      noShowChargeStatus: null,
+      noShowChargeAmountCents: null,
+      noShowChargedAt: null,
+      noShowPaymentIntentId: null,
+      cancellationFeeChargedAt: null,
+      cancellationFeePaymentIntentId: null,
       status: 'confirmed',
       rescheduleCount: 0,
       rescheduleHistory: [],
