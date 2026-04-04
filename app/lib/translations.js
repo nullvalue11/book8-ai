@@ -275,6 +275,27 @@ const translations = {
       forwardingHelpLink: 'See forwarding instructions for your carrier →',
       dashboardForwardHelp: 'How to forward your existing number →'
     },
+    googlePlaces: {
+      findYourBusiness: 'Find your business on Google',
+      searchPlaceholder: 'Type your business name…',
+      searching: 'Searching…',
+      noResults: 'No matches. Try a different name or enter details manually.',
+      weFoundYou: 'We found your business!',
+      hereIsWhatWeFound: "Here's what we pulled from Google:",
+      skip: "I'll enter manually",
+      connectedTo: 'Connected to Google Places',
+      resync: 'Re-sync from Google',
+      disconnect: 'Disconnect',
+      connectGoogle: 'Connect your Google Business',
+      reviewsOnGoogle: 'reviews on Google',
+      viewOnGoogleMaps: 'View on Google Maps',
+      photosFromGoogle: 'Photos from Google',
+      mapsUnavailable: 'Map preview requires NEXT_PUBLIC_GOOGLE_MAPS_KEY.',
+      syncing: 'Syncing…',
+      synced: 'Google profile updated.',
+      disconnected: 'Google Places disconnected.',
+      syncFailed: 'Could not sync. Try again later.'
+    },
     homepage: homepageByLocale.en
   },
   fr: {
@@ -551,6 +572,27 @@ const translations = {
       forwardingHelpLink: 'Voir les instructions de renvoi pour votre opérateur →',
       dashboardForwardHelp: 'Comment transférer votre numéro actuel →'
     },
+    googlePlaces: {
+      findYourBusiness: 'Trouvez votre entreprise sur Google',
+      searchPlaceholder: 'Saisissez le nom de votre entreprise…',
+      searching: 'Recherche…',
+      noResults: 'Aucun résultat. Essayez un autre nom ou saisissez les informations manuellement.',
+      weFoundYou: 'Nous avons trouvé votre entreprise !',
+      hereIsWhatWeFound: 'Voici ce que nous avons récupéré depuis Google :',
+      skip: 'Je préfère saisir manuellement',
+      connectedTo: 'Connecté à Google Places',
+      resync: 'Resynchroniser depuis Google',
+      disconnect: 'Déconnecter',
+      connectGoogle: 'Associer votre fiche Google',
+      reviewsOnGoogle: 'avis sur Google',
+      viewOnGoogleMaps: 'Voir sur Google Maps',
+      photosFromGoogle: 'Photos Google',
+      mapsUnavailable: 'L’aperçu de carte nécessite NEXT_PUBLIC_GOOGLE_MAPS_KEY.',
+      syncing: 'Synchronisation…',
+      synced: 'Profil Google mis à jour.',
+      disconnected: 'Google Places déconnecté.',
+      syncFailed: 'Synchronisation impossible. Réessayez plus tard.'
+    },
     homepage: homepageByLocale.fr
   },
   es: {
@@ -825,6 +867,27 @@ const translations = {
       forwardingHelpLink: 'Ver instrucciones de desvío para tu operador →',
       dashboardForwardHelp: 'Cómo desviar tu número actual →'
     },
+    googlePlaces: {
+      findYourBusiness: 'Busca tu negocio en Google',
+      searchPlaceholder: 'Escribe el nombre de tu negocio…',
+      searching: 'Buscando…',
+      noResults: 'Sin resultados. Prueba otro nombre o introduce los datos a mano.',
+      weFoundYou: '¡Encontramos tu negocio!',
+      hereIsWhatWeFound: 'Esto es lo que obtuvimos de Google:',
+      skip: 'Lo introduciré manualmente',
+      connectedTo: 'Conectado a Google Places',
+      resync: 'Volver a sincronizar desde Google',
+      disconnect: 'Desvincular',
+      connectGoogle: 'Conecta tu ficha de Google',
+      reviewsOnGoogle: 'reseñas en Google',
+      viewOnGoogleMaps: 'Ver en Google Maps',
+      photosFromGoogle: 'Fotos de Google',
+      mapsUnavailable: 'El mapa requiere NEXT_PUBLIC_GOOGLE_MAPS_KEY.',
+      syncing: 'Sincronizando…',
+      synced: 'Perfil de Google actualizado.',
+      disconnected: 'Google Places desconectado.',
+      syncFailed: 'No se pudo sincronizar. Inténtalo más tarde.'
+    },
     homepage: homepageByLocale.es
   },
   ar: {
@@ -1096,6 +1159,27 @@ const translations = {
       needHelpPrefix: 'تحتاج مساعدة؟',
       forwardingHelpLink: 'تعليمات التحويل لمزوّد الخدمة ←',
       dashboardForwardHelp: 'كيفية تحويل رقمك الحالي ←'
+    },
+    googlePlaces: {
+      findYourBusiness: 'اعثر على نشاطك التجاري على Google',
+      searchPlaceholder: 'اكتب اسم نشاطك التجاري…',
+      searching: 'جارٍ البحث…',
+      noResults: 'لا نتائج. جرّب اسماً آخر أو أدخل التفاصيل يدوياً.',
+      weFoundYou: 'وجدنا نشاطك التجاري!',
+      hereIsWhatWeFound: 'إليك ما استخرجناه من Google:',
+      skip: 'سأدخل البيانات يدوياً',
+      connectedTo: 'متصل بـ Google Places',
+      resync: 'إعادة المزامنة من Google',
+      disconnect: 'قطع الاتصال',
+      connectGoogle: 'اربط نشاطك على Google',
+      reviewsOnGoogle: 'مراجعات على Google',
+      viewOnGoogleMaps: 'عرض على خرائط Google',
+      photosFromGoogle: 'صور من Google',
+      mapsUnavailable: 'معاينة الخريطة تتطلب NEXT_PUBLIC_GOOGLE_MAPS_KEY.',
+      syncing: 'جارٍ المزامنة…',
+      synced: 'تم تحديث ملف Google.',
+      disconnected: 'تم قطع Google Places.',
+      syncFailed: 'تعذرت المزامنة. حاول لاحقاً.'
     },
     homepage: homepageByLocale.ar
   }

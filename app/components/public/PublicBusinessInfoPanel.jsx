@@ -9,6 +9,7 @@ import {
   businessProfileHasPublicDisplay
 } from '@/lib/businessProfile'
 import { trFormat } from '@/lib/translations'
+import { GOOGLE_MAPS_BROWSER_KEY } from '@/lib/publicRuntimeConfig'
 
 function InstagramIcon({ className = 'w-4 h-4' }) {
   return (
@@ -45,17 +46,62 @@ function socialUrl(network, raw) {
   return null
 }
 
-/** @param {{ businessProfile: any, businessDisplayName: string, businessTimeZone?: string, t: import('@/lib/translations').BookingTranslations }} props */
-export default function PublicBusinessInfoPanel({ businessProfile, businessDisplayName, businessTimeZone, t }) {
+/**
+ * @param {{
+ *   businessProfile: any,
+ *   businessDisplayName: string,
+ *   businessTimeZone?: string,
+ *   googlePlaces?: Record<string, any> | null,
+ *   t: import('@/lib/translations').BookingTranslations
+ * }} props
+ */
+export default function PublicBusinessInfoPanel({
+  businessProfile,
+  businessDisplayName,
+  businessTimeZone,
+  googlePlaces = null,
+  t
+}) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [weekExpanded, setWeekExpanded] = useState(false)
 
-  const hasContent = useMemo(
+  const hasProfile = useMemo(
     () => businessProfile && businessProfileHasPublicDisplay(businessProfile),
     [businessProfile]
   )
 
+  const hasGooglePanelData = useMemo(() => {
+    const g = googlePlaces
+    if (!g || typeof g !== 'object') return false
+    return !!(
+      g.rating ||
+      g.googleMapsUrl ||
+      g.location ||
+      (Array.isArray(g.photos) && g.photos.length > 0) ||
+      g.formattedAddress
+    )
+  }, [googlePlaces])
+
+  const showPanel = hasProfile || hasGooglePanelData
+
   const mapsUrl = useMemo(() => (businessProfile ? googleMapsSearchUrl(businessProfile) : null), [businessProfile])
+
+  const formattedAddressLink = useMemo(() => {
+    const fa =
+      googlePlaces && typeof googlePlaces.formattedAddress === 'string'
+        ? googlePlaces.formattedAddress.trim()
+        : ''
+    if (!fa) return null
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fa)}`
+  }, [googlePlaces])
+
+  const mapsEmbedSrc = useMemo(() => {
+    const key = GOOGLE_MAPS_BROWSER_KEY
+    const loc = googlePlaces?.location
+    if (!key || !loc || typeof loc.lat !== 'number' || typeof loc.lng !== 'number') return null
+    const q = `${loc.lat},${loc.lng}`
+    return `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&zoom=15`
+  }, [googlePlaces])
 
   const tz = businessTimeZone || 'UTC'
   const todayKey = useMemo(() => getLocalDayKeyInTimeZone(tz), [tz])
@@ -72,6 +118,8 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
     [t]
   )
 
+  const gp = t.googlePlaces
+
   const hoursDisplay = useMemo(
     () =>
       weeklyHoursForDisplay(businessProfile?.weeklyHours, todayKey, {
@@ -81,16 +129,21 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
     [businessProfile, todayKey, dayLabels, t.closed]
   )
 
-  if (!hasContent) return null
+  if (!showPanel) return null
 
-  const p = businessProfile
-  const addrLines = [p.street, p.street2].filter(Boolean)
-  const cityPart = [p.city, [p.provinceState, p.postalCode].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+  const p = hasProfile ? businessProfile : null
+  const addrLines = p ? [p.street, p.street2].filter(Boolean) : []
+  const cityPart = p
+    ? [p.city, [p.provinceState, p.postalCode].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+    : ''
+  const addressHref = mapsUrl || formattedAddressLink
+  const showAddressBlock =
+    (addressHref && (addrLines.length || cityPart || p?.country)) || formattedAddressLink
 
   const body = (
     <div className="rounded-xl border border-gray-800 bg-gray-900/80 p-4 md:p-5 space-y-4 text-sm text-gray-200">
       <div className="flex items-start gap-3">
-        {p.logo?.url ? (
+        {p?.logo?.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={p.logo.url}
@@ -109,33 +162,86 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
               ? trFormat(t.aboutBusiness, { name: businessDisplayName.trim() })
               : t.aboutThisBusiness}
           </h2>
-          {p.description ? <p className="text-gray-400 mt-2 text-sm leading-relaxed">{p.description}</p> : null}
+          {p?.description ? (
+            <p className="text-gray-400 mt-2 text-sm leading-relaxed">{p.description}</p>
+          ) : null}
         </div>
       </div>
 
+      {googlePlaces?.rating ? (
+        <div className="flex items-center gap-1.5 text-sm">
+          <span className="text-yellow-400" aria-hidden>
+            ★
+          </span>
+          <span className="font-medium text-white">{googlePlaces.rating}</span>
+          {googlePlaces.reviewCount != null && gp ? (
+            <span className="text-gray-400">
+              ({googlePlaces.reviewCount} {gp.reviewsOnGoogle})
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="space-y-3">
-        {mapsUrl && (addrLines.length || cityPart || p.country) ? (
+        {showAddressBlock ? (
           <div className="flex gap-2">
             <MapPin className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" aria-hidden />
             <div>
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-violet-300 hover:text-violet-200 underline underline-offset-2"
-              >
-                {addrLines.map((line, i) => (
-                  <span key={i} className="block">
-                    {line}
-                  </span>
-                ))}
-                {cityPart ? <span className="block">{cityPart}</span> : null}
-              </a>
+              {mapsUrl && (addrLines.length || cityPart || p?.country) ? (
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-violet-300 hover:text-violet-200 underline underline-offset-2"
+                >
+                  {addrLines.map((line, i) => (
+                    <span key={i} className="block">
+                      {line}
+                    </span>
+                  ))}
+                  {cityPart ? <span className="block">{cityPart}</span> : null}
+                </a>
+              ) : formattedAddressLink && googlePlaces?.formattedAddress ? (
+                <a
+                  href={formattedAddressLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-300 hover:text-violet-300 underline underline-offset-2"
+                >
+                  {googlePlaces.formattedAddress}
+                </a>
+              ) : null}
             </div>
           </div>
         ) : null}
 
-        {p.phone ? (
+        {mapsEmbedSrc ? (
+          <div className="rounded-lg overflow-hidden mt-2">
+            <iframe
+              title={gp?.viewOnGoogleMaps || 'Map'}
+              src={mapsEmbedSrc}
+              width="100%"
+              height="200"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        ) : null}
+
+        {googlePlaces?.googleMapsUrl && gp ? (
+          <a
+            href={googlePlaces.googleMapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-violet-400 hover:text-violet-300 inline-flex items-center gap-1"
+          >
+            {gp.viewOnGoogleMaps} →
+          </a>
+        ) : null}
+
+        {p?.phone ? (
           <div className="hidden md:flex items-center gap-2">
             <Phone className="w-4 h-4 text-violet-400 shrink-0" aria-hidden />
             <a href={`tel:${sanitizeTel(p.phone)}`} className="text-white hover:text-violet-200">
@@ -144,7 +250,7 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
           </div>
         ) : null}
 
-        {p.email ? (
+        {p?.email ? (
           <div className="flex items-center gap-2 min-w-0">
             <Mail className="w-4 h-4 text-violet-400 shrink-0" aria-hidden />
             <a href={`mailto:${encodeURIComponent(p.email)}`} className="text-violet-300 hover:underline truncate">
@@ -153,7 +259,7 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
           </div>
         ) : null}
 
-        {p.website ? (
+        {p?.website ? (
           <div className="flex items-center gap-2 min-w-0">
             <Globe className="w-4 h-4 text-violet-400 shrink-0" aria-hidden />
             <a
@@ -198,7 +304,7 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
           </div>
         ) : null}
 
-        {p.social && (p.social.instagram || p.social.facebook || p.social.tiktok) ? (
+        {p?.social && (p.social.instagram || p.social.facebook || p.social.tiktok) ? (
           <div className="flex items-center gap-2 pt-1 flex-wrap">
             <span className="text-xs text-gray-500 uppercase tracking-wide">{t.social}</span>
             <div className="flex gap-2">
@@ -244,7 +350,7 @@ export default function PublicBusinessInfoPanel({ businessProfile, businessDispl
 
   return (
     <aside className="lg:sticky lg:top-4 self-start w-full order-1 lg:order-none">
-      {p.phone ? (
+      {p?.phone ? (
         <div className="md:hidden mb-3 flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-900/80 px-4 py-3">
           <Phone className="w-4 h-4 text-violet-400 shrink-0" aria-hidden />
           <a href={`tel:${sanitizeTel(p.phone)}`} className="text-white text-sm font-medium hover:text-violet-200">

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Loader2, Globe, ImageIcon } from 'lucide-react'
 import Header from '@/components/Header'
 import PublicBusinessInfoPanel from '@/components/public/PublicBusinessInfoPanel'
+import GooglePlacesSearch from '@/components/GooglePlacesSearch'
 import { getBookingTranslations } from '@/lib/translations'
 import { COUNTRY_OPTIONS } from '@/lib/countries'
 import { getSubdivisionsForCountry } from '@/lib/region-data'
@@ -82,6 +83,11 @@ export default function PublicProfileSettingsPage() {
   const [logoUrl, setLogoUrl] = useState('')
   const [logoUploading, setLogoUploading] = useState(false)
   const logoInputRef = useRef(null)
+  const [googlePlacesPublic, setGooglePlacesPublic] = useState(null)
+  const [googlePlaceId, setGooglePlaceId] = useState(null)
+  const [googleSyncing, setGoogleSyncing] = useState(false)
+
+  const gpLabels = getBookingTranslations('en').googlePlaces
 
   const LOGO_MAX_BYTES = 2 * 1024 * 1024
   const LOGO_ACCEPT_TYPES = ['image/png', 'image/jpeg', 'image/webp']
@@ -145,6 +151,10 @@ export default function PublicProfileSettingsPage() {
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Failed to load profile')
         setHandle(data.handle || '')
+        setGooglePlacesPublic(
+          data.googlePlaces && typeof data.googlePlaces === 'object' ? data.googlePlaces : null
+        )
+        setGooglePlaceId(typeof data.googlePlaceId === 'string' ? data.googlePlaceId : null)
         setTz(data.timezone || typeof Intl !== 'undefined'
           ? Intl.DateTimeFormat().resolvedOptions().timeZone
           : 'UTC')
@@ -301,6 +311,60 @@ export default function PublicProfileSettingsPage() {
     }
   }
 
+  const syncGooglePlacesToBusiness = async (placeId) => {
+    if (!token || !selectedBusinessId || !placeId) return
+    setGoogleSyncing(true)
+    setMessage({ type: '', text: '' })
+    try {
+      const res = await fetch(
+        `/api/business/${encodeURIComponent(selectedBusinessId)}/google-places`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ placeId })
+        }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || gpLabels?.syncFailed || 'Sync failed')
+      setGooglePlacesPublic(
+        data.googlePlaces && typeof data.googlePlaces === 'object' ? data.googlePlaces : null
+      )
+      setGooglePlaceId(placeId)
+      setMessage({ type: 'success', text: gpLabels?.synced || 'Google profile updated.' })
+    } catch (e) {
+      setMessage({ type: 'error', text: e.message || gpLabels?.syncFailed || 'Sync failed' })
+    } finally {
+      setGoogleSyncing(false)
+    }
+  }
+
+  const disconnectGooglePlaces = async () => {
+    if (!token || !selectedBusinessId) return
+    setGoogleSyncing(true)
+    setMessage({ type: '', text: '' })
+    try {
+      const res = await fetch(
+        `/api/business/${encodeURIComponent(selectedBusinessId)}/google-places`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Disconnect failed')
+      setGooglePlacesPublic(null)
+      setGooglePlaceId(null)
+      setMessage({ type: 'success', text: gpLabels?.disconnected || 'Disconnected.' })
+    } catch (e) {
+      setMessage({ type: 'error', text: e.message || 'Disconnect failed' })
+    } finally {
+      setGoogleSyncing(false)
+    }
+  }
+
   const setDayHours = (day, closed, start, end) => {
     setForm((f) => {
       const next = { ...f.weeklyHours }
@@ -367,6 +431,73 @@ export default function PublicProfileSettingsPage() {
           >
             {message.text}
           </div>
+        ) : null}
+
+        {businesses.length > 0 && selectedBusinessId && gpLabels ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Google Business</CardTitle>
+              <CardDescription>
+                Link your Google listing to show photos, rating, and map on your public booking page.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {googleSyncing ? (
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> {gpLabels.syncing}
+                </p>
+              ) : null}
+              {googlePlacesPublic || googlePlaceId ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">{gpLabels.connectedTo}</p>
+                  {googlePlacesPublic?.displayName ? (
+                    <p className="text-sm text-muted-foreground">{googlePlacesPublic.displayName}</p>
+                  ) : null}
+                  {googlePlacesPublic?.rating ? (
+                    <p className="text-sm">
+                      <span className="text-yellow-500" aria-hidden>
+                        ★
+                      </span>{' '}
+                      {googlePlacesPublic.rating}
+                      {googlePlacesPublic.reviewCount != null
+                        ? ` (${googlePlacesPublic.reviewCount} ${gpLabels.reviewsOnGoogle})`
+                        : ''}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={googleSyncing || !googlePlaceId}
+                      onClick={() => googlePlaceId && syncGooglePlacesToBusiness(googlePlaceId)}
+                    >
+                      {gpLabels.resync}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={googleSyncing}
+                      onClick={disconnectGooglePlaces}
+                    >
+                      {gpLabels.disconnect}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">{gpLabels.connectGoogle}</p>
+                  <GooglePlacesSearch
+                    authToken={token}
+                    labels={gpLabels}
+                    idPrefix="dashboard-gplaces"
+                    onPick={({ placeId }) => syncGooglePlacesToBusiness(placeId)}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
         ) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -686,17 +817,18 @@ export default function PublicProfileSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {previewProfile ? (
+              {previewProfile || googlePlacesPublic ? (
                 <PublicBusinessInfoPanel
                   businessProfile={previewProfile}
+                  googlePlaces={googlePlacesPublic}
                   businessDisplayName={businessName || 'Your business'}
                   businessTimeZone={tz}
                   t={getBookingTranslations('en')}
                 />
               ) : (
                 <p className="text-sm text-gray-500">
-                  Fill in address, phone, email, description, hours, or social — preview appears when there is
-                  something to show.
+                  Fill in address, phone, email, description, hours, or social — or connect Google Business —
+                  preview appears when there is something to show.
                 </p>
               )}
             </CardContent>

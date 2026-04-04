@@ -37,6 +37,8 @@ import { cn } from '@/lib/utils'
 import { PRIMARY_LANGUAGE_OPTIONS } from '@/lib/primary-languages'
 import { getPlanFeatures, getUiPlanLimits, hasOutlookCalendar, normalizePlanKey } from '@/lib/plan-features'
 import { businessProfileToWizardPatch } from '@/lib/businessProfile'
+import { placeDetailsToProfileFields, placeDetailsToStoredGooglePlaces } from '@/lib/googlePlaces'
+import GooglePlacesSearch, { GooglePlacesSkipButton } from '@/components/GooglePlacesSearch'
 import { COUNTRY_OPTIONS } from '@/lib/countries'
 import { guessCountryFromTimeZone, getSubdivisionsForCountry } from '@/lib/region-data'
 import { toast } from 'sonner'
@@ -475,7 +477,10 @@ function WizardContent() {
     existingBusinessNumber: null,
     bookingHandle: null,
     /** 'starter' | 'growth' | 'enterprise' — from business after checkout */
-    subscriptionPlan: null
+    subscriptionPlan: null,
+    googlePlaceId: null,
+    googlePlacesPreview: null,
+    profileWebsite: ''
   })
 
   const [loading, setLoading] = useState(false)
@@ -1153,6 +1158,43 @@ function WizardContent() {
     setError('')
   }
 
+  const gpLabels = t.googlePlaces
+
+  const applyGooglePlaceDetails = useCallback((placeId, detailsPayload) => {
+    const inner =
+      detailsPayload?.result || detailsPayload?.place || detailsPayload
+    const displayName =
+      inner && typeof inner === 'object'
+        ? inner.displayName || inner.displayNameLong || inner.name
+        : null
+    const { profile, weeklyHours, category } = placeDetailsToProfileFields(detailsPayload)
+    const preview = placeDetailsToStoredGooglePlaces(detailsPayload)
+    setWizardData((prev) => ({
+      ...prev,
+      googlePlaceId: placeId,
+      googlePlacesPreview: preview,
+      ...(typeof displayName === 'string' && displayName.trim()
+        ? { businessName: displayName.trim().slice(0, 120) }
+        : {}),
+      ...(category ? { category } : {}),
+      ...(profile.street ? { profileStreet: profile.street } : {}),
+      ...(profile.city ? { profileCity: profile.city } : {}),
+      ...(profile.provinceState ? { profileProvinceState: profile.provinceState } : {}),
+      ...(profile.postalCode ? { profilePostalCode: profile.postalCode } : {}),
+      ...(profile.country ? { profileCountry: profile.country } : {}),
+      ...(profile.phone ? { profileBusinessPhone: normalizeBusinessPhoneInput(profile.phone) } : {}),
+      ...(profile.website ? { profileWebsite: profile.website } : {}),
+      ...(weeklyHours
+        ? { businessHours: { ...DEFAULT_HOURS, ...weeklyHours } }
+        : {})
+    }))
+    setError('')
+  }, [])
+
+  function clearGooglePlacesSelection() {
+    updateWizard({ googlePlaceId: null, googlePlacesPreview: null })
+  }
+
   // Step 1: Business info
   async function handleStep1Submit() {
     if (!wizardData.businessName?.trim()) {
@@ -1200,7 +1242,8 @@ function WizardContent() {
               instagram: wizardData.profileSocialInstagram?.trim() || '',
               facebook: wizardData.profileSocialFacebook?.trim() || '',
               tiktok: wizardData.profileSocialTiktok?.trim() || ''
-            }
+            },
+            website: wizardData.profileWebsite?.trim() || ''
           }
         })
       })
@@ -1698,6 +1741,18 @@ function WizardContent() {
   ])
 
   function handleGoToDashboard() {
+    const bid = wizardData.businessId
+    const pid = wizardData.googlePlaceId
+    if (token && bid && pid) {
+      void fetch(`/api/business/${encodeURIComponent(bid)}/google-places`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ placeId: pid })
+      }).catch(() => {})
+    }
     clearSetupWizardDraft()
     router.push('/dashboard')
   }
@@ -1914,6 +1969,57 @@ function WizardContent() {
                     onChange={(e) => updateWizard({ businessName: e.target.value })}
                   />
                 </div>
+                {gpLabels ? (
+                  <div className="space-y-3 rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/50 p-4">
+                    <GooglePlacesSearch
+                      authToken={token}
+                      labels={gpLabels}
+                      inputClassName={WIZARD_INPUT}
+                      labelClassName={WIZARD_LABEL}
+                      onPick={({ placeId, details }) => applyGooglePlaceDetails(placeId, details)}
+                    />
+                    <div className="flex flex-wrap items-center gap-2 justify-end">
+                      <GooglePlacesSkipButton labels={gpLabels} onClick={clearGooglePlacesSelection} />
+                    </div>
+                    {wizardData.googlePlacesPreview &&
+                    (wizardData.googlePlacesPreview.photos?.length > 0 ||
+                      wizardData.googlePlacesPreview.rating) ? (
+                      <div className="rounded-lg border border-[#8B5CF6]/25 bg-[#12121A] p-4 space-y-3">
+                        <p className={`${WIZARD_LABEL} font-semibold text-white`}>{gpLabels.weFoundYou}</p>
+                        <p className="text-xs text-slate-400">{gpLabels.hereIsWhatWeFound}</p>
+                        {wizardData.googlePlacesPreview.rating ? (
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <span className="text-yellow-400" aria-hidden>
+                              ★
+                            </span>
+                            <span className="font-medium text-white">
+                              {wizardData.googlePlacesPreview.rating}
+                            </span>
+                            {wizardData.googlePlacesPreview.reviewCount != null ? (
+                              <span className="text-slate-400">
+                                ({wizardData.googlePlacesPreview.reviewCount} {gpLabels.reviewsOnGoogle})
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {wizardData.googlePlacesPreview.photos?.length > 0 ? (
+                          <div className="w-full overflow-x-auto flex gap-2 pb-1 snap-x snap-mandatory">
+                            {wizardData.googlePlacesPreview.photos.slice(0, 5).map((photo, i) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                key={i}
+                                src={`/api/places/photo?reference=${encodeURIComponent(photo.reference)}&maxwidth=600`}
+                                alt=""
+                                className="h-32 w-48 object-cover rounded-lg shrink-0 snap-start"
+                                loading="lazy"
+                              />
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div>
                   <Label className={WIZARD_LABEL}>Category *</Label>
                   <Select

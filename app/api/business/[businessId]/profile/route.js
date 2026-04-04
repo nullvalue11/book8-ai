@@ -8,6 +8,7 @@ import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME } from '@/lib/schemas/business'
 import { parseBusinessProfileBody, normalizeBusinessLogo } from '@/lib/businessProfile'
+import { sanitizeGooglePlacesForPublic } from '@/lib/googlePlaces'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -77,7 +78,9 @@ export async function GET(request, { params }) {
       ok: true,
       businessProfile: auth.business.businessProfile || null,
       handle: auth.business.handle || null,
-      timezone: auth.business.timezone || null
+      timezone: auth.business.timezone || null,
+      googlePlaces: sanitizeGooglePlacesForPublic(auth.business.googlePlaces) || null,
+      googlePlaceId: typeof auth.business.googlePlaceId === 'string' ? auth.business.googlePlaceId : null
     })
   } catch (e) {
     console.error('[business/profile GET]', e)

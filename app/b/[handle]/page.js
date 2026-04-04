@@ -66,6 +66,8 @@ export default function PublicBookingPage({ params }) {
   /** null = any team member */
   const [selectedProviderId, setSelectedProviderId] = useState(null)
   const [noShowProtection, setNoShowProtection] = useState(null)
+  /** Sanitized subset from /api/public/services */
+  const [googlePlaces, setGooglePlaces] = useState(null)
   const [stripePublishableKey, setStripePublishableKey] = useState(null)
   const [bookingSubStep, setBookingSubStep] = useState('details')
   const slotsFetchSeq = useRef(0)
@@ -77,9 +79,23 @@ export default function PublicBookingPage({ params }) {
   const pillClickSuppressedRef = useRef(false)
   const [servicePillScroll, setServicePillScroll] = useState({ moreLeft: false, moreRight: false })
 
+  const hasGooglePlacesDisplay = useMemo(() => {
+    const g = googlePlaces
+    if (!g || typeof g !== 'object') return false
+    return !!(
+      g.rating ||
+      g.location ||
+      g.googleMapsUrl ||
+      g.formattedAddress ||
+      (Array.isArray(g.photos) && g.photos.length > 0)
+    )
+  }, [googlePlaces])
+
   const hasProfileDisplay = useMemo(
-    () => businessProfile != null && businessProfileHasPublicDisplay(businessProfile),
-    [businessProfile]
+    () =>
+      (businessProfile != null && businessProfileHasPublicDisplay(businessProfile)) ||
+      hasGooglePlacesDisplay,
+    [businessProfile, hasGooglePlacesDisplay]
   )
 
   const baseFlowStep = useMemo(() => {
@@ -249,6 +265,11 @@ export default function PublicBookingPage({ params }) {
         if (!cancelled && res.ok) {
           setBusinessProfile(data.businessProfile && typeof data.businessProfile === 'object' ? data.businessProfile : null)
           setBusinessTimezoneForProfile(data.businessTimezone || null)
+          setGooglePlaces(
+            data.googlePlaces && typeof data.googlePlaces === 'object' ? data.googlePlaces : null
+          )
+        } else if (!cancelled && !res.ok) {
+          setGooglePlaces(null)
         }
         if (!cancelled && res.ok) {
           setProviders(Array.isArray(data.providers) ? data.providers : [])
@@ -831,6 +852,27 @@ export default function PublicBookingPage({ params }) {
       className="min-h-screen bg-gray-950 text-white dark"
     >
       {/* Booking page is intentionally always-dark for brand consistency across all embedded contexts */}
+      {googlePlaces?.photos?.length > 0 ? (
+        <div
+          className="w-full overflow-x-auto flex gap-2 px-4 md:px-6 pt-4 pb-2 snap-x snap-mandatory scroll-smooth"
+          dir="ltr"
+        >
+          {googlePlaces.photos.slice(0, 5).map((photo, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={i}
+              src={`/api/places/photo?reference=${encodeURIComponent(photo.reference)}&maxwidth=600`}
+              alt={
+                ownerName?.trim() || formatHandleAsDisplayName(handle)
+                  ? `${ownerName?.trim() || formatHandleAsDisplayName(handle)} photo ${i + 1}`
+                  : `Business photo ${i + 1}`
+              }
+              className="h-48 w-72 max-h-[12rem] object-cover rounded-lg flex-shrink-0 snap-start"
+              loading="lazy"
+            />
+          ))}
+        </div>
+      ) : null}
       {/* Header */}
       <header className="border-b border-gray-800 px-4 py-4 md:px-6">
         <div className="max-w-6xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -848,6 +890,19 @@ export default function PublicBookingPage({ params }) {
             <h1 className="text-2xl font-bold text-white">
               {ownerName?.trim() || formatHandleAsDisplayName(handle)}
             </h1>
+            {googlePlaces?.rating ? (
+              <div className="flex items-center gap-1.5 text-sm mt-1">
+                <span className="text-yellow-400" aria-hidden>
+                  ★
+                </span>
+                <span className="font-medium text-white">{googlePlaces.rating}</span>
+                {googlePlaces.reviewCount != null && t.googlePlaces ? (
+                  <span className="text-gray-400">
+                    ({googlePlaces.reviewCount} {t.googlePlaces.reviewsOnGoogle})
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
             {businessMeta.category ? (
               <p className="text-xs uppercase tracking-wide text-muted-foreground mt-0.5">
                 {businessMeta.category}
@@ -924,6 +979,7 @@ export default function PublicBookingPage({ params }) {
                 businessProfile={businessProfile}
                 businessDisplayName={ownerName?.trim() || formatHandleAsDisplayName(handle)}
                 businessTimeZone={businessTimezoneForProfile || guestTz}
+                googlePlaces={googlePlaces}
                 t={t}
               />
             </div>
