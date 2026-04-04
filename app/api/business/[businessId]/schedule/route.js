@@ -105,8 +105,8 @@ const PUT_INITIAL_BACKOFF_MS = 400
 
 /** Setup wizard: fast fail then Mongo (BOO-51) */
 const ONBOARDING_MAX_ATTEMPTS = 2
-const ONBOARDING_TIMEOUT_MS = 1000
-const ONBOARDING_BACKOFF_MS = 0
+const ONBOARDING_TIMEOUT_MS = 1500
+const ONBOARDING_BACKOFF_MS = 300
 
 function scheduleGetProfile(onboarding) {
   if (onboarding) {

@@ -99,8 +99,8 @@ const POST_INITIAL_BACKOFF_MS = 400
 
 /** Setup wizard (BOO-51) */
 const ONBOARDING_MAX_ATTEMPTS = 2
-const ONBOARDING_TIMEOUT_MS = 1000
-const ONBOARDING_BACKOFF_MS = 0
+const ONBOARDING_TIMEOUT_MS = 1500
+const ONBOARDING_BACKOFF_MS = 300
 
 function servicesGetProfile(onboarding) {
   if (onboarding) {

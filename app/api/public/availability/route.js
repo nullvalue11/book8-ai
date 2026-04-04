@@ -464,9 +464,39 @@ export async function GET(request) {
 
     if (business && providerId) {
       const provList = business.providers || []
-      const prov = provList.find(
-        (p) => p && p.active !== false && String(p.id) === String(providerId)
-      )
+      const prov = provList.find((p) => {
+        if (!p || p.active === false) return false
+        const idMatch = String(p.id) === String(providerId)
+        const oid =
+          p._id != null &&
+          (typeof p._id?.toString === 'function'
+            ? p._id.toString()
+            : String(p._id)) === String(providerId)
+        return idMatch || oid
+      })
+      if (!prov) {
+        return NextResponse.json(
+          {
+            ok: true,
+            slots: [],
+            message: 'Provider not found',
+            timezone: guestTz,
+            ownerName: ownerName || owner.name || handle,
+            businessName: business?.name || ownerName || owner.name || null,
+            settings: {
+              duration: durationMin,
+              buffer: bufferMin,
+              minNotice: minNoticeMin
+            }
+          },
+          {
+            headers: {
+              'X-RateLimit-Limit': '10',
+              'X-RateLimit-Remaining': rateLimit.remaining.toString()
+            }
+          }
+        )
+      }
       if (prov?.weeklyHours && typeof prov.weeklyHours === 'object') {
         availableSlots = filterSlotsByProviderWorkingHours(
           availableSlots,

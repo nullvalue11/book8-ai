@@ -3,6 +3,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid'
+import { normalizePlanKey } from '@/lib/plan-features'
 
 function trimOrEmpty(s) {
   if (s == null || typeof s !== 'string') return ''
@@ -30,9 +31,10 @@ export function canAddProvider(plan, currentCount) {
   return currentCount < max
 }
 
-/** Public-safe provider list for booking page */
-export function sanitizeProvidersForPublic(providers) {
+/** Public-safe provider list for booking page (QA-012: Starter hides team providers). */
+export function sanitizeProvidersForPublic(providers, plan) {
   if (!Array.isArray(providers)) return []
+  if (normalizePlanKey(plan) === 'starter') return []
   return providers
     .filter((p) => p && p.active !== false && p.id)
     .map((p) => ({

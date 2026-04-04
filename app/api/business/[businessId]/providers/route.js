@@ -59,7 +59,7 @@ export async function GET(request, { params }) {
       providers: list,
       plan,
       maxProviders: plan === 'starter' ? 0 : plan === 'growth' ? 5 : -1,
-      publicSample: sanitizeProvidersForPublic(list)
+      publicSample: sanitizeProvidersForPublic(list, plan)
     })
   } catch (e) {
     console.error('[business/providers GET]', e)

@@ -78,7 +78,7 @@ export async function GET(request) {
     const showPhoneBookingChannel = hasVoiceOrSmsBooking(plan) && !!bookingPhone
 
     const businessProfile = sanitizeBusinessProfileForPublic(business.businessProfile)
-    const providers = sanitizeProvidersForPublic(business.providers || [])
+    const providers = sanitizeProvidersForPublic(business.providers || [], plan)
     const noShowProtection = sanitizeNoShowForPublic(business)
 
     return NextResponse.json({

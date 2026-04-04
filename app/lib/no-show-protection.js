@@ -11,23 +11,50 @@ export function canUseNoShowProtectionPlan(plan) {
   return k === 'growth' || k === 'enterprise'
 }
 
+/** QA-010: Partial PATCH must not wipe fields — use !== undefined so false/0 are preserved. */
 export function normalizeNoShowSettings(body, existing = null) {
   const ex = existing && typeof existing === 'object' ? existing : {}
-  const enabled = !!body.enabled
-  const feeType = body.feeType === 'percentage' ? 'percentage' : 'fixed'
-  const feeAmount = Math.max(0, Math.min(999999, Number(body.feeAmount) || 0))
-  const w = Number(body.cancellationWindowHours)
-  const cancellationWindowHours = WINDOW_OPTIONS.includes(w)
-    ? w
+  const b = body && typeof body === 'object' ? body : {}
+
+  const enabled = b.enabled !== undefined ? !!b.enabled : !!ex.enabled
+
+  const feeType =
+    b.feeType === 'percentage' || b.feeType === 'fixed'
+      ? b.feeType
+      : ex.feeType === 'percentage' || ex.feeType === 'fixed'
+        ? ex.feeType
+        : 'fixed'
+
+  const feeAmount =
+    b.feeAmount !== undefined && b.feeAmount !== null
+      ? Math.max(0, Math.min(999999, Number(b.feeAmount) || 0))
+      : Math.max(0, Math.min(999999, Number(ex.feeAmount) || 0))
+
+  const wRaw =
+    b.cancellationWindowHours !== undefined && b.cancellationWindowHours !== null
+      ? Number(b.cancellationWindowHours)
+      : Number(ex.cancellationWindowHours)
+  const cancellationWindowHours = WINDOW_OPTIONS.includes(wRaw)
+    ? wRaw
     : WINDOW_OPTIONS.includes(Number(ex.cancellationWindowHours))
       ? Number(ex.cancellationWindowHours)
       : 24
-  const autoCharge = body.autoCharge !== false
-  const currency = String(body.currency || ex.currency || 'cad')
+
+  const autoCharge =
+    b.autoCharge !== undefined
+      ? b.autoCharge !== false
+      : ex.autoCharge !== undefined
+        ? ex.autoCharge !== false
+        : false
+
+  const curSource =
+    b.currency !== undefined && b.currency !== null ? b.currency : ex.currency || 'cad'
+  const currency = String(curSource)
     .toLowerCase()
     .replace(/[^a-z]/g, '')
     .slice(0, 3)
   const cur = currency.length === 3 ? currency : 'cad'
+
   return {
     enabled,
     feeType,
