@@ -659,7 +659,9 @@ function WizardContent() {
           primary.subscription?.status === 'active' ||
           primary.subscription?.status === 'trialing' ||
           ['starter', 'growth', 'enterprise'].includes(
-            String(primary.plan || primary.subscription?.plan || '').toLowerCase()
+            String(
+              primary.subscriptionPlan || primary.plan || primary.subscription?.plan || ''
+            ).toLowerCase()
           )
         const calendarConnected = primary.calendar?.connected || false
         const calendarProvider = primary.calendar?.provider || null
@@ -677,13 +679,17 @@ function WizardContent() {
             primaryLanguage: primary.primaryLanguage || prev.primaryLanguage || 'en',
             multilingualEnabled: planActive
               ? !!getPlanFeatures(
-                  normalizePlanKey(primary.plan || primary.subscription?.plan)
+                  normalizePlanKey(
+                    primary.subscriptionPlan || primary.plan || primary.subscription?.plan
+                  )
                 ).multilingual
               : primary.multilingualEnabled ?? false,
             planActive,
             calendarConnected,
             calendarProvider,
-            subscriptionPlan: normalizePlanKey(primary.plan || primary.subscription?.plan),
+            subscriptionPlan: normalizePlanKey(
+              primary.subscriptionPlan || primary.plan || primary.subscription?.plan
+            ),
             phoneSetup: primary.phoneSetup ?? null,
             existingBusinessNumber: primary.existingBusinessNumber ?? null,
             book8Number: primary.book8Number ?? null,
@@ -746,7 +752,9 @@ function WizardContent() {
 
         if (planActive && primary.businessId) {
           const wantMl = !!getPlanFeatures(
-            normalizePlanKey(primary.plan || primary.subscription?.plan)
+            normalizePlanKey(
+              primary.subscriptionPlan || primary.plan || primary.subscription?.plan
+            )
           ).multilingual
           if (primary.multilingualEnabled !== wantMl && token) {
             const tzForPatch =
@@ -1744,6 +1752,13 @@ function WizardContent() {
   function handleGoToDashboard() {
     const bid = wizardData.businessId
     const pid = wizardData.googlePlaceId
+    if (token && bid) {
+      void fetch(`/api/business/${encodeURIComponent(bid)}/sync-to-core`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store'
+      }).catch(() => {})
+    }
     if (token && bid && pid) {
       void fetch(`/api/business/${encodeURIComponent(bid)}/google-places`, {
         method: 'POST',

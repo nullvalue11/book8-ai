@@ -36,6 +36,10 @@ async function resolveBusinessId(rawParams) {
   }
 }
 
+function businessIdQuery(businessId) {
+  return { $or: [{ businessId }, { id: businessId }] }
+}
+
 async function verifyAuthAndOwnership(request, database, businessId) {
   const auth = request.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
@@ -47,9 +51,11 @@ async function verifyAuthAndOwnership(request, database, businessId) {
   } catch {
     return { error: 'Invalid or expired token', status: 401 }
   }
-  const business = await database.collection(BUSINESS_COLLECTION).findOne({ businessId })
+  const business = await database.collection(BUSINESS_COLLECTION).findOne(businessIdQuery(businessId))
   if (!business) return { error: 'Business not found', status: 404 }
-  if (business.ownerUserId !== payload.sub) return { error: 'Access denied', status: 403 }
+  if (String(business.ownerUserId || '') !== String(payload.sub || '')) {
+    return { error: 'Access denied', status: 403 }
+  }
   return { payload }
 }
 
@@ -223,21 +229,45 @@ export async function GET(request, segmentCtx) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
     }
 
+    const onboarding = isOnboardingFastPath(request)
+    /** BOO-56: onboarding reads local schedule only — never blocks on core. */
+    if (onboarding) {
+      const doc = await database.collection(BUSINESS_COLLECTION).findOne(businessIdQuery(businessId))
+      const local = doc?.localSchedule
+      if (local?.weeklyHours && typeof local.weeklyHours === 'object') {
+        return NextResponse.json({
+          ok: true,
+          schedule: {
+            timezone: local.timezone || doc?.timezone || 'UTC',
+            weeklyHours: local.weeklyHours
+          },
+          source: 'local'
+        })
+      }
+      return NextResponse.json({
+        ok: true,
+        schedule: {
+          timezone: doc?.timezone || 'UTC',
+          weeklyHours: {}
+        },
+        source: 'local_empty'
+      })
+    }
+
     const baseUrl = getCoreApiBaseUrl()
     const headers = getCoreProxyHeaders()
-    const onboarding = isOnboardingFastPath(request)
     const coreResult = await getScheduleFromCoreWithRetry(
       baseUrl,
       businessId,
       headers,
-      scheduleGetProfile(onboarding)
+      scheduleGetProfile(false)
     )
 
     if (coreResult.ok) {
       return NextResponse.json(coreResult.data)
     }
 
-    const doc = await database.collection(BUSINESS_COLLECTION).findOne({ businessId })
+    const doc = await database.collection(BUSINESS_COLLECTION).findOne(businessIdQuery(businessId))
     const local = doc?.localSchedule
     if (local?.weeklyHours && typeof local.weeklyHours === 'object') {
       return NextResponse.json({
@@ -282,17 +312,42 @@ export async function PUT(request, segmentCtx) {
     const payload = { timezone, weeklyHours }
 
     const onboarding = isOnboardingFastPath(request)
+    /** BOO-56: onboarding saves hours locally only. */
+    if (onboarding) {
+      await database.collection(BUSINESS_COLLECTION).updateOne(
+        businessIdQuery(businessId),
+        {
+          $set: {
+            localSchedule: {
+              timezone,
+              weeklyHours,
+              updatedAt: new Date()
+            },
+            pendingCoreScheduleSync: true,
+            updatedAt: new Date()
+          }
+        }
+      )
+      return NextResponse.json({
+        ok: true,
+        schedule: { timezone, weeklyHours },
+        syncedToCore: false,
+        message:
+          'Hours saved. They will apply to your booking line once the account finishes syncing (usually within a minute).'
+      })
+    }
+
     const coreResult = await putScheduleToCoreWithRetry(
       baseUrl,
       businessId,
       headers,
       payload,
-      schedulePutProfile(onboarding)
+      schedulePutProfile(false)
     )
 
     if (coreResult.ok) {
       await database.collection(BUSINESS_COLLECTION).updateOne(
-        { businessId },
+        businessIdQuery(businessId),
         {
           $set: { updatedAt: new Date() },
           $unset: { pendingCoreScheduleSync: '', localSchedule: '' }
@@ -307,7 +362,7 @@ export async function PUT(request, segmentCtx) {
     })
 
     await database.collection(BUSINESS_COLLECTION).updateOne(
-      { businessId },
+      businessIdQuery(businessId),
       {
         $set: {
           localSchedule: {

@@ -15,6 +15,17 @@ import { getPlanFeatures as getCorePlanFeatures, normalizePlanKey } from './plan
  */
 export function resolveBusinessPlanKey(business) {
   if (!business) return normalizePlanKey(null)
+  /** BOO-56: Stripe / webhooks may set subscriptionPlan on the local business doc first. */
+  const fromSubscriptionPlan =
+    business.subscriptionPlan != null && String(business.subscriptionPlan).trim() !== ''
+      ? String(business.subscriptionPlan).trim()
+      : null
+  if (fromSubscriptionPlan) {
+    const lower = fromSubscriptionPlan.toLowerCase()
+    if (lower === 'starter' || lower === 'growth' || lower === 'enterprise') return lower
+    const tier = getPlanTier(fromSubscriptionPlan, env)
+    if (tier !== 'free') return tier
+  }
   const raw = business.plan ?? business.subscription?.plan
   if (raw != null && String(raw).trim() !== '') {
     const str = String(raw).trim()

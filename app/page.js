@@ -18,7 +18,7 @@ import { trFormat } from "@/lib/translations";
 import DataPrivacy from "./(home)/DataPrivacy";
 import SocialMediaLinks from "./components/SocialMediaLinks";
 import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import UpgradePrompt from "./components/UpgradePrompt";
 import PlanFeatureLock from "./components/PlanFeatureLock";
@@ -253,6 +253,9 @@ function HomeContent(props) {
   const [servicesMap, setServicesMap] = useState({});
   const [expandedCallId, setExpandedCallId] = useState(null);
   const [planLimits, setPlanLimits] = useState(null);
+  /** BOO-56: services/hours saved locally during onboarding — push to core when API is ready */
+  const [pendingCoreSync, setPendingCoreSync] = useState(false);
+  const [coreSyncBusy, setCoreSyncBusy] = useState(false);
 
   const filteredRecentCalls = useMemo(() => {
     let calls = [...recentCalls];
@@ -592,14 +595,14 @@ function HomeContent(props) {
     }
   }
 
-  async function api(path, opts = {}) {
+  const api = useCallback(async (path, opts = {}) => {
     const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {}, token ? { Authorization: `Bearer ${token}` } : {});
     const res = await fetch(`/api${path}`, { ...opts, headers });
     const isJson = (res.headers.get("content-type") || "").includes("application/json");
     const body = isJson ? await res.json() : await res.text();
     if (!res.ok) throw new Error(body?.error || body || `Request failed: ${res.status}`);
     return body;
-  }
+  }, [token]);
 
   async function refreshUser() {
     const controller = new AbortController();
@@ -780,7 +783,7 @@ function HomeContent(props) {
   }
 
   // Load primary business phone setup status for dashboard card
-  async function fetchPhoneSetupStatus() {
+  const fetchPhoneSetupStatus = useCallback(async () => {
     if (!token) return;
     try {
       setPhoneSetupLoading(true);
@@ -795,6 +798,7 @@ function HomeContent(props) {
         setPrimaryBookingHandle(null);
         setPrimaryCalendarProvider(null);
         setPhoneSetup(null);
+        setPendingCoreSync(false);
         return;
       }
       const primary = businesses[0];
@@ -803,8 +807,11 @@ function HomeContent(props) {
       setPrimaryBookingHandle(primary.handle || primary.businessId || null);
       const provider = primary?.calendar?.provider || (!primary?.calendar?.provider && primary?.calendar?.connected ? 'google' : null)
       setPrimaryCalendarProvider(provider);
-      const planKey = normalizePlanKey(primary.plan || primary.subscription?.plan);
+      const planKey = normalizePlanKey(
+        primary.subscriptionPlan || primary.plan || primary.subscription?.plan
+      );
       setPlanLimits(primary.planLimits || getUiPlanLimits(planKey));
+      setPendingCoreSync(!!primary.pendingCoreSync);
       const setupRes = await api(
         `/business/phone-setup?businessId=${encodeURIComponent(primary.businessId)}`,
         { method: "GET" }
@@ -822,16 +829,49 @@ function HomeContent(props) {
       setPhoneSetup(null);
       setHasNoBusiness(false);
       setBusinessesResolved(true);
+      setPendingCoreSync(false);
     } finally {
       setPhoneSetupLoading(false);
     }
-  }
+  }, [token, api]);
 
   useEffect(() => {
     if (token) {
       fetchPhoneSetupStatus();
     }
-  }, [token]);
+  }, [token, fetchPhoneSetupStatus]);
+
+  const runCoreSyncRetry = useCallback(async () => {
+    if (!token || !primaryBusinessId) return;
+    setCoreSyncBusy(true);
+    try {
+      await fetch(`/api/business/${encodeURIComponent(primaryBusinessId)}/sync-to-core`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store"
+      });
+    } catch {
+      /* refresh below re-reads pending flags */
+    } finally {
+      setCoreSyncBusy(false);
+      await fetchPhoneSetupStatus();
+    }
+  }, [token, primaryBusinessId, fetchPhoneSetupStatus]);
+
+  useEffect(() => {
+    if (!token || !primaryBusinessId || !pendingCoreSync) return;
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      await runCoreSyncRetry();
+    };
+    void tick();
+    const id = setInterval(tick, 45000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [token, primaryBusinessId, pendingCoreSync, runCoreSyncRetry]);
 
   // Fetch recent calls for primary business
   useEffect(() => {
@@ -1404,6 +1444,36 @@ function HomeContent(props) {
             >
               Update payment →
             </Link>
+          </div>
+        </div>
+      )}
+
+      {pendingCoreSync && primaryBusinessId && (
+        <div className="border-b border-amber-500/35 bg-amber-500/10">
+          <div className="mx-auto max-w-6xl px-4 md:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-sm text-foreground flex items-start gap-2">
+              {coreSyncBusy ? (
+                <Loader2 className="w-4 h-4 shrink-0 mt-0.5 animate-spin text-amber-600 dark:text-amber-400" aria-hidden />
+              ) : (
+                <Activity className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" aria-hidden />
+              )}
+              <span>
+                <span className="font-semibold text-amber-800 dark:text-amber-200">Syncing your booking profile</span>
+                <span className="text-muted-foreground block sm:inline sm:ml-2">
+                  Services and hours are being copied to our live booking API. Public booking will fill in once this finishes—we retry automatically.
+                </span>
+              </span>
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 border-amber-600/40 text-amber-900 dark:text-amber-100"
+              disabled={coreSyncBusy}
+              onClick={() => void runCoreSyncRetry()}
+            >
+              {coreSyncBusy ? "Syncing…" : "Retry sync"}
+            </Button>
           </div>
         </div>
       )}

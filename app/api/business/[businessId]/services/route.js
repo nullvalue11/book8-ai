@@ -287,9 +287,15 @@ export async function GET(request, { params }) {
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
     }
+    const onboarding = isOnboardingFastPath(request)
+    /** BOO-56: onboarding never waits on core — local services only. */
+    if (onboarding) {
+      const doc = await database.collection(BUSINESS_COLLECTION).findOne(businessIdQuery(businessId))
+      const local = mapLocalServicesForResponse(doc?.localServices)
+      return NextResponse.json({ ok: true, services: local, source: 'local' })
+    }
     const baseUrl = getCoreApiBaseUrl()
     const headers = getCoreApiProxyHeaders()
-    const onboarding = isOnboardingFastPath(request)
     const coreResult = await getServicesFromCoreWithRetry(
       baseUrl,
       businessId,
@@ -338,8 +344,6 @@ export async function POST(request, { params }) {
     if (authResult.error) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
     }
-    const baseUrl = getCoreApiBaseUrl()
-    const headers = getCoreApiProxyHeaders()
     const business = await database.collection(BUSINESS_COLLECTION).findOne(businessIdQuery(businessId))
     const planKey = resolveBusinessPlanKey(business)
     const maxServices = getUiPlanLimits(planKey).maxServices
@@ -347,16 +351,26 @@ export async function POST(request, { params }) {
     const body = await request.json().catch(() => ({}))
 
     const onboarding = isOnboardingFastPath(request)
-    const listProfile = servicesGetProfile(onboarding)
 
     if (maxServices !== -1) {
-      const coreListResult = await getServicesFromCoreWithRetry(baseUrl, businessId, headers, listProfile)
       let count = 0
-      if (coreListResult.ok) {
-        count = normalizeServicesList(coreListResult.data).length
+      if (onboarding) {
+        count = mapLocalServicesForResponse(business?.localServices).length
       } else {
-        const doc = await database.collection(BUSINESS_COLLECTION).findOne(businessIdQuery(businessId))
-        count = mapLocalServicesForResponse(doc?.localServices).length
+        const baseUrl = getCoreApiBaseUrl()
+        const headers = getCoreApiProxyHeaders()
+        const coreListResult = await getServicesFromCoreWithRetry(
+          baseUrl,
+          businessId,
+          headers,
+          servicesGetProfile(false)
+        )
+        if (coreListResult.ok) {
+          count = normalizeServicesList(coreListResult.data).length
+        } else {
+          const doc = await database.collection(BUSINESS_COLLECTION).findOne(businessIdQuery(businessId))
+          count = mapLocalServicesForResponse(doc?.localServices).length
+        }
       }
       if (count >= maxServices) {
         return NextResponse.json(
@@ -374,6 +388,27 @@ export async function POST(request, { params }) {
       return NextResponse.json({ ok: false, error: 'serviceId required' }, { status: 400 })
     }
 
+    /** BOO-56: onboarding persists locally only — no core round-trip. */
+    if (onboarding) {
+      await upsertLocalServiceRow(database, businessId, row)
+      return NextResponse.json({
+        ok: true,
+        syncedToCore: false,
+        service: {
+          serviceId: row.serviceId,
+          id: row.serviceId,
+          name: row.name,
+          durationMinutes: row.durationMinutes,
+          price: row.price,
+          active: row.active,
+          currency: row.currency
+        },
+        message: 'Service saved locally; it will sync to your booking line shortly.'
+      })
+    }
+
+    const baseUrl = getCoreApiBaseUrl()
+    const headers = getCoreApiProxyHeaders()
     const coreResult = await postServiceToCoreWithRetry(
       baseUrl,
       businessId,

@@ -50,6 +50,18 @@ async function resolveIds(rawParams) {
   return { businessId, serviceId }
 }
 
+function businessIdQuery(businessId) {
+  return { $or: [{ businessId }, { id: businessId }] }
+}
+
+function isOnboardingRequest(request) {
+  try {
+    return new URL(request.url).searchParams.get('onboarding') === 'true'
+  } catch {
+    return false
+  }
+}
+
 async function verifyAuthAndOwnership(request, database, businessId) {
   const auth = request.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
@@ -61,9 +73,11 @@ async function verifyAuthAndOwnership(request, database, businessId) {
   } catch {
     return { error: 'Invalid or expired token', status: 401 }
   }
-  const business = await database.collection(BUSINESS_COLLECTION).findOne({ businessId })
+  const business = await database.collection(BUSINESS_COLLECTION).findOne(businessIdQuery(businessId))
   if (!business) return { error: 'Business not found', status: 404 }
-  if (business.ownerUserId !== payload.sub) return { error: 'Access denied', status: 403 }
+  if (String(business.ownerUserId || '') !== String(payload.sub || '')) {
+    return { error: 'Access denied', status: 403 }
+  }
   return { payload }
 }
 
@@ -129,6 +143,21 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ ok: false, error: authResult.error }, { status: authResult.status })
     }
     const decodedId = serviceId
+
+    if (isOnboardingRequest(request)) {
+      const col = database.collection(BUSINESS_COLLECTION)
+      const q = businessIdQuery(businessId)
+      await col.updateOne(q, {
+        $pull: { localServices: { serviceId: decodedId } },
+        $set: { updatedAt: new Date(), pendingCoreServicesSync: true }
+      })
+      const doc = await col.findOne(q)
+      if (!Array.isArray(doc?.localServices) || doc.localServices.length === 0) {
+        await col.updateOne(q, { $unset: { pendingCoreServicesSync: '' } })
+      }
+      return NextResponse.json({ ok: true, deleted: true, source: 'local' })
+    }
+
     const baseUrl = getCoreApiBaseUrl()
     const url = `${baseUrl}/api/businesses/${encodeURIComponent(businessId)}/services/${encodeURIComponent(decodedId)}`
     const res = await fetch(url, {

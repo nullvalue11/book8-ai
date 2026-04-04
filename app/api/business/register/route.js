@@ -425,6 +425,10 @@ export async function GET(request) {
       existingBusinessNumber: b.existingBusinessNumber || null,
       book8Number: b.book8Number || null,
       businessProfile: b.businessProfile || null,
+      subscriptionPlan: b.subscriptionPlan || null,
+      pendingCoreServicesSync: !!b.pendingCoreServicesSync,
+      pendingCoreScheduleSync: !!b.pendingCoreScheduleSync,
+      pendingCoreSync: !!(b.pendingCoreServicesSync || b.pendingCoreScheduleSync),
       createdAt: b.createdAt,
       updatedAt: b.updatedAt
     }
