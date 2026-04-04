@@ -244,13 +244,13 @@ function SetupAuthScreen({ onAuthenticated, initialLoginMode = false }) {
 
   return (
     <main id="main-content" className="min-h-screen bg-[#0A0A0F] flex items-center justify-center p-4">
-      <div className="relative w-full max-w-md mx-auto bg-gray-900/50 backdrop-blur border border-gray-800 rounded-xl p-8 shadow-xl">
-        <div className="absolute top-4 end-4 z-10">
+      <div className="relative w-full max-w-md mx-auto bg-gray-900/50 backdrop-blur border border-gray-800 rounded-xl p-8 pt-6 shadow-xl">
+        <div className="flex justify-end items-center mb-6 min-h-[2.5rem]">
           <LanguageSelector value={language} onChange={setLanguage} t={t} variant="dark" className="shrink-0" />
         </div>
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-white">
+            <h1 className="text-3xl font-bold text-white px-1">
               {initialLoginMode ? a.signInTitle : a.getStartedTitle}
             </h1>
             <p className="text-[#94A3B8] text-sm">
