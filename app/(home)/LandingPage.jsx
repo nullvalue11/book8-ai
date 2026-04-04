@@ -121,28 +121,27 @@ export default function LandingPage() {
   return (
     <main
       id="main-content"
-      className="font-landing-body min-h-screen bg-[#0A0A0F] text-white"
+      className="font-landing-body min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0A0A0F] dark:text-white"
       dir={isRtl ? 'rtl' : 'ltr'}
       lang={language}
     >
       <section
         ref={heroRef}
-        className="relative min-h-[85vh] flex items-center overflow-hidden"
-        style={{ background: '#0A0A0F' }}
+        className="relative min-h-[85vh] flex items-center overflow-hidden bg-slate-50 dark:bg-[#0A0A0F]"
       >
         <div
-          className="absolute inset-0 opacity-40 pointer-events-none"
+          className="absolute inset-0 opacity-30 pointer-events-none dark:opacity-40"
           style={{
             background:
-              'radial-gradient(ellipse 80% 50% at 70% 20%, rgba(139,92,246,0.25), transparent 50%), radial-gradient(ellipse 60% 40% at 20% 80%, rgba(6,182,212,0.1), transparent 50%)',
+              'radial-gradient(ellipse 80% 50% at 70% 20%, rgba(139,92,246,0.22), transparent 50%), radial-gradient(ellipse 60% 40% at 20% 80%, rgba(6,182,212,0.08), transparent 50%)',
           }}
         />
         <div className="relative mx-auto max-w-6xl px-4 py-20 md:py-28">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div className="space-y-6">
               <h1
-                className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight"
-                style={{ color: '#F8FAFC', fontFamily: "'Sora', sans-serif" }}
+                className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-slate-900 dark:text-[#F8FAFC]"
+                style={{ fontFamily: "'Sora', sans-serif" }}
               >
                 <span
                   className={`block transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
@@ -158,7 +157,7 @@ export default function LandingPage() {
                 </span>
               </h1>
               <p
-                className={`text-lg text-[#94A3B8] max-w-xl leading-relaxed transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                className={`text-lg text-slate-600 dark:text-[#94A3B8] max-w-xl leading-relaxed transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 style={{ transitionDelay: '200ms' }}
               >
                 {h.heroSubtitle}
@@ -177,14 +176,14 @@ export default function LandingPage() {
                 </Link>
                 <a
                   href="#how-it-works"
-                  className="inline-flex items-center gap-2 text-[#94A3B8] hover:text-white transition-colors"
+                  className="inline-flex items-center gap-2 text-slate-600 hover:text-[#8B5CF6] dark:text-[#94A3B8] dark:hover:text-white transition-colors"
                 >
                   {h.seeHowItWorks}
                   <ChevronDown aria-hidden className="w-4 h-4 animate-bounce rtl:rotate-180" />
                 </a>
               </div>
               <div
-                className={`flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-x-6 sm:gap-y-2 text-sm text-[#94A3B8] transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                className={`flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-x-6 sm:gap-y-2 text-sm text-slate-600 dark:text-[#94A3B8] transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 style={{ transitionDelay: '400ms' }}
               >
                 <span className="flex items-center gap-2">
@@ -209,39 +208,39 @@ export default function LandingPage() {
               className={`relative transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
               style={{ transitionDelay: '300ms' }}
             >
-              <div className="rounded-2xl border border-[#1e1e2e] p-8" style={{ background: '#12121A' }}>
+              <div className="rounded-2xl border border-slate-200 bg-white p-8 dark:border-[#1e1e2e] dark:bg-[#12121A]">
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-[#8B5CF6]/20 flex items-center justify-center animate-pulse">
                       <Phone className="w-7 h-7 text-[#8B5CF6]" aria-hidden />
                     </div>
                     <div>
-                      <p className="font-semibold text-[#F8FAFC]">{h.phoneRings}</p>
-                      <p className="text-sm text-[#94A3B8]">{h.customerCallsYourNumber}</p>
+                      <p className="font-semibold text-slate-900 dark:text-[#F8FAFC]">{h.phoneRings}</p>
+                      <p className="text-sm text-slate-600 dark:text-[#94A3B8]">{h.customerCallsYourNumber}</p>
                     </div>
                   </div>
                   <div className="flex justify-center">
-                    <ChevronDown className="w-5 h-5 text-[#94A3B8] rtl:rotate-180" aria-hidden />
+                    <ChevronDown className="w-5 h-5 text-slate-500 dark:text-[#94A3B8] rtl:rotate-180" aria-hidden />
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-[#06B6D4]/20 flex items-center justify-center">
                       <Calendar className="w-7 h-7 text-[#06B6D4]" aria-hidden />
                     </div>
                     <div>
-                      <p className="font-semibold text-[#F8FAFC]">{h.aiChecksCalendar}</p>
-                      <p className="text-sm text-[#94A3B8]">{h.realTimeAvailability}</p>
+                      <p className="font-semibold text-slate-900 dark:text-[#F8FAFC]">{h.aiChecksCalendar}</p>
+                      <p className="text-sm text-slate-600 dark:text-[#94A3B8]">{h.realTimeAvailability}</p>
                     </div>
                   </div>
                   <div className="flex justify-center">
-                    <ChevronDown className="w-5 h-5 text-[#94A3B8] rtl:rotate-180" aria-hidden />
+                    <ChevronDown className="w-5 h-5 text-slate-500 dark:text-[#94A3B8] rtl:rotate-180" aria-hidden />
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <Check className="w-7 h-7 text-green-400" aria-hidden />
+                      <Check className="w-7 h-7 text-green-600 dark:text-green-400" aria-hidden />
                     </div>
                     <div>
-                      <p className="font-semibold text-[#F8FAFC]">{h.appointmentBooked}</p>
-                      <p className="text-sm text-[#94A3B8]">{h.smsEmailSent}</p>
+                      <p className="font-semibold text-slate-900 dark:text-[#F8FAFC]">{h.appointmentBooked}</p>
+                      <p className="text-sm text-slate-600 dark:text-[#94A3B8]">{h.smsEmailSent}</p>
                     </div>
                   </div>
                 </div>
@@ -251,9 +250,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-8 border-y border-[#1e1e2e]" style={{ background: '#0A0A0F' }}>
+      <section className="py-8 border-y border-slate-200 bg-slate-50 dark:border-[#1e1e2e] dark:bg-[#0A0A0F]">
         <div className="mx-auto max-w-6xl px-4">
-          <p className="text-center text-[#94A3B8] text-sm">{h.trustedBy}</p>
+          <p className="text-center text-slate-600 dark:text-[#94A3B8] text-sm">{h.trustedBy}</p>
           <div className="flex flex-wrap justify-center gap-8 mt-4">
             {[
               { icon: Scissors, label: h.barbers },
@@ -261,7 +260,7 @@ export default function LandingPage() {
               { icon: Sparkles, label: h.spas },
               { icon: Dumbbell, label: h.fitnessStudios },
             ].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex items-center gap-2 text-[#64748B]">
+              <div key={label} className="flex items-center gap-2 text-slate-500 dark:text-[#64748B]">
                 <Icon className="w-5 h-5" aria-hidden />
                 <span className="text-sm">{label}</span>
               </div>
@@ -270,10 +269,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="how-it-works" ref={howRef} className="py-20 md:py-28" style={{ background: '#0A0A0F' }}>
+      <section id="how-it-works" ref={howRef} className="py-20 md:py-28 bg-slate-50 dark:bg-[#0A0A0F]">
         <div className="mx-auto max-w-6xl px-4">
           <h2
-            className={`text-3xl md:text-4xl font-bold text-[#F8FAFC] mb-4 text-center transition-all duration-700 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+            className={`text-3xl md:text-4xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-4 text-center transition-all duration-700 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
             style={{ fontFamily: "'Sora', sans-serif" }}
           >
             {h.howItWorks}
@@ -282,9 +281,8 @@ export default function LandingPage() {
             {howCards.map(({ num, icon: Icon, title, desc }, i) => (
               <div
                 key={num}
-                className={`relative rounded-xl border border-[#1e1e2e] p-8 transition-all duration-700 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+                className={`relative rounded-xl border border-slate-200 bg-white p-8 transition-all duration-700 dark:border-[#1e1e2e] dark:bg-[#12121A] ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                 style={{
-                  background: '#12121A',
                   transitionDelay: `${200 + i * 100}ms`,
                 }}
               >
@@ -294,10 +292,10 @@ export default function LandingPage() {
                 <div className="w-12 h-12 rounded-lg bg-[#8B5CF6]/20 flex items-center justify-center mb-4">
                   <Icon className="w-6 h-6 text-[#8B5CF6]" />
                 </div>
-                <h3 className="text-xl font-semibold text-[#F8FAFC] mb-2" style={{ fontFamily: "'Sora', sans-serif" }}>
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-[#F8FAFC] mb-2" style={{ fontFamily: "'Sora', sans-serif" }}>
                   {title}
                 </h3>
-                <p className="text-[#94A3B8]">{desc}</p>
+                <p className="text-slate-600 dark:text-[#94A3B8]">{desc}</p>
               </div>
             ))}
           </div>
@@ -306,12 +304,11 @@ export default function LandingPage() {
 
       <section
         ref={featuresRef}
-        className="py-20 md:py-28"
-        style={{ background: 'linear-gradient(180deg, #0A0A0F 0%, #0d0d14 100%)' }}
+        className="py-20 md:py-28 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-[#0A0A0F] dark:to-[#0d0d14]"
       >
         <div className="mx-auto max-w-6xl px-4">
           <h2
-            className={`text-3xl md:text-4xl font-bold text-[#F8FAFC] mb-4 text-center transition-all duration-700 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+            className={`text-3xl md:text-4xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-4 text-center transition-all duration-700 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
             style={{ fontFamily: "'Sora', sans-serif" }}
           >
             {h.everythingYouNeed}
@@ -320,57 +317,53 @@ export default function LandingPage() {
             {featureGrid.map(({ icon: Icon, title, desc }, i) => (
               <div
                 key={title}
-                className={`rounded-xl border border-[#1e1e2e] p-6 transition-all duration-300 hover:border-[#8B5CF6]/50 hover:shadow-[0_0_30px_-10px_rgba(139,92,246,0.3)] ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                className={`rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-[#8B5CF6]/50 hover:shadow-[0_0_30px_-10px_rgba(139,92,246,0.2)] dark:border-[#1e1e2e] dark:bg-[#12121A] dark:hover:shadow-[0_0_30px_-10px_rgba(139,92,246,0.3)] ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 style={{
-                  background: '#12121A',
                   transitionDelay: `${100 + i * 50}ms`,
                 }}
               >
                 <div className="w-10 h-10 rounded-lg bg-[#8B5CF6]/20 flex items-center justify-center mb-4">
                   <Icon className="w-5 h-5 text-[#8B5CF6]" />
                 </div>
-                <h3 className="text-lg font-semibold text-[#F8FAFC] mb-2" style={{ fontFamily: "'Sora', sans-serif" }}>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-[#F8FAFC] mb-2" style={{ fontFamily: "'Sora', sans-serif" }}>
                   {title}
                 </h3>
-                <p className="text-sm text-[#94A3B8]">{desc}</p>
+                <p className="text-sm text-slate-600 dark:text-[#94A3B8]">{desc}</p>
               </div>
             ))}
           </div>
           <p
-            className={`text-center text-[#94A3B8] text-sm max-w-2xl mx-auto mt-14 transition-all duration-700 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+            className={`text-center text-slate-600 dark:text-[#94A3B8] text-sm max-w-2xl mx-auto mt-14 transition-all duration-700 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
           >
-            <span className="text-[#F8FAFC] font-medium">{h.worldwideLead}</span> {h.worldwideRest}
+            <span className="text-slate-900 font-medium dark:text-[#F8FAFC]">{h.worldwideLead}</span> {h.worldwideRest}
           </p>
         </div>
       </section>
 
-      <section className="py-20 md:py-28" style={{ background: '#0A0A0F' }}>
+      <section className="py-20 md:py-28 bg-slate-50 dark:bg-[#0A0A0F]">
         <div className="mx-auto max-w-6xl px-4">
           <h2
-            className="text-3xl md:text-4xl font-bold text-[#F8FAFC] mb-4 text-center"
+            className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-4 text-center"
             style={{ fontFamily: "'Sora', sans-serif" }}
           >
             {h.yourBookingPage}
           </h2>
-          <p className="text-center text-[#94A3B8] max-w-2xl mx-auto mb-12">{h.everyBusinessGets}</p>
-          <div
-            className="max-w-2xl mx-auto rounded-xl overflow-hidden border border-[#1e1e2e] shadow-2xl"
-            style={{ background: '#12121A' }}
-          >
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e1e2e] bg-[#0d0d12]">
+          <p className="text-center text-slate-600 dark:text-[#94A3B8] max-w-2xl mx-auto mb-12">{h.everyBusinessGets}</p>
+          <div className="max-w-2xl mx-auto rounded-xl overflow-hidden border border-slate-200 bg-white shadow-2xl dark:border-[#1e1e2e] dark:bg-[#12121A]">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-100 dark:border-[#1e1e2e] dark:bg-[#0d0d12]">
               <div className="flex gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
                 <div className="w-3 h-3 rounded-full bg-[#eab308]" />
                 <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
               </div>
               <div className="flex-1 flex justify-center">
-                <span className="text-xs text-[#64748B] bg-[#1e1e2e] px-4 py-1 rounded">{h.mockBrowserUrl}</span>
+                <span className="text-xs text-slate-600 bg-slate-200 dark:text-[#64748B] dark:bg-[#1e1e2e] px-4 py-1 rounded">{h.mockBrowserUrl}</span>
               </div>
             </div>
             <div className="p-8">
               <div className="grid grid-cols-7 gap-1 mb-4">
                 {calHeaders.map((d) => (
-                  <div key={d} className="text-center text-xs text-[#64748B] py-2">
+                  <div key={d} className="text-center text-xs text-slate-500 dark:text-[#64748B] py-2">
                     {d}
                   </div>
                 ))}
@@ -380,7 +373,7 @@ export default function LandingPage() {
                     <div
                       key={i}
                       className={`aspect-square rounded-full flex items-center justify-center text-sm ${
-                        isSelected ? 'bg-[#8B5CF6] text-white' : 'text-[#64748B]'
+                        isSelected ? 'bg-[#8B5CF6] text-white' : 'text-slate-500 dark:text-[#64748B]'
                       }`}
                     >
                       {day}
@@ -392,7 +385,7 @@ export default function LandingPage() {
                 {mockSlotTimes.map((time) => (
                   <div
                     key={time}
-                    className="py-2 rounded-lg border border-[#1e1e2e] text-center text-sm font-medium text-white/70"
+                    className="py-2 rounded-lg border border-slate-200 text-center text-sm font-medium text-slate-700 dark:border-[#1e1e2e] dark:text-white/70"
                   >
                     {time}
                   </div>
@@ -403,18 +396,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section
-        className="py-20 md:py-28"
-        style={{ background: 'linear-gradient(180deg, #0A0A0F 0%, #0d0d14 100%)' }}
-      >
+      <section className="py-20 md:py-28 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-[#0A0A0F] dark:to-[#0d0d14]">
         <div className="mx-auto max-w-6xl px-4">
           <h2
-            className="text-3xl md:text-4xl font-bold text-[#F8FAFC] mb-4 text-center"
+            className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-4 text-center"
             style={{ fontFamily: "'Sora', sans-serif" }}
           >
             {h.simplePricing}
           </h2>
-          <p className="text-center text-[#94A3B8] text-sm max-w-2xl mx-auto mb-12">
+          <p className="text-center text-slate-600 dark:text-[#94A3B8] text-sm max-w-2xl mx-auto mb-12">
             {h.plansFrom}{' '}
             <Link href="/pricing" className="text-[#8B5CF6] hover:underline">
               {h.compareDetails}
@@ -429,8 +419,8 @@ export default function LandingPage() {
                   key={tier.planId}
                   className={`rounded-2xl border p-6 md:p-8 flex flex-col relative ${
                     tier.highlight
-                      ? 'border-[#8B5CF6]/60 bg-[#12121A] shadow-[0_0_40px_-12px_rgba(139,92,246,0.4)]'
-                      : 'border-[#1e1e2e] bg-[#12121A]'
+                      ? 'border-[#8B5CF6]/50 bg-white shadow-[0_0_40px_-12px_rgba(139,92,246,0.25)] dark:border-[#8B5CF6]/60 dark:bg-[#12121A] dark:shadow-[0_0_40px_-12px_rgba(139,92,246,0.4)]'
+                      : 'border-slate-200 bg-white dark:border-[#1e1e2e] dark:bg-[#12121A]'
                   }`}
                 >
                   {tier.badge ? (
@@ -442,12 +432,12 @@ export default function LandingPage() {
                     <div className="w-10 h-10 rounded-xl bg-[#8B5CF6]/15 flex items-center justify-center">
                       <Icon className="w-5 h-5 text-[#A78BFA]" aria-hidden />
                     </div>
-                    <h3 className="text-xl font-bold text-[#F8FAFC]">{tier.name}</h3>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-[#F8FAFC]">{tier.name}</h3>
                   </div>
-                  <p className="text-xs text-[#94A3B8] mb-3 min-h-[2.5rem]">{tier.desc}</p>
-                  <p className="text-3xl font-bold text-[#F8FAFC] mb-6">
+                  <p className="text-xs text-slate-600 dark:text-[#94A3B8] mb-3 min-h-[2.5rem]">{tier.desc}</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-6">
                     {tier.price}
-                    <span className="text-base font-medium text-[#94A3B8]"> {tier.sub}</span>
+                    <span className="text-base font-medium text-slate-600 dark:text-[#94A3B8]"> {tier.sub}</span>
                   </p>
                   <PricingPlanFeatureList planId={tier.planId} theme="landing" override={override} />
                   <Link href={tier.href}>
@@ -455,7 +445,7 @@ export default function LandingPage() {
                       className={`w-full h-11 rounded-lg font-medium ${
                         tier.highlight
                           ? 'bg-[#8B5CF6] hover:bg-[#7C3AED] text-white'
-                          : 'bg-[#1e1e2e] hover:bg-[#2a2a3d] text-[#F8FAFC] border border-[#2a2a3d]'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 dark:bg-[#1e1e2e] dark:hover:bg-[#2a2a3d] dark:text-[#F8FAFC] dark:border-[#2a2a3d]'
                       }`}
                       size="lg"
                     >
@@ -463,7 +453,7 @@ export default function LandingPage() {
                     </Button>
                   </Link>
                   {tier.planId === 'starter' || tier.planId === 'enterprise' ? (
-                    <p className="text-xs text-center text-[#94A3B8] mt-3 px-1 leading-snug">
+                    <p className="text-xs text-center text-slate-600 dark:text-[#94A3B8] mt-3 px-1 leading-snug">
                       {tier.planId === 'starter' ? h.landingStarterPlanNote : h.landingEnterprisePlanNote}
                     </p>
                   ) : null}
@@ -471,41 +461,36 @@ export default function LandingPage() {
               );
             })}
           </div>
-          <p className="mt-10 text-center text-xs text-[#94A3B8] max-w-xl mx-auto leading-relaxed px-2">
+          <p className="mt-10 text-center text-xs text-slate-600 dark:text-[#94A3B8] max-w-xl mx-auto leading-relaxed px-2">
             {h.pricingCallFootnote}
           </p>
         </div>
       </section>
 
-      <section className="py-20 md:py-28" style={{ background: '#0A0A0F' }}>
+      <section className="py-20 md:py-28 bg-slate-50 dark:bg-[#0A0A0F]">
         <div className="mx-auto max-w-3xl px-4">
           <h2
-            className="text-3xl md:text-4xl font-bold text-[#F8FAFC] mb-4 text-center"
+            className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-4 text-center"
             style={{ fontFamily: "'Sora', sans-serif" }}
           >
             {h.faqTitle}
           </h2>
           <Accordion type="single" collapsible className="mt-12">
             {h.faq.map(({ q, a }) => (
-              <AccordionItem key={q} value={q} className="border-[#1e1e2e] px-4 py-2 rounded-lg" style={{ background: '#12121A' }}>
-                <AccordionTrigger className="text-start text-[#F8FAFC] hover:no-underline hover:text-[#8B5CF6]">
+              <AccordionItem key={q} value={q} className="border-slate-200 dark:border-[#1e1e2e] px-4 py-2 rounded-lg bg-white dark:bg-[#12121A]">
+                <AccordionTrigger className="text-start text-slate-900 dark:text-[#F8FAFC] hover:no-underline hover:text-[#8B5CF6]">
                   {q}
                 </AccordionTrigger>
-                <AccordionContent className="text-[#94A3B8] pt-2">{a}</AccordionContent>
+                <AccordionContent className="text-slate-600 dark:text-[#94A3B8] pt-2">{a}</AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
         </div>
       </section>
 
-      <section
-        className="py-24 md:py-32 relative overflow-hidden"
-        style={{
-          background: 'radial-gradient(ellipse 80% 50% at 50% 50%, rgba(139,92,246,0.15), transparent 70%), #0A0A0F',
-        }}
-      >
+      <section className="py-24 md:py-32 relative overflow-hidden bg-slate-50 dark:bg-[#0A0A0F] [background-image:radial-gradient(ellipse_80%_50%_at_50%_50%,rgba(139,92,246,0.12),transparent_70%)] dark:[background-image:radial-gradient(ellipse_80%_50%_at_50%_50%,rgba(139,92,246,0.15),transparent_70%)]">
         <div className="relative mx-auto max-w-3xl px-4 text-center">
-          <h2 className="text-3xl md:text-5xl font-bold text-[#F8FAFC] mb-6" style={{ fontFamily: "'Sora', sans-serif" }}>
+          <h2 className="text-3xl md:text-5xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-6" style={{ fontFamily: "'Sora', sans-serif" }}>
             {h.finalCtaTitle}
           </h2>
           <Link href={SETUP_NEW_BUSINESS_PATH}>
@@ -516,36 +501,36 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-[#1e1e2e] py-10 px-4">
+      <footer className="border-t border-slate-200 bg-slate-50 py-10 px-4 dark:border-[#1e1e2e] dark:bg-[#0A0A0F]">
         <nav
           aria-label="Footer"
-          className="mx-auto max-w-6xl flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm text-[#94A3B8]"
+          className="mx-auto max-w-6xl flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm text-slate-600 dark:text-[#94A3B8]"
         >
-          <Link href="/pricing" className="hover:text-[#F8FAFC] transition-colors">
+          <Link href="/pricing" className="hover:text-slate-900 dark:hover:text-[#F8FAFC] transition-colors">
             {h.pricing}
           </Link>
-          <Link href="/privacy" className="hover:text-[#F8FAFC] transition-colors">
+          <Link href="/privacy" className="hover:text-slate-900 dark:hover:text-[#F8FAFC] transition-colors">
             {h.privacy}
           </Link>
-          <Link href="/terms" className="hover:text-[#F8FAFC] transition-colors">
+          <Link href="/terms" className="hover:text-slate-900 dark:hover:text-[#F8FAFC] transition-colors">
             {h.termsNav}
           </Link>
         </nav>
-        <div className="mx-auto max-w-6xl mt-8 pt-6 border-t border-[#1e1e2e] flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 sm:gap-x-4 text-xs text-[#64748B] text-center">
+        <div className="mx-auto max-w-6xl mt-8 pt-6 border-t border-slate-200 dark:border-[#1e1e2e] flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 sm:gap-x-4 text-xs text-slate-500 dark:text-[#64748B] text-center">
           <span>{trFormat(h.footerCopyright, { year: String(new Date().getFullYear()) })}</span>
           <span className="hidden sm:inline" aria-hidden>
             ·
           </span>
           <a
             href={`mailto:${h.footerSupportEmail}`}
-            className="text-[#94A3B8] hover:text-[#F8FAFC] transition-colors"
+            className="text-slate-600 hover:text-slate-900 dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] transition-colors"
           >
             {h.footerSupportLabel}: {h.footerSupportEmail}
           </a>
           <span className="hidden sm:inline" aria-hidden>
             ·
           </span>
-          <span className="text-[#94A3B8]">{t.poweredBy}</span>
+          <span className="text-slate-600 dark:text-[#94A3B8]">{t.poweredBy}</span>
         </div>
       </footer>
     </main>

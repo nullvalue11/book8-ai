@@ -17,8 +17,8 @@ import { useBookingLanguage } from "@/hooks/useBookingLanguage";
 import { trFormat } from "@/lib/translations";
 import DataPrivacy from "./(home)/DataPrivacy";
 import SocialMediaLinks from "./components/SocialMediaLinks";
-import { useTheme } from "next-themes";
-import { QrCode, Share2, Settings, ExternalLink, Check, Moon, Sun, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
+import { QrCode, Share2, Settings, ExternalLink, Check, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import UpgradePrompt from "./components/UpgradePrompt";
 import PlanFeatureLock from "./components/PlanFeatureLock";
@@ -197,8 +197,6 @@ function HomeContent(props) {
   const searchParams = useSearchParams();
   const forceDashboard = !!props?.forceDashboard;
   const { language, t } = useBookingLanguage();
-  const { theme, setTheme, systemTheme } = useTheme();
-  const resolved = theme === "system" ? systemTheme : theme;
 
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
@@ -1396,7 +1394,7 @@ function HomeContent(props) {
             )}
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <ThemeToggle resolved={resolved} setTheme={setTheme} />
+            <ThemeToggle />
             <span className="text-muted-foreground hidden sm:inline truncate max-w-[200px]">{user?.email}</span>
             <Button variant="outline" size="sm" onClick={handleLogout}>Logout</Button>
           </div>
@@ -2198,30 +2196,6 @@ function HomeContent(props) {
     </main>
   );
 }
-
-function ThemeToggle({ resolved, setTheme }) {
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => { setMounted(true); }, []);
-
-  const isLight = mounted && resolved === 'light';
-  const isDark = mounted && resolved === 'dark';
-  const isSystem = mounted && resolved !== 'dark' && resolved !== 'light';
-
-  return (
-    <div className="flex items-center gap-2">
-      <button aria-label="Light" className={`p-2 rounded-md border ${isLight ? 'bg-secondary' : ''}`} onClick={() => setTheme('light')}>
-        <Sun className="h-4 w-4" />
-      </button>
-      <button aria-label="Dark" className={`p-2 rounded-md border ${isDark ? 'bg-secondary' : ''}`} onClick={() => setTheme('dark')}>
-        <Moon className="h-4 w-4" />
-      </button>
-      <button aria-label="System" className={`p-2 rounded-md border ${isSystem ? 'bg-secondary' : ''}`} onClick={() => setTheme('system')}>
-        Sys
-      </button>
-    </div>
-  );
-}
-
 
 // Export with Suspense wrapper for useSearchParams
 export default function Home(props) {

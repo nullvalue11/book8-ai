@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import HeaderLogo from "./HeaderLogo";
+import ThemeToggle from "./ThemeToggle";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SETUP_NEW_BUSINESS_PATH } from "@/lib/setup-entry";
@@ -14,13 +16,25 @@ import { useBookingLanguage } from "@/hooks/useBookingLanguage";
 export default function Header({ variant }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const { theme, systemTheme } = useTheme();
   const { language, setLanguage, t } = useBookingLanguage();
   const h = t.homepage;
   const [hasToken, setHasToken] = useState(false);
   const [tokenUserEmail, setTokenUserEmail] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [themeMounted, setThemeMounted] = useState(false);
   const isLanding = variant === "landing";
   const isRtl = language === "ar";
+
+  useEffect(() => {
+    setThemeMounted(true);
+  }, []);
+
+  const resolvedTheme = theme === "system" ? systemTheme : theme;
+  /** Marketing header uses dark chrome until client knows user chose light */
+  const landingDarkChrome =
+    isLanding && (!themeMounted || resolvedTheme !== "light");
+  const langVariant = landingDarkChrome ? "dark" : "light";
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -40,65 +54,69 @@ export default function Header({ variant }) {
   const isLoggedIn = (status === "authenticated" && session?.user) || hasToken;
   const displayEmail = session?.user?.email || tokenUserEmail;
 
-  const langVariant = isLanding ? "dark" : "light";
-
   return (
     <header
       dir={isRtl ? "rtl" : "ltr"}
       className={`sticky top-0 z-40 w-full border-b backdrop-blur-md supports-[backdrop-filter]:backdrop-blur-md ${
-        isLanding ? "border-white/10 bg-[#0A0A0F]/80" : "border-border bg-background/95 supports-[backdrop-filter]:bg-background/75"
+        landingDarkChrome
+          ? "border-white/10 bg-[#0A0A0F]/80"
+          : "border-border bg-background/95 supports-[backdrop-filter]:bg-background/75"
       }`}
     >
       <div
-        className={`mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6 ${isLanding ? "text-white" : ""}`}
+        className={`mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6 ${landingDarkChrome ? "text-white" : ""}`}
       >
         <div className="flex items-center gap-6">
-          <HeaderLogo variant={isLanding ? "light" : undefined} />
+          <HeaderLogo variant={landingDarkChrome ? "light" : undefined} />
           <nav className="hidden md:flex items-center gap-6">
             <Link
               href="/pricing"
               aria-current={pathname === "/pricing" ? "page" : undefined}
-              className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+              className={`text-sm transition-colors ${landingDarkChrome ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             >
               {h.pricing}
             </Link>
             <Link
               href="/privacy"
               aria-current={pathname === "/privacy" ? "page" : undefined}
-              className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+              className={`text-sm transition-colors ${landingDarkChrome ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             >
               {h.privacy}
             </Link>
             <Link
               href="/terms"
               aria-current={pathname === "/terms" ? "page" : undefined}
-              className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+              className={`text-sm transition-colors ${landingDarkChrome ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             >
               {h.termsNav}
             </Link>
           </nav>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            className="md:hidden p-2 -me-2 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={h.toggleMenu}
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle variant={landingDarkChrome ? "landing" : "default"} />
+            <button
+              type="button"
+              className={`p-2 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center ${landingDarkChrome ? "text-white" : "text-foreground"}`}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={h.toggleMenu}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
           <div className="hidden md:flex items-center gap-3">
+            <ThemeToggle variant={landingDarkChrome ? "landing" : "default"} className="shrink-0" />
             <LanguageSelector value={language} onChange={setLanguage} t={t} variant={langVariant} className="shrink-0" />
             {isLoggedIn ? (
               <>
                 <span
-                  className={`text-sm hidden sm:inline truncate max-w-[180px] ${isLanding ? "text-[#94A3B8]" : "text-muted-foreground"}`}
+                  className={`text-sm hidden sm:inline truncate max-w-[180px] ${landingDarkChrome ? "text-[#94A3B8]" : "text-muted-foreground"}`}
                 >
                   {displayEmail}
                 </span>
                 <Link
                   href="/dashboard"
-                  className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`text-sm transition-colors ${landingDarkChrome ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {h.dashboard}
                 </Link>
@@ -120,14 +138,14 @@ export default function Header({ variant }) {
               <>
                 <Link
                   href="/setup?mode=login"
-                  className={`text-sm transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`text-sm transition-colors ${landingDarkChrome ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {h.signIn}
                 </Link>
                 <Link
                   href={SETUP_NEW_BUSINESS_PATH}
                   className={`inline-flex h-11 items-center rounded-lg px-4 text-sm font-medium transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-                    isLanding
+                    landingDarkChrome
                       ? "bg-[#8B5CF6] text-white hover:bg-[#7C3AED] focus-visible:ring-[#8B5CF6] focus-visible:ring-offset-[#0A0A0F]"
                       : "bg-brand-500 text-white hover:bg-brand-600 hover:scale-[1.01] active:scale-[0.99] shadow-[0_8px_24px_-12px_rgba(124,77,255,.6)] focus-visible:ring-brand-500 focus-visible:ring-offset-background"
                   }`}
@@ -141,7 +159,7 @@ export default function Header({ variant }) {
       </div>
       {mobileMenuOpen && (
         <div
-          className={`md:hidden border-t ${isLanding ? "border-[#1e1e2e] bg-[#0A0A0F]/95" : "border-border bg-background/95"} backdrop-blur-lg`}
+          className={`md:hidden border-t ${landingDarkChrome ? "border-[#1e1e2e] bg-[#0A0A0F]/95" : "border-border bg-background/95"} backdrop-blur-lg`}
         >
           <div className="mx-auto max-w-6xl px-4 py-4 flex flex-col gap-3">
             <div className="pb-2">
@@ -150,7 +168,7 @@ export default function Header({ variant }) {
             <Link
               href="/pricing"
               aria-current={pathname === "/pricing" ? "page" : undefined}
-              className={`py-3 transition-colors ${isLanding ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
+              className={`py-3 transition-colors ${landingDarkChrome ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
               onClick={() => setMobileMenuOpen(false)}
             >
               {h.pricing}
@@ -158,7 +176,7 @@ export default function Header({ variant }) {
             <Link
               href="/privacy"
               aria-current={pathname === "/privacy" ? "page" : undefined}
-              className={`py-3 transition-colors ${isLanding ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
+              className={`py-3 transition-colors ${landingDarkChrome ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
               onClick={() => setMobileMenuOpen(false)}
             >
               {h.privacy}
@@ -166,19 +184,19 @@ export default function Header({ variant }) {
             <Link
               href="/terms"
               aria-current={pathname === "/terms" ? "page" : undefined}
-              className={`py-3 transition-colors ${isLanding ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
+              className={`py-3 transition-colors ${landingDarkChrome ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
               onClick={() => setMobileMenuOpen(false)}
             >
               {h.termsNav}
             </Link>
             {isLoggedIn ? (
               <>
-                <span className={`py-2 text-sm truncate ${isLanding ? "text-[#94A3B8]" : "text-muted-foreground"}`}>
+                <span className={`py-2 text-sm truncate ${landingDarkChrome ? "text-[#94A3B8]" : "text-muted-foreground"}`}>
                   {displayEmail}
                 </span>
                 <Link
                   href="/dashboard"
-                  className={`py-3 transition-colors ${isLanding ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
+                  className={`py-3 transition-colors ${landingDarkChrome ? "text-[#F8FAFC] hover:text-[#8B5CF6]" : "text-foreground hover:text-[#8B5CF6]"}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {h.dashboard}
@@ -203,7 +221,7 @@ export default function Header({ variant }) {
               <>
                 <Link
                   href="/setup?mode=login"
-                  className={`py-3 transition-colors ${isLanding ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`py-3 transition-colors ${landingDarkChrome ? "text-[#94A3B8] hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {h.signIn}
