@@ -83,7 +83,7 @@ export default function GooglePlacesSearch({
           }
         )
         const details = await res.json().catch(() => null)
-        onPick?.({ placeId, details })
+        onPick?.({ placeId, details: res.ok ? details : null })
       } catch {
         onPick?.({ placeId, details: null })
       } finally {

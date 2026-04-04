@@ -11,11 +11,79 @@ const MAX_PHOTOS_PUBLIC = 5
 function asPlaceRecord(raw) {
   if (!raw || typeof raw !== 'object') return null
   const o = /** @type {Record<string, unknown>} */ (raw)
-  return o.result && typeof o.result === 'object'
-    ? /** @type {Record<string, unknown>} */ (o.result)
-    : o.place && typeof o.place === 'object'
-      ? /** @type {Record<string, unknown>} */ (o.place)
-      : o
+  if (o.payload && typeof o.payload === 'object') {
+    return asPlaceRecord(o.payload)
+  }
+  if (o.data && typeof o.data === 'object') {
+    return asPlaceRecord(o.data)
+  }
+  if (o.result && typeof o.result === 'object') {
+    return /** @type {Record<string, unknown>} */ (o.result)
+  }
+  if (o.place && typeof o.place === 'object') {
+    return /** @type {Record<string, unknown>} */ (o.place)
+  }
+  if (o.details && typeof o.details === 'object') {
+    return /** @type {Record<string, unknown>} */ (o.details)
+  }
+  return o
+}
+
+function trimStr(v) {
+  if (v == null || typeof v !== 'string') return ''
+  return v.trim()
+}
+
+/**
+ * Nested address objects from core / Places API (New) style payloads.
+ * @param {unknown} addr
+ */
+function profileFieldsFromNestedAddress(addr) {
+  if (!addr || typeof addr !== 'object') {
+    return { street: '', street2: '', city: '', provinceState: '', postalCode: '', country: '' }
+  }
+  const a = /** @type {Record<string, unknown>} */ (addr)
+  const lines = Array.isArray(a.lines) ? a.lines.filter((x) => typeof x === 'string') : []
+  const line0 = lines[0] ? trimStr(lines[0]) : ''
+  const line1 = lines[1] ? trimStr(lines[1]) : ''
+  const street =
+    trimStr(a.street) ||
+    trimStr(a.streetAddress) ||
+    [trimStr(a.streetNumber), trimStr(a.route || a.thoroughfare)].filter(Boolean).join(' ').trim() ||
+    line0
+  const street2 =
+    trimStr(a.subpremise) ||
+    trimStr(a.suite) ||
+    trimStr(a.unit) ||
+    trimStr(a.addressLine2) ||
+    trimStr(a.line2) ||
+    line1
+  const city =
+    trimStr(a.city) ||
+    trimStr(a.locality) ||
+    trimStr(a.town) ||
+    trimStr(a.district)
+  const provinceState =
+    trimStr(a.province) ||
+    trimStr(a.administrativeArea) ||
+    trimStr(a.administrative_area_level_1) ||
+    trimStr(a.region) ||
+    trimStr(a.state)
+  const postalCode =
+    trimStr(a.postalCode) || trimStr(a.postal_code) || trimStr(a.zipCode) || trimStr(a.zip)
+  let country =
+    trimStr(a.countryCode) ||
+    trimStr(a.country_code) ||
+    trimStr(a.regionCode) ||
+    ''
+  if (country.length !== 2) {
+    const c = trimStr(a.country)
+    country = c.length === 2 ? c.toUpperCase() : ''
+  } else {
+    country = country.toUpperCase()
+  }
+
+  return { street, street2, city, provinceState, postalCode, country }
 }
 
 /**
@@ -119,14 +187,15 @@ export function placeDetailsToStoredGooglePlaces(rawDetails) {
  */
 export function mapGoogleTypesToCategory(types) {
   if (!Array.isArray(types)) return null
-  const t = types.map((x) => String(x).toLowerCase())
-  if (t.some((x) => x.includes('hair') || x === 'barber_shop' || x === 'beauty_salon')) return 'barber'
-  if (t.some((x) => x.includes('spa') || x === 'massage')) return 'spa'
+  const t = types.map((x) => String(x).toLowerCase().replace(/\s+/g, '_'))
+  if (t.some((x) => x.includes('hair') || x === 'barber_shop' || x === 'beauty_salon' || x === 'hair_care'))
+    return 'barber'
+  if (t.some((x) => x.includes('spa') || x === 'massage' || x.includes('salon'))) return 'spa'
   if (t.some((x) => x.includes('dent'))) return 'dental'
-  if (t.some((x) => x.includes('gym') || x === 'fitness_center')) return 'fitness'
+  if (t.some((x) => x.includes('gym') || x === 'fitness_center' || x.includes('fitness'))) return 'fitness'
   if (t.some((x) => x.includes('doctor') || x.includes('physician') || x.includes('hospital') || x === 'health'))
     return 'medical'
-  if (t.some((x) => x.includes('restaurant') || x === 'food' || x === 'cafe')) return 'restaurant'
+  if (t.some((x) => x.includes('restaurant') || x === 'food' || x === 'cafe' || x.includes('meal'))) return 'restaurant'
   return null
 }
 
@@ -179,9 +248,13 @@ export function placeDetailsToProfileFields(rawDetails) {
   const data = asPlaceRecord(rawDetails)
   if (!data) return { profile: {}, weeklyHours: null, category: null }
 
-  let category = mapGoogleTypesToCategory(
-    Array.isArray(data.types) ? /** @type {string[]} */ (data.types) : []
-  )
+  /** @type {string[]} */
+  const typeList = Array.isArray(data.types) ? /** @type {string[]} */ (data.types).map(String) : []
+  const primaryRaw = data.primaryType ?? data.primary_type
+  if (typeof primaryRaw === 'string' && primaryRaw.trim()) {
+    typeList.push(primaryRaw.trim())
+  }
+  let category = mapGoogleTypesToCategory(typeList)
 
   const openingHours =
     data.regularOpeningHours ||
@@ -189,6 +262,8 @@ export function placeDetailsToProfileFields(rawDetails) {
     data.currentOpeningHours ||
     data.opening_hours
   const weeklyHours = googleOpeningHoursToWeeklyHours(openingHours)
+
+  const nestedAddr = profileFieldsFromNestedAddress(data.address)
 
   const components = Array.isArray(data.addressComponents)
     ? data.addressComponents
@@ -198,23 +273,43 @@ export function placeDetailsToProfileFields(rawDetails) {
 
   /** @type {Record<string, string>} */
   const typesToVal = {}
+  /** @type {Record<string, string>} */
+  const typesShort = {}
   for (const c of components) {
     if (!c || typeof c !== 'object') continue
     const longName = /** @type {Record<string, unknown>} */ (c).longText || /** @type {Record<string, unknown>} */ (c).long_name
+    const shortName = /** @type {Record<string, unknown>} */ (c).shortText || /** @type {Record<string, unknown>} */ (c).short_name
     const types = /** @type {Record<string, unknown>} */ (c).types
-    if (typeof longName !== 'string' || !Array.isArray(types)) continue
+    if (!Array.isArray(types)) continue
     for (const ty of types) {
-      if (typeof ty === 'string') typesToVal[ty] = longName
+      if (typeof ty !== 'string') continue
+      if (typeof longName === 'string') typesToVal[ty] = longName
+      if (typeof shortName === 'string') typesShort[ty] = shortName
     }
   }
 
   const streetNumber = typesToVal.street_number || ''
   const route = typesToVal.route || ''
-  const street = [streetNumber, route].filter(Boolean).join(' ').trim()
-  const city = typesToVal.locality || typesToVal.postal_town || typesToVal.sublocality || ''
-  const provinceState = typesToVal.administrative_area_level_1 || ''
-  const postalCode = typesToVal.postal_code || ''
-  let country = (typesToVal.country || '').length === 2 ? typesToVal.country.toUpperCase() : ''
+  const subpremise = typesToVal.subpremise || typesToVal.floor || ''
+  const cmpStreet = [streetNumber, route].filter(Boolean).join(' ').trim()
+  const cmpStreet2 = subpremise
+  const cmpCity = typesToVal.locality || typesToVal.postal_town || typesToVal.sublocality || ''
+  const cmpProvince =
+    typesShort.administrative_area_level_1 ||
+    typesToVal.administrative_area_level_1 ||
+    ''
+  const cmpPostal = typesToVal.postal_code || ''
+  let cmpCountry = (typesShort.country || '').toUpperCase()
+  if (cmpCountry.length !== 2) {
+    cmpCountry = (typesToVal.country || '').length === 2 ? typesToVal.country.toUpperCase() : ''
+  }
+
+  const street = nestedAddr.street || cmpStreet
+  const street2 = nestedAddr.street2 || cmpStreet2
+  const city = nestedAddr.city || cmpCity
+  const provinceState = nestedAddr.provinceState || cmpProvince
+  const postalCode = nestedAddr.postalCode || cmpPostal
+  const country = nestedAddr.country || cmpCountry
 
   const formatted =
     typeof data.formattedAddress === 'string'
@@ -223,24 +318,26 @@ export function placeDetailsToProfileFields(rawDetails) {
         ? data.formatted_address
         : ''
   const intlPhone =
-    typeof data.internationalPhoneNumber === 'string'
-      ? data.internationalPhoneNumber.trim()
-      : typeof data.international_phone_number === 'string'
-        ? data.international_phone_number.trim()
-        : ''
+    trimStr(data.internationalPhoneNumber) ||
+    trimStr(data.international_phone_number) ||
+    trimStr(data.nationalPhoneNumber) ||
+    trimStr(data.national_phone_number) ||
+    trimStr(data.formattedPhoneNumber) ||
+    trimStr(data.formatted_phone_number) ||
+    trimStr(data.phone) ||
+    trimStr(data.phoneNumber)
   const website =
-    typeof data.websiteUri === 'string'
-      ? data.websiteUri.trim()
-      : typeof data.website === 'string'
-        ? data.website.trim()
-        : ''
+    trimStr(data.websiteUri) ||
+    trimStr(data.website) ||
+    trimStr(data.websiteUrl)
 
   const profile = {}
   if (street) profile.street = street.slice(0, 200)
+  if (street2) profile.street2 = street2.slice(0, 200)
   if (city) profile.city = city.slice(0, 200)
   if (provinceState) profile.provinceState = provinceState.slice(0, 200)
   if (postalCode) profile.postalCode = postalCode.slice(0, 32)
-  if (country) profile.country = country
+  if (country) profile.country = country.slice(0, 8).toUpperCase()
   if (intlPhone) profile.phone = intlPhone.slice(0, 40)
   if (website) profile.website = website.slice(0, 2048)
 
