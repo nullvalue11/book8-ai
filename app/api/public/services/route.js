@@ -18,6 +18,7 @@ import { sanitizeProvidersForPublic } from '@/lib/staff-providers'
 import { sanitizeNoShowForPublic } from '@/lib/no-show-protection'
 import { sanitizeGooglePlacesForPublic } from '@/lib/googlePlaces'
 import { sanitizePortfolioForPublic } from '@/lib/portfolio'
+import { REVIEWS_COLLECTION, aggregatePublishedReviews } from '@/lib/reviews'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -83,6 +84,14 @@ export async function GET(request) {
     const providers = sanitizeProvidersForPublic(business.providers || [], plan)
     const noShowProtection = sanitizeNoShowForPublic(business)
 
+    const revRows = await database
+      .collection(REVIEWS_COLLECTION)
+      .find({ businessId: business.businessId, status: 'published' })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .toArray()
+    const reviewsSummary = aggregatePublishedReviews(revRows, 100)
+
     return NextResponse.json({
       ok: true,
       services,
@@ -94,6 +103,7 @@ export async function GET(request) {
       businessProfile,
       googlePlaces: sanitizeGooglePlacesForPublic(business.googlePlaces),
       portfolio: sanitizePortfolioForPublic(business.portfolio),
+      reviews: reviewsSummary,
       providers,
       noShowProtection,
       plan,

@@ -71,6 +71,9 @@ export default function PublicBookingPage({ params }) {
   /** BOO-57B: owner-uploaded portfolio photos */
   const [portfolio, setPortfolio] = useState([])
   const [portfolioFilter, setPortfolioFilter] = useState('all')
+  /** BOO-58B: published client reviews */
+  const [reviewsData, setReviewsData] = useState(null)
+  const [showAllReviews, setShowAllReviews] = useState(false)
   const [stripePublishableKey, setStripePublishableKey] = useState(null)
   const [bookingSubStep, setBookingSubStep] = useState('details')
   const slotsFetchSeq = useRef(0)
@@ -252,6 +255,7 @@ export default function PublicBookingPage({ params }) {
 
   useEffect(() => {
     setPortfolioFilter('all')
+    setShowAllReviews(false)
   }, [handle])
 
   // Load services (deduplicated by name)
@@ -290,9 +294,21 @@ export default function PublicBookingPage({ params }) {
             data.googlePlaces && typeof data.googlePlaces === 'object' ? data.googlePlaces : null
           )
           setPortfolio(Array.isArray(data.portfolio) ? data.portfolio : [])
+          const rev = data.reviews
+          if (
+            rev &&
+            typeof rev === 'object' &&
+            typeof rev.totalReviews === 'number' &&
+            rev.totalReviews > 0
+          ) {
+            setReviewsData(rev)
+          } else {
+            setReviewsData(null)
+          }
         } else if (!cancelled && !res.ok) {
           setGooglePlaces(null)
           setPortfolio([])
+          setReviewsData(null)
         }
         if (!cancelled && res.ok) {
           setProviders(Array.isArray(data.providers) ? data.providers : [])
@@ -965,6 +981,73 @@ export default function PublicBookingPage({ params }) {
               />
             ))}
           </div>
+        </div>
+      ) : null}
+      {reviewsData && reviewsData.totalReviews > 0 && Array.isArray(reviewsData.reviews) ? (
+        <div
+          className="w-full px-4 md:px-6 pt-4 pb-2"
+          dir={language === 'ar' ? 'rtl' : 'ltr'}
+        >
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <h2 className="text-lg font-semibold text-white">{t.reviews?.title || 'Reviews'}</h2>
+            <span className="text-yellow-400 font-medium">
+              ★ {reviewsData.averageRating.toFixed(1)}
+            </span>
+            <span className="text-gray-400 text-sm">
+              ({reviewsData.totalReviews}{' '}
+              {t.reviews?.reviewsOnBook8 || 'reviews on Book8'})
+            </span>
+          </div>
+          {googlePlaces?.rating != null && reviewsData.totalReviews > 0 ? (
+            <p className="text-xs text-gray-500 mb-3">
+              ★ {googlePlaces.rating}
+              {googlePlaces.reviewCount != null ? ` (${googlePlaces.reviewCount} ${t.reviews?.onGoogle || 'on Google'})` : ''}
+              {' · '}
+              ★ {reviewsData.averageRating.toFixed(1)} ({reviewsData.totalReviews}{' '}
+              {t.reviews?.reviewsOnBook8 || 'Book8'})
+            </p>
+          ) : null}
+          <div className="space-y-4">
+            {(showAllReviews ? reviewsData.reviews : reviewsData.reviews.slice(0, 5)).map(
+              (review) => (
+                <div
+                  key={review.id}
+                  className="border border-gray-700 rounded-lg p-4 bg-gray-900/50"
+                  dir="auto"
+                >
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <div className="flex text-yellow-400 text-lg" aria-hidden>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star}>{star <= review.rating ? '★' : '☆'}</span>
+                      ))}
+                    </div>
+                    <span className="text-gray-400 text-sm">{review.customerName}</span>
+                  </div>
+                  {review.comment ? (
+                    <p className="text-gray-300 text-sm whitespace-pre-wrap">{review.comment}</p>
+                  ) : null}
+                  <p className="text-gray-500 text-xs mt-2">
+                    {review.serviceName}
+                    {review.serviceName ? ' · ' : ''}
+                    {review.createdAt
+                      ? new Date(review.createdAt).toLocaleDateString()
+                      : ''}
+                  </p>
+                </div>
+              )
+            )}
+          </div>
+          {reviewsData.totalReviews > 5 ? (
+            <button
+              type="button"
+              className="text-violet-400 hover:text-violet-300 text-sm font-medium mt-4"
+              onClick={() => setShowAllReviews((v) => !v)}
+            >
+              {showAllReviews
+                ? t.collapse || 'Show less'
+                : t.reviews?.seeAllReviews || 'See all reviews'}
+            </button>
+          ) : null}
         </div>
       ) : null}
       {/* Header */}

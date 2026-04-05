@@ -18,7 +18,7 @@ import { trFormat } from "@/lib/translations";
 import DataPrivacy from "./(home)/DataPrivacy";
 import SocialMediaLinks from "./components/SocialMediaLinks";
 import ThemeToggle from "@/components/ThemeToggle";
-import { QrCode, Share2, Settings, ExternalLink, Check, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2, Star } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import UpgradePrompt from "./components/UpgradePrompt";
 import PlanFeatureLock from "./components/PlanFeatureLock";
@@ -2182,6 +2182,14 @@ function HomeContent(props) {
                   >
                     <Activity className="w-4 h-4 mr-2" />
                     System status
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => router.push('/dashboard/reviews')}
+                  >
+                    <Star className="w-4 h-4 mr-2" />
+                    Reviews
                   </Button>
                 </div>
               </div>
