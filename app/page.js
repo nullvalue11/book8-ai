@@ -18,7 +18,7 @@ import { trFormat } from "@/lib/translations";
 import DataPrivacy from "./(home)/DataPrivacy";
 import SocialMediaLinks from "./components/SocialMediaLinks";
 import ThemeToggle from "@/components/ThemeToggle";
-import { QrCode, Share2, Settings, ExternalLink, Check, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2, Star } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2, Star, ListTodo } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import UpgradePrompt from "./components/UpgradePrompt";
 import PlanFeatureLock from "./components/PlanFeatureLock";
@@ -230,6 +230,8 @@ function HomeContent(props) {
   const [archivedCount, setArchivedCount] = useState(0);
   const [copied, setCopied] = useState(false);
   const [justCompletedCheckout, setJustCompletedCheckout] = useState(false);
+  /** BOO-59B: waiting waitlist entries for dashboard nav badge */
+  const [waitlistWaitingCount, setWaitlistWaitingCount] = useState(0);
 
   const [phoneSetup, setPhoneSetup] = useState(null);
   const [phoneSetupLoading, setPhoneSetupLoading] = useState(false);
@@ -372,6 +374,31 @@ function HomeContent(props) {
       setBusinessesResolved(false);
       setHasNoBusiness(false);
     }
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      setWaitlistWaitingCount(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/business/waitlist", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (!cancelled && res.ok && data.ok && typeof data.waitingCount === "number") {
+          setWaitlistWaitingCount(data.waitingCount);
+        }
+      } catch {
+        if (!cancelled) setWaitlistWaitingCount(0);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   // Show auth section only when Sign In clicked (#auth) or redirect with #auth
@@ -2190,6 +2217,21 @@ function HomeContent(props) {
                   >
                     <Star className="w-4 h-4 mr-2" />
                     Reviews
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={() => router.push('/dashboard/waitlist')}
+                  >
+                    <span className="flex items-center">
+                      <ListTodo className="w-4 h-4 mr-2" />
+                      {t.waitlist?.navLabel ?? 'Waitlist'}
+                    </span>
+                    {waitlistWaitingCount > 0 ? (
+                      <span className="rounded-full bg-violet-600/20 text-violet-300 text-xs font-medium px-2 py-0.5">
+                        {waitlistWaitingCount}
+                      </span>
+                    ) : null}
                   </Button>
                 </div>
               </div>

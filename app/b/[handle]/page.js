@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef, useLayoutEffe
 import { formatPublicServicePriceDisplay } from '@/lib/currency'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
 import { Check, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar as CalendarIcon, Phone } from 'lucide-react'
 import PublicBusinessInfoPanel from '@/components/public/PublicBusinessInfoPanel'
@@ -74,6 +75,15 @@ export default function PublicBookingPage({ params }) {
   /** BOO-58B: published client reviews */
   const [reviewsData, setReviewsData] = useState(null)
   const [showAllReviews, setShowAllReviews] = useState(false)
+  /** BOO-59B */
+  const [publicBusinessId, setPublicBusinessId] = useState('')
+  const [waitlistEnabled, setWaitlistEnabled] = useState(true)
+  const [waitlistPreferDates, setWaitlistPreferDates] = useState([])
+  const [waitlistTimeRange, setWaitlistTimeRange] = useState('any')
+  const [waitlistForm, setWaitlistForm] = useState({ name: '', email: '', phone: '' })
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false)
+  const [waitlistSuccess, setWaitlistSuccess] = useState(false)
+  const [waitlistSubmitError, setWaitlistSubmitError] = useState('')
   const [stripePublishableKey, setStripePublishableKey] = useState(null)
   const [bookingSubStep, setBookingSubStep] = useState('details')
   const slotsFetchSeq = useRef(0)
@@ -256,7 +266,16 @@ export default function PublicBookingPage({ params }) {
   useEffect(() => {
     setPortfolioFilter('all')
     setShowAllReviews(false)
+    setWaitlistSuccess(false)
+    setWaitlistSubmitError('')
+    setWaitlistForm({ name: '', email: '', phone: '' })
   }, [handle])
+
+  useEffect(() => {
+    setWaitlistSuccess(false)
+    setWaitlistSubmitError('')
+    if (date) setWaitlistPreferDates([date])
+  }, [date])
 
   // Load services (deduplicated by name)
   useEffect(() => {
@@ -286,6 +305,12 @@ export default function PublicBookingPage({ params }) {
           if (!cancelled) setPublicBookingPhone(data.bookingPhone)
         } else if (!cancelled) {
           setPublicBookingPhone(null)
+        }
+        if (!cancelled && res.ok && data.businessId) {
+          setPublicBusinessId(String(data.businessId))
+        }
+        if (!cancelled && res.ok) {
+          setWaitlistEnabled(data.waitlistEnabled !== false)
         }
         if (!cancelled && res.ok) {
           setBusinessProfile(data.businessProfile && typeof data.businessProfile === 'object' ? data.businessProfile : null)
@@ -540,6 +565,31 @@ export default function PublicBookingPage({ params }) {
   const noShowConfigButNoStripe = !!(noShowProtection?.enabled && !stripePublishableKey)
 
   const bookingLocale = bookingLocaleBcp47(language)
+  const wl = t.waitlist || {}
+
+  const waitlistDateOptions = useMemo(() => {
+    if (!date) return []
+    const d = new Date(`${date}T12:00:00`)
+    if (Number.isNaN(d.getTime())) return []
+    const out = []
+    for (let i = 0; i < 14; i++) {
+      const x = new Date(d)
+      x.setDate(x.getDate() + i)
+      out.push(toLocalYmd(x))
+    }
+    return out
+  }, [date])
+
+  const toggleWaitlistDate = useCallback((ymd) => {
+    setWaitlistPreferDates((prev) => {
+      if (prev.includes(ymd)) {
+        if (prev.length <= 1) return prev
+        return prev.filter((x) => x !== ymd)
+      }
+      if (prev.length >= 8) return prev
+      return [...prev, ymd]
+    })
+  }, [])
 
   const noShowFeeDisplay = useMemo(() => {
     if (!noShowProtection?.enabled) return ''
@@ -572,6 +622,54 @@ export default function PublicBookingPage({ params }) {
       if (Number.isFinite(n)) return Math.round(n * 100)
     }
     return undefined
+  }
+
+  async function submitWaitlist(e) {
+    e?.preventDefault?.()
+    if (!publicBusinessId || !handle) return
+    const name = waitlistForm.name.trim()
+    const email = waitlistForm.email.trim()
+    if (name.length < 2) {
+      setWaitlistSubmitError(t.required)
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setWaitlistSubmitError(t.invalidEmail)
+      return
+    }
+    if (waitlistPreferDates.length === 0) {
+      setWaitlistSubmitError(wl.pickDateHint || t.required)
+      return
+    }
+    setWaitlistSubmitting(true)
+    setWaitlistSubmitError('')
+    try {
+      const res = await fetch('/api/public/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          handle,
+          name,
+          email,
+          phone: waitlistForm.phone.trim() || undefined,
+          preferredDates: waitlistPreferDates,
+          preferredTimeRange: waitlistTimeRange,
+          serviceId: selectedService?.serviceId || selectedService?.id || '',
+          serviceName: selectedService?.name || ''
+        })
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        setWaitlistSubmitError(typeof data.error === 'string' ? data.error : (wl.submitError || ''))
+        return
+      }
+      setWaitlistSuccess(true)
+      setWaitlistForm({ name: '', email: '', phone: '' })
+    } catch {
+      setWaitlistSubmitError(wl.submitError || t.required)
+    } finally {
+      setWaitlistSubmitting(false)
+    }
   }
 
   async function handleBooking(setupIntentIdParam) {
@@ -1425,8 +1523,143 @@ export default function PublicBookingPage({ params }) {
                 ) : error && !slots.length ? (
                   <div className="text-center py-8 text-gray-400">{error}</div>
                 ) : slots.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
-                    {t.noAvailabilityTryAnother}
+                  <div className="space-y-4 py-2">
+                    <p className="text-center text-gray-400">{t.noAvailabilityTryAnother}</p>
+                    {waitlistEnabled &&
+                    publicBusinessId &&
+                    date &&
+                    !error &&
+                    (!hasServices || selectedService) ? (
+                      <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 space-y-4 text-left">
+                        {waitlistSuccess ? (
+                          <div className="rounded-lg border border-emerald-800/80 bg-emerald-950/40 px-3 py-3 text-sm text-emerald-100">
+                            <p className="font-medium text-emerald-50">{wl.successTitle}</p>
+                            <p className="text-emerald-200/90 mt-1">{wl.successBody}</p>
+                          </div>
+                        ) : (
+                          <>
+                            <div>
+                              <p className="text-sm font-semibold text-white">{wl.joinTitle}</p>
+                              <p className="text-xs text-gray-400 mt-1">{wl.joinSubtitle}</p>
+                            </div>
+                            <form onSubmit={submitWaitlist} className="space-y-3">
+                              <div>
+                                <Label className="text-gray-300 text-xs">{wl.preferredDates}</Label>
+                                <p className="text-[11px] text-gray-500 mb-2">{wl.maxDatesHint}</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {waitlistDateOptions.map((ymd) => {
+                                    const on = waitlistPreferDates.includes(ymd)
+                                    return (
+                                      <button
+                                        key={ymd}
+                                        type="button"
+                                        onClick={() => toggleWaitlistDate(ymd)}
+                                        className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                                          on
+                                            ? 'bg-violet-600 text-white'
+                                            : 'border border-gray-700 text-gray-300 hover:border-violet-500'
+                                        }`}
+                                      >
+                                        {new Date(`${ymd}T12:00:00`).toLocaleDateString(bookingLocale, {
+                                          weekday: 'short',
+                                          month: 'short',
+                                          day: 'numeric'
+                                        })}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-gray-300 text-xs">{wl.timePreference}</Label>
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                  {[
+                                    { k: 'morning', lab: wl.morning },
+                                    { k: 'afternoon', lab: wl.afternoon },
+                                    { k: 'evening', lab: wl.evening },
+                                    { k: 'any', lab: wl.anyTime }
+                                  ].map(({ k, lab }) => (
+                                    <button
+                                      key={k}
+                                      type="button"
+                                      onClick={() => setWaitlistTimeRange(k)}
+                                      className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+                                        waitlistTimeRange === k
+                                          ? 'bg-violet-600 text-white'
+                                          : 'border border-gray-700 text-gray-300 hover:border-violet-500'
+                                      }`}
+                                    >
+                                      {lab}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor="wl-name" className="text-gray-300">
+                                  {t.yourName}
+                                </Label>
+                                <Input
+                                  id="wl-name"
+                                  autoComplete="name"
+                                  value={waitlistForm.name}
+                                  onChange={(e) =>
+                                    setWaitlistForm((f) => ({ ...f, name: e.target.value }))
+                                  }
+                                  className="mt-1 min-h-[44px] bg-gray-800 border-gray-700 text-white"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="wl-email" className="text-gray-300">
+                                  {t.emailStar}
+                                </Label>
+                                <Input
+                                  id="wl-email"
+                                  type="email"
+                                  autoComplete="email"
+                                  value={waitlistForm.email}
+                                  onChange={(e) =>
+                                    setWaitlistForm((f) => ({ ...f, email: e.target.value }))
+                                  }
+                                  className="mt-1 min-h-[44px] bg-gray-800 border-gray-700 text-white"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="wl-phone" className="text-gray-300">
+                                  {t.phone} <span className="text-gray-500">{t.phoneOptional}</span>
+                                </Label>
+                                <Input
+                                  id="wl-phone"
+                                  type="tel"
+                                  autoComplete="tel"
+                                  value={waitlistForm.phone}
+                                  onChange={(e) =>
+                                    setWaitlistForm((f) => ({ ...f, phone: e.target.value }))
+                                  }
+                                  className="mt-1 min-h-[44px] bg-gray-800 border-gray-700 text-white"
+                                />
+                              </div>
+                              {waitlistSubmitError ? (
+                                <p className="text-sm text-red-400">{waitlistSubmitError}</p>
+                              ) : null}
+                              <Button
+                                type="submit"
+                                disabled={waitlistSubmitting}
+                                className="w-full min-h-[44px] bg-violet-600 hover:bg-violet-500"
+                              >
+                                {waitlistSubmitting ? (
+                                  <span className="flex items-center justify-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    {wl.submitting}
+                                  </span>
+                                ) : (
+                                  wl.submit
+                                )}
+                              </Button>
+                            </form>
+                          </>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 md:grid-cols-4 gap-2">

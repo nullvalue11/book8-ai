@@ -108,7 +108,8 @@ export async function GET(request) {
       noShowProtection,
       plan,
       multilingual,
-      bookingPhone: showPhoneBookingChannel ? bookingPhone : null
+      bookingPhone: showPhoneBookingChannel ? bookingPhone : null,
+      waitlistEnabled: business.waitlistEnabled !== false
     })
   } catch (error) {
     console.error('[public/services] Error:', error)
