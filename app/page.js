@@ -24,7 +24,6 @@ import PlanFeatureLock from "./components/PlanFeatureLock";
 import { getPlanName, getUiPlanLimits, normalizePlanKey } from "./lib/plan-features";
 import { bookingLanguageBadge } from "./lib/bookingLanguageDisplay";
 import { toast } from "sonner";
-import { SETUP_NEW_BUSINESS_PATH } from "@/lib/setup-entry";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function formatDuration(seconds) {
@@ -440,13 +439,7 @@ function HomeContent(props) {
     } catch {}
   }, [appReady, token, searchParams, businessesResolved, hasNoBusiness]);
 
-  // BOO-47: Direct visits to `/dashboard` with no businesses → setup wizard
-  useEffect(() => {
-    if (!token || !businessesResolved || !hasNoBusiness) return;
-    if (pathname.startsWith('/setup')) return;
-    if (pathname !== '/dashboard' && !forceDashboard) return;
-    router.replace(SETUP_NEW_BUSINESS_PATH);
-  }, [token, businessesResolved, hasNoBusiness, pathname, forceDashboard, router]);
+  // BOO-47B: /dashboard/* redirect when user has 0 businesses is handled in app/dashboard/layout.js
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (token) { refreshUser(); fetchBookings(); fetchGoogleStatus(); fetchOutlookStatus(); fetchArchivedCount(); checkSubscription(); } }, [token]);
