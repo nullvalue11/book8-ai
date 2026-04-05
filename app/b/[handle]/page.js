@@ -68,6 +68,9 @@ export default function PublicBookingPage({ params }) {
   const [noShowProtection, setNoShowProtection] = useState(null)
   /** Sanitized subset from /api/public/services */
   const [googlePlaces, setGooglePlaces] = useState(null)
+  /** BOO-57B: owner-uploaded portfolio photos */
+  const [portfolio, setPortfolio] = useState([])
+  const [portfolioFilter, setPortfolioFilter] = useState('all')
   const [stripePublishableKey, setStripePublishableKey] = useState(null)
   const [bookingSubStep, setBookingSubStep] = useState('details')
   const slotsFetchSeq = useRef(0)
@@ -90,6 +93,20 @@ export default function PublicBookingPage({ params }) {
       (Array.isArray(g.photos) && g.photos.length > 0)
     )
   }, [googlePlaces])
+
+  const portfolioCategories = useMemo(() => {
+    const s = new Set()
+    for (const ph of portfolio) {
+      if (ph && typeof ph.category === 'string' && ph.category.trim()) s.add(ph.category.trim())
+    }
+    return Array.from(s).sort()
+  }, [portfolio])
+
+  const filteredPortfolio = useMemo(() => {
+    if (!Array.isArray(portfolio) || portfolio.length === 0) return []
+    if (portfolioFilter === 'all') return portfolio
+    return portfolio.filter((p) => (p.category || '').trim() === portfolioFilter)
+  }, [portfolio, portfolioFilter])
 
   const hasProfileDisplay = useMemo(
     () =>
@@ -233,6 +250,10 @@ export default function PublicBookingPage({ params }) {
     setGuestTz(detected)
   }, [])
 
+  useEffect(() => {
+    setPortfolioFilter('all')
+  }, [handle])
+
   // Load services (deduplicated by name)
   useEffect(() => {
     let cancelled = false
@@ -268,8 +289,10 @@ export default function PublicBookingPage({ params }) {
           setGooglePlaces(
             data.googlePlaces && typeof data.googlePlaces === 'object' ? data.googlePlaces : null
           )
+          setPortfolio(Array.isArray(data.portfolio) ? data.portfolio : [])
         } else if (!cancelled && !res.ok) {
           setGooglePlaces(null)
+          setPortfolio([])
         }
         if (!cancelled && res.ok) {
           setProviders(Array.isArray(data.providers) ? data.providers : [])
@@ -852,25 +875,96 @@ export default function PublicBookingPage({ params }) {
       className="min-h-screen bg-gray-950 text-white dark"
     >
       {/* Booking page is intentionally always-dark for brand consistency across all embedded contexts */}
-      {googlePlaces?.photos?.length > 0 ? (
+      {/* BOO-57B: business portfolio first, then Google photos */}
+      {filteredPortfolio.length > 0 ? (
         <div
-          className="w-full overflow-x-auto flex gap-2 px-4 md:px-6 pt-4 pb-2 snap-x snap-mandatory scroll-smooth"
-          dir="ltr"
+          className="w-full px-4 md:px-6 pt-4 pb-2"
+          dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
-          {googlePlaces.photos.slice(0, 5).map((photo, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={i}
-              src={`/api/places/photo?reference=${encodeURIComponent(photo.reference)}&maxwidth=600`}
-              alt={
-                ownerName?.trim() || formatHandleAsDisplayName(handle)
-                  ? `${ownerName?.trim() || formatHandleAsDisplayName(handle)} photo ${i + 1}`
-                  : `Business photo ${i + 1}`
-              }
-              className="h-48 w-72 max-h-[12rem] object-cover rounded-lg flex-shrink-0 snap-start"
-              loading="lazy"
-            />
-          ))}
+          <h2 className="text-lg font-semibold text-white mb-3">
+            {t.portfolio?.title || 'Our Work'}
+          </h2>
+          {portfolioCategories.length > 1 ? (
+            <div className="flex flex-wrap gap-2 mb-3">
+              <button
+                type="button"
+                onClick={() => setPortfolioFilter('all')}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  portfolioFilter === 'all'
+                    ? 'bg-violet-600 text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {t.portfolio?.allCategories || 'All'}
+              </button>
+              {portfolioCategories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setPortfolioFilter(cat)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    portfolioFilter === cat
+                      ? 'bg-violet-600 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {filteredPortfolio.map((photo) => (
+              <div
+                key={photo.id}
+                className="relative group rounded-lg overflow-hidden border border-gray-800 bg-gray-900"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo.url}
+                  alt={
+                    photo.caption ||
+                    (ownerName?.trim() || formatHandleAsDisplayName(handle)
+                      ? `${ownerName?.trim() || formatHandleAsDisplayName(handle)}`
+                      : 'Business photo')
+                  }
+                  className="w-full aspect-square object-cover"
+                  loading="lazy"
+                />
+                {photo.caption ? (
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 p-2">
+                    <p className="text-white text-sm line-clamp-2">{photo.caption}</p>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {googlePlaces?.photos?.length > 0 ? (
+        <div className="w-full px-4 md:px-6 pt-2 pb-2">
+          <p className="text-xs text-gray-400 mb-2">
+            {t.portfolio?.googlePhotos || t.googlePlaces?.photosFromGoogle || 'Photos'}
+          </p>
+          <div
+            className="w-full overflow-x-auto flex gap-2 pb-2 snap-x snap-mandatory scroll-smooth"
+            dir="ltr"
+          >
+            {googlePlaces.photos.slice(0, 5).map((photo, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={`/api/places/photo?reference=${encodeURIComponent(photo.reference)}&maxwidth=600`}
+                alt={
+                  ownerName?.trim() || formatHandleAsDisplayName(handle)
+                    ? `${ownerName?.trim() || formatHandleAsDisplayName(handle)} photo ${i + 1}`
+                    : `Business photo ${i + 1}`
+                }
+                className="h-48 w-72 max-h-[12rem] object-cover rounded-lg flex-shrink-0 snap-start"
+                loading="lazy"
+              />
+            ))}
+          </div>
         </div>
       ) : null}
       {/* Header */}

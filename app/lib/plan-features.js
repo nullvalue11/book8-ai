@@ -115,6 +115,8 @@ export function getUiPlanLimits(plan) {
   const f = getPlanFeatures(key)
   return {
     maxServices: typeof f.maxServices === 'number' ? f.maxServices : 3,
+    /** BOO-57B: portfolio photos on public booking page */
+    maxPortfolioPhotos: key === 'starter' ? 5 : 20,
     aiPhoneAgent: !!f.aiPhoneAgent,
     smsConfirmations: !!f.smsConfirmations,
     advancedAnalytics: f.analytics === 'full',

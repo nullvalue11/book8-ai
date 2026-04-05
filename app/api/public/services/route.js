@@ -17,6 +17,7 @@ import { sanitizeBusinessProfileForPublic } from '@/lib/businessProfile'
 import { sanitizeProvidersForPublic } from '@/lib/staff-providers'
 import { sanitizeNoShowForPublic } from '@/lib/no-show-protection'
 import { sanitizeGooglePlacesForPublic } from '@/lib/googlePlaces'
+import { sanitizePortfolioForPublic } from '@/lib/portfolio'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -92,6 +93,7 @@ export async function GET(request) {
       businessTimezone: business.timezone || null,
       businessProfile,
       googlePlaces: sanitizeGooglePlacesForPublic(business.googlePlaces),
+      portfolio: sanitizePortfolioForPublic(business.portfolio),
       providers,
       noShowProtection,
       plan,
