@@ -524,17 +524,26 @@ export default function LandingPage() {
                     <p className="text-xs text-[#68668A] mb-2 uppercase tracking-wide">{h.mockContactLabel}</p>
                     <div className="flex flex-wrap gap-3">
                       {[
-                        { initials: 'JD', hue: 'from-violet-500 to-purple-600' },
-                        { initials: 'RD', hue: 'from-fuchsia-500 to-pink-600' },
-                        { initials: 'AH', hue: 'from-cyan-500 to-blue-600' },
-                        { initials: 'BH', hue: 'from-emerald-500 to-teal-600' }
+                        { src: '/images/providers/john-dentist.png', alt: 'Dr. John' },
+                        { src: '/images/providers/rashad-dentist.png', alt: 'Dr. Rashad' },
+                        { src: '/images/providers/amanda-hygienist.png', alt: 'Amanda' },
+                        { src: '/images/providers/britney-hygienist.png', alt: 'Britney' }
                       ].map((p) => (
                         <div
-                          key={p.initials}
-                          className={`w-11 h-11 rounded-full bg-gradient-to-br ${p.hue} flex items-center justify-center text-xs font-bold text-white shadow-lg`}
-                          title={p.initials}
+                          key={p.src}
+                          className="w-11 h-11 rounded-[10px] overflow-hidden shadow-lg shrink-0 bg-[#1a1a3a]"
+                          title={p.alt}
                         >
-                          {p.initials}
+                          <img
+                            src={p.src}
+                            alt={p.alt}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              borderRadius: '10px'
+                            }}
+                          />
                         </div>
                       ))}
                     </div>
