@@ -1,85 +1,264 @@
-'use client';
+'use client'
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
-import Link from 'next/link';
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
 import {
+  Check,
+  ChevronDown,
+  Globe,
+  Menu,
+  X,
   Phone,
   Calendar,
-  Check,
-  MessageSquare,
-  Globe,
-  Building2,
-  BarChart3,
-  ChevronDown,
-  Scissors,
-  Dumbbell,
   Sparkles,
+  Scissors,
   Stethoscope,
+  Dumbbell,
+  PenTool,
+  PawPrint,
   Zap,
   Rocket,
-  Languages,
-} from 'lucide-react';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
-import PricingPlanFeatureList from '@/components/PricingPlanFeatureList';
-import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from '@/lib/setup-entry';
-import { useBookingLanguage } from '@/hooks/useBookingLanguage';
-import { getHomepagePricingDisplay, trFormat, bookingLocaleBcp47 } from '@/lib/translations';
+  Building2,
+  CheckCircle2
+} from 'lucide-react'
+import { Bricolage_Grotesque, Plus_Jakarta_Sans } from 'next/font/google'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { Button } from '@/components/ui/button'
+import PricingPlanFeatureList from '@/components/PricingPlanFeatureList'
+import HeaderLogo from '@/components/HeaderLogo'
+import LanguageSelector from '@/components/LanguageSelector'
+import SocialMediaLinks from '@/components/SocialMediaLinks'
+import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from '@/lib/setup-entry'
+import { useBookingLanguage } from '@/hooks/useBookingLanguage'
+import { getHomepagePricingDisplay, trFormat, bookingLocaleBcp47 } from '@/lib/translations'
 
-function useIntersectionObserver(ref) {
-  const [isVisible, setIsVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) setIsVisible(true);
-    }, { threshold: 0.1 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [ref]);
-  return isVisible;
+const fontDisplay = Bricolage_Grotesque({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-brico',
+  display: 'swap'
+})
+
+const fontSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-jakarta',
+  display: 'swap'
+})
+
+const reveal = {
+  hidden: { opacity: 0, y: 44 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] }
+  }
 }
 
-export default function LandingPage() {
-  const { language, t } = useBookingLanguage();
-  const h = t.homepage;
-  const isRtl = language === 'ar';
+const stagger = {
+  visible: { transition: { staggerChildren: 0.12 } }
+}
 
-  const heroRef = useRef(null);
-  const howRef = useRef(null);
-  const featuresRef = useRef(null);
-  const heroVisible = useIntersectionObserver(heroRef);
-  const howVisible = useIntersectionObserver(howRef);
-  const featuresVisible = useIntersectionObserver(featuresRef);
+function Aurora() {
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      aria-hidden
+    >
+      <div
+        className="absolute -top-1/4 start-1/4 h-[60vh] w-[60vh] rounded-full blur-[120px] opacity-40"
+        style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.55), transparent 70%)' }}
+      />
+      <div
+        className="absolute bottom-0 end-0 h-[50vh] w-[50vh] rounded-full blur-[100px] opacity-30"
+        style={{ background: 'radial-gradient(circle, rgba(109,40,217,0.45), transparent 70%)' }}
+      />
+      <div
+        className="absolute top-1/2 start-1/2 h-[40vh] w-[40vh] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[90px] opacity-20"
+        style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.35), transparent 65%)' }}
+      />
+    </div>
+  )
+}
+
+function Particles() {
+  const dots = useMemo(() => Array.from({ length: 48 }, (_, i) => i), [])
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden opacity-[0.35]"
+      aria-hidden
+    >
+      {dots.map((i) => (
+        <div
+          key={i}
+          className="absolute rounded-full bg-[#A78BFA]"
+          style={{
+            width: 2 + (i % 3),
+            height: 2 + (i % 3),
+            left: `${(i * 7.3) % 100}%`,
+            top: `${(i * 11.7) % 100}%`,
+            opacity: 0.15 + (i % 5) * 0.05
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function GlowCard({ children, className = '', delay = 0 }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: [0, -6, 0] }}
+      transition={{
+        opacity: { delay: delay * 0.15 + 0.3, duration: 0.5 },
+        y: { delay: delay * 0.15 + 0.5, duration: 4, repeat: Infinity, ease: 'easeInOut' }
+      }}
+      className={`relative rounded-2xl border border-[rgba(139,92,246,0.35)] bg-[#121228]/95 p-4 shadow-[0_0_40px_-12px_rgba(139,92,246,0.55)] backdrop-blur-md ${className}`}
+      style={{
+        boxShadow:
+          '0 0 0 1px rgba(139,92,246,0.2), 0 0 32px -8px rgba(139,92,246,0.35), 0 25px 50px -12px rgba(0,0,0,0.55)'
+      }}
+    >
+      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-[rgba(139,92,246,0.12)] to-transparent opacity-70" />
+      <div className="relative z-[1]">{children}</div>
+    </motion.div>
+  )
+}
+
+function SvgSetup() {
+  return (
+    <svg viewBox="0 0 120 120" className="w-full max-w-[140px] mx-auto text-[#A78BFA]" aria-hidden>
+      <motion.rect
+        x="20"
+        y="28"
+        width="80"
+        height="56"
+        rx="8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        initial={{ pathLength: 0 }}
+        whileInView={{ pathLength: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.2, ease: 'easeInOut' }}
+      />
+      <motion.line x1="32" y1="44" x2="88" y2="44" stroke="currentColor" strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ delay: 0.3, duration: 0.6 }} />
+      <motion.line x1="32" y1="58" x2="72" y2="58" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ delay: 0.45, duration: 0.5 }} />
+      <motion.circle cx="60" cy="78" r="6" fill="#34D399" initial={{ scale: 0 }} whileInView={{ scale: 1 }} viewport={{ once: true }} transition={{ delay: 0.8, type: 'spring' }} />
+    </svg>
+  )
+}
+
+function SvgPhoneWave() {
+  return (
+    <svg viewBox="0 0 120 120" className="w-full max-w-[140px] mx-auto text-[#A78BFA]" aria-hidden>
+      <rect x="38" y="22" width="44" height="78" rx="12" fill="none" stroke="currentColor" strokeWidth="2" />
+      <motion.path
+        d="M24 70 Q32 50 40 70 T56 70"
+        fill="none"
+        stroke="#34D399"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        animate={{ d: ['M24 70 Q32 50 40 70 T56 70', 'M24 70 Q32 90 40 70 T56 70', 'M24 70 Q32 50 40 70 T56 70'] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.path
+        d="M62 70 Q70 42 78 70 T94 70"
+        fill="none"
+        stroke="#34D399"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        animate={{ d: ['M62 70 Q70 42 78 70 T94 70', 'M62 70 Q70 98 78 70 T94 70', 'M62 70 Q70 42 78 70 T94 70'] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.12 }}
+      />
+    </svg>
+  )
+}
+
+function SvgCalendarCheck() {
+  return (
+    <svg viewBox="0 0 120 120" className="w-full max-w-[140px] mx-auto text-[#A78BFA]" aria-hidden>
+      <rect x="28" y="32" width="64" height="56" rx="8" fill="none" stroke="currentColor" strokeWidth="2" />
+      <line x1="28" y1="48" x2="92" y2="48" stroke="currentColor" strokeWidth="2" />
+      <motion.path
+        d="M46 68 L54 78 L76 56"
+        fill="none"
+        stroke="#34D399"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        initial={{ pathLength: 0 }}
+        whileInView={{ pathLength: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
+      />
+    </svg>
+  )
+}
+
+function useMonthGrid(year, month) {
+  return useMemo(() => {
+    const first = new Date(year, month - 1, 1)
+    const pad = first.getDay()
+    const daysInMonth = new Date(year, month, 0).getDate()
+    const cells = []
+    for (let i = 0; i < pad; i++) cells.push(null)
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+    while (cells.length % 7 !== 0) cells.push(null)
+    return cells
+  }, [year, month])
+}
+
+const ORBIT_LANGS = ['English', 'Français', 'Español', 'العربية', '中文', 'Deutsch']
+
+export default function LandingPage() {
+  const { language, setLanguage, t } = useBookingLanguage()
+  const h = t.homepage
+  const isRtl = language === 'ar'
+  const [navSolid, setNavSolid] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  const calCells = useMonthGrid(2026, 4)
+  const calHeaders = [h.calSun, h.calMon, h.calTue, h.calWed, h.calThu, h.calFri, h.calSat]
 
   const mockSlotTimes = useMemo(() => {
-    const loc = bookingLocaleBcp47(language);
+    const loc = bookingLocaleBcp47(language)
     return [9, 10, 11, 12, 13, 14, 15, 16].map((hour) =>
       new Date(2000, 0, 1, hour, 0, 0).toLocaleTimeString(loc, {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
       })
-    );
-  }, [language]);
+    )
+  }, [language])
 
-  const howCards = [
-    { num: 1, icon: Calendar, title: h.step1Title, desc: h.step1Desc },
-    { num: 2, icon: Phone, title: h.step2Title, desc: h.step2Desc },
-    { num: 3, icon: Check, title: h.step3Title, desc: h.step3Desc },
-  ];
+  const onScroll = useCallback(() => {
+    setNavSolid(typeof window !== 'undefined' && window.scrollY > 50)
+  }, [])
 
-  const featureGrid = [
-    { icon: Phone, title: h.featVoiceTitle, desc: h.featVoiceDesc },
-    { icon: Languages, title: h.featLangTitle, desc: h.featLangDesc },
-    { icon: Calendar, title: h.featCalTitle, desc: h.featCalDesc },
-    { icon: MessageSquare, title: h.featSmsTitle, desc: h.featSmsDesc },
-    { icon: Globe, title: h.featOnlineTitle, desc: h.featOnlineDesc },
-    { icon: Building2, title: h.featMultiTitle, desc: h.featMultiDesc },
-    { icon: BarChart3, title: h.featDashTitle, desc: h.featDashDesc },
-  ];
+  useEffect(() => {
+    document.documentElement.style.scrollBehavior = 'smooth'
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      document.documentElement.style.scrollBehavior = ''
+    }
+  }, [onScroll])
 
-  const calHeaders = [h.calSun, h.calMon, h.calTue, h.calWed, h.calThu, h.calFri, h.calSat];
+  useEffect(() => {
+    const prevDir = document.documentElement.getAttribute('dir')
+    const prevLang = document.documentElement.getAttribute('lang')
+    document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr')
+    document.documentElement.setAttribute('lang', language || 'en')
+    return () => {
+      if (prevDir) document.documentElement.setAttribute('dir', prevDir)
+      else document.documentElement.removeAttribute('dir')
+      if (prevLang) document.documentElement.setAttribute('lang', prevLang)
+    }
+  }, [isRtl, language])
 
   const pricingTiers = [
     {
@@ -91,7 +270,7 @@ export default function LandingPage() {
       desc: h.individualsSmallBiz,
       cta: h.landingGetStarted,
       href: setupUrlWithNewBusiness({ plan: 'starter' }),
-      highlight: false,
+      highlight: false
     },
     {
       planId: 'growth',
@@ -100,10 +279,10 @@ export default function LandingPage() {
       price: '$99',
       sub: h.monthlyAfterTrial,
       desc: h.landingGrowthCardDesc,
-      cta: h.startFreeTrial,
+      cta: h.landingGetStartedGrowth,
       href: setupUrlWithNewBusiness({ plan: 'growth' }),
       highlight: true,
-      badge: h.mostPopular,
+      badge: h.mostPopular
     },
     {
       planId: 'enterprise',
@@ -114,425 +293,773 @@ export default function LandingPage() {
       desc: h.largeTeamsCustom,
       cta: h.landingGetStarted,
       href: setupUrlWithNewBusiness({ plan: 'enterprise' }),
-      highlight: false,
+      highlight: false
+    }
+  ]
+
+  const featuresThree = [
+    {
+      overline: h.feat1Overline,
+      title: h.feat1Title,
+      desc: h.feat1Desc,
+      reverse: false
     },
-  ];
+    {
+      overline: h.feat2Overline,
+      title: h.feat2Title,
+      desc: h.feat2Desc,
+      reverse: true
+    },
+    {
+      overline: h.feat3Overline,
+      title: h.feat3Title,
+      desc: h.feat3Desc,
+      reverse: false
+    }
+  ]
+
+  const multilingTags = [
+    'English',
+    'Français',
+    'Español',
+    'العربية',
+    '中文',
+    'Deutsch',
+    'Português',
+    '日本語',
+    '한국어',
+    'हिन्दी'
+  ]
+
+  const rootCls = `${fontDisplay.variable} ${fontSans.variable} font-[family-name:var(--font-jakarta)] text-[#EEEDF5] antialiased`
 
   return (
     <main
       id="main-content"
-      className="font-landing-body min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0A0A0F] dark:text-white"
-      dir={isRtl ? 'rtl' : 'ltr'}
+      className={`min-h-screen ${rootCls}`}
+      style={{ background: 'linear-gradient(180deg, #06060f 0%, #0b0b1a 40%, #06060f 100%)' }}
       lang={language}
     >
-      <section
-        ref={heroRef}
-        className="relative min-h-[85vh] flex items-center overflow-hidden bg-slate-50 dark:bg-[#0A0A0F]"
+      <Aurora />
+      <Particles />
+
+      <header
+        className={`fixed top-0 z-50 w-full transition-all duration-300 ${
+          navSolid ? 'border-b border-[rgba(139,92,246,0.12)] bg-[#06060f]/80 backdrop-blur-xl' : 'bg-transparent'
+        }`}
+        dir={isRtl ? 'rtl' : 'ltr'}
       >
-        <div
-          className="absolute inset-0 opacity-30 pointer-events-none dark:opacity-40"
-          style={{
-            background:
-              'radial-gradient(ellipse 80% 50% at 70% 20%, rgba(139,92,246,0.22), transparent 50%), radial-gradient(ellipse 60% 40% at 20% 80%, rgba(6,182,212,0.08), transparent 50%)',
-          }}
-        />
-        <div className="relative mx-auto max-w-6xl px-4 py-20 md:py-28">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <div className="space-y-6">
-              <h1
-                className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-slate-900 dark:text-[#F8FAFC]"
-                style={{ fontFamily: "'Sora', sans-serif" }}
-              >
-                <span
-                  className={`block transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-                  style={{ transitionDelay: '0ms' }}
-                >
-                  {h.heroTitle1} {h.heroTitle2}
-                </span>
-                <span
-                  className={`block transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-                  style={{ transitionDelay: '100ms' }}
-                >
-                  {h.heroTitle3} {h.heroTitle4}
-                </span>
-              </h1>
-              <p
-                className={`text-lg text-slate-600 dark:text-[#94A3B8] max-w-xl leading-relaxed transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-                style={{ transitionDelay: '200ms' }}
-              >
-                {h.heroSubtitle}
-              </p>
-              <div
-                className={`flex flex-wrap gap-4 transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-                style={{ transitionDelay: '300ms' }}
-              >
-                <Link href={SETUP_NEW_BUSINESS_PATH}>
-                  <Button
-                    className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-12 px-6 rounded-lg font-medium"
-                    size="lg"
-                  >
-                    {h.getStartedFree}
-                  </Button>
-                </Link>
-                <a
-                  href="#how-it-works"
-                  className="inline-flex items-center gap-2 text-slate-600 hover:text-[#8B5CF6] dark:text-[#94A3B8] dark:hover:text-white transition-colors"
-                >
-                  {h.seeHowItWorks}
-                  <ChevronDown aria-hidden className="w-4 h-4 animate-bounce rtl:rotate-180" />
-                </a>
-              </div>
-              <div
-                className={`flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-x-6 sm:gap-y-2 text-sm text-slate-600 dark:text-[#94A3B8] transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-                style={{ transitionDelay: '400ms' }}
-              >
-                <span className="flex items-center gap-2">
-                  <Check aria-hidden className="w-4 h-4 text-[#06B6D4] shrink-0" />
-                  {h.answersCallsDay}
-                </span>
-                <span className="flex items-center gap-2">
-                  <Check aria-hidden className="w-4 h-4 text-[#06B6D4] shrink-0" />
-                  {h.booksInRealTime}
-                </span>
-                <span className="flex items-center gap-2">
-                  <Check aria-hidden className="w-4 h-4 text-[#06B6D4] shrink-0" />
-                  {h.speaks70Languages}
-                </span>
-                <span className="flex items-center gap-2">
-                  <Check aria-hidden className="w-4 h-4 text-[#06B6D4] shrink-0" />
-                  {h.smsEmailConfirmations}
-                </span>
-              </div>
-            </div>
-            <div
-              className={`relative transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-              style={{ transitionDelay: '300ms' }}
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
+          <Link href="/" className="flex items-center gap-2 shrink-0 text-white">
+            <HeaderLogo variant="light" />
+          </Link>
+          <nav className="hidden md:flex items-center gap-8 text-sm text-[#9593A8]">
+            <a href="#features" className="hover:text-white transition-colors">
+              {h.navFeatures}
+            </a>
+            <a href="#how-it-works" className="hover:text-white transition-colors">
+              {h.navHowItWorks}
+            </a>
+            <a href="#pricing" className="hover:text-white transition-colors">
+              {h.navPricing}
+            </a>
+            <Link href="/pricing" className="hover:text-white transition-colors">
+              {h.pricing}
+            </Link>
+          </nav>
+          <div className="flex items-center gap-2 md:gap-3">
+            <LanguageSelector value={language} onChange={setLanguage} t={t} variant="dark" />
+            <Link
+              href="/#auth"
+              className="hidden sm:inline text-sm text-[#9593A8] hover:text-white px-2"
             >
-              <div className="rounded-2xl border border-slate-200 bg-white p-8 dark:border-[#1e1e2e] dark:bg-[#12121A]">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-[#8B5CF6]/20 flex items-center justify-center animate-pulse">
-                      <Phone className="w-7 h-7 text-[#8B5CF6]" aria-hidden />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-900 dark:text-[#F8FAFC]">{h.phoneRings}</p>
-                      <p className="text-sm text-slate-600 dark:text-[#94A3B8]">{h.customerCallsYourNumber}</p>
-                    </div>
-                  </div>
-                  <div className="flex justify-center">
-                    <ChevronDown className="w-5 h-5 text-slate-500 dark:text-[#94A3B8] rtl:rotate-180" aria-hidden />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-[#06B6D4]/20 flex items-center justify-center">
-                      <Calendar className="w-7 h-7 text-[#06B6D4]" aria-hidden />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-900 dark:text-[#F8FAFC]">{h.aiChecksCalendar}</p>
-                      <p className="text-sm text-slate-600 dark:text-[#94A3B8]">{h.realTimeAvailability}</p>
-                    </div>
-                  </div>
-                  <div className="flex justify-center">
-                    <ChevronDown className="w-5 h-5 text-slate-500 dark:text-[#94A3B8] rtl:rotate-180" aria-hidden />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <Check className="w-7 h-7 text-green-600 dark:text-green-400" aria-hidden />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-900 dark:text-[#F8FAFC]">{h.appointmentBooked}</p>
-                      <p className="text-sm text-slate-600 dark:text-[#94A3B8]">{h.smsEmailSent}</p>
-                    </div>
-                  </div>
+              {h.navSignIn}
+            </Link>
+            <Link href={SETUP_NEW_BUSINESS_PATH}>
+              <Button className="rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-[0_0_24px_-4px_rgba(139,92,246,0.7)]">
+                {h.getStarted}
+              </Button>
+            </Link>
+            <button
+              type="button"
+              className="md:hidden p-2 rounded-lg text-white border border-white/10"
+              aria-label={h.toggleMenu}
+              onClick={() => setMobileOpen((v) => !v)}
+            >
+              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+        {mobileOpen ? (
+          <div className="md:hidden border-t border-[rgba(139,92,246,0.12)] bg-[#0b0b1a] px-4 py-4 flex flex-col gap-3 text-[#9593A8]">
+            <a href="#features" className="py-2" onClick={() => setMobileOpen(false)}>
+              {h.navFeatures}
+            </a>
+            <a href="#how-it-works" className="py-2" onClick={() => setMobileOpen(false)}>
+              {h.navHowItWorks}
+            </a>
+            <a href="#pricing" className="py-2" onClick={() => setMobileOpen(false)}>
+              {h.navPricing}
+            </a>
+            <Link href="/pricing" className="py-2" onClick={() => setMobileOpen(false)}>
+              {h.pricing}
+            </Link>
+            <Link href="/#auth" className="py-2 text-white" onClick={() => setMobileOpen(false)}>
+              {h.navSignIn}
+            </Link>
+          </div>
+        ) : null}
+      </header>
+
+      {/* Hero */}
+      <section className="relative pt-28 pb-16 md:pt-36 md:pb-24 px-4" dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="mx-auto max-w-6xl">
+          <motion.div
+            className="text-center max-w-3xl mx-auto mb-12 md:mb-16"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-40px' }}
+            variants={stagger}
+          >
+            <motion.p
+              variants={reveal}
+              className="text-xs uppercase tracking-[0.2em] text-[#A78BFA] mb-4 font-semibold"
+            >
+              {h.heroKicker}
+            </motion.p>
+            <motion.h1
+              variants={reveal}
+              className="text-[2.25rem] leading-tight md:text-5xl lg:text-6xl font-extrabold text-white font-[family-name:var(--font-brico)]"
+            >
+              {h.heroTitle1} {h.heroTitle2}{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#A78BFA] to-[#34D399]">
+                {h.heroTitle3} {h.heroTitle4}
+              </span>
+            </motion.h1>
+            <motion.p
+              variants={reveal}
+              className="mt-6 text-base md:text-lg text-[#9593A8] max-w-2xl mx-auto leading-relaxed"
+            >
+              {h.heroSubtitle}
+            </motion.p>
+            <motion.div
+              variants={reveal}
+              className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center"
+            >
+              <Link href={SETUP_NEW_BUSINESS_PATH} className="w-full sm:w-auto">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto h-12 md:h-14 px-8 rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-base shadow-[0_0_40px_-8px_rgba(139,92,246,0.8)]"
+                >
+                  {h.getStartedFree}
+                </Button>
+              </Link>
+              <a
+                href="#how-it-works"
+                className="inline-flex items-center justify-center gap-2 text-[#9593A8] hover:text-white transition-colors py-3"
+              >
+                {h.seeHowItWorks}
+                <ChevronDown className="w-4 h-4 animate-bounce rtl:rotate-180" aria-hidden />
+              </a>
+            </motion.div>
+          </motion.div>
+
+          {/* Browser mockup + floaters */}
+          <div className="relative max-w-5xl mx-auto">
+            <div className="hidden lg:block absolute -top-8 start-0 z-20 w-64">
+              <GlowCard delay={0}>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-[#34D399] shrink-0 mt-0.5" />
+                  <p className="text-sm text-[#EEEDF5] leading-snug">{h.floatCardConfirmed}</p>
+                </div>
+              </GlowCard>
+            </div>
+            <div className="hidden lg:block absolute -top-6 end-0 z-20 w-60">
+              <GlowCard delay={1}>
+                <div className="flex items-start gap-3">
+                  <Globe className="w-5 h-5 text-[#A78BFA] shrink-0 mt-0.5" />
+                  <p className="text-sm text-[#EEEDF5] leading-snug">{h.floatCardLang}</p>
+                </div>
+              </GlowCard>
+            </div>
+
+            <motion.div
+              className="rounded-2xl border border-[rgba(139,92,246,0.18)] bg-[#121228] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] overflow-hidden"
+              initial={{ opacity: 0, y: 36 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="flex items-center gap-3 px-4 py-3 bg-[#1a1a3a] border-b border-[rgba(139,92,246,0.08)]">
+                <div className="flex gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-[#FF5F57]" />
+                  <span className="w-3 h-3 rounded-full bg-[#FEBC2E]" />
+                  <span className="w-3 h-3 rounded-full bg-[#28C840]" />
+                </div>
+                <div className="hidden md:flex flex-1 justify-center min-w-0">
+                  <span className="text-[11px] md:text-xs text-[#68668A] bg-[#0b0b1a] px-4 py-1.5 rounded-lg truncate max-w-[min(100%,420px)] border border-[rgba(139,92,246,0.08)]">
+                    {h.mockUrlDisplay}
+                  </span>
                 </div>
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                <div className="p-6 md:p-8 border-e border-[rgba(139,92,246,0.08)] space-y-5">
+                  <div>
+                    <h3 className="text-xl font-bold text-white font-[family-name:var(--font-brico)]">
+                      {h.mockBusinessName}
+                    </h3>
+                    <p className="text-sm text-[#9593A8]">{h.mockBusinessTagline}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {[h.mockServiceCleaning, h.mockServiceWhitening, h.mockServiceCheckup, h.mockServiceFilling, h.mockServiceConsult].map((label) => (
+                      <span
+                        key={label}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full bg-[rgba(139,92,246,0.15)] text-[#D4C4FC] border border-[rgba(139,92,246,0.25)]"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#68668A] mb-2 uppercase tracking-wide">{h.mockContactLabel}</p>
+                    <div className="flex flex-wrap gap-3">
+                      {[
+                        { initials: 'JD', hue: 'from-violet-500 to-purple-600' },
+                        { initials: 'RD', hue: 'from-fuchsia-500 to-pink-600' },
+                        { initials: 'AH', hue: 'from-cyan-500 to-blue-600' },
+                        { initials: 'BH', hue: 'from-emerald-500 to-teal-600' }
+                      ].map((p) => (
+                        <div
+                          key={p.initials}
+                          className={`w-11 h-11 rounded-full bg-gradient-to-br ${p.hue} flex items-center justify-center text-xs font-bold text-white shadow-lg`}
+                          title={p.initials}
+                        >
+                          {p.initials}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-[#9593A8]">
+                    <Phone className="w-4 h-4 text-[#A78BFA]" />
+                    <span>+1 (555) 010‑0142</span>
+                  </div>
+                </div>
+                <div className="p-6 md:p-8 bg-[#0b0b1a]/40">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-semibold text-white">{h.mockCalendarTitle}</p>
+                    <span className="text-xs px-2 py-1 rounded-md bg-[#1a1a3a] text-[#A78BFA] border border-[rgba(139,92,246,0.2)]">
+                      {h.mockLangBadge}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1 mb-4">
+                    {calHeaders.map((d) => (
+                      <div key={d} className="text-center text-[10px] md:text-xs text-[#68668A] py-1.5">
+                        {d}
+                      </div>
+                    ))}
+                    {calCells.map((day, i) => {
+                      const isSel = day === 15
+                      return (
+                        <div
+                          key={i}
+                          className={`aspect-square rounded-full flex items-center justify-center text-xs md:text-sm ${
+                            day == null
+                              ? ''
+                              : isSel
+                                ? 'bg-[#8B5CF6] text-white font-semibold shadow-[0_0_20px_-4px_rgba(139,92,246,0.9)]'
+                                : 'text-[#9593A8] hover:bg-white/5'
+                          }`}
+                        >
+                          {day ?? ''}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mb-6">
+                    {mockSlotTimes.map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        className="py-2.5 rounded-xl border border-[rgba(139,92,246,0.12)] text-xs md:text-sm font-medium text-[#EEEDF5] bg-[#121228] hover:border-[#8B5CF6]/50 transition-colors min-h-[44px]"
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                  <Button className="w-full h-12 rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-semibold">
+                    {h.mockBookCta}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+
+            <div className="hidden lg:block absolute -bottom-6 start-8 z-20 w-52">
+              <GlowCard delay={2}>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-0.5 items-end h-6">
+                    {[4, 7, 5, 9, 6, 8].map((hgt, i) => (
+                      <motion.span
+                        key={i}
+                        className="w-1 rounded-full bg-[#34D399]"
+                        animate={{ height: [hgt * 2, hgt * 2.6, hgt * 2] }}
+                        transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.08 }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm font-medium text-[#EEEDF5]">{h.floatCardAi}</p>
+                </div>
+              </GlowCard>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-8 border-y border-slate-200 bg-slate-50 dark:border-[#1e1e2e] dark:bg-[#0A0A0F]">
+      {/* Social proof */}
+      <motion.section
+        className="py-10 border-y border-[rgba(139,92,246,0.08)]"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-40px' }}
+        variants={stagger}
+        dir={isRtl ? 'rtl' : 'ltr'}
+      >
         <div className="mx-auto max-w-6xl px-4">
-          <p className="text-center text-slate-600 dark:text-[#94A3B8] text-sm">{h.trustedBy}</p>
-          <div className="flex flex-wrap justify-center gap-8 mt-4">
+          <motion.p variants={reveal} className="text-center text-sm text-[#68668A] mb-6">
+            {h.socialProofHeadline}
+          </motion.p>
+          <motion.div
+            variants={reveal}
+            className="flex flex-wrap justify-center gap-x-10 gap-y-4 text-[#9593A8] text-sm"
+          >
             {[
-              { icon: Scissors, label: h.barbers },
               { icon: Stethoscope, label: h.dentalClinics },
+              { icon: Scissors, label: h.barbers },
               { icon: Sparkles, label: h.spas },
               { icon: Dumbbell, label: h.fitnessStudios },
+              { icon: PenTool, label: h.tattooShops },
+              { icon: PawPrint, label: h.vetClinics }
             ].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex items-center gap-2 text-slate-500 dark:text-[#64748B]">
-                <Icon className="w-5 h-5" aria-hidden />
-                <span className="text-sm">{label}</span>
+              <div key={label} className="flex items-center gap-2">
+                <Icon className="w-4 h-4 text-[#A78BFA]" aria-hidden />
+                <span>{label}</span>
               </div>
             ))}
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
-      <section id="how-it-works" ref={howRef} className="py-20 md:py-28 bg-slate-50 dark:bg-[#0A0A0F]">
-        <div className="mx-auto max-w-6xl px-4">
-          <h2
-            className={`text-3xl md:text-4xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-4 text-center transition-all duration-700 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-            style={{ fontFamily: "'Sora', sans-serif" }}
-          >
-            {h.howItWorks}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-            {howCards.map(({ num, icon: Icon, title, desc }, i) => (
-              <div
-                key={num}
-                className={`relative rounded-xl border border-slate-200 bg-white p-8 transition-all duration-700 dark:border-[#1e1e2e] dark:bg-[#12121A] ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-                style={{
-                  transitionDelay: `${200 + i * 100}ms`,
-                }}
+      {/* Features */}
+      <section id="features" className="py-20 md:py-28 px-4" dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="mx-auto max-w-6xl space-y-20 md:space-y-28">
+          {featuresThree.map((f, i) => (
+            <motion.div
+              key={f.title}
+              className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center ${
+                f.reverse ? 'lg:flex-row-reverse' : ''
+              }`}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              variants={stagger}
+            >
+              <motion.div
+                variants={reveal}
+                className={f.reverse ? 'lg:order-2' : ''}
               >
-                <div className="absolute -top-3 start-3 w-8 h-8 rounded-full bg-[#8B5CF6] flex items-center justify-center text-sm font-bold text-white">
-                  {num}
+                <p className="text-xs font-bold uppercase tracking-widest text-[#A78BFA] mb-2">
+                  {f.overline}
+                </p>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 font-[family-name:var(--font-brico)]">
+                  {f.title}
+                </h2>
+                <p className="text-[#9593A8] leading-relaxed text-base md:text-lg">{f.desc}</p>
+              </motion.div>
+              <motion.div
+                variants={reveal}
+                className={`rounded-2xl border border-[rgba(139,92,246,0.15)] bg-[#121228] p-10 min-h-[220px] flex items-center justify-center ${
+                  f.reverse ? 'lg:order-1' : ''
+                }`}
+                aria-label={h.featA11yLabel}
+              >
+                <div className="text-[#A78BFA] text-6xl opacity-40">
+                  {i === 0 ? <Phone className="w-24 h-24 mx-auto" /> : null}
+                  {i === 1 ? <Globe className="w-24 h-24 mx-auto" /> : null}
+                  {i === 2 ? <Calendar className="w-24 h-24 mx-auto" /> : null}
                 </div>
-                <div className="w-12 h-12 rounded-lg bg-[#8B5CF6]/20 flex items-center justify-center mb-4">
-                  <Icon className="w-6 h-6 text-[#8B5CF6]" />
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-[#F8FAFC] mb-2" style={{ fontFamily: "'Sora', sans-serif" }}>
-                  {title}
-                </h3>
-                <p className="text-slate-600 dark:text-[#94A3B8]">{desc}</p>
-              </div>
-            ))}
-          </div>
+              </motion.div>
+            </motion.div>
+          ))}
         </div>
       </section>
 
+      {/* How it works */}
       <section
-        ref={featuresRef}
-        className="py-20 md:py-28 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-[#0A0A0F] dark:to-[#0d0d14]"
+        id="how-it-works"
+        className="py-20 md:py-28 px-4 bg-[#0b0b1a]/50 border-y border-[rgba(139,92,246,0.08)]"
+        dir={isRtl ? 'rtl' : 'ltr'}
       >
-        <div className="mx-auto max-w-6xl px-4">
-          <h2
-            className={`text-3xl md:text-4xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-4 text-center transition-all duration-700 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-            style={{ fontFamily: "'Sora', sans-serif" }}
+        <div className="mx-auto max-w-6xl">
+          <motion.div
+            className="text-center max-w-2xl mx-auto mb-14"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
           >
-            {h.everythingYouNeed}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-16">
-            {featureGrid.map(({ icon: Icon, title, desc }, i) => (
-              <div
-                key={title}
-                className={`rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-[#8B5CF6]/50 hover:shadow-[0_0_30px_-10px_rgba(139,92,246,0.2)] dark:border-[#1e1e2e] dark:bg-[#12121A] dark:hover:shadow-[0_0_30px_-10px_rgba(139,92,246,0.3)] ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-                style={{
-                  transitionDelay: `${100 + i * 50}ms`,
-                }}
+            <motion.h2
+              variants={reveal}
+              className="text-3xl md:text-4xl font-bold text-white font-[family-name:var(--font-brico)]"
+            >
+              {h.howItWorks}
+            </motion.h2>
+            <motion.p variants={reveal} className="mt-4 text-[#9593A8]">
+              {h.howItWorksLead}
+            </motion.p>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { n: 1, title: h.step1Title, desc: h.step1Desc, Svg: SvgSetup },
+              { n: 2, title: h.step2Title, desc: h.step2Desc, Svg: SvgPhoneWave },
+              { n: 3, title: h.step3Title, desc: h.step3Desc, Svg: SvgCalendarCheck }
+            ].map(({ n, title, desc, Svg }) => (
+              <motion.div
+                key={n}
+                className="relative rounded-2xl border border-[rgba(139,92,246,0.12)] bg-[#121228] p-8 pt-10"
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                variants={reveal}
               >
-                <div className="w-10 h-10 rounded-lg bg-[#8B5CF6]/20 flex items-center justify-center mb-4">
-                  <Icon className="w-5 h-5 text-[#8B5CF6]" />
+                <div className="absolute -top-3 start-6 w-9 h-9 rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#6D28D9] flex items-center justify-center text-sm font-bold text-white shadow-lg">
+                  {n}
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-[#F8FAFC] mb-2" style={{ fontFamily: "'Sora', sans-serif" }}>
+                <div className="mb-6 min-h-[120px] flex items-center justify-center">
+                  <Svg />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2 font-[family-name:var(--font-brico)]">
                   {title}
                 </h3>
-                <p className="text-sm text-slate-600 dark:text-[#94A3B8]">{desc}</p>
-              </div>
+                <p className="text-sm text-[#9593A8] leading-relaxed">{desc}</p>
+              </motion.div>
             ))}
           </div>
-          <p
-            className={`text-center text-slate-600 dark:text-[#94A3B8] text-sm max-w-2xl mx-auto mt-14 transition-all duration-700 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-          >
-            <span className="text-slate-900 font-medium dark:text-[#F8FAFC]">{h.worldwideLead}</span> {h.worldwideRest}
-          </p>
         </div>
       </section>
 
-      <section className="py-20 md:py-28 bg-slate-50 dark:bg-[#0A0A0F]">
-        <div className="mx-auto max-w-6xl px-4">
-          <h2
-            className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-4 text-center"
-            style={{ fontFamily: "'Sora', sans-serif" }}
+      {/* Multilingual */}
+      <section className="py-20 md:py-28 px-4 overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="mx-auto max-w-6xl">
+          <motion.div
+            className="text-center max-w-2xl mx-auto mb-12"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
           >
-            {h.yourBookingPage}
-          </h2>
-          <p className="text-center text-slate-600 dark:text-[#94A3B8] max-w-2xl mx-auto mb-12">{h.everyBusinessGets}</p>
-          <div className="max-w-2xl mx-auto rounded-xl overflow-hidden border border-slate-200 bg-white shadow-2xl dark:border-[#1e1e2e] dark:bg-[#12121A]">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-100 dark:border-[#1e1e2e] dark:bg-[#0d0d12]">
-              <div className="flex gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
-                <div className="w-3 h-3 rounded-full bg-[#eab308]" />
-                <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
-              </div>
-              <div className="flex-1 flex justify-center">
-                <span className="text-xs text-slate-600 bg-slate-200 dark:text-[#64748B] dark:bg-[#1e1e2e] px-4 py-1 rounded">{h.mockBrowserUrl}</span>
+            <motion.h2 variants={reveal} className="text-3xl md:text-4xl font-bold text-white font-[family-name:var(--font-brico)]">
+              {h.multilingTitle}
+            </motion.h2>
+            <motion.p variants={reveal} className="mt-4 text-[#9593A8]">
+              {h.multilingSubtitle}
+            </motion.p>
+          </motion.div>
+          <div className="relative h-72 w-72 mx-auto mb-12">
+            <motion.div
+              className="absolute inset-2 rounded-full border-2 border-dashed border-[rgba(139,92,246,0.3)]"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 48, repeat: Infinity, ease: 'linear' }}
+            />
+            <motion.div
+              className="absolute inset-10 rounded-full border border-[rgba(139,92,246,0.15)]"
+              animate={{ rotate: -360 }}
+              transition={{ duration: 36, repeat: Infinity, ease: 'linear' }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[#1a1a3a] via-[#121228] to-[#0b0b1a] border border-[rgba(139,92,246,0.35)] shadow-[0_0_60px_-10px_rgba(139,92,246,0.6)] flex items-center justify-center">
+                <Globe className="w-12 h-12 text-[#A78BFA]" />
               </div>
             </div>
-            <div className="p-8">
-              <div className="grid grid-cols-7 gap-1 mb-4">
-                {calHeaders.map((d) => (
-                  <div key={d} className="text-center text-xs text-slate-500 dark:text-[#64748B] py-2">
-                    {d}
-                  </div>
-                ))}
-                {['', '', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, '', ''].map((day, i) => {
-                  const isSelected = day === 15;
-                  return (
-                    <div
-                      key={i}
-                      className={`aspect-square rounded-full flex items-center justify-center text-sm ${
-                        isSelected ? 'bg-[#8B5CF6] text-white' : 'text-slate-500 dark:text-[#64748B]'
-                      }`}
-                    >
-                      {day}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {mockSlotTimes.map((time) => (
-                  <div
-                    key={time}
-                    className="py-2 rounded-lg border border-slate-200 text-center text-sm font-medium text-slate-700 dark:border-[#1e1e2e] dark:text-white/70"
+            <motion.div
+              className="absolute inset-0"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
+            >
+              {ORBIT_LANGS.map((label, idx) => {
+                const angle = (idx / ORBIT_LANGS.length) * 2 * Math.PI - Math.PI / 2
+                const r = 118
+                const x = Math.cos(angle) * r
+                const y = Math.sin(angle) * r
+                return (
+                  <span
+                    key={label}
+                    className="absolute left-1/2 top-1/2 text-[10px] md:text-xs font-semibold px-2.5 py-1 rounded-full bg-[#1a1a3a] text-[#D4C4FC] border border-[rgba(139,92,246,0.35)] shadow-lg whitespace-nowrap"
+                    style={{
+                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
+                    }}
                   >
-                    {time}
-                  </div>
-                ))}
-              </div>
-            </div>
+                    {label}
+                  </span>
+                )
+              })}
+            </motion.div>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto">
+            {multilingTags.map((tag) => (
+              <span
+                key={tag}
+                className="text-xs px-3 py-1.5 rounded-full bg-[#121228] border border-[rgba(139,92,246,0.12)] text-[#9593A8]"
+              >
+                {tag}
+              </span>
+            ))}
+            <span className="text-xs px-3 py-1.5 rounded-full bg-[rgba(139,92,246,0.15)] text-[#D4C4FC] border border-[rgba(139,92,246,0.3)]">
+              {h.multilingMore}
+            </span>
           </div>
         </div>
       </section>
 
-      <section className="py-20 md:py-28 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-[#0A0A0F] dark:to-[#0d0d14]">
-        <div className="mx-auto max-w-6xl px-4">
-          <h2
-            className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-4 text-center"
-            style={{ fontFamily: "'Sora', sans-serif" }}
+      {/* Pricing */}
+      <section id="pricing" className="py-20 md:py-28 px-4" dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="mx-auto max-w-6xl">
+          <motion.div
+            className="text-center max-w-2xl mx-auto mb-12"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
           >
-            {h.simplePricing}
-          </h2>
-          <p className="text-center text-slate-600 dark:text-[#94A3B8] text-sm max-w-2xl mx-auto mb-12">
-            {h.plansFrom}{' '}
-            <Link href="/pricing" className="text-[#8B5CF6] hover:underline">
-              {h.compareDetails}
-            </Link>
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mt-8">
+            <motion.h2 variants={reveal} className="text-3xl md:text-4xl font-bold text-white font-[family-name:var(--font-brico)]">
+              {h.simplePricing}
+            </motion.h2>
+            <motion.p variants={reveal} className="mt-3 text-sm text-[#9593A8]">
+              {h.plansFrom}{' '}
+              <Link href="/pricing" className="text-[#A78BFA] hover:underline">
+                {h.compareDetails}
+              </Link>
+            </motion.p>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
             {pricingTiers.map((tier) => {
-              const Icon = tier.icon;
-              const override = getHomepagePricingDisplay(h, tier.planId);
+              const Icon = tier.icon
+              const override = getHomepagePricingDisplay(h, tier.planId)
               return (
-                <div
+                <motion.div
                   key={tier.planId}
                   className={`rounded-2xl border p-6 md:p-8 flex flex-col relative ${
                     tier.highlight
-                      ? 'border-[#8B5CF6]/50 bg-white shadow-[0_0_40px_-12px_rgba(139,92,246,0.25)] dark:border-[#8B5CF6]/60 dark:bg-[#12121A] dark:shadow-[0_0_40px_-12px_rgba(139,92,246,0.4)]'
-                      : 'border-slate-200 bg-white dark:border-[#1e1e2e] dark:bg-[#12121A]'
+                      ? 'border-[#8B5CF6]/60 bg-[#121228] shadow-[0_0_50px_-12px_rgba(139,92,246,0.55)] md:scale-[1.02]'
+                      : 'border-[rgba(139,92,246,0.12)] bg-[#121228]/80'
                   }`}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7 }}
                 >
                   {tier.badge ? (
-                    <span className="absolute top-4 end-4 text-[10px] font-bold uppercase tracking-wide text-[#A78BFA] bg-[#8B5CF6]/20 px-2 py-1 rounded">
+                    <span className="absolute top-4 end-4 text-[10px] font-bold uppercase tracking-wide text-[#C4B5FD] bg-[rgba(139,92,246,0.25)] px-2 py-1 rounded-md border border-[rgba(139,92,246,0.35)]">
                       {tier.badge}
                     </span>
                   ) : null}
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-[#8B5CF6]/15 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-[rgba(139,92,246,0.2)] flex items-center justify-center">
                       <Icon className="w-5 h-5 text-[#A78BFA]" aria-hidden />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-[#F8FAFC]">{tier.name}</h3>
+                    <h3 className="text-xl font-bold text-white font-[family-name:var(--font-brico)]">{tier.name}</h3>
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-[#94A3B8] mb-3 min-h-[2.5rem]">{tier.desc}</p>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-6">
+                  <p className="text-xs text-[#68668A] mb-3 min-h-[2.5rem]">{tier.desc}</p>
+                  <p className="text-3xl font-bold text-white mb-1">
                     {tier.price}
-                    <span className="text-base font-medium text-slate-600 dark:text-[#94A3B8]"> {tier.sub}</span>
+                    <span className="text-base font-medium text-[#9593A8]"> {tier.sub}</span>
                   </p>
+                  {tier.planId === 'growth' ? (
+                    <p className="text-xs text-[#34D399] mb-4 font-medium">{h.growthTrialIncluded}</p>
+                  ) : (
+                    <div className="mb-4 h-4" />
+                  )}
                   <PricingPlanFeatureList planId={tier.planId} theme="landing" override={override} />
-                  <Link href={tier.href}>
+                  <Link href={tier.href} className="mt-auto">
                     <Button
-                      className={`w-full h-11 rounded-lg font-medium ${
+                      className={`w-full h-11 rounded-xl font-semibold ${
                         tier.highlight
-                          ? 'bg-[#8B5CF6] hover:bg-[#7C3AED] text-white'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 dark:bg-[#1e1e2e] dark:hover:bg-[#2a2a3d] dark:text-[#F8FAFC] dark:border-[#2a2a3d]'
+                          ? 'bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-[0_0_24px_-6px_rgba(139,92,246,0.9)]'
+                          : 'bg-transparent border border-[rgba(139,92,246,0.35)] text-white hover:bg-[rgba(139,92,246,0.12)]'
                       }`}
                       size="lg"
+                      variant={tier.highlight ? 'default' : 'outline'}
                     >
                       {tier.cta}
                     </Button>
                   </Link>
                   {tier.planId === 'starter' || tier.planId === 'enterprise' ? (
-                    <p className="text-xs text-center text-slate-600 dark:text-[#94A3B8] mt-3 px-1 leading-snug">
+                    <p className="text-[11px] text-center text-[#68668A] mt-3 leading-snug">
                       {tier.planId === 'starter' ? h.landingStarterPlanNote : h.landingEnterprisePlanNote}
                     </p>
                   ) : null}
-                </div>
-              );
+                </motion.div>
+              )
             })}
           </div>
-          <p className="mt-10 text-center text-xs text-slate-600 dark:text-[#94A3B8] max-w-xl mx-auto leading-relaxed px-2">
+          <p className="mt-10 text-center text-xs text-[#68668A] max-w-xl mx-auto leading-relaxed">
             {h.pricingCallFootnote}
           </p>
         </div>
       </section>
 
-      <section className="py-20 md:py-28 bg-slate-50 dark:bg-[#0A0A0F]">
-        <div className="mx-auto max-w-3xl px-4">
-          <h2
-            className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-4 text-center"
-            style={{ fontFamily: "'Sora', sans-serif" }}
-          >
+      {/* Stats */}
+      <motion.section
+        className="py-14 border-y border-[rgba(139,92,246,0.08)] bg-[#0b0b1a]/60"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={stagger}
+        dir={isRtl ? 'rtl' : 'ltr'}
+      >
+        <div className="mx-auto max-w-6xl px-4 grid grid-cols-2 md:grid-cols-4 gap-8">
+          {[
+            { v: h.statsLangValue, l: h.statsLangLabel },
+            { v: h.stats247Value, l: h.stats247Label },
+            { v: h.statsSpeedValue, l: h.statsSpeedLabel },
+            { v: h.statsSetupValue, l: h.statsSetupLabel }
+          ].map((s) => (
+            <motion.div key={s.l} variants={reveal} className="text-center">
+              <p className="text-3xl md:text-4xl font-black text-white font-[family-name:var(--font-brico)]">
+                {s.v}
+              </p>
+              <p className="text-sm text-[#9593A8] mt-1">{s.l}</p>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* FAQ */}
+      <section className="py-20 px-4" dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-3xl font-bold text-white text-center mb-10 font-[family-name:var(--font-brico)]">
             {h.faqTitle}
           </h2>
-          <Accordion type="single" collapsible className="mt-12">
+          <Accordion type="single" collapsible className="space-y-3">
             {h.faq.map(({ q, a }) => (
-              <AccordionItem key={q} value={q} className="border-slate-200 dark:border-[#1e1e2e] px-4 py-2 rounded-lg bg-white dark:bg-[#12121A]">
-                <AccordionTrigger className="text-start text-slate-900 dark:text-[#F8FAFC] hover:no-underline hover:text-[#8B5CF6]">
+              <AccordionItem
+                key={q}
+                value={q}
+                className="border border-[rgba(139,92,246,0.12)] rounded-xl px-4 bg-[#121228]"
+              >
+                <AccordionTrigger className="text-start text-white hover:text-[#A78BFA] hover:no-underline">
                   {q}
                 </AccordionTrigger>
-                <AccordionContent className="text-slate-600 dark:text-[#94A3B8] pt-2">{a}</AccordionContent>
+                <AccordionContent className="text-[#9593A8] pb-4">{a}</AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
         </div>
       </section>
 
-      <section className="py-24 md:py-32 relative overflow-hidden bg-slate-50 dark:bg-[#0A0A0F] [background-image:radial-gradient(ellipse_80%_50%_at_50%_50%,rgba(139,92,246,0.12),transparent_70%)] dark:[background-image:radial-gradient(ellipse_80%_50%_at_50%_50%,rgba(139,92,246,0.15),transparent_70%)]">
-        <div className="relative mx-auto max-w-3xl px-4 text-center">
-          <h2 className="text-3xl md:text-5xl font-bold text-slate-900 dark:text-[#F8FAFC] mb-6" style={{ fontFamily: "'Sora', sans-serif" }}>
+      {/* Final CTA */}
+      <motion.section
+        className="py-24 md:py-32 px-4 relative overflow-hidden"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        dir={isRtl ? 'rtl' : 'ltr'}
+      >
+        <div className="absolute inset-0 pointer-events-none opacity-40">
+          <motion.span
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#8B5CF6]/30"
+            animate={{ scale: [1, 1.15, 1], opacity: [0.35, 0.55, 0.35] }}
+            transition={{ duration: 3.5, repeat: Infinity }}
+            style={{ width: 'min(90vw, 520px)', height: 'min(90vw, 520px)' }}
+          />
+          <motion.span
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#34D399]/20"
+            animate={{ scale: [1, 1.25, 1], opacity: [0.25, 0.45, 0.25] }}
+            transition={{ duration: 4.2, repeat: Infinity, delay: 0.4 }}
+            style={{ width: 'min(95vw, 640px)', height: 'min(95vw, 640px)' }}
+          />
+        </div>
+        <div className="relative mx-auto max-w-3xl text-center">
+          <h2 className="text-[1.75rem] md:text-5xl font-bold text-white mb-8 font-[family-name:var(--font-brico)] leading-tight">
             {h.finalCtaTitle}
           </h2>
           <Link href={SETUP_NEW_BUSINESS_PATH}>
-            <Button className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-14 px-10 text-lg rounded-lg font-medium" size="lg">
+            <Button className="h-14 px-10 rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-lg font-semibold shadow-[0_0_40px_-6px_rgba(139,92,246,0.85)]">
               {h.getStartedFree}
             </Button>
           </Link>
+          <p className="mt-4 text-xs text-[#68668A]">{h.finalCtaRings}</p>
         </div>
-      </section>
+      </motion.section>
 
-      <footer className="border-t border-slate-200 bg-slate-50 py-10 px-4 dark:border-[#1e1e2e] dark:bg-[#0A0A0F]">
-        <nav
-          aria-label="Footer"
-          className="mx-auto max-w-6xl flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm text-slate-600 dark:text-[#94A3B8]"
-        >
-          <Link href="/pricing" className="hover:text-slate-900 dark:hover:text-[#F8FAFC] transition-colors">
-            {h.pricing}
-          </Link>
-          <Link href="/privacy" className="hover:text-slate-900 dark:hover:text-[#F8FAFC] transition-colors">
-            {h.privacy}
-          </Link>
-          <Link href="/terms" className="hover:text-slate-900 dark:hover:text-[#F8FAFC] transition-colors">
-            {h.termsNav}
-          </Link>
-        </nav>
-        <div className="mx-auto max-w-6xl mt-8 pt-6 border-t border-slate-200 dark:border-[#1e1e2e] flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 sm:gap-x-4 text-xs text-slate-500 dark:text-[#64748B] text-center">
-          <span>{trFormat(h.footerCopyright, { year: String(new Date().getFullYear()) })}</span>
-          <span className="hidden sm:inline" aria-hidden>
-            ·
-          </span>
-          <a
-            href={`mailto:${h.footerSupportEmail}`}
-            className="text-slate-600 hover:text-slate-900 dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] transition-colors"
-          >
-            {h.footerSupportLabel}: {h.footerSupportEmail}
-          </a>
-          <span className="hidden sm:inline" aria-hidden>
-            ·
-          </span>
-          <span className="text-slate-600 dark:text-[#94A3B8]">{t.poweredBy}</span>
+      {/* Footer */}
+      <footer className="border-t border-[rgba(139,92,246,0.12)] py-14 px-4 bg-[#06060f]" dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="mx-auto max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+          <div>
+            <HeaderLogo variant="light" />
+            <p className="mt-4 text-sm text-[#68668A] leading-relaxed">{h.footerTagline}</p>
+            <div className="mt-4">
+              <SocialMediaLinks />
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#68668A] mb-3">{h.footerProduct}</p>
+            <ul className="space-y-2 text-sm text-[#9593A8]">
+              <li>
+                <a href="#features" className="hover:text-white transition-colors">
+                  {h.navFeatures}
+                </a>
+              </li>
+              <li>
+                <a href="#pricing" className="hover:text-white transition-colors">
+                  {h.navPricing}
+                </a>
+              </li>
+              <li>
+                <Link href="/pricing" className="hover:text-white transition-colors">
+                  {h.pricing}
+                </Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#68668A] mb-3">{h.footerCompany}</p>
+            <ul className="space-y-2 text-sm text-[#9593A8]">
+              <li>
+                <Link href={SETUP_NEW_BUSINESS_PATH} className="hover:text-white transition-colors">
+                  {h.footerBookDemo}
+                </Link>
+              </li>
+              <li>
+                <a href={`mailto:${h.footerSupportEmail}`} className="hover:text-white transition-colors">
+                  {h.footerSupportLabel}
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#68668A] mb-3">{h.footerLegal}</p>
+            <ul className="space-y-2 text-sm text-[#9593A8]">
+              <li>
+                <Link href="/privacy" className="hover:text-white transition-colors">
+                  {h.privacy}
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="hover:text-white transition-colors">
+                  {h.termsNav}
+                </Link>
+              </li>
+            </ul>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#68668A] mb-3 mt-6">{h.footerConnect}</p>
+            <p className="text-sm text-[#9593A8]">{h.footerQuestions}</p>
+            <a href={`mailto:${h.footerSupportEmail}`} className="text-sm text-[#A78BFA] hover:underline">
+              {h.footerSupportEmail}
+            </a>
+          </div>
+        </div>
+        <div className="mx-auto max-w-6xl mt-12 pt-8 border-t border-[rgba(139,92,246,0.08)] text-center text-xs text-[#68668A]">
+          {trFormat(h.footerCopyright, { year: String(new Date().getFullYear()) })} · {t.poweredBy}
         </div>
       </footer>
     </main>
-  );
+  )
 }

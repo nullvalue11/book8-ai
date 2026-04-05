@@ -1768,11 +1768,11 @@ export function getHomepagePricingDisplay(h, planId) {
     return {
       ack: null,
       features: [
-        h.unlimitedBookings,
-        h.googleCalendarSync,
-        h.publicBookingPage,
-        h.emailReminders,
-        h.basicAnalytics
+        h.pricingFeat_starter_1,
+        h.pricingFeat_starter_2,
+        h.pricingFeat_starter_3,
+        h.pricingFeat_starter_4,
+        h.pricingFeat_starter_5
       ]
     }
   }
@@ -1780,12 +1780,12 @@ export function getHomepagePricingDisplay(h, planId) {
     return {
       ack: h.includesAllStarter,
       features: [
-        h.multilingualVoice70,
-        h.aiPhoneAgent,
-        h.outlookGoogleCalendars,
-        h.smsEmailConfirmationsFeature,
-        h.fullAnalytics,
-        h.prioritySupport
+        h.pricingFeat_growth_1,
+        h.pricingFeat_growth_2,
+        h.pricingFeat_growth_3,
+        h.pricingFeat_growth_4,
+        h.pricingFeat_growth_5,
+        h.pricingFeat_growth_6
       ]
     }
   }
@@ -1793,12 +1793,12 @@ export function getHomepagePricingDisplay(h, planId) {
     return {
       ack: h.includesAllGrowth,
       features: [
-        h.customVoicePerLanguage,
-        h.unlimitedTeamMembers,
-        h.dedicatedAccountManager,
-        h.slaGuarantee,
-        h.apiAccess,
-        h.whiteLabelOptions
+        h.pricingFeat_ent_1,
+        h.pricingFeat_ent_2,
+        h.pricingFeat_ent_3,
+        h.pricingFeat_ent_4,
+        h.pricingFeat_ent_5,
+        h.pricingFeat_ent_6
       ]
     }
   }

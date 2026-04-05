@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
-import Header from "./components/Header";
 import HeaderLogo from "./components/HeaderLogo";
 import LandingPage from "./(home)/LandingPage";
 import { useBookingLanguage } from "@/hooks/useBookingLanguage";
@@ -1171,7 +1170,6 @@ function HomeContent(props) {
   if (!token && !forceDashboard) {
     return (
       <>
-        <Header variant="landing" />
         <LandingPage />
 
         {showAuth && (
