@@ -12,6 +12,7 @@ import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { bookingLocaleBcp47, trFormat } from '@/lib/translations'
 import { businessProfileHasPublicDisplay } from '@/lib/businessProfile'
 import StripeCardStep from '@/components/StripeCardStep'
+import { Switch } from '@/components/ui/switch'
 
 function toLocalYmd(d) {
   if (!d || !(d instanceof Date) || Number.isNaN(d.getTime())) return ''
@@ -84,6 +85,11 @@ export default function PublicBookingPage({ params }) {
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false)
   const [waitlistSuccess, setWaitlistSuccess] = useState(false)
   const [waitlistSubmitError, setWaitlistSubmitError] = useState('')
+  /** BOO-60B */
+  const [recurringEnabled, setRecurringEnabled] = useState(false)
+  const [recurringFrequency, setRecurringFrequency] = useState('weekly')
+  const [recurringIntervalDays, setRecurringIntervalDays] = useState(7)
+  const [recurringTotalOccurrences, setRecurringTotalOccurrences] = useState(6)
   const [stripePublishableKey, setStripePublishableKey] = useState(null)
   const [bookingSubStep, setBookingSubStep] = useState('details')
   const slotsFetchSeq = useRef(0)
@@ -269,6 +275,10 @@ export default function PublicBookingPage({ params }) {
     setWaitlistSuccess(false)
     setWaitlistSubmitError('')
     setWaitlistForm({ name: '', email: '', phone: '' })
+    setRecurringEnabled(false)
+    setRecurringFrequency('weekly')
+    setRecurringIntervalDays(7)
+    setRecurringTotalOccurrences(6)
   }, [handle])
 
   useEffect(() => {
@@ -532,6 +542,10 @@ export default function PublicBookingPage({ params }) {
     if (services.length > 0) setSelectedService(services[0])
     setSelectedProviderId(null)
     setBookingSubStep('details')
+    setRecurringEnabled(false)
+    setRecurringFrequency('weekly')
+    setRecurringIntervalDays(7)
+    setRecurringTotalOccurrences(6)
   }, [services])
 
   // Fetch slots when date, tz, and service are ready
@@ -566,6 +580,8 @@ export default function PublicBookingPage({ params }) {
 
   const bookingLocale = bookingLocaleBcp47(language)
   const wl = t.waitlist || {}
+  const rc = t.recurring || {}
+  const showRecurringOption = businessPlanTier !== 'starter'
 
   const waitlistDateOptions = useMemo(() => {
     if (!date) return []
@@ -730,7 +746,22 @@ export default function PublicBookingPage({ params }) {
           ...(needsCardStep && setupIntentIdParam
             ? { setupIntentId: String(setupIntentIdParam) }
             : {}),
-          ...(svcCents != null ? { servicePriceCents: svcCents } : {})
+          ...(svcCents != null ? { servicePriceCents: svcCents } : {}),
+          ...(selectedService?.name
+            ? { serviceName: selectedService.name }
+            : !hasServices
+              ? { serviceName: t.defaultAppointment }
+              : {}),
+          ...(recurringEnabled && showRecurringOption
+            ? {
+                recurring: {
+                  enabled: true,
+                  frequency: recurringFrequency,
+                  intervalDays: recurringFrequency === 'custom' ? recurringIntervalDays : null,
+                  totalOccurrences: recurringTotalOccurrences
+                }
+              }
+            : {})
         })
       })
 
@@ -899,29 +930,42 @@ export default function PublicBookingPage({ params }) {
             </div>
           </div>
           <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bold text-white">{t.allSet}</h1>
-            {selectedService && (
-              <p className="text-gray-300 font-medium">
-                {selectedService.name} • {selected && formatTime(selected.start)}
-              </p>
-            )}
-            {selectedProviderId &&
-            providers.find((x) => x.id === selectedProviderId)?.name?.trim() ? (
-              <p className="text-sm text-violet-200/90">
-                {trFormat(t.upcomingBookingWithProvider, {
-                  name: providers.find((x) => x.id === selectedProviderId).name.trim()
-                })}
-              </p>
-            ) : null}
-            {selected && (
-              <p className="text-sm text-gray-400">
-                {formatDate(selected.start)}
-              </p>
-            )}
-            {contactDisplay && (
-              <p className="text-sm text-gray-400">
-                {t.confirmationSentTo} {contactDisplay}
-              </p>
+            <h1 className="text-3xl font-bold text-white">
+              {bookingResult?.recurring ? rc.recurringConfirmed : t.allSet}
+            </h1>
+            {bookingResult?.recurring && selected ? (
+              <>
+                <p className="text-gray-300 text-sm">
+                  {trFormat(rc.firstAppointment, { date: formatDate(selected.start) })}
+                </p>
+                <p className="text-sm text-gray-400">{rc.futureConfirmations}</p>
+              </>
+            ) : (
+              <>
+                {selectedService && (
+                  <p className="text-gray-300 font-medium">
+                    {selectedService.name} • {selected && formatTime(selected.start)}
+                  </p>
+                )}
+                {selectedProviderId &&
+                providers.find((x) => x.id === selectedProviderId)?.name?.trim() ? (
+                  <p className="text-sm text-violet-200/90">
+                    {trFormat(t.upcomingBookingWithProvider, {
+                      name: providers.find((x) => x.id === selectedProviderId).name.trim()
+                    })}
+                  </p>
+                ) : null}
+                {selected && (
+                  <p className="text-sm text-gray-400">
+                    {formatDate(selected.start)}
+                  </p>
+                )}
+                {contactDisplay && (
+                  <p className="text-sm text-gray-400">
+                    {t.confirmationSentTo} {contactDisplay}
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -1790,6 +1834,86 @@ export default function PublicBookingPage({ params }) {
                     {effectiveService?.name} {t.atTime} {formatTime(selected.start)}
                   </p>
                 )}
+
+                {showRecurringOption && selected ? (
+                  <div
+                    className="border border-gray-700 rounded-lg p-4 mt-2 space-y-3"
+                    dir={language === 'ar' ? 'rtl' : 'ltr'}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-medium text-white text-sm">{rc.makeRecurring}</h4>
+                        <p className="text-gray-400 text-xs mt-0.5">{rc.recurringDescription}</p>
+                      </div>
+                      <Switch
+                        checked={recurringEnabled}
+                        onCheckedChange={setRecurringEnabled}
+                        className="shrink-0"
+                      />
+                    </div>
+                    {recurringEnabled ? (
+                      <div className="space-y-3 pt-1">
+                        <div>
+                          <label htmlFor="rec-freq" className="block text-sm text-gray-400 mb-1">
+                            {rc.frequency}
+                          </label>
+                          <select
+                            id="rec-freq"
+                            value={recurringFrequency}
+                            onChange={(e) => setRecurringFrequency(e.target.value)}
+                            className="w-full rounded-md border border-gray-700 bg-gray-800 text-white px-3 py-2 text-sm min-h-[44px]"
+                          >
+                            <option value="weekly">{rc.everyWeek}</option>
+                            <option value="biweekly">{rc.every2Weeks}</option>
+                            <option value="monthly">{rc.everyMonth}</option>
+                            <option value="custom">{rc.custom}</option>
+                          </select>
+                        </div>
+                        {recurringFrequency === 'custom' ? (
+                          <div className="flex flex-wrap items-end gap-2">
+                            <div className="flex-1 min-w-[120px]">
+                              <label htmlFor="rec-int" className="block text-sm text-gray-400 mb-1">
+                                {rc.every}
+                              </label>
+                              <Input
+                                id="rec-int"
+                                type="number"
+                                min={1}
+                                max={90}
+                                value={recurringIntervalDays}
+                                onChange={(e) =>
+                                  setRecurringIntervalDays(
+                                    Math.max(1, Math.min(90, parseInt(e.target.value, 10) || 1))
+                                  )
+                                }
+                                className="bg-gray-800 border-gray-700 text-white"
+                              />
+                            </div>
+                            <span className="text-sm text-gray-400 pb-2">{rc.days}</span>
+                          </div>
+                        ) : null}
+                        <div>
+                          <label htmlFor="rec-count" className="block text-sm text-gray-400 mb-1">
+                            {rc.howMany}
+                          </label>
+                          <select
+                            id="rec-count"
+                            value={recurringTotalOccurrences}
+                            onChange={(e) => setRecurringTotalOccurrences(Number(e.target.value))}
+                            className="w-full rounded-md border border-gray-700 bg-gray-800 text-white px-3 py-2 text-sm min-h-[44px]"
+                          >
+                            {[3, 4, 5, 6, 8, 10, 12].map((n) => (
+                              <option key={n} value={n}>
+                                {n} {rc.appointments}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <p className="text-gray-500 text-xs">{rc.recurringNote}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <Button
                   onClick={() => {

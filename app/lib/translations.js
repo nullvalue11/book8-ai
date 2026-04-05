@@ -389,6 +389,34 @@ const translations = {
       statusBooked: 'Booked',
       statusExpired: 'Expired'
     },
+    recurring: {
+      makeRecurring: 'Make this recurring',
+      recurringDescription:
+        'Automatically book this same appointment on a regular schedule',
+      frequency: 'Frequency',
+      everyWeek: 'Every week',
+      every2Weeks: 'Every 2 weeks',
+      everyMonth: 'Every month',
+      custom: 'Custom…',
+      every: 'Every',
+      days: 'days',
+      howMany: 'How many appointments?',
+      appointments: 'appointments',
+      recurringNote:
+        'Each appointment will be at the same time. You will receive a confirmation for each one.',
+      recurringConfirmed: 'Recurring booking confirmed!',
+      firstAppointment: 'Your first appointment is on {date}',
+      futureConfirmations: 'You will receive confirmations for each future appointment.',
+      cancelThisOnly: 'Cancel this appointment only',
+      cancelAllFuture: 'Cancel all future appointments',
+      viewSeries: 'View all in series',
+      occurrence: 'Appointment {n} of {total}',
+      seriesTitle: 'Recurring series',
+      close: 'Close',
+      loadingSeries: 'Loading series…',
+      canceledShort: 'Canceled',
+      planUnavailable: 'Recurring bookings are available on Growth and Enterprise plans.'
+    },
     googlePlaces: {
       findYourBusiness: 'Find your business on Google',
       searchPlaceholder: 'Type your business name…',
@@ -801,6 +829,35 @@ const translations = {
       statusBooked: 'Réservé',
       statusExpired: 'Expiré'
     },
+    recurring: {
+      makeRecurring: 'Rendre récurrent',
+      recurringDescription:
+        'Réserver automatiquement le même rendez-vous selon un calendrier régulier',
+      frequency: 'Fréquence',
+      everyWeek: 'Chaque semaine',
+      every2Weeks: 'Toutes les 2 semaines',
+      everyMonth: 'Chaque mois',
+      custom: 'Personnalisé…',
+      every: 'Tous les',
+      days: 'jours',
+      howMany: 'Combien de rendez-vous ?',
+      appointments: 'rendez-vous',
+      recurringNote:
+        'Chaque rendez-vous sera à la même heure. Vous recevrez une confirmation pour chacun.',
+      recurringConfirmed: 'Série de rendez-vous confirmée !',
+      firstAppointment: 'Votre premier rendez-vous est le {date}',
+      futureConfirmations: 'Vous recevrez une confirmation pour chaque rendez-vous à venir.',
+      cancelThisOnly: 'Annuler uniquement ce rendez-vous',
+      cancelAllFuture: 'Annuler tous les rendez-vous à venir',
+      viewSeries: 'Voir toute la série',
+      occurrence: 'Rendez-vous {n} sur {total}',
+      seriesTitle: 'Série récurrente',
+      close: 'Fermer',
+      loadingSeries: 'Chargement de la série…',
+      canceledShort: 'Annulé',
+      planUnavailable:
+        'Les réservations récurrentes sont disponibles sur les formules Growth et Enterprise.'
+    },
     googlePlaces: {
       findYourBusiness: 'Trouvez votre entreprise sur Google',
       searchPlaceholder: 'Saisissez le nom de votre entreprise…',
@@ -1211,6 +1268,35 @@ const translations = {
       statusBooked: 'Reservado',
       statusExpired: 'Caducado'
     },
+    recurring: {
+      makeRecurring: 'Hacerlo recurrente',
+      recurringDescription:
+        'Reservar automáticamente la misma cita con una periodicidad regular',
+      frequency: 'Frecuencia',
+      everyWeek: 'Cada semana',
+      every2Weeks: 'Cada 2 semanas',
+      everyMonth: 'Cada mes',
+      custom: 'Personalizado…',
+      every: 'Cada',
+      days: 'días',
+      howMany: '¿Cuántas citas?',
+      appointments: 'citas',
+      recurringNote:
+        'Cada cita será a la misma hora. Recibirás una confirmación para cada una.',
+      recurringConfirmed: '¡Serie de citas confirmada!',
+      firstAppointment: 'Tu primera cita es el {date}',
+      futureConfirmations: 'Recibirás confirmaciones para cada cita futura.',
+      cancelThisOnly: 'Cancelar solo esta cita',
+      cancelAllFuture: 'Cancelar todas las citas futuras',
+      viewSeries: 'Ver toda la serie',
+      occurrence: 'Cita {n} de {total}',
+      seriesTitle: 'Serie recurrente',
+      close: 'Cerrar',
+      loadingSeries: 'Cargando la serie…',
+      canceledShort: 'Cancelada',
+      planUnavailable:
+        'Las citas recurrentes están disponibles en los planes Growth y Enterprise.'
+    },
     googlePlaces: {
       findYourBusiness: 'Busca tu negocio en Google',
       searchPlaceholder: 'Escribe el nombre de tu negocio…',
@@ -1617,6 +1703,33 @@ const translations = {
       statusNotified: 'تم الإشعار',
       statusBooked: 'محجوز',
       statusExpired: 'منتهٍ'
+    },
+    recurring: {
+      makeRecurring: 'جعل هذا متكررًا',
+      recurringDescription: 'احجز تلقائيًا نفس الموعد على جدول منتظم',
+      frequency: 'التكرار',
+      everyWeek: 'كل أسبوع',
+      every2Weeks: 'كل أسبوعين',
+      everyMonth: 'كل شهر',
+      custom: 'مخصص…',
+      every: 'كل',
+      days: 'يومًا',
+      howMany: 'كم موعدًا؟',
+      appointments: 'مواعيد',
+      recurringNote:
+        'كل موعد في نفس الوقت. ستصلك رسالة تأكيد لكل موعد.',
+      recurringConfirmed: 'تم تأكيد سلسلة المواعيد!',
+      firstAppointment: 'موعدك الأول في {date}',
+      futureConfirmations: 'ستصلك تأكيدات لكل المواعيد القادمة.',
+      cancelThisOnly: 'إلغاء هذا الموعد فقط',
+      cancelAllFuture: 'إلغاء جميع المواعيد القادمة',
+      viewSeries: 'عرض كل السلسلة',
+      occurrence: 'الموعد {n} من {total}',
+      seriesTitle: 'سلسلة متكررة',
+      close: 'إغلاق',
+      loadingSeries: 'جارٍ تحميل السلسلة…',
+      canceledShort: 'ملغى',
+      planUnavailable: 'الحجز المتكرر متاح في خطط Growth و Enterprise.'
     },
     googlePlaces: {
       findYourBusiness: 'اعثر على نشاطك التجاري على Google',

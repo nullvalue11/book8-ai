@@ -197,6 +197,7 @@ function HomeContent(props) {
   const searchParams = useSearchParams();
   const forceDashboard = !!props?.forceDashboard;
   const { language, t } = useBookingLanguage();
+  const rc = t.recurring || {};
 
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
@@ -250,6 +251,8 @@ function HomeContent(props) {
   const [bookingSortOrder, setBookingSortOrder] = useState("newest");
   const [callsLoading, setCallsLoading] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  /** BOO-60B: modal listing recurring series */
+  const [recurringSeriesOverlay, setRecurringSeriesOverlay] = useState(null);
   const [servicesMap, setServicesMap] = useState({});
   const [expandedCallId, setExpandedCallId] = useState(null);
   const [planLimits, setPlanLimits] = useState(null);
@@ -682,6 +685,53 @@ function HomeContent(props) {
       setRecentPastBookings(pastRecent);
     } catch (err) {
       console.error("[refetchUpcomingBookings]", err);
+    }
+  }
+
+  async function loadRecurringSeries(seriesId) {
+    if (!token || !primaryBusinessId || !seriesId) return;
+    setRecurringSeriesOverlay({ loading: true, seriesId, bookings: [] });
+    try {
+      const res = await fetch(
+        `/api/business/${encodeURIComponent(primaryBusinessId)}/recurring-series?seriesId=${encodeURIComponent(seriesId)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      setRecurringSeriesOverlay({
+        loading: false,
+        seriesId,
+        bookings: Array.isArray(data.bookings) ? data.bookings : [],
+      });
+    } catch (e) {
+      setRecurringSeriesOverlay(null);
+      toast.error(e.message || "Failed");
+    }
+  }
+
+  async function recurringDashboardAction(action, bookingId) {
+    if (!token || !primaryBusinessId || !bookingId) return;
+    const msg = action === "cancel_one" ? rc.cancelThisOnly : rc.cancelAllFuture;
+    if (typeof window !== "undefined" && !window.confirm(msg || "Continue?")) return;
+    try {
+      const res = await fetch(
+        `/api/business/${encodeURIComponent(primaryBusinessId)}/recurring-series`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action, bookingId }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      toast.success("Updated");
+      setRecurringSeriesOverlay(null);
+      await refetchUpcomingBookings();
+    } catch (e) {
+      toast.error(e.message || "Failed");
     }
   }
 
@@ -1734,6 +1784,8 @@ function HomeContent(props) {
                         booking.metadata?.providerName ||
                         (booking.provider && typeof booking.provider === "object" && booking.provider.name) ||
                         "";
+                      const rec = booking.recurring;
+                      const recurringBid = booking.id || booking.bookingId;
                       return (
                         <div key={booking.id || booking._id || i} className="py-3 first:pt-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -1742,6 +1794,14 @@ function HomeContent(props) {
                             </span>
                             <span className="w-px h-4 bg-border inline-block mx-1 shrink-0 self-center" aria-hidden />
                             <span className="text-foreground">{customer}</span>
+                            {rec?.enabled ? (
+                              <span className="text-xs bg-purple-600/20 text-purple-400 px-2 py-0.5 rounded font-medium">
+                                {trFormat(rc.occurrence || "Appointment {n} of {total}", {
+                                  n: rec.occurrenceNumber ?? 1,
+                                  total: rec.totalOccurrences ?? 1,
+                                })}
+                              </span>
+                            ) : null}
                             {lang ? (
                               <span
                                 className="inline-flex items-center gap-0.5 rounded border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground"
@@ -1767,6 +1827,37 @@ function HomeContent(props) {
                               </span>
                             ) : null}
                           </div>
+                          {rec?.enabled && rec.seriesId && recurringBid ? (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs"
+                                onClick={() => loadRecurringSeries(rec.seriesId)}
+                              >
+                                {rc.viewSeries}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs"
+                                onClick={() => recurringDashboardAction("cancel_one", recurringBid)}
+                              >
+                                {rc.cancelThisOnly}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 text-xs"
+                                onClick={() => recurringDashboardAction("cancel_all_future", recurringBid)}
+                              >
+                                {rc.cancelAllFuture}
+                              </Button>
+                            </div>
+                          ) : null}
                         </div>
                       );
                     })}
@@ -2243,6 +2334,61 @@ function HomeContent(props) {
           <AnalyticsDashboard token={token} subscribed={isSubscribed} planLimits={planLimits} />
         </div>
       </div>
+      {recurringSeriesOverlay ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="recurring-series-title"
+          onClick={() => setRecurringSeriesOverlay(null)}
+        >
+          <div
+            className="bg-card border border-border rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto shadow-lg p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h2 id="recurring-series-title" className="text-lg font-semibold text-foreground">
+                {rc.seriesTitle}
+              </h2>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setRecurringSeriesOverlay(null)}>
+                {rc.close}
+              </Button>
+            </div>
+            {recurringSeriesOverlay.loading ? (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                {rc.loadingSeries}
+              </p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {recurringSeriesOverlay.bookings.map((b) => {
+                  const st = b.slot?.start || b.startTime;
+                  const occ = b.recurring?.occurrenceNumber;
+                  const tot = b.recurring?.totalOccurrences;
+                  const low = (b.status || "").toLowerCase();
+                  const canceled = low === "canceled" || low === "cancelled";
+                  return (
+                    <li
+                      key={b.id || b.bookingId}
+                      className="flex flex-col sm:flex-row sm:justify-between gap-1 border-b border-border/60 pb-2"
+                    >
+                      <span className="font-medium text-foreground">
+                        {occ != null && tot != null
+                          ? trFormat(rc.occurrence || "Appointment {n} of {total}", { n: occ, total: tot })
+                          : "—"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {st ? new Date(st).toLocaleString() : "—"}
+                        {canceled ? ` · ${rc.canceledShort || "Canceled"}` : ""}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -119,6 +119,12 @@ export async function GET(request, { params }) {
             id: 1,
             startTime: 1,
             guestEmail: 1,
+            customerName: 1,
+            serviceId: 1,
+            serviceName: 1,
+            status: 1,
+            providerName: 1,
+            recurring: 1,
             noShowStatus: 1,
             noShowMarkedAt: 1,
             noShowChargeStatus: 1,
@@ -150,7 +156,8 @@ export async function GET(request, { params }) {
             'cancellationFeeChargedAt',
             'cancellationFeeCents',
             'servicePriceCents',
-            'noShowPolicySnapshot'
+            'noShowPolicySnapshot',
+            'recurring'
           ]
           for (const f of fields) {
             if (src[f] !== undefined) target[f] = src[f]
@@ -182,6 +189,48 @@ export async function GET(request, { params }) {
       }
     } catch (e) {
       console.warn('[business/bookings] language merge skipped:', e?.message)
+    }
+
+    // BOO-60B: attach local-only rows (e.g. recurring siblings not in core-api list)
+    try {
+      const localsAll = await database
+        .collection('bookings')
+        .find({ businessId })
+        .limit(300)
+        .toArray()
+      const seen = new Set(
+        bookings.map((b) => String(b.id || b.bookingId || '').trim()).filter(Boolean)
+      )
+      for (const lb of localsAll) {
+        const lid = lb.id != null ? String(lb.id) : ''
+        if (!lid || seen.has(lid)) continue
+        const st = (lb.status || 'confirmed').toLowerCase()
+        if (st === 'canceled' || st === 'cancelled') continue
+        const occ = lb.recurring?.occurrenceNumber
+        if (!(lb.recurring?.enabled && typeof occ === 'number' && occ > 1)) continue
+        seen.add(lid)
+        bookings.push({
+          id: lb.id,
+          bookingId: lb.id,
+          slot: { start: lb.startTime, end: lb.endTime },
+          startTime: lb.startTime,
+          endTime: lb.endTime,
+          customer: {
+            name: lb.customerName,
+            email: lb.guestEmail,
+            phone: lb.guestPhone
+          },
+          customerName: lb.customerName,
+          serviceId: lb.serviceId,
+          serviceName: lb.serviceName,
+          status: lb.status || 'confirmed',
+          language: lb.language,
+          providerName: lb.providerName,
+          recurring: lb.recurring
+        })
+      }
+    } catch (e) {
+      console.warn('[business/bookings] local-only merge skipped:', e?.message)
     }
 
     return NextResponse.json({ ok: true, bookings })

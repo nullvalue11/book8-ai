@@ -14,6 +14,11 @@ import { calculateReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
 import { sanitizeNoShowForPublic, noShowPolicyPayload } from '@/lib/no-show-protection'
 import { verifySetupIntentForBooking } from '@/lib/no-show-stripe'
+import { normalizePlanKey } from '@/lib/plan-features'
+import {
+  buildRecurringSlotTimes,
+  parseRecurringFromRequest
+} from '@/lib/recurring-bookings'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -66,7 +71,9 @@ export async function POST(request) {
       providerId: bodyProviderId,
       providerName: bodyProviderName,
       setupIntentId: bodySetupIntentId,
-      servicePriceCents: bodyServicePriceCents
+      servicePriceCents: bodyServicePriceCents,
+      recurring: bodyRecurring,
+      serviceName: bodyServiceName
     } = body
     const language = resolveBookingLanguage(request, bodyLanguage)
 
@@ -157,6 +164,21 @@ export async function POST(request) {
       )
     }
 
+    const businessPlanKey = business
+      ? normalizePlanKey(business.plan || business.subscription?.plan)
+      : 'starter'
+    const recurringParsed = parseRecurringFromRequest(bodyRecurring, businessPlanKey)
+    if (recurringParsed.error === 'recurring_not_available') {
+      return NextResponse.json(
+        { ok: false, error: 'Recurring bookings are not available on your plan.' },
+        { status: 403 }
+      )
+    }
+    if (bodyRecurring?.enabled && recurringParsed.error) {
+      return NextResponse.json({ ok: false, error: 'Invalid recurring booking options.' }, { status: 400 })
+    }
+    const recurringPlan = recurringParsed.value
+
     const noShowPub = business ? sanitizeNoShowForPublic(business) : { enabled: false }
     let verifiedCard = null
     if (business && noShowPub.enabled) {
@@ -213,7 +235,18 @@ export async function POST(request) {
             language,
             ...(bodyProviderId ? { providerId: String(bodyProviderId) } : {}),
             ...(bodyProviderName ? { providerName: String(bodyProviderName).slice(0, 200) } : {}),
-            ...(noShowPolicyPayload(business) ? { noShowPolicy: noShowPolicyPayload(business) } : {})
+            ...(noShowPolicyPayload(business) ? { noShowPolicy: noShowPolicyPayload(business) } : {}),
+            ...(recurringPlan
+              ? {
+                  recurring: {
+                    enabled: true,
+                    seriesId: recurringPlan.seriesId,
+                    frequency: recurringPlan.frequency,
+                    intervalDays: recurringPlan.intervalDays,
+                    totalOccurrences: recurringPlan.totalOccurrences
+                  }
+                }
+              : {})
           }
         }
 
@@ -323,10 +356,24 @@ export async function POST(request) {
     
     console.log(`[book] Creating booking with ${reminders.length} reminders (enabled: ${reminderPrefs.enabled}, guest: ${reminderPrefs.guestEnabled}, host: ${reminderPrefs.hostEnabled}, eventType: ${eventType?.slug || 'default'})`)
 
+    const serviceNameStored =
+      typeof bodyServiceName === 'string' ? bodyServiceName.trim().slice(0, 200) : ''
+    const slotSeries =
+      recurringPlan &&
+      buildRecurringSlotTimes(
+        startTime.toISOString(),
+        endTime.toISOString(),
+        recurringPlan.frequency,
+        recurringPlan.intervalDays,
+        recurringPlan.totalOccurrences
+      )
+
     const booking = {
       id: bookingId,
       userId: owner.id,
       businessId: business?.businessId || null,
+      serviceId: serviceId ? String(serviceId).slice(0, 120) : 'manual-booking',
+      serviceName: serviceNameStored,
       eventTypeId: eventType?.id || null,
       eventTypeSlug: eventType?.slug || null,
       title: bookingTitle,
@@ -370,10 +417,73 @@ export async function POST(request) {
       rescheduleToken,
       reminders,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      ...(recurringPlan
+        ? {
+            recurring: {
+              enabled: true,
+              seriesId: recurringPlan.seriesId,
+              occurrenceNumber: 1,
+              totalOccurrences: recurringPlan.totalOccurrences,
+              frequency: recurringPlan.frequency,
+              intervalDays: recurringPlan.intervalDays
+            }
+          }
+        : {})
     }
 
     await database.collection('bookings').insertOne(booking)
+
+    if (recurringPlan && slotSeries && slotSeries.length > 1) {
+      const siblings = []
+      for (let i = 1; i < slotSeries.length; i++) {
+        const bid = uuidv4()
+        const ct = generateCancelToken(bid, email)
+        const rt = isFeatureEnabled('RESCHEDULE') ? generateRescheduleToken(bid, email) : null
+        const sStart = slotSeries[i].start
+        const sEnd = slotSeries[i].end
+        const sReminders = isFeatureEnabled('REMINDERS')
+          ? calculateReminders(sStart, reminderPrefs)
+          : []
+        const sib = {
+          ...booking,
+          id: bid,
+          startTime: sStart,
+          endTime: sEnd,
+          cancelToken: ct,
+          rescheduleToken: rt,
+          reminders: sReminders,
+          rescheduleCount: 0,
+          rescheduleHistory: [],
+          rescheduleNonces: [],
+          recurring: {
+            enabled: true,
+            seriesId: recurringPlan.seriesId,
+            occurrenceNumber: i + 1,
+            totalOccurrences: recurringPlan.totalOccurrences,
+            frequency: recurringPlan.frequency,
+            intervalDays: recurringPlan.intervalDays
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+        sib.stripeCustomerId = null
+        sib.stripePaymentMethodId = null
+        sib.paymentMethodSummary = null
+        sib.setupIntentId = null
+        sib.noShowPolicySnapshot = null
+        sib.noShowStatus = null
+        sib.noShowMarkedAt = null
+        sib.noShowChargeStatus = null
+        sib.noShowChargeAmountCents = null
+        sib.noShowChargedAt = null
+        sib.noShowPaymentIntentId = null
+        sib.cancellationFeeChargedAt = null
+        sib.cancellationFeePaymentIntentId = null
+        siblings.push(sib)
+      }
+      await database.collection('bookings').insertMany(siblings)
+    }
 
     // Insert Google Calendar event — skip when core-api already did it (business flow)
     let googleEventId = null
@@ -546,7 +656,16 @@ export async function POST(request) {
       ok: true,
       bookingId,
       cancelToken,
-      rescheduleToken
+      rescheduleToken,
+      ...(recurringPlan
+        ? {
+            recurring: {
+              seriesId: recurringPlan.seriesId,
+              totalOccurrences: recurringPlan.totalOccurrences,
+              frequency: recurringPlan.frequency
+            }
+          }
+        : {})
     }
 
     // Only include emailDebug in non-production or when debug logs enabled
