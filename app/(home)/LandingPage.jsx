@@ -336,7 +336,7 @@ export default function LandingPage() {
   return (
     <main
       id="main-content"
-      className={`min-h-screen ${rootCls}`}
+      className={`relative isolate min-h-dvh min-h-screen overflow-x-hidden ${rootCls}`}
       style={{ background: 'linear-gradient(180deg, #06060f 0%, #0b0b1a 40%, #06060f 100%)' }}
       lang={language}
     >
@@ -665,7 +665,11 @@ export default function LandingPage() {
       </motion.section>
 
       {/* Features */}
-      <section id="features" className="py-20 md:py-28 px-4" dir={isRtl ? 'rtl' : 'ltr'}>
+      <section
+        id="features"
+        className="relative overflow-hidden py-20 md:py-28 px-4"
+        dir={isRtl ? 'rtl' : 'ltr'}
+      >
         <div className="mx-auto max-w-6xl space-y-20 md:space-y-28">
           {featuresThree.map((f, i) => (
             <motion.div
@@ -711,7 +715,7 @@ export default function LandingPage() {
       {/* How it works */}
       <section
         id="how-it-works"
-        className="py-20 md:py-28 px-4 bg-[#0b0b1a]/50 border-y border-[rgba(139,92,246,0.08)]"
+        className="relative overflow-hidden py-20 md:py-28 px-4 bg-[#0b0b1a]/50 border-y border-[rgba(139,92,246,0.08)]"
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         <div className="mx-auto max-w-6xl">
@@ -740,7 +744,7 @@ export default function LandingPage() {
             ].map(({ n, title, desc, Svg }) => (
               <motion.div
                 key={n}
-                className="relative rounded-2xl border border-[rgba(139,92,246,0.12)] bg-[#121228] p-8 pt-10"
+                className="relative overflow-hidden rounded-2xl border border-[rgba(139,92,246,0.12)] bg-[#121228] p-8 pt-10"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
@@ -1007,7 +1011,10 @@ export default function LandingPage() {
       </motion.section>
 
       {/* Footer */}
-      <footer className="border-t border-[rgba(139,92,246,0.12)] py-14 px-4 bg-[#06060f]" dir={isRtl ? 'rtl' : 'ltr'}>
+      <footer
+        className="border-t border-[rgba(139,92,246,0.12)] py-14 px-4 bg-[#06060f] pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]"
+        dir={isRtl ? 'rtl' : 'ltr'}
+      >
         <div className="mx-auto max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           <div>
             <HeaderLogo variant="light" />

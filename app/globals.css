@@ -77,7 +77,15 @@
     letter-spacing: 0.02em;
   }
 
+  /* BOO-66B: solid canvas behind the app — avoids white gaps below footer on mobile (Safari/Chrome) when fixed aurora/particles sit above a light-themed body */
+  html {
+    background-color: #06060f;
+  }
+
   body {
+    min-height: 100dvh;
+    min-height: 100vh;
+    background-color: #06060f;
     font-weight: 400;
     letter-spacing: 0;
   }
