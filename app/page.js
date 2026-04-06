@@ -292,6 +292,33 @@ function HomeContent(props) {
     return ownedBusinesses.some((b) => resolveBusinessPlanKey(b) === "enterprise");
   }, [forceDashboard, ownedBusinesses]);
 
+  /** Primary business row for plan display (trial banner, etc.) — DB plan beats Stripe metadata when they disagree (BOO-74B). */
+  const primaryBizForTrialBanner = useMemo(() => {
+    if (!ownedBusinesses.length) return null;
+    if (primaryBusinessId) {
+      return ownedBusinesses.find((b) => b.businessId === primaryBusinessId) || ownedBusinesses[0];
+    }
+    return ownedBusinesses[0];
+  }, [ownedBusinesses, primaryBusinessId]);
+
+  const showTrialingPlanBanner = useMemo(() => {
+    if (billingSubscription?.status !== "trialing" || !billingSubscription?.trialEnd) return false;
+    if (
+      primaryBizForTrialBanner &&
+      normalizePlanKey(resolveBusinessPlanKey(primaryBizForTrialBanner)) === "enterprise"
+    ) {
+      return false;
+    }
+    return true;
+  }, [billingSubscription?.status, billingSubscription?.trialEnd, primaryBizForTrialBanner]);
+
+  const trialPlanDisplayName = useMemo(() => {
+    if (primaryBizForTrialBanner) {
+      return getPlanName(normalizePlanKey(resolveBusinessPlanKey(primaryBizForTrialBanner)));
+    }
+    return getPlanName(billingSubscription?.plan || planTier || "growth");
+  }, [primaryBizForTrialBanner, billingSubscription?.plan, planTier]);
+
   const filteredUpcomingBookings = useMemo(() => {
     let rows = [...upcomingBookings];
     const q = bookingSearchQuery.trim().toLowerCase();
@@ -1126,7 +1153,8 @@ function HomeContent(props) {
     }
   }
 
-  const bookingHandle = user?.scheduling?.handle || primaryBookingHandle;
+  /** Prefer handle from business documents (BOO-74A); legacy user.scheduling.handle was email-derived. */
+  const bookingHandle = primaryBookingHandle || user?.scheduling?.handle;
   function copyBookingLink() {
     if (!bookingHandle) return;
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -1518,7 +1546,7 @@ function HomeContent(props) {
         </div>
       ) : null}
 
-      {billingSubscription?.status === 'trialing' && billingSubscription?.trialEnd && (
+      {showTrialingPlanBanner && (
         <div className="border-b border-purple-500/30 bg-gradient-to-r from-purple-500/10 via-background to-cyan-500/10">
           <div className="mx-auto max-w-6xl px-4 md:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -1528,7 +1556,7 @@ function HomeContent(props) {
                   : 'Free Trial — Trial active'}
               </p>
               <p className="text-xs text-muted-foreground mt-1 max-w-xl">
-                Your Growth plan trial ends on{' '}
+                Your {trialPlanDisplayName} plan trial ends on{' '}
                 {new Date(billingSubscription.trialEnd).toLocaleDateString(undefined, {
                   weekday: 'long',
                   month: 'long',
@@ -2152,8 +2180,16 @@ function HomeContent(props) {
               <div className="rounded-md border p-3">
                 <div className="flex items-center justify-between mb-3">
                   <p className="font-medium">Public Booking Link</p>
-                  {(user?.scheduling?.handle || bookingHandle) && (
-                    <Button size="sm" variant="ghost" onClick={() => window.location.href = user?.scheduling?.handle ? '/dashboard/settings/scheduling' : '/dashboard/business'}>
+                  {bookingHandle && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        if (primaryBusinessId) window.location.href = "/dashboard/settings/public-profile";
+                        else if (user?.scheduling?.handle) window.location.href = "/dashboard/settings/scheduling";
+                        else window.location.href = "/dashboard/business";
+                      }}
+                    >
                       <Settings className="h-4 w-4" />
                     </Button>
                   )}

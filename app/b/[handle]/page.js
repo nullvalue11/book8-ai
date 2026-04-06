@@ -11,6 +11,7 @@ import LanguageSelector from '@/components/LanguageSelector'
 import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { bookingLocaleBcp47, trFormat } from '@/lib/translations'
 import { businessProfileHasPublicDisplay } from '@/lib/businessProfile'
+import { CATEGORY_NAMES } from '@/lib/constants/businessCategories'
 import StripeCardStep from '@/components/StripeCardStep'
 import { Switch } from '@/components/ui/switch'
 
@@ -34,6 +35,16 @@ function formatHandleAsDisplayName(h) {
 function sanitizePhoneHref(phone) {
   if (!phone) return ''
   return String(phone).replace(/[^\d+]/g, '')
+}
+
+/** BOO-74B: show "Car Wash" instead of car_wash on the public booking header */
+function publicBookingCategoryLabel(raw) {
+  const c = (raw || '').trim()
+  if (!c || c === 'other') return ''
+  if (CATEGORY_NAMES[c]) return CATEGORY_NAMES[c]
+  return c
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (ch) => ch.toUpperCase())
 }
 
 export default function PublicBookingPage({ params }) {
@@ -126,6 +137,11 @@ export default function PublicBookingPage({ params }) {
     if (portfolioFilter === 'all') return portfolio
     return portfolio.filter((p) => (p.category || '').trim() === portfolioFilter)
   }, [portfolio, portfolioFilter])
+
+  const bookingCategoryHeaderLine = useMemo(
+    () => publicBookingCategoryLabel(businessMeta.category),
+    [businessMeta.category]
+  )
 
   const hasProfileDisplay = useMemo(
     () =>
@@ -1222,10 +1238,8 @@ export default function PublicBookingPage({ params }) {
                 ) : null}
               </div>
             ) : null}
-            {businessMeta.category ? (
-              <p className="text-xs uppercase tracking-wide text-muted-foreground mt-0.5">
-                {businessMeta.category}
-              </p>
+            {bookingCategoryHeaderLine ? (
+              <p className="text-xs text-muted-foreground mt-0.5">{bookingCategoryHeaderLine}</p>
             ) : null}
             {publicBookingPhone ? (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-400 text-sm mt-2">
