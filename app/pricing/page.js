@@ -52,7 +52,7 @@ function PricingContent() {
         id: "enterprise",
         name: h.enterprise,
         price: "$299",
-        period: h.perMonth,
+        period: h.perMonthPerLocation,
         description: h.pricingEnterpriseBlurb,
         icon: Building2,
         popular: false,

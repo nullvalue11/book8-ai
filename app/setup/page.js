@@ -2456,8 +2456,9 @@ function WizardContent() {
                         <ul className="space-y-2 text-sm leading-snug !text-[#94A3B8]">
                           {[
                             'Everything in Starter',
-                            'AI voice booking 24/7',
-                            'Multi-calendar and SMS',
+                            'AI receptionist in 70+ languages',
+                            'Google Calendar & Outlook, SMS & auto review requests',
+                            'Public booking page with QR · 14-day trial',
                             'Up to 5 businesses'
                           ].map((line) => (
                             <li key={line} className="flex gap-2.5">
@@ -2500,10 +2501,10 @@ function WizardContent() {
                         </div>
                         <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
                           <span className="text-3xl font-bold tabular-nums !text-white">$299</span>
-                          <span className="text-sm !text-[#94A3B8]">USD / monthly</span>
+                          <span className="text-sm !text-[#94A3B8]">USD / month · per location</span>
                         </div>
                         <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
-                          Seats, priority support, SLA options.
+                          Franchises & multi-location: one dashboard, synced services, priority support.
                         </p>
                       </div>
                       <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] lg:min-h-[10.5rem]">
@@ -2513,9 +2514,9 @@ function WizardContent() {
                         <ul className="space-y-2 text-sm leading-snug !text-[#94A3B8]">
                           {[
                             'Everything in Growth',
-                            'Advanced seats and org tools',
-                            'Priority support',
-                            'SLA and custom options'
+                            'Multi-location dashboard',
+                            'Sync services across locations automatically',
+                            'Priority support, onboarding specialist, SLA guarantees'
                           ].map((line) => (
                             <li key={line} className="flex gap-2.5">
                               <Check className="w-4 h-4 shrink-0 text-[#8B5CF6] mt-0.5" aria-hidden />

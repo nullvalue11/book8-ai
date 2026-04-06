@@ -1788,7 +1788,9 @@ export function getHomepagePricingDisplay(h, planId) {
         h.pricingFeat_growth_6,
         h.pricingFeat_growth_7,
         h.pricingFeat_growth_8,
-        h.pricingFeat_growth_9
+        h.pricingFeat_growth_9,
+        h.pricingFeat_growth_10,
+        h.pricingFeat_growth_11
       ]
     }
   }
@@ -1803,8 +1805,7 @@ export function getHomepagePricingDisplay(h, planId) {
         h.pricingFeat_ent_5,
         h.pricingFeat_ent_6,
         h.pricingFeat_ent_7,
-        h.pricingFeat_ent_8,
-        h.pricingFeat_ent_9
+        h.pricingFeat_ent_8
       ]
     }
   }

@@ -289,7 +289,7 @@ export default function LandingPage() {
       icon: Building2,
       name: h.enterprise,
       price: '$299',
-      sub: h.perMonth,
+      sub: h.perMonthPerLocation,
       desc: h.largeTeamsCustom,
       cta: h.landingGetStarted,
       href: setupUrlWithNewBusiness({ plan: 'enterprise' }),

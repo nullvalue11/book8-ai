@@ -17,28 +17,30 @@ export const PRICING_GROWTH_ACK = null;
 
 export const PRICING_GROWTH_EXCLUSIVE_FEATURES = [
   "Everything in Starter",
-  "AI phone receptionist",
-  "70+ language voice AI",
+  "AI receptionist in 70+ languages",
+  "Google Calendar & Outlook sync",
   "SMS confirmations & reminders",
+  "Auto review requests",
+  "Public booking page with QR code",
+  "14-day free trial included",
   "No-show protection",
   "Waitlist & recurring bookings",
-  "Auto review requests",
   "Up to 5 providers",
   "20 portfolio photos",
 ];
 
 export const PRICING_ENTERPRISE_ACK = null;
 
+/** BOO-68B: Shipped Enterprise only — no “coming soon” bullets on pricing. */
 export const PRICING_ENTERPRISE_EXCLUSIVE_FEATURES = [
   "Everything in Growth",
   "Multi-location dashboard",
-  "Custom AI voice (where supported)",
-  "White-label branding",
-  "API access",
-  "Dedicated SLA",
+  "Sync services across all locations automatically",
+  "Priority support",
+  "Dedicated onboarding specialist",
+  "SLA guarantees",
   "Unlimited providers",
   "Unlimited portfolio photos",
-  "Priority support",
 ];
 
 /**
