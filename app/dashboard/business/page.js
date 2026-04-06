@@ -10,7 +10,7 @@
  * - Connect Google Calendar
  */
 
-import React, { useState, useEffect, useRef, Suspense } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -20,6 +20,10 @@ import { Switch } from '@/components/ui/switch'
 import Header from '@/components/Header'
 import HeaderLogo from '@/components/HeaderLogo'
 import { BUSINESS_CATEGORIES, CATEGORY_NAMES } from '@/lib/constants/businessCategories'
+import GooglePlacesSearch from '@/components/GooglePlacesSearch'
+import { placeDetailsToProfileFields } from '@/lib/googlePlaces'
+import { getBookingTranslations } from '@/lib/translations'
+import { isValidIanaTimeZone } from '@/lib/timezones'
 import { 
   Building2, 
   CheckCircle2, 
@@ -60,6 +64,20 @@ const PLAN_BADGE_COLORS = {
   starter: 'bg-green-100 text-green-800',
   growth: 'bg-blue-100 text-blue-800',
   enterprise: 'bg-purple-100 text-purple-800'
+}
+
+function normalizeBusinessPhoneInput(value) {
+  if (value == null || typeof value !== 'string') return value
+  const cleaned = value.replace(/[^\d+]/g, '')
+  if (cleaned.startsWith('+') && cleaned.replace(/\D/g, '').length >= 7) {
+    return cleaned
+  }
+  return value
+}
+
+function weeklyHoursNonEmpty(wh) {
+  if (!wh || typeof wh !== 'object') return false
+  return Object.keys(wh).some((k) => Array.isArray(wh[k]) && wh[k].length > 0)
 }
 
 /** Subscription status from user (Stripe webhook) or business record */
@@ -157,6 +175,18 @@ function BusinessPageContent() {
   const [autoGenerateId, setAutoGenerateId] = useState(true)
   const [skipVoiceTest, setSkipVoiceTest] = useState(false)
   const [skipBillingCheck, setSkipBillingCheck] = useState(false)
+
+  /** Optional fields from Google Places or manual entry (POST /api/business/register) */
+  const [regStreet, setRegStreet] = useState('')
+  const [regStreet2, setRegStreet2] = useState('')
+  const [regCity, setRegCity] = useState('')
+  const [regProvince, setRegProvince] = useState('')
+  const [regPostal, setRegPostal] = useState('')
+  const [regCountry, setRegCountry] = useState('')
+  const [regPhone, setRegPhone] = useState('')
+  const [regWebsite, setRegWebsite] = useState('')
+  const [regTimezone, setRegTimezone] = useState('')
+  const [regWeeklyHours, setRegWeeklyHours] = useState(null)
   
   // Workflow state
   const [step, setStep] = useState('list') // 'list' | 'form' | 'plan' | 'confirming' | 'result'
@@ -175,6 +205,52 @@ function BusinessPageContent() {
   
   // Constants
   const MAX_BUSINESSES = 5
+
+  const gpLabels = useMemo(() => getBookingTranslations('en').googlePlaces, [])
+
+  function clearRegistrationExtras() {
+    setRegStreet('')
+    setRegStreet2('')
+    setRegCity('')
+    setRegProvince('')
+    setRegPostal('')
+    setRegCountry('')
+    setRegPhone('')
+    setRegWebsite('')
+    setRegTimezone('')
+    setRegWeeklyHours(null)
+  }
+
+  const handleDashboardPlacePicked = useCallback(({ details }) => {
+    if (!details) return
+    const inner = details?.result || details?.place || details
+    const displayName =
+      inner && typeof inner === 'object'
+        ? inner.displayName || inner.displayNameLong || inner.name
+        : null
+    const { profile, weeklyHours, category: gpCat, timezoneGuess } = placeDetailsToProfileFields(details)
+    if (typeof displayName === 'string' && displayName.trim()) {
+      setBusinessName(displayName.trim().slice(0, 100))
+    }
+    if (gpCat && CATEGORY_NAMES[gpCat]) {
+      setCategory(gpCat)
+    }
+    setRegStreet(profile.street || '')
+    setRegStreet2(profile.street2 || '')
+    setRegCity(profile.city || '')
+    setRegProvince(profile.provinceState || '')
+    setRegPostal(profile.postalCode || '')
+    setRegCountry(profile.country || '')
+    const phoneRaw = profile.phone || ''
+    setRegPhone(phoneRaw ? normalizeBusinessPhoneInput(phoneRaw) || phoneRaw : '')
+    setRegWebsite(profile.website || '')
+    if (timezoneGuess && isValidIanaTimeZone(timezoneGuess)) {
+      setRegTimezone(timezoneGuess)
+    } else {
+      setRegTimezone('')
+    }
+    setRegWeeklyHours(weeklyHoursNonEmpty(weeklyHours) ? weeklyHours : null)
+  }, [])
   
   // Check for checkout success/cancel and google calendar connection
   useEffect(() => {
@@ -308,6 +384,30 @@ function BusinessPageContent() {
       
       if (!autoGenerateId && businessId.trim()) {
         body.businessId = businessId.trim()
+      }
+
+      if (regCity.trim()) {
+        body.city = regCity.trim().slice(0, 120)
+      }
+      if (regTimezone.trim() && isValidIanaTimeZone(regTimezone.trim())) {
+        body.timezone = regTimezone.trim()
+      }
+
+      const bp = {}
+      if (regStreet.trim()) bp.street = regStreet.trim().slice(0, 200)
+      if (regStreet2.trim()) bp.street2 = regStreet2.trim().slice(0, 200)
+      if (regCity.trim()) bp.city = regCity.trim().slice(0, 200)
+      if (regProvince.trim()) bp.provinceState = regProvince.trim().slice(0, 200)
+      if (regPostal.trim()) bp.postalCode = regPostal.trim().slice(0, 32)
+      if (regCountry.trim()) bp.country = regCountry.trim().slice(0, 8).toUpperCase()
+      if (regPhone.trim()) bp.phone = regPhone.trim().slice(0, 40)
+      if (regWebsite.trim()) bp.website = regWebsite.trim().slice(0, 2048)
+
+      if (Object.keys(bp).length > 0 || weeklyHoursNonEmpty(regWeeklyHours)) {
+        body.businessProfile = Object.keys(bp).length > 0 ? bp : {}
+      }
+      if (weeklyHoursNonEmpty(regWeeklyHours)) {
+        body.weeklyHours = regWeeklyHours
       }
       
       const res = await fetch('/api/business/register', {
@@ -475,6 +575,7 @@ function BusinessPageContent() {
     setCurrentBusinessId(null)
     setError(null)
     setSelectedBusiness(null)
+    clearRegistrationExtras()
   }
   
   if (!appReady) {
@@ -790,10 +891,13 @@ function BusinessPageContent() {
                             <Button 
                               size="sm" 
                               onClick={() => {
+                                clearRegistrationExtras()
                                 setCurrentBusinessId(biz.businessId)
                                 setBusinessName(biz.name)
                                 setCategory(biz.category || 'other')
                                 setCategoryFilter('')
+                                setAutoGenerateId(false)
+                                setBusinessId(biz.businessId)
                                 setStep('form')
                               }}
                             >
@@ -825,7 +929,21 @@ function BusinessPageContent() {
               </CardHeader>
               <CardContent>
                 {businesses.length < MAX_BUSINESSES ? (
-                  <Button onClick={() => setStep('form')}>
+                  <Button
+                    onClick={() => {
+                      clearRegistrationExtras()
+                      setBusinessName('')
+                      setCategory('other')
+                      setCategoryFilter('')
+                      setBusinessId('')
+                      setAutoGenerateId(true)
+                      setCurrentBusinessId(null)
+                      setPlan(null)
+                      setResult(null)
+                      setError(null)
+                      setStep('form')
+                    }}
+                  >
                     <Building2 className="w-4 h-4 mr-2" />
                     Start Registration
                   </Button>
@@ -852,6 +970,20 @@ function BusinessPageContent() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handlePlanSetup} className="space-y-6">
+                {token && gpLabels ? (
+                  <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+                    <p className="text-sm text-muted-foreground">
+                      Search your business to auto-fill details, or enter everything manually below.
+                    </p>
+                    <GooglePlacesSearch
+                      authToken={token}
+                      labels={gpLabels}
+                      idPrefix="dash-reg"
+                      onPick={handleDashboardPlacePicked}
+                    />
+                  </div>
+                ) : null}
+
                 <div className="space-y-2">
                   <Label htmlFor="businessName">Business Name *</Label>
                   <Input
@@ -863,6 +995,104 @@ function BusinessPageContent() {
                     minLength={2}
                     maxLength={100}
                   />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="regStreet">Address</Label>
+                    <Input
+                      id="regStreet"
+                      value={regStreet}
+                      onChange={(e) => setRegStreet(e.target.value)}
+                      placeholder="Street address"
+                      maxLength={200}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="regStreet2">Address line 2</Label>
+                    <Input
+                      id="regStreet2"
+                      value={regStreet2}
+                      onChange={(e) => setRegStreet2(e.target.value)}
+                      placeholder="Suite, unit, etc. (optional)"
+                      maxLength={200}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regCity">City</Label>
+                    <Input
+                      id="regCity"
+                      value={regCity}
+                      onChange={(e) => setRegCity(e.target.value)}
+                      placeholder="City"
+                      maxLength={200}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regProvince">Province / state</Label>
+                    <Input
+                      id="regProvince"
+                      value={regProvince}
+                      onChange={(e) => setRegProvince(e.target.value)}
+                      placeholder="Region (optional)"
+                      maxLength={200}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regPostal">Postal code</Label>
+                    <Input
+                      id="regPostal"
+                      value={regPostal}
+                      onChange={(e) => setRegPostal(e.target.value)}
+                      placeholder="Postal / ZIP"
+                      maxLength={32}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regCountry">Country</Label>
+                    <Input
+                      id="regCountry"
+                      value={regCountry}
+                      onChange={(e) => setRegCountry(e.target.value)}
+                      placeholder="ISO code, e.g. US"
+                      maxLength={8}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regPhone">Phone</Label>
+                    <Input
+                      id="regPhone"
+                      value={regPhone}
+                      onChange={(e) => setRegPhone(e.target.value)}
+                      placeholder="Business phone (optional)"
+                      maxLength={40}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regWebsite">Website</Label>
+                    <Input
+                      id="regWebsite"
+                      value={regWebsite}
+                      onChange={(e) => setRegWebsite(e.target.value)}
+                      placeholder="https://…"
+                      maxLength={2048}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="regTimezone">Timezone</Label>
+                    <Input
+                      id="regTimezone"
+                      value={regTimezone}
+                      onChange={(e) => setRegTimezone(e.target.value)}
+                      placeholder="IANA timezone, e.g. America/Toronto"
+                      maxLength={80}
+                    />
+                    {regTimezone.trim() && !isValidIanaTimeZone(regTimezone.trim()) ? (
+                      <p className="text-xs text-amber-700">
+                        Unrecognized timezone; fix before saving or leave blank to use the default.
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="space-y-2">

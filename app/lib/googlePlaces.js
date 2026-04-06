@@ -188,14 +188,53 @@ export function placeDetailsToStoredGooglePlaces(rawDetails) {
 export function mapGoogleTypesToCategory(types) {
   if (!Array.isArray(types)) return null
   const t = types.map((x) => String(x).toLowerCase().replace(/\s+/g, '_'))
+  if (t.some((x) => x.includes('veterinary') || x === 'veterinary_care')) return 'veterinary'
   if (t.some((x) => x.includes('hair') || x === 'barber_shop' || x === 'beauty_salon' || x === 'hair_care'))
     return 'barber'
   if (t.some((x) => x.includes('spa') || x === 'massage' || x.includes('salon'))) return 'spa'
   if (t.some((x) => x.includes('dent'))) return 'dental'
   if (t.some((x) => x.includes('gym') || x === 'fitness_center' || x.includes('fitness'))) return 'fitness'
   if (t.some((x) => x.includes('doctor') || x.includes('physician') || x.includes('hospital') || x === 'health'))
-    return 'medical'
-  if (t.some((x) => x.includes('restaurant') || x === 'food' || x === 'cafe' || x.includes('meal'))) return 'restaurant'
+    return 'clinic'
+  return null
+}
+
+/**
+ * Rough IANA timezone from country + region (no lat/lng API call).
+ * @param {string} country ISO-2
+ * @param {string} provinceState region code or name
+ * @returns {string | null}
+ */
+export function guessTimezoneFromRegion(country, provinceState) {
+  const c = (country || '').toUpperCase().slice(0, 2)
+  const p = (provinceState || '').toUpperCase().replace(/\s+/g, '_')
+  const p2 = p.length > 2 ? p.slice(0, 2) : p
+  if (c === 'CA') {
+    if (['BC', 'YT'].includes(p2)) return 'America/Vancouver'
+    if (['AB', 'NT', 'NU'].includes(p2)) return 'America/Edmonton'
+    if (p2 === 'SK') return 'America/Regina'
+    if (p2 === 'MB') return 'America/Winnipeg'
+    if (['NB', 'NS', 'PE', 'NL'].includes(p2)) return 'America/Halifax'
+    if (p2 === 'QC') return 'America/Toronto'
+    return 'America/Toronto'
+  }
+  if (c === 'US') {
+    const pacific = ['CA', 'WA', 'OR', 'NV']
+    const mountain = ['MT', 'ID', 'WY', 'UT', 'CO', 'NM', 'AZ']
+    const central = [
+      'TX', 'OK', 'KS', 'NE', 'SD', 'ND', 'MN', 'IA', 'MO', 'AR', 'LA', 'WI', 'IL', 'MS', 'AL', 'TN'
+    ]
+    if (pacific.includes(p2)) return 'America/Los_Angeles'
+    if (mountain.includes(p2)) return 'America/Denver'
+    if (central.includes(p2)) return 'America/Chicago'
+    return 'America/New_York'
+  }
+  if (c === 'GB') return 'Europe/London'
+  if (c === 'AU') return 'Australia/Sydney'
+  if (c === 'FR') return 'Europe/Paris'
+  if (c === 'DE') return 'Europe/Berlin'
+  if (c === 'ES') return 'Europe/Madrid'
+  if (c === 'JP') return 'Asia/Tokyo'
   return null
 }
 
@@ -246,7 +285,7 @@ export function googleOpeningHoursToWeeklyHours(openingHours) {
  */
 export function placeDetailsToProfileFields(rawDetails) {
   const data = asPlaceRecord(rawDetails)
-  if (!data) return { profile: {}, weeklyHours: null, category: null }
+  if (!data) return { profile: {}, weeklyHours: null, category: null, timezoneGuess: null }
 
   /** @type {string[]} */
   const typeList = Array.isArray(data.types) ? /** @type {string[]} */ (data.types).map(String) : []
@@ -345,5 +384,7 @@ export function placeDetailsToProfileFields(rawDetails) {
     profile.street = formatted.slice(0, 200)
   }
 
-  return { profile, weeklyHours, category }
+  const timezoneGuess = guessTimezoneFromRegion(country, provinceState) || null
+
+  return { profile, weeklyHours, category, timezoneGuess }
 }
