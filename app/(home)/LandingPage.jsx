@@ -522,28 +522,35 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <p className="text-xs text-[#68668A] mb-2 uppercase tracking-wide">{h.mockContactLabel}</p>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-x-4 gap-y-3">
                       {[
-                        { src: '/images/providers/john-dentist.png', alt: 'Dr. John' },
-                        { src: '/images/providers/rashad-dentist.png', alt: 'Dr. Rashad' },
-                        { src: '/images/providers/amanda-hygienist.png', alt: 'Amanda' },
-                        { src: '/images/providers/britney-hygienist.png', alt: 'Britney' }
+                        { src: '/images/providers/john-dentist.png', alt: 'Dr. John', label: h.mockProviderJohn },
+                        { src: '/images/providers/rashad-dentist.png', alt: 'Dr. Rashad', label: h.mockProviderRashad },
+                        { src: '/images/providers/amanda-hygienist.png', alt: 'Amanda', label: h.mockProviderAmanda },
+                        { src: '/images/providers/britney-hygienist.png', alt: 'Britney', label: h.mockProviderBritney }
                       ].map((p) => (
                         <div
                           key={p.src}
-                          className="w-11 h-11 rounded-[10px] overflow-hidden shadow-lg shrink-0 bg-[#1a1a3a]"
-                          title={p.alt}
+                          className="flex flex-col items-center gap-1.5 w-16 shrink-0"
                         >
-                          <img
-                            src={p.src}
-                            alt={p.alt}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              borderRadius: '10px'
-                            }}
-                          />
+                          <div
+                            className="w-11 h-11 rounded-[10px] overflow-hidden shadow-lg bg-[#1a1a3a]"
+                            title={p.alt}
+                          >
+                            <img
+                              src={p.src}
+                              alt={p.alt}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                borderRadius: '10px'
+                              }}
+                            />
+                          </div>
+                          <span className="text-[10px] sm:text-[11px] text-[#9593A8] text-center leading-snug font-medium w-full">
+                            {p.label}
+                          </span>
                         </div>
                       ))}
                     </div>
