@@ -3,23 +3,23 @@
  * Onboarding is local-first (BOO-56); Stripe webhook may race or miss — Step 6 must not 502.
  */
 
-import { env } from './env'
 import { provisionOnCoreApi } from './provision-business'
 import { resolveBusinessPlanKey } from './subscription'
+import {
+  getCoreApiBaseUrl,
+  getCoreApiInternalHeadersJson,
+  hasCoreApiInternalCredentials
+} from './core-api-internal'
 
 /**
  * @param {string} baseUrl - core-api base (no trailing slash)
- * @param {string} secret - CORE_API_INTERNAL_SECRET
  * @param {string} businessId
  * @returns {Promise<Response>}
  */
-export async function fetchCoreBusinessGet(baseUrl, secret, businessId) {
+export async function fetchCoreBusinessGet(baseUrl, businessId) {
   return fetch(`${baseUrl}/api/businesses/${encodeURIComponent(businessId)}`, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-book8-internal-secret': secret
-    },
+    headers: getCoreApiInternalHeadersJson(),
     cache: 'no-store'
   })
 }
@@ -43,16 +43,15 @@ export async function ensureCoreTenantExistsForPhoneStep({
     return { ok: false, error: 'Invalid business' }
   }
 
-  const baseUrl = (env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com').replace(/\/$/, '')
-  const secret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
+  const baseUrl = getCoreApiBaseUrl()
 
-  if (!secret) {
-    return { ok: false, error: 'CORE_API_INTERNAL_SECRET not configured' }
+  if (!hasCoreApiInternalCredentials()) {
+    return { ok: false, error: 'Core API credentials not configured' }
   }
 
   let coreRes
   try {
-    coreRes = await fetchCoreBusinessGet(baseUrl, secret, business.businessId)
+    coreRes = await fetchCoreBusinessGet(baseUrl, business.businessId)
   } catch (e) {
     console.error('[ensure-business-on-core] GET core business failed', e)
     return { ok: false, error: 'Core-api unreachable' }

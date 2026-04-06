@@ -3,7 +3,7 @@
  * Used by: Stripe webhook (checkout.session.completed), business registration (subscription inheritance).
  */
 
-import { env } from '@/lib/env'
+import { getCoreApiBaseUrl, getCoreApiInternalHeadersJson, hasCoreApiInternalCredentials } from './core-api-internal'
 
 /**
  * Call core-api's provision-from-stripe to create tenant + assign phone number.
@@ -37,16 +37,12 @@ export async function provisionOnCoreApi({
   skipPhoneProvisioning: skipPhoneProvisioningOpt,
   requestDedicatedPhoneLine: requestDedicatedPhoneLineOpt
 }) {
-  const coreApiUrl =
-    env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
-  const secret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET
-
-  if (!secret) {
-    console.warn('[provision] No internal secret — skipping core-api provisioning')
+  if (!hasCoreApiInternalCredentials()) {
+    console.warn('[provision] No core API credentials — skipping core-api provisioning')
     return null
   }
 
-  const baseUrl = coreApiUrl.replace(/\/$/, '')
+  const baseUrl = getCoreApiBaseUrl()
 
   try {
     console.log('[provision] Triggering core-api provisioning for:', businessId)
@@ -83,11 +79,7 @@ export async function provisionOnCoreApi({
 
     const response = await fetch(`${baseUrl}/internal/provision-from-stripe`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-book8-internal-secret': secret,
-        'x-internal-secret': secret
-      },
+      headers: getCoreApiInternalHeadersJson(),
       body: JSON.stringify(body)
     })
 

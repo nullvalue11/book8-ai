@@ -3,6 +3,11 @@ import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 import { ensureCoreTenantExistsForPhoneStep } from '@/lib/ensure-business-on-core'
+import {
+  getCoreApiBaseUrl,
+  getCoreApiInternalHeadersJson,
+  hasCoreApiInternalCredentials
+} from '@/lib/core-api-internal'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -46,12 +51,6 @@ async function verifyAuth(request, database) {
   } catch {
     return { payload: null, user: null }
   }
-}
-
-function getCoreApiConfig() {
-  const baseUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
-  const secret = env.CORE_API_INTERNAL_SECRET || ''
-  return { baseUrl, secret }
 }
 
 function needsLocalDataSyncedToCore(business) {
@@ -141,20 +140,19 @@ export async function GET(request) {
       )
     }
 
-    const { baseUrl, secret } = getCoreApiConfig()
-    if (!secret) {
+    if (!hasCoreApiInternalCredentials()) {
       return NextResponse.json(
-        { ok: false, error: 'CORE_API_INTERNAL_SECRET not configured' },
+        { ok: false, error: 'Core API credentials not configured' },
         { status: 500 }
       )
     }
 
-    const coreRes = await fetch(`${baseUrl}/api/businesses/${businessId}`, {
+    const baseUrl = getCoreApiBaseUrl()
+    const coreHeaders = getCoreApiInternalHeadersJson()
+
+    const coreRes = await fetch(`${baseUrl}/api/businesses/${encodeURIComponent(businessId)}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-book8-internal-secret': secret
-      },
+      headers: coreHeaders,
       cache: 'no-store'
     })
 
@@ -277,13 +275,15 @@ export async function POST(request) {
       )
     }
 
-    const { baseUrl, secret } = getCoreApiConfig()
-    if (!secret) {
+    if (!hasCoreApiInternalCredentials()) {
       return NextResponse.json(
-        { ok: false, error: 'CORE_API_INTERNAL_SECRET not configured' },
+        { ok: false, error: 'Core API credentials not configured' },
         { status: 500 }
       )
     }
+
+    const baseUrl = getCoreApiBaseUrl()
+    const coreHeaders = getCoreApiInternalHeadersJson()
 
     let fwdList = Array.isArray(forwardingFrom)
       ? forwardingFrom
@@ -333,35 +333,50 @@ export async function POST(request) {
       businessForSync = await database.collection(BUSINESS_COLLECTION).findOne({ businessId })
     }
 
+    /** Core-api expects the same enum as the dashboard / setup UI (`new` | `forward`), not internal `dedicated`. */
+    const numberSetupMethodForCore =
+      phoneSetup === 'forward' || resolvedMethod === 'forward'
+        ? 'forward'
+        : phoneSetup === 'new'
+          ? 'new'
+          : resolvedMethod === 'dedicated'
+            ? 'new'
+            : resolvedMethod
+
     const updatePayload = {
       id: businessId,
       name: (businessForSync || business).name,
-      numberSetupMethod: resolvedMethod,
+      numberSetupMethod: numberSetupMethodForCore,
       forwardingEnabled: fwdFlag,
       forwardingFrom: fwdList,
       phoneNumber: phoneNumber || null
     }
 
-    const coreRes = await fetch(`${baseUrl}/api/businesses/${businessId}`, {
+    const coreRes = await fetch(`${baseUrl}/api/businesses/${encodeURIComponent(businessId)}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-book8-internal-secret': secret
-      },
+      headers: coreHeaders,
       body: JSON.stringify(updatePayload)
     })
 
-    const result = await coreRes.json().catch(() => ({}))
+    const rawBody = await coreRes.text().catch(() => '')
+    let result = {}
+    try {
+      result = rawBody ? JSON.parse(rawBody) : {}
+    } catch {
+      result = {}
+    }
 
     if (!coreRes.ok) {
       console.error('[business/phone-setup] Booking service POST failed', {
         status: coreRes.status,
-        error: result?.error
+        error: result?.error,
+        body: rawBody.slice(0, 2000)
       })
-      return NextResponse.json(
-        { ok: false, error: 'Could not update phone setup. Please try again.' },
-        { status: 502 }
-      )
+      const clientMsg =
+        typeof result?.error === 'string' && result.error.trim()
+          ? result.error
+          : 'Could not update phone setup. Please try again.'
+      return NextResponse.json({ ok: false, error: clientMsg }, { status: 502 })
     }
 
     const mongoFields = { updatedAt: new Date() }
