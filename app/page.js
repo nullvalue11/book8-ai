@@ -24,7 +24,7 @@ import PlanFeatureLock from "./components/PlanFeatureLock";
 import { getPlanName, getUiPlanLimits, normalizePlanKey } from "./lib/plan-features";
 import { bookingLanguageBadge } from "./lib/bookingLanguageDisplay";
 import { toast } from "sonner";
-import { resolveBusinessPlanKey } from "@/lib/subscription";
+import { resolveBusinessPlanKey } from "@/lib/subscription-shared";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function formatDuration(seconds) {

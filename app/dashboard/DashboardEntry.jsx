@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Home from '../page'
-import { resolveBusinessPlanKey } from '@/lib/subscription'
+import { resolveBusinessPlanKey } from '@/lib/subscription-shared'
 
 function DashboardEntryInner() {
   const router = useRouter()

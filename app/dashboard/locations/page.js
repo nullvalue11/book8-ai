@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import MultiLocationOverview from '@/components/dashboard/MultiLocationOverview'
-import { resolveBusinessPlanKey } from '@/lib/subscription'
+import { resolveBusinessPlanKey } from '@/lib/subscription-shared'
 
 export default function MultiLocationDashboardPage() {
   const router = useRouter()
