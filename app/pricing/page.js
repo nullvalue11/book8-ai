@@ -314,6 +314,11 @@ function PricingContent() {
                         {h.trialCardNote}
                       </p>
                     )}
+                    {(plan.id === "starter" || plan.id === "enterprise") && (
+                      <p className="text-xs text-muted-foreground text-center leading-snug">
+                        {plan.id === "starter" ? h.landingStarterPlanNote : h.landingEnterprisePlanNote}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               );

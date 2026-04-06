@@ -1778,27 +1778,33 @@ export function getHomepagePricingDisplay(h, planId) {
   }
   if (planId === 'growth') {
     return {
-      ack: h.includesAllStarter,
+      ack: null,
       features: [
         h.pricingFeat_growth_1,
         h.pricingFeat_growth_2,
         h.pricingFeat_growth_3,
         h.pricingFeat_growth_4,
         h.pricingFeat_growth_5,
-        h.pricingFeat_growth_6
+        h.pricingFeat_growth_6,
+        h.pricingFeat_growth_7,
+        h.pricingFeat_growth_8,
+        h.pricingFeat_growth_9
       ]
     }
   }
   if (planId === 'enterprise') {
     return {
-      ack: h.includesAllGrowth,
+      ack: null,
       features: [
         h.pricingFeat_ent_1,
         h.pricingFeat_ent_2,
         h.pricingFeat_ent_3,
         h.pricingFeat_ent_4,
         h.pricingFeat_ent_5,
-        h.pricingFeat_ent_6
+        h.pricingFeat_ent_6,
+        h.pricingFeat_ent_7,
+        h.pricingFeat_ent_8,
+        h.pricingFeat_ent_9
       ]
     }
   }

@@ -12,27 +12,33 @@ export const PRICING_STARTER_CARD_FEATURES = [
   "Basic analytics",
 ];
 
-export const PRICING_GROWTH_ACK = "Includes all Starter features";
+/** BOO-68B: Fallback when marketing override missing — mirrors getHomepagePricingDisplay (EN). */
+export const PRICING_GROWTH_ACK = null;
 
-/** Growth card: exclusive bullets only (after ack + divider). */
 export const PRICING_GROWTH_EXCLUSIVE_FEATURES = [
-  "Multilingual AI voice (70+)",
-  "AI phone agent",
-  "Outlook + Google calendars",
-  "SMS + Email confirmations",
-  "Full analytics",
-  "Priority support",
+  "Everything in Starter",
+  "AI phone receptionist",
+  "70+ language voice AI",
+  "SMS confirmations & reminders",
+  "No-show protection",
+  "Waitlist & recurring bookings",
+  "Auto review requests",
+  "Up to 5 providers",
+  "20 portfolio photos",
 ];
 
-export const PRICING_ENTERPRISE_ACK = "Includes all Growth features";
+export const PRICING_ENTERPRISE_ACK = null;
 
 export const PRICING_ENTERPRISE_EXCLUSIVE_FEATURES = [
-  "Custom voice per language (where supported)",
-  "Unlimited team members",
-  "Dedicated account manager",
-  "SLA guarantee",
+  "Everything in Growth",
+  "Multi-location dashboard",
+  "Custom AI voice (where supported)",
+  "White-label branding",
   "API access",
-  "White-label options",
+  "Dedicated SLA",
+  "Unlimited providers",
+  "Unlimited portfolio photos",
+  "Priority support",
 ];
 
 /**
@@ -44,10 +50,16 @@ export function getPricingFeatureDisplay(planId) {
     return { ack: null, features: PRICING_STARTER_CARD_FEATURES };
   }
   if (planId === "growth") {
-    return { ack: PRICING_GROWTH_ACK, features: PRICING_GROWTH_EXCLUSIVE_FEATURES };
+    return {
+      ack: PRICING_GROWTH_ACK,
+      features: PRICING_GROWTH_EXCLUSIVE_FEATURES,
+    };
   }
   if (planId === "enterprise") {
-    return { ack: PRICING_ENTERPRISE_ACK, features: PRICING_ENTERPRISE_EXCLUSIVE_FEATURES };
+    return {
+      ack: PRICING_ENTERPRISE_ACK,
+      features: PRICING_ENTERPRISE_EXCLUSIVE_FEATURES,
+    };
   }
   return { ack: null, features: [] };
 }
