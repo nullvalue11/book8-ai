@@ -40,6 +40,7 @@ import {
   saveOpsEventLog
 } from '@/lib/schemas/opsEventLog'
 import { checkRateLimitWithRequest } from '@/api/internal/ops/_lib/rateLimiter'
+import { slackOps } from '@/lib/slack-notifier'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -347,6 +348,25 @@ export async function POST(request, { params }) {
         type: execError.constructor?.name
       }
       log('error', `Tool execution failed`, { requestId, error: execError.message })
+      void slackOps
+        .toolFailed({
+          toolName: tool,
+          businessId: approvalRequest.payload?.businessId,
+          error: execError.message,
+          requestId: `exec-${requestId}`
+        })
+        .catch(() => {})
+    }
+
+    if (!executionError && result && result.ok === false) {
+      void slackOps
+        .toolFailed({
+          toolName: tool,
+          businessId: approvalRequest.payload?.businessId,
+          error: result.error ?? result.message ?? result,
+          requestId: `exec-${requestId}`
+        })
+        .catch(() => {})
     }
     
     const executionDurationMs = Date.now() - executionStartTime

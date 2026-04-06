@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
 import { env } from '@/lib/env'
+import { slackOps } from '@/lib/slack-notifier'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -42,6 +43,9 @@ export async function POST(req) {
       throw e
     }
     const token = jwt.sign({ sub: user.id, email: user.email }, env.JWT_SECRET, { expiresIn: '7d' })
+    if (env.SLACK_OPS_INFO_NOTIFICATIONS) {
+      void slackOps.newSignup({ email: user.email, name: user.name }).catch(() => {})
+    }
     return NextResponse.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name, subscription: user.subscription, google: { connected: false, lastSyncedAt: null } } })
   } catch (err) {
     console.error('[auth/register] error', err)

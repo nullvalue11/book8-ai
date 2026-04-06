@@ -27,6 +27,7 @@ import {
   validateStatusTransition
 } from '@/lib/schemas/opsApprovalRequest'
 import { checkRateLimitWithRequest } from '@/api/internal/ops/_lib/rateLimiter'
+import { slackOps } from '@/lib/slack-notifier'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -293,6 +294,15 @@ export async function POST(request, { params }) {
       approvedBy,
       durationMs
     })
+
+    void slackOps
+      .approvalGranted({
+        toolName: approvalRequest.tool,
+        businessId: approvalRequest.payload?.businessId,
+        approvedBy,
+        requestId
+      })
+      .catch(() => {})
     
     return NextResponse.json({
       ok: true,

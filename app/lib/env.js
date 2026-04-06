@@ -207,6 +207,13 @@ function loadConfig() {
       'https://n8n.book8.io/webhook/provisioning-check'
     )
     const N8N_OPS_SECRET = getEnvVar('N8N_OPS_SECRET', false)
+
+    /** BOO-78B: Slack Incoming Webhook for ops notifications (optional). */
+    const SLACK_OPS_WEBHOOK_URL = getEnvVar('SLACK_OPS_WEBHOOK_URL', false)
+    const SLACK_OPS_NOTIFICATIONS_ENABLED =
+      getEnvVar('SLACK_OPS_NOTIFICATIONS_ENABLED', false, 'true') !== 'false'
+    const SLACK_OPS_INFO_NOTIFICATIONS =
+      getEnvVar('SLACK_OPS_INFO_NOTIFICATIONS', false, 'false') === 'true'
     
     // Feature Flags
     const FEATURE_RESCHEDULE = getEnvVar('FEATURE_RESCHEDULE', false, 'true') === 'true'
@@ -305,6 +312,10 @@ function loadConfig() {
       N8N_BUSINESS_PROVISIONED_WEBHOOK_URL: getEnvVar('N8N_BUSINESS_PROVISIONED_WEBHOOK_URL', false),
       N8N_PROVISIONING_CHECK_URL,
       N8N_OPS_SECRET,
+
+      SLACK_OPS_WEBHOOK_URL: SLACK_OPS_WEBHOOK_URL || null,
+      SLACK_OPS_NOTIFICATIONS_ENABLED,
+      SLACK_OPS_INFO_NOTIFICATIONS,
       
       // Billing/Usage Reporting
       CORE_API_BASE_URL,

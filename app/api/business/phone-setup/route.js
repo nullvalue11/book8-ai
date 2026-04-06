@@ -8,6 +8,7 @@ import {
   getCoreApiInternalHeadersJson,
   hasCoreApiInternalCredentials
 } from '@/lib/core-api-internal'
+import { slackOps } from '@/lib/slack-notifier'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -207,6 +208,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  let slackBusinessId = null
   try {
     const database = await connect()
     const { payload, user } = await verifyAuth(request, database)
@@ -245,6 +247,8 @@ export async function POST(request) {
         { status: 400 }
       )
     }
+
+    slackBusinessId = businessId
 
     const resolvedMethod =
       numberSetupMethod ||
@@ -312,6 +316,13 @@ export async function POST(request) {
       resolvedMethod
     })
     if (!ensure.ok) {
+      void slackOps
+        .phoneSetupFailed({
+          businessId: slackBusinessId,
+          step: 'ensureCoreTenant',
+          error: ensure.error || 'Booking service is not ready for phone setup yet.'
+        })
+        .catch(() => {})
       return NextResponse.json(
         { ok: false, error: ensure.error || 'Booking service is not ready for phone setup yet.' },
         { status: 503 }
@@ -322,6 +333,13 @@ export async function POST(request) {
     if (needsLocalDataSyncedToCore(business)) {
       const synced = await runSyncToCoreFromPhoneSetup(request, businessId)
       if (!synced.ok) {
+        void slackOps
+          .phoneSetupFailed({
+            businessId: slackBusinessId,
+            step: 'sync-to-core',
+            error: 'Could not sync services and hours to the booking service.'
+          })
+          .catch(() => {})
         return NextResponse.json(
           {
             ok: false,
@@ -376,6 +394,13 @@ export async function POST(request) {
         typeof result?.error === 'string' && result.error.trim()
           ? result.error
           : 'Could not update phone setup. Please try again.'
+      void slackOps
+        .phoneSetupFailed({
+          businessId: slackBusinessId,
+          step: 'core-api phone update',
+          error: clientMsg
+        })
+        .catch(() => {})
       return NextResponse.json({ ok: false, error: clientMsg }, { status: 502 })
     }
 
@@ -406,6 +431,13 @@ export async function POST(request) {
     })
   } catch (error) {
     console.error('[business/phone-setup] POST error', error)
+    void slackOps
+      .phoneSetupFailed({
+        businessId: slackBusinessId,
+        step: 'phone-setup',
+        error: error?.message || 'Server error'
+      })
+      .catch(() => {})
     return NextResponse.json(
       { ok: false, error: 'Server error' },
       { status: 500 }

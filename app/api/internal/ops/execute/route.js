@@ -74,6 +74,7 @@ import {
   validateToolOutput,
   getCanonicalTools
 } from '@/lib/ops/tool-registry'
+import { slackOps } from '@/lib/slack-notifier'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -1158,6 +1159,15 @@ export async function POST(request) {
         } catch (eventError) {
           log(requestId, 'warn', `Failed to log pending approval event: ${eventError.message}`)
         }
+
+        void slackOps
+          .approvalPending({
+            toolName: tool,
+            businessId: args?.businessId,
+            requestId,
+            payload: args
+          })
+          .catch(() => {})
         
         return NextResponse.json({
           ok: false,
@@ -1446,6 +1456,86 @@ export async function POST(request) {
       const result = await executeTool(tool, argsValidation.data, ctx)
       const completedAt = new Date()
       const durationMs = completedAt.getTime() - startedAt.getTime()
+
+      const businessIdForSlack = argsValidation.data?.businessId || result?.businessId || null
+      if (result.ok === false) {
+        void slackOps
+          .toolFailed({
+            toolName: tool,
+            businessId: businessIdForSlack,
+            error: result.error ?? result.message ?? result,
+            requestId
+          })
+          .catch(() => {})
+      } else {
+        const dryOrPlan =
+          result.mode === 'plan' ||
+          result.mode === 'dryRun' ||
+          dryRun === true
+        if (!dryOrPlan) {
+          if (tool === 'tenant.recovery') {
+            void slackOps
+              .tenantRecovery({
+                businessId: businessIdForSlack || argsValidation.data?.businessId,
+                autoFix: !!argsValidation.data?.autoFix,
+                issuesFound: result.issuesFound ?? 0
+              })
+              .catch(() => {})
+          }
+          if (tool === 'tenant.bootstrap') {
+            if (result.ready === false) {
+              void slackOps
+                .tenantBootstrapFailed({
+                  businessId: businessIdForSlack,
+                  error: result.readyMessage || result.error || 'ready=false'
+                })
+                .catch(() => {})
+            } else if (env.SLACK_OPS_INFO_NOTIFICATIONS) {
+              void slackOps
+                .tenantBootstrapSucceeded({
+                  businessId: businessIdForSlack,
+                  name: result.name
+                })
+                .catch(() => {})
+            }
+          }
+          if (tool === 'voice.diagnostics') {
+            const badVoice = new Set([
+              'unhealthy',
+              'error',
+              'timeout',
+              'unreachable',
+              'dns_error',
+              'auth_error',
+              'degraded'
+            ])
+            const failedTargets = (result.results || []).filter((r) => badVoice.has(r.status))
+            if (failedTargets.length > 0) {
+              void slackOps
+                .voiceDiagnosticsFailed({
+                  failedTargets,
+                  businessId: businessIdForSlack
+                })
+                .catch(() => {})
+            }
+          }
+          if (
+            tool === 'billing_verification' &&
+            Array.isArray(result.discrepancies) &&
+            result.discrepancies.length > 0
+          ) {
+            const d0 = result.discrepancies[0]
+            void slackOps
+              .billingDiscrepancy({
+                businessId: businessIdForSlack || 'N/A',
+                expected: d0?.expected ?? result.totalExpected ?? '',
+                actual: d0?.actual ?? result.totalBilled ?? '',
+                discrepancyPercent: d0?.differencePercent ?? result.differencePercent ?? ''
+              })
+              .catch(() => {})
+          }
+        }
+      }
       
       // 11b. REGISTRY-DRIVEN OUTPUT VALIDATION (warning only, doesn't block)
       const outputValidation = validateToolOutput(tool, result)
@@ -1561,6 +1651,17 @@ export async function POST(request) {
     log(requestId, 'error', `Unhandled error: ${error.message}`, { 
       stack: error.stack?.split('\n').slice(0, 3).join(' | ')
     })
+
+    if (tool && requestId) {
+      void slackOps
+        .toolFailed({
+          toolName: tool,
+          businessId: null,
+          error: error.message,
+          requestId
+        })
+        .catch(() => {})
+    }
     
     const completedAt = new Date()
     const durationMs = startedAt ? completedAt.getTime() - startedAt.getTime() : 0
