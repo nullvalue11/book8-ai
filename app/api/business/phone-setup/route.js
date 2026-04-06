@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
+import { ensureCoreTenantExistsForPhoneStep } from '@/lib/ensure-business-on-core'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -51,6 +52,53 @@ function getCoreApiConfig() {
   const baseUrl = env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
   const secret = env.CORE_API_INTERNAL_SECRET || ''
   return { baseUrl, secret }
+}
+
+function needsLocalDataSyncedToCore(business) {
+  if (!business) return false
+  if (business.pendingCoreServicesSync || business.pendingCoreScheduleSync) return true
+  if (Array.isArray(business.localServices) && business.localServices.length > 0) return true
+  const wh = business.localSchedule?.weeklyHours
+  return !!(wh && typeof wh === 'object' && Object.keys(wh).length > 0)
+}
+
+/**
+ * BOO-72B: Push BOO-56 local services/schedule to core after tenant exists (same as Step 7 sync).
+ */
+async function runSyncToCoreFromPhoneSetup(request, businessId) {
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host')
+  const proto =
+    request.headers.get('x-forwarded-proto') ||
+    (host && (host.startsWith('localhost') || host.startsWith('127.0.0.1')) ? 'http' : 'https')
+  if (!host) {
+    console.warn('[business/phone-setup] Missing Host header; skip sync-to-core')
+    return { ok: false }
+  }
+  const origin = `${proto}://${host}`
+  const authHeader = request.headers.get('authorization') || ''
+  try {
+    const syncRes = await fetch(
+      `${origin}/api/business/${encodeURIComponent(businessId)}/sync-to-core`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authHeader ? { Authorization: authHeader } : {})
+        },
+        body: '{}',
+        cache: 'no-store'
+      }
+    )
+    if (!syncRes.ok) {
+      const t = await syncRes.text().catch(() => '')
+      console.error('[business/phone-setup] sync-to-core failed', syncRes.status, t)
+      return { ok: false }
+    }
+    return { ok: true }
+  } catch (e) {
+    console.error('[business/phone-setup] sync-to-core error', e)
+    return { ok: false }
+  }
 }
 
 export async function GET(request) {
@@ -163,7 +211,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const database = await connect()
-    const { payload } = await verifyAuth(request, database)
+    const { payload, user } = await verifyAuth(request, database)
 
     if (!payload?.sub) {
       return NextResponse.json(
@@ -256,9 +304,38 @@ export async function POST(request) {
       fwdList = []
     }
 
+    // BOO-72B: Core-api must know the tenant before phone update (onboarding can race Stripe webhook).
+    const ensure = await ensureCoreTenantExistsForPhoneStep({
+      business,
+      ownerEmail: user?.email || business.ownerEmail,
+      phoneSetup,
+      resolvedMethod
+    })
+    if (!ensure.ok) {
+      return NextResponse.json(
+        { ok: false, error: ensure.error || 'Booking service is not ready for phone setup yet.' },
+        { status: 503 }
+      )
+    }
+
+    let businessForSync = business
+    if (needsLocalDataSyncedToCore(business)) {
+      const synced = await runSyncToCoreFromPhoneSetup(request, businessId)
+      if (!synced.ok) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'Could not sync your services and hours to the booking service. Please try again.'
+          },
+          { status: 502 }
+        )
+      }
+      businessForSync = await database.collection(BUSINESS_COLLECTION).findOne({ businessId })
+    }
+
     const updatePayload = {
       id: businessId,
-      name: business.name,
+      name: (businessForSync || business).name,
       numberSetupMethod: resolvedMethod,
       forwardingEnabled: fwdFlag,
       forwardingFrom: fwdList,

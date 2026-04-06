@@ -19,6 +19,8 @@ import { env } from '@/lib/env'
  * @param {string} [opts.email] - Owner email (alias for ownerEmail)
  * @param {string} [opts.stripeCustomerId] - From Stripe session.customer
  * @param {string} [opts.stripeSubscriptionId] - From Stripe session.subscription
+ * @param {boolean} [opts.skipPhoneProvisioning] - Override plan default (e.g. forward-existing before pool assign)
+ * @param {boolean} [opts.requestDedicatedPhoneLine] - Override plan default
  */
 export async function provisionOnCoreApi({
   businessId,
@@ -31,7 +33,9 @@ export async function provisionOnCoreApi({
   multilingualEnabled,
   email,
   stripeCustomerId,
-  stripeSubscriptionId
+  stripeSubscriptionId,
+  skipPhoneProvisioning: skipPhoneProvisioningOpt,
+  requestDedicatedPhoneLine: requestDedicatedPhoneLineOpt
 }) {
   const coreApiUrl =
     env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
@@ -51,13 +55,21 @@ export async function provisionOnCoreApi({
     if (resolvedPlan === 'starter') {
       console.log('[provision] Starter plan — requesting no dedicated phone line from core-api')
     }
+    const skipPhoneProvisioning =
+      skipPhoneProvisioningOpt !== undefined
+        ? !!skipPhoneProvisioningOpt
+        : resolvedPlan === 'starter'
+    const requestDedicatedPhoneLine =
+      requestDedicatedPhoneLineOpt !== undefined
+        ? !!requestDedicatedPhoneLineOpt
+        : resolvedPlan !== 'starter'
+
     const body = {
       businessId,
       name,
       plan: resolvedPlan,
-      /** Core-api may use this to skip pool number assignment for Starter */
-      requestDedicatedPhoneLine: resolvedPlan !== 'starter',
-      skipPhoneProvisioning: resolvedPlan === 'starter',
+      requestDedicatedPhoneLine,
+      skipPhoneProvisioning,
       timezone,
       ...(category != null && { category }),
       ...(customCategory != null &&
