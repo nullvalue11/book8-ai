@@ -17,13 +17,14 @@ import { trFormat } from "@/lib/translations";
 import DataPrivacy from "./(home)/DataPrivacy";
 import SocialMediaLinks from "./components/SocialMediaLinks";
 import ThemeToggle from "@/components/ThemeToggle";
-import { QrCode, Share2, Settings, ExternalLink, Check, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2, Star, ListTodo } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2, Star, ListTodo, LayoutGrid } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import UpgradePrompt from "./components/UpgradePrompt";
 import PlanFeatureLock from "./components/PlanFeatureLock";
 import { getPlanName, getUiPlanLimits, normalizePlanKey } from "./lib/plan-features";
 import { bookingLanguageBadge } from "./lib/bookingLanguageDisplay";
 import { toast } from "sonner";
+import { resolveBusinessPlanKey } from "@/lib/subscription";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function formatDuration(seconds) {
@@ -193,6 +194,7 @@ function HomeContent(props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const businessIdFromUrl = searchParams.get("businessId");
   const forceDashboard = !!props?.forceDashboard;
   const { language, t } = useBookingLanguage();
   const rc = t.recurring || {};
@@ -249,6 +251,8 @@ function HomeContent(props) {
   const [bookingSortOrder, setBookingSortOrder] = useState("newest");
   const [callsLoading, setCallsLoading] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  /** BOO-67B: all businesses for multi-location nav */
+  const [ownedBusinesses, setOwnedBusinesses] = useState([]);
   /** BOO-60B: modal listing recurring series */
   const [recurringSeriesOverlay, setRecurringSeriesOverlay] = useState(null);
   const [servicesMap, setServicesMap] = useState({});
@@ -282,6 +286,11 @@ function HomeContent(props) {
     });
     return calls;
   }, [recentCalls, callSearchQuery, callSortOrder]);
+
+  const showEnterpriseLocationNav = useMemo(() => {
+    if (!forceDashboard || ownedBusinesses.length < 2) return false;
+    return ownedBusinesses.some((b) => resolveBusinessPlanKey(b) === "enterprise");
+  }, [forceDashboard, ownedBusinesses]);
 
   const filteredUpcomingBookings = useMemo(() => {
     let rows = [...upcomingBookings];
@@ -857,9 +866,11 @@ function HomeContent(props) {
       setBusinessesResolved(false);
       const bizRes = await api(`/business/register`, { method: "GET" });
       const businesses = bizRes.businesses || [];
+      setOwnedBusinesses(businesses);
       setHasNoBusiness(businesses.length === 0);
       setBusinessesResolved(true);
       if (!businesses.length) {
+        setOwnedBusinesses([]);
         setPrimaryBusinessId(null);
         setPrimaryBusinessName(null);
         setPrimaryBookingHandle(null);
@@ -868,7 +879,9 @@ function HomeContent(props) {
         setPendingCoreSync(false);
         return;
       }
-      const primary = businesses[0];
+      const preferred =
+        businessIdFromUrl && businesses.find((b) => b.businessId === businessIdFromUrl);
+      const primary = preferred || businesses[0];
       setPrimaryBusinessId(primary.businessId);
       setPrimaryBusinessName(primary.name?.trim() || null);
       setPrimaryBookingHandle(primary.handle || primary.businessId || null);
@@ -893,6 +906,7 @@ function HomeContent(props) {
       });
     } catch (err) {
       console.error('[Dashboard] Failed to load phone setup status:', err);
+      setOwnedBusinesses([]);
       setPhoneSetup(null);
       setHasNoBusiness(false);
       setBusinessesResolved(true);
@@ -900,7 +914,7 @@ function HomeContent(props) {
     } finally {
       setPhoneSetupLoading(false);
     }
-  }, [token, api]);
+  }, [token, api, businessIdFromUrl]);
 
   useEffect(() => {
     if (token) {
@@ -1468,6 +1482,41 @@ function HomeContent(props) {
           </div>
         </div>
       </header>
+
+      {showEnterpriseLocationNav ? (
+        <div className="border-b border-border bg-muted/40">
+          <div className="mx-auto max-w-6xl px-4 md:px-6 py-2 flex flex-wrap items-center gap-2">
+            <Link
+              href="/dashboard/locations"
+              className={`inline-flex items-center gap-1.5 text-sm px-2 py-1 rounded-md ${
+                pathname === "/dashboard/locations"
+                  ? "font-semibold text-brand-600 dark:text-brand-400 bg-brand-500/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4 shrink-0" aria-hidden />
+              All Locations
+            </Link>
+            {ownedBusinesses.map((b) => {
+              const active = primaryBusinessId === b.businessId;
+              return (
+                <Link
+                  key={b.businessId}
+                  href={`/dashboard?businessId=${encodeURIComponent(b.businessId)}`}
+                  className={`inline-flex items-center gap-1.5 text-sm px-2 py-1 rounded-md max-w-[220px] ${
+                    active
+                      ? "font-semibold text-brand-600 dark:text-brand-400 bg-brand-500/10"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5 shrink-0 opacity-70" aria-hidden />
+                  <span className="truncate">{b.name?.trim() || b.businessId}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {billingSubscription?.status === 'trialing' && billingSubscription?.trialEnd && (
         <div className="border-b border-purple-500/30 bg-gradient-to-r from-purple-500/10 via-background to-cyan-500/10">

@@ -1,7 +1,8 @@
 "use client";
+
 import React from "react";
-import Home from "../page";
+import DashboardEntry from "./DashboardEntry";
 
 export default function DashboardPage() {
-  return <Home forceDashboard />;
+  return <DashboardEntry />;
 }
