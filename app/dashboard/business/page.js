@@ -187,6 +187,8 @@ function BusinessPageContent() {
   const [regWebsite, setRegWebsite] = useState('')
   const [regTimezone, setRegTimezone] = useState('')
   const [regWeeklyHours, setRegWeeklyHours] = useState(null)
+  /** BOO-81B: persist Google place_id with new business for booking-page reviews */
+  const [registrationGooglePlaceId, setRegistrationGooglePlaceId] = useState('')
   
   // Workflow state
   const [step, setStep] = useState('list') // 'list' | 'form' | 'plan' | 'confirming' | 'result'
@@ -219,16 +221,26 @@ function BusinessPageContent() {
     setRegWebsite('')
     setRegTimezone('')
     setRegWeeklyHours(null)
+    setRegistrationGooglePlaceId('')
   }
 
-  const handleDashboardPlacePicked = useCallback(({ details }) => {
+  const handleDashboardPlacePicked = useCallback(({ placeId, details }) => {
+    if (typeof placeId === 'string' && placeId.trim()) {
+      setRegistrationGooglePlaceId(placeId.trim().slice(0, 256))
+    } else {
+      setRegistrationGooglePlaceId('')
+    }
     if (!details) return
     const inner = details?.result || details?.place || details
     const displayName =
       inner && typeof inner === 'object'
         ? inner.displayName || inner.displayNameLong || inner.name
         : null
-    const { profile, weeklyHours, category: gpCat, timezoneGuess } = placeDetailsToProfileFields(details)
+    const { profile, weeklyHours, category: gpCat, timezoneGuess, placeId: pidFromDetails } =
+      placeDetailsToProfileFields(details)
+    if (pidFromDetails && !placeId) {
+      setRegistrationGooglePlaceId(String(pidFromDetails).trim().slice(0, 256))
+    }
     if (typeof displayName === 'string' && displayName.trim()) {
       setBusinessName(displayName.trim().slice(0, 100))
     }
@@ -409,7 +421,10 @@ function BusinessPageContent() {
       if (weeklyHoursNonEmpty(regWeeklyHours)) {
         body.weeklyHours = regWeeklyHours
       }
-      
+      if (registrationGooglePlaceId.trim()) {
+        body.googlePlaceId = registrationGooglePlaceId.trim().slice(0, 256)
+      }
+
       const res = await fetch('/api/business/register', {
         method: 'POST',
         headers: {

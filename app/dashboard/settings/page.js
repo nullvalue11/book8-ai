@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import Header from '@/components/Header'
@@ -16,6 +16,8 @@ import { PRIMARY_LANGUAGE_OPTIONS } from '@/lib/primary-languages'
 
 function SettingsContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const businessIdFromUrl = searchParams.get('businessId')
   const [token, setToken] = useState(null)
   const [businesses, setBusinesses] = useState([])
   const [selectedBusinessId, setSelectedBusinessId] = useState('')
@@ -62,6 +64,13 @@ function SettingsContent() {
     if (token) load()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load when token; selection synced below
   }, [token])
+
+  useEffect(() => {
+    if (!businessIdFromUrl || !businesses.length) return
+    if (businesses.some((b) => b.businessId === businessIdFromUrl)) {
+      setSelectedBusinessId(businessIdFromUrl)
+    }
+  }, [businessIdFromUrl, businesses])
 
   useEffect(() => {
     if (!selectedBusinessId || !businesses.length) return

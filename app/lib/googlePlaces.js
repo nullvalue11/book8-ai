@@ -285,7 +285,7 @@ export function googleOpeningHoursToWeeklyHours(openingHours) {
  */
 export function placeDetailsToProfileFields(rawDetails) {
   const data = asPlaceRecord(rawDetails)
-  if (!data) return { profile: {}, weeklyHours: null, category: null, timezoneGuess: null }
+  if (!data) return { profile: {}, weeklyHours: null, category: null, timezoneGuess: null, placeId: null }
 
   /** @type {string[]} */
   const typeList = Array.isArray(data.types) ? /** @type {string[]} */ (data.types).map(String) : []
@@ -386,5 +386,10 @@ export function placeDetailsToProfileFields(rawDetails) {
 
   const timezoneGuess = guessTimezoneFromRegion(country, provinceState) || null
 
-  return { profile, weeklyHours, category, timezoneGuess }
+  const placeId =
+    (typeof data.place_id === 'string' && data.place_id.trim()) ||
+    (typeof data.placeId === 'string' && data.placeId.trim()) ||
+    null
+
+  return { profile, weeklyHours, category, timezoneGuess, placeId: placeId || null }
 }

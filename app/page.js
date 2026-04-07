@@ -2350,7 +2350,13 @@ function HomeContent(props) {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => router.push('/dashboard/settings')}
+                    onClick={() =>
+                      primaryBusinessId
+                        ? router.push(
+                            `/dashboard/settings?businessId=${encodeURIComponent(primaryBusinessId)}`
+                          )
+                        : router.push('/dashboard/settings')
+                    }
                   >
                     <Settings className="w-4 h-4 mr-2" />
                     Business settings
@@ -2368,14 +2374,6 @@ function HomeContent(props) {
                     onClick={() => router.push('/dashboard/schedule')}
                   >
                     Business Hours
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => router.push('/dashboard/provisioning')}
-                  >
-                    <Activity className="w-4 h-4 mr-2" />
-                    System status
                   </Button>
                   <Button
                     variant="outline"

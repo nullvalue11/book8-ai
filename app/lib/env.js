@@ -146,6 +146,9 @@ function loadConfig() {
     if (!hasGoogleCredentials && NODE_ENV === 'production') {
       console.warn('[env] WARNING: Google OAuth not configured. Calendar and social login features will be disabled.')
     }
+
+    /** Optional server key for Places Details (reviews on booking page). Core Places is tried first. BOO-81B */
+    const GOOGLE_MAPS_API_KEY = getEnvVar('GOOGLE_MAPS_API_KEY', false, '')
     
     // Email Service (Resend)
     const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', true)
@@ -280,6 +283,7 @@ function loadConfig() {
       // Google credentials (for NextAuth - just needs client ID and secret)
       GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID || null,
       GOOGLE_CLIENT_SECRET: GOOGLE_CLIENT_SECRET || null,
+      GOOGLE_MAPS_API_KEY: GOOGLE_MAPS_API_KEY ? String(GOOGLE_MAPS_API_KEY).trim() : null,
       
       // Email
       RESEND_API_KEY,

@@ -7,6 +7,7 @@ import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
 import { Check, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar as CalendarIcon, Phone } from 'lucide-react'
 import PublicBusinessInfoPanel from '@/components/public/PublicBusinessInfoPanel'
+import GoogleReviews from '@/components/booking/GoogleReviews'
 import LanguageSelector from '@/components/LanguageSelector'
 import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { bookingLocaleBcp47, trFormat } from '@/lib/translations'
@@ -1979,6 +1980,7 @@ export default function PublicBookingPage({ params }) {
           </div>
         </div>
       </div>
+      <GoogleReviews handle={handle} />
       <footer className="max-w-6xl mx-auto px-4 md:px-6 pb-10 pt-2 text-center text-xs text-gray-500">
         {publicBookingPhone ? (
           <p>

@@ -126,7 +126,9 @@ export async function POST(request) {
       primaryLanguage: bodyPrimaryLanguage,
       multilingualEnabled: bodyMultilingual,
       businessProfile: rawBusinessProfile,
-      weeklyHours: bodyWeeklyHours
+      weeklyHours: bodyWeeklyHours,
+      googlePlaceId: bodyGooglePlaceId,
+      googlePlacesPlaceId: bodyGooglePlacesPlaceId
     } = body
 
     const cat = typeof category === 'string' ? category.trim() || 'other' : 'other'
@@ -265,6 +267,15 @@ export async function POST(request) {
       }
     }
     businessData.provisioningOptions = { skipVoiceTest, skipBillingCheck }
+
+    const gpIdRaw =
+      (typeof bodyGooglePlaceId === 'string' && bodyGooglePlaceId.trim()) ||
+      (typeof bodyGooglePlacesPlaceId === 'string' && bodyGooglePlacesPlaceId.trim()) ||
+      ''
+    if (gpIdRaw) {
+      businessData.googlePlaceId = gpIdRaw.slice(0, 256)
+    }
+
     businessData.updatedAt = new Date()
     if (businessData.businessId) {
       businessData.id = businessData.businessId
