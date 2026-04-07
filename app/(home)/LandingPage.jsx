@@ -26,7 +26,6 @@ import { Bricolage_Grotesque, Plus_Jakarta_Sans } from 'next/font/google'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import PricingPlanFeatureList from '@/components/PricingPlanFeatureList'
-import ThemeToggle from '@/components/ThemeToggle'
 import HeaderLogo from '@/components/HeaderLogo'
 import LanguageSelector from '@/components/LanguageSelector'
 import SocialMediaLinks from '@/components/SocialMediaLinks'
@@ -361,12 +360,14 @@ export default function LandingPage() {
             <a href="#how-it-works" className="hover:text-white transition-colors">
               {h.navHowItWorks}
             </a>
-            <Link href="/pricing" className="hover:text-white transition-colors">
+            <a href="#pricing" className="hover:text-white transition-colors">
               {h.navPricing}
+            </a>
+            <Link href="/pricing" className="hover:text-white transition-colors">
+              {h.pricing}
             </Link>
           </nav>
           <div className="flex items-center gap-2 md:gap-3">
-            <ThemeToggle variant="landing" className="shrink-0" />
             <LanguageSelector value={language} onChange={setLanguage} t={t} variant="dark" />
             <Link
               href="/#auth"
@@ -397,8 +398,11 @@ export default function LandingPage() {
             <a href="#how-it-works" className="py-2" onClick={() => setMobileOpen(false)}>
               {h.navHowItWorks}
             </a>
-            <Link href="/pricing" className="py-2" onClick={() => setMobileOpen(false)}>
+            <a href="#pricing" className="py-2" onClick={() => setMobileOpen(false)}>
               {h.navPricing}
+            </a>
+            <Link href="/pricing" className="py-2" onClick={() => setMobileOpen(false)}>
+              {h.pricing}
             </Link>
             <Link href="/#auth" className="py-2 text-white" onClick={() => setMobileOpen(false)}>
               {h.navSignIn}
@@ -1028,8 +1032,13 @@ export default function LandingPage() {
                 </a>
               </li>
               <li>
-                <Link href="/pricing" className="hover:text-white transition-colors">
+                <a href="#pricing" className="hover:text-white transition-colors">
                   {h.navPricing}
+                </a>
+              </li>
+              <li>
+                <Link href="/pricing" className="hover:text-white transition-colors">
+                  {h.pricing}
                 </Link>
               </li>
             </ul>
