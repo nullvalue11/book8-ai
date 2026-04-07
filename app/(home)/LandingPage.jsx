@@ -369,7 +369,7 @@ export default function LandingPage() {
             <LanguageSelector value={language} onChange={setLanguage} t={t} variant="dark" />
             <ThemeToggle variant="landing" className="shrink-0" />
             <Link
-              href="/#auth"
+              href="/setup?mode=login"
               className="hidden sm:inline text-sm text-[#9593A8] hover:text-white px-2"
             >
               {h.navSignIn}
@@ -400,7 +400,11 @@ export default function LandingPage() {
             <Link href="/pricing" className="py-2" onClick={() => setMobileOpen(false)}>
               {h.pricing}
             </Link>
-            <Link href="/#auth" className="py-2 text-white" onClick={() => setMobileOpen(false)}>
+            <Link
+              href="/setup?mode=login"
+              className="py-2 text-white"
+              onClick={() => setMobileOpen(false)}
+            >
               {h.navSignIn}
             </Link>
           </div>
