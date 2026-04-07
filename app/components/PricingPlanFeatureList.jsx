@@ -21,9 +21,10 @@ export default function PricingPlanFeatureList({ planId, theme = "default", over
   const featureCheck = isLanding
     ? "text-[#0891B2] dark:text-[#22D3EE]"
     : "text-green-600 dark:text-green-500";
+  /** BOO-80B: high-contrast body on /pricing cards (dark mode was too dim vs card bg) */
   const featureText = isLanding
-    ? "text-slate-800 dark:text-[#F8FAFC]"
-    : "text-sm text-foreground font-medium";
+    ? "text-slate-900 dark:text-white"
+    : "text-sm font-medium text-zinc-950 dark:text-zinc-50";
 
   const listCls = isLanding ? "space-y-2.5 text-sm mb-8 flex-1" : "space-y-3";
 
