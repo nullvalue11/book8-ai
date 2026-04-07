@@ -105,8 +105,8 @@ export default function Header({ variant }) {
             </button>
           </div>
           <div className="hidden md:flex items-center gap-3">
-            <ThemeToggle variant={landingDarkChrome ? "landing" : "default"} className="shrink-0" />
             <LanguageSelector value={language} onChange={setLanguage} t={t} variant={langVariant} className="shrink-0" />
+            <ThemeToggle variant={landingDarkChrome ? "landing" : "default"} className="shrink-0" />
             {isLoggedIn ? (
               <>
                 <span

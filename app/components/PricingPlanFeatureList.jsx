@@ -15,15 +15,15 @@ export default function PricingPlanFeatureList({ planId, theme = "default", over
   const isLanding = theme === "landing";
 
   const ackCls = isLanding
-    ? "text-xs text-slate-500 dark:text-white/45"
-    : "text-xs text-muted-foreground";
+    ? "text-xs text-slate-500 dark:text-white/70"
+    : "text-xs text-muted-foreground dark:text-white/75";
   const dividerCls = isLanding ? "border-slate-200 dark:border-white/[0.08]" : "border-border";
   const featureCheck = isLanding
     ? "text-[#0891B2] dark:text-[#22D3EE]"
     : "text-green-600 dark:text-green-500";
   const featureText = isLanding
     ? "text-slate-800 dark:text-[#F8FAFC]"
-    : "text-sm text-foreground font-medium";
+    : "text-sm text-foreground font-medium dark:text-white/92";
 
   const listCls = isLanding ? "space-y-2.5 text-sm mb-8 flex-1" : "space-y-3";
 

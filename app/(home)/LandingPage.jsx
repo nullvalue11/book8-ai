@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button'
 import PricingPlanFeatureList from '@/components/PricingPlanFeatureList'
 import HeaderLogo from '@/components/HeaderLogo'
 import LanguageSelector from '@/components/LanguageSelector'
+import ThemeToggle from '@/components/ThemeToggle'
 import SocialMediaLinks from '@/components/SocialMediaLinks'
 import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from '@/lib/setup-entry'
 import { useBookingLanguage } from '@/hooks/useBookingLanguage'
@@ -360,15 +361,13 @@ export default function LandingPage() {
             <a href="#how-it-works" className="hover:text-white transition-colors">
               {h.navHowItWorks}
             </a>
-            <a href="#pricing" className="hover:text-white transition-colors">
-              {h.navPricing}
-            </a>
             <Link href="/pricing" className="hover:text-white transition-colors">
               {h.pricing}
             </Link>
           </nav>
           <div className="flex items-center gap-2 md:gap-3">
             <LanguageSelector value={language} onChange={setLanguage} t={t} variant="dark" />
+            <ThemeToggle variant="landing" className="shrink-0" />
             <Link
               href="/#auth"
               className="hidden sm:inline text-sm text-[#9593A8] hover:text-white px-2"
@@ -397,9 +396,6 @@ export default function LandingPage() {
             </a>
             <a href="#how-it-works" className="py-2" onClick={() => setMobileOpen(false)}>
               {h.navHowItWorks}
-            </a>
-            <a href="#pricing" className="py-2" onClick={() => setMobileOpen(false)}>
-              {h.navPricing}
             </a>
             <Link href="/pricing" className="py-2" onClick={() => setMobileOpen(false)}>
               {h.pricing}
