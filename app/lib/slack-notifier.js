@@ -3,12 +3,28 @@
  * Posts via Incoming Webhook. Set SLACK_OPS_WEBHOOK_URL in env.
  * Set SLACK_OPS_NOTIFICATIONS_ENABLED=false to silence without removing the webhook.
  * Set SLACK_OPS_INFO_NOTIFICATIONS=true for bootstrap success + signup noise.
+ * BOO-79B: Set SLACK_OPS_MENTION_USER_ID to mention someone only on level=critical
+ * (e.g. U0ABC123 → <@U…>, !here → <!here>, subteam^S0… → user group).
  */
 
 import { env } from '@/lib/env'
 
 const SLACK_WEBHOOK = typeof env.SLACK_OPS_WEBHOOK_URL === 'string' ? env.SLACK_OPS_WEBHOOK_URL.trim() : ''
 const ENABLED = env.SLACK_OPS_NOTIFICATIONS_ENABLED !== false
+
+const BOOK8_AGENT_USER_ID = typeof env.SLACK_OPS_MENTION_USER_ID === 'string' ? env.SLACK_OPS_MENTION_USER_ID.trim() : ''
+
+/**
+ * @param {string} raw
+ * @returns {string} Slack mrkdwn mention token or '' if empty
+ */
+function slackMentionToken(raw) {
+  const id = String(raw).trim()
+  if (!id) return ''
+  if (id.startsWith('!')) return `<${id}>`
+  if (id.startsWith('subteam^')) return `<!${id}>`
+  return `<@${id}>`
+}
 
 const COLORS = {
   critical: '#DC2626',
@@ -47,6 +63,10 @@ export async function notifySlack({
     return { skipped: true }
   }
 
+  const mention =
+    level === 'critical' && BOOK8_AGENT_USER_ID ? `${slackMentionToken(BOOK8_AGENT_USER_ID)} ` : ''
+  const sectionText = `${mention}${message}`.slice(0, 3000)
+
   const blocks = [
     {
       type: 'header',
@@ -54,7 +74,7 @@ export async function notifySlack({
     },
     {
       type: 'section',
-      text: { type: 'mrkdwn', text: message.slice(0, 2900) }
+      text: { type: 'mrkdwn', text: sectionText }
     }
   ]
 

@@ -214,6 +214,8 @@ function loadConfig() {
       getEnvVar('SLACK_OPS_NOTIFICATIONS_ENABLED', false, 'true') !== 'false'
     const SLACK_OPS_INFO_NOTIFICATIONS =
       getEnvVar('SLACK_OPS_INFO_NOTIFICATIONS', false, 'false') === 'true'
+    /** BOO-79B: Optional; user ID (U…), <!here> via value !here, or subteam^S… for @group. Only used for critical Slack mentions. */
+    const SLACK_OPS_MENTION_USER_ID = getEnvVar('SLACK_OPS_MENTION_USER_ID', false, '')
     
     // Feature Flags
     const FEATURE_RESCHEDULE = getEnvVar('FEATURE_RESCHEDULE', false, 'true') === 'true'
@@ -316,6 +318,7 @@ function loadConfig() {
       SLACK_OPS_WEBHOOK_URL: SLACK_OPS_WEBHOOK_URL || null,
       SLACK_OPS_NOTIFICATIONS_ENABLED,
       SLACK_OPS_INFO_NOTIFICATIONS,
+      SLACK_OPS_MENTION_USER_ID: SLACK_OPS_MENTION_USER_ID ? String(SLACK_OPS_MENTION_USER_ID).trim() : null,
       
       // Billing/Usage Reporting
       CORE_API_BASE_URL,
