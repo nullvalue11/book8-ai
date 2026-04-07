@@ -121,7 +121,10 @@ export async function POST(request, { params }) {
 
     await database.collection(COLLECTION_NAME).updateOne(
       { businessId },
-      { $set: { googlePlaceId: placeId, googlePlaces, updatedAt: new Date() } }
+      {
+        $set: { googlePlaceId: placeId, googlePlaces, updatedAt: new Date() },
+        $unset: { googleReviewsCache: '' }
+      }
     )
 
     return NextResponse.json({ ok: true, googlePlaces })

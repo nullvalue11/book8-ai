@@ -290,7 +290,10 @@ export async function POST(request) {
     
     await collection.updateOne(
       { businessId },
-      { $set: businessData },
+      {
+        $set: businessData,
+        ...(gpIdRaw ? { $unset: { googleReviewsCache: '' } } : {})
+      },
       { upsert: true }
     )
 

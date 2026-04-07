@@ -8,7 +8,11 @@ import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME } from '@/lib/schemas/business'
 import { findBusinessByPublicHandle } from '@/lib/public-business-lookup'
-import { fetchFreshGoogleReviewsForPlaceId, cacheIsFresh } from '@/lib/googlePlaceReviewsServer'
+import {
+  fetchFreshGoogleReviewsForPlaceId,
+  cacheIsFresh,
+  isPartialGoogleReviewsPayload
+} from '@/lib/googlePlaceReviewsServer'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -39,6 +43,8 @@ export async function GET(request) {
   try {
     const url = new URL(request.url)
     const handle = (url.searchParams.get('handle') || '').trim()
+    const forceRefresh =
+      url.searchParams.get('forceRefresh') === 'true' || url.searchParams.get('forceRefresh') === '1'
     if (!handle) {
       return NextResponse.json({ ok: false, error: 'handle required' }, { status: 400 })
     }
@@ -64,21 +70,23 @@ export async function GET(request) {
     }
 
     const cached = business.googleReviewsCache
-    if (cacheIsFresh(cached) && cached && Array.isArray(cached.reviews)) {
+    if (!forceRefresh && cacheIsFresh(cached)) {
       return NextResponse.json({ ok: true, ...publicJson(cached) })
     }
 
     const fresh = await fetchFreshGoogleReviewsForPlaceId(placeId)
 
     if (fresh) {
-      await coll.updateOne(
-        { businessId: business.businessId },
-        { $set: { googleReviewsCache: fresh, updatedAt: new Date() } }
-      )
+      if (!isPartialGoogleReviewsPayload(fresh)) {
+        await coll.updateOne(
+          { businessId: business.businessId },
+          { $set: { googleReviewsCache: fresh, updatedAt: new Date() } }
+        )
+      }
       return NextResponse.json({ ok: true, ...publicJson(fresh) })
     }
 
-    if (cached && (cached.rating != null || (Array.isArray(cached.reviews) && cached.reviews.length > 0))) {
+    if (!forceRefresh && cached && !isPartialGoogleReviewsPayload(cached)) {
       return NextResponse.json({ ok: true, ...publicJson(cached) })
     }
 
