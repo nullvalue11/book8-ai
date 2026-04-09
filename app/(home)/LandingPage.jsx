@@ -744,13 +744,13 @@ export default function LandingPage() {
             ].map(({ n, title, desc, Svg }) => (
               <motion.div
                 key={n}
-                className="relative overflow-hidden rounded-2xl border border-[rgba(139,92,246,0.12)] bg-[#121228] p-8 pt-10"
+                className="relative overflow-visible rounded-2xl border border-[rgba(139,92,246,0.12)] bg-[#121228] p-8 pt-10"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
                 variants={reveal}
               >
-                <div className="absolute -top-3 start-6 w-9 h-9 rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#6D28D9] flex items-center justify-center text-sm font-bold text-white shadow-lg">
+                <div className="absolute -top-3 start-6 z-[1] w-9 h-9 rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#6D28D9] flex items-center justify-center text-sm font-bold text-white shadow-lg">
                   {n}
                 </div>
                 <div className="mb-6 min-h-[120px] flex items-center justify-center">
