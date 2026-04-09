@@ -73,7 +73,8 @@ export async function POST(request) {
       setupIntentId: bodySetupIntentId,
       servicePriceCents: bodyServicePriceCents,
       recurring: bodyRecurring,
-      serviceName: bodyServiceName
+      serviceName: bodyServiceName,
+      clientRequestId: bodyClientRequestId
     } = body
     const language = resolveBookingLanguage(request, bodyLanguage)
 
@@ -222,6 +223,11 @@ export async function POST(request) {
           phone: phone || ''
         }
 
+        const idem =
+          typeof bodyClientRequestId === 'string' && bodyClientRequestId.trim()
+            ? bodyClientRequestId.trim().slice(0, 120)
+            : undefined
+
         const toolPayload = {
           businessId: business.businessId,
           tool: 'booking.create',
@@ -233,6 +239,7 @@ export async function POST(request) {
             notes: notes || '',
             source: 'web',
             language,
+            ...(idem ? { clientRequestId: idem } : {}),
             ...(bodyProviderId ? { providerId: String(bodyProviderId) } : {}),
             ...(bodyProviderName ? { providerName: String(bodyProviderName).slice(0, 200) } : {}),
             ...(noShowPolicyPayload(business) ? { noShowPolicy: noShowPolicyPayload(business) } : {}),

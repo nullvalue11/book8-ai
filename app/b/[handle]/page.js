@@ -106,6 +106,8 @@ export default function PublicBookingPage({ params }) {
   const [bookingSubStep, setBookingSubStep] = useState('details')
   const slotsFetchSeq = useRef(0)
   const bookingFormRef = useRef(null)
+  /** BOO-84B: stable clientRequestId per booking attempt; new id when slot/service/email changes */
+  const bookingAttemptRef = useRef({ key: '', clientRequestId: '' })
   /** Consecutive auto day-advances when initial dates have no slots (max 7). */
   const autoSkipAdvancesDone = useRef(0)
   const servicesScrollRef = useRef(null)
@@ -705,6 +707,47 @@ export default function PublicBookingPage({ params }) {
     }
   }
 
+  function bookingAttemptIdentityKey() {
+    const sid = selectedService?.serviceId || selectedService?.id || ''
+    return [
+      sid,
+      date,
+      selected?.start || '',
+      selected?.end || '',
+      (form.email || '').trim().toLowerCase()
+    ].join('|')
+  }
+
+  /** Map BOO-84B / core-api error codes to guest-friendly copy */
+  function messageForBookingError(data, status) {
+    const code =
+      (typeof data?.error === 'string' && data.error) || (typeof data?.code === 'string' && data.code) || ''
+    const normalized = code.toLowerCase().replace(/\s+/g, '_')
+    const byCode = {
+      duplicate_booking: t.errSlotTaken,
+      invalid_phone: t.errBookingBadPhone,
+      invalid_email: t.errEnterEmail,
+      slot_unavailable: t.errSlotTaken,
+      rate_limit_exceeded: t.errTooManyAttempts,
+      booking_creation_failed: t.errBookingFailed
+    }
+    if (byCode[normalized]) return byCode[normalized]
+    if (typeof data?.message === 'string' && data.message.trim()) return data.message.trim()
+    if (status === 429) return t.errTooManyAttempts
+    if (status === 409) return t.errSlotTaken
+    if (typeof data?.error === 'string' && data.error.trim()) return data.error.trim()
+    return t.errBookingFailed
+  }
+
+  function handleBookingRetry() {
+    setError('')
+    if (bookingSubStep === 'card') {
+      setBookingSubStep('details')
+      return
+    }
+    void handleBooking()
+  }
+
   async function handleBooking(setupIntentIdParam) {
     if (!selected) {
       setError(t.errSelectSlot)
@@ -727,6 +770,12 @@ export default function PublicBookingPage({ params }) {
       return
     }
 
+    const attemptKey = bookingAttemptIdentityKey()
+    if (bookingAttemptRef.current.key !== attemptKey) {
+      bookingAttemptRef.current = { key: attemptKey, clientRequestId: crypto.randomUUID() }
+    }
+    const clientRequestId = bookingAttemptRef.current.clientRequestId
+
     try {
       setBooking(true)
       setError('')
@@ -748,6 +797,7 @@ export default function PublicBookingPage({ params }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          clientRequestId,
           name: form.name.trim(),
           email: e,
           phone: p || undefined,
@@ -782,25 +832,29 @@ export default function PublicBookingPage({ params }) {
         })
       })
 
-      const data = await res.json()
+      let data = {}
+      try {
+        const text = await res.text()
+        data = text ? JSON.parse(text) : {}
+      } catch (parseErr) {
+        console.error('[booking] bad JSON', parseErr)
+        data = {}
+      }
 
-      if (!res.ok) {
-        if (res.status === 409) {
-          setError(t.errSlotTaken)
-          loadSlots()
-        } else if (res.status === 429) {
-          setError(t.errTooManyAttempts)
-        } else {
-          setError(data.error || t.errBookingFailed)
-        }
+      if (!res.ok || data.ok === false) {
+        const msg = messageForBookingError(data, res.status)
+        console.error('[booking-failed]', { status: res.status, error: data?.error, code: data?.code, message: data?.message })
+        if (res.status === 409) loadSlots()
+        setError(msg)
         return
       }
 
+      console.log('[booking-success]', { bookingId: data.bookingId })
       setBookingResult(data)
       setState('success')
     } catch (err) {
-      console.error('Booking error:', err)
-      setError(t.errCompleteBooking)
+      console.error('[booking-network-error]', err)
+      setError(t.errFailedConnect || t.errCompleteBooking)
     } finally {
       setBooking(false)
     }
@@ -1969,7 +2023,18 @@ export default function PublicBookingPage({ params }) {
                   />
                 )}
 
-                {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+                {error && (
+                  <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-center space-y-2">
+                    <p className="text-sm text-red-400">{error}</p>
+                    <button
+                      type="button"
+                      onClick={handleBookingRetry}
+                      className="text-sm text-violet-400 underline hover:text-violet-300"
+                    >
+                      {t.bookingTryAgain}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             ) : (

@@ -174,6 +174,9 @@ const translations = {
     errTooManyAttempts: 'Too many attempts. Please wait a moment.',
     errBookingFailed: 'Booking failed. Please try again.',
     errCompleteBooking: 'Failed to complete booking. Please try again.',
+    errBookingBadPhone:
+      'Please enter a valid phone number including country code (e.g. +1 555 123 4567).',
+    bookingTryAgain: 'Try again',
     defaultAppointment: 'Appointment',
     eventBookingWith: 'Booking with {name}',
     eventBookMeeting: 'Book a Meeting',
@@ -612,6 +615,9 @@ const translations = {
     errTooManyAttempts: 'Trop de tentatives. Veuillez patienter un instant.',
     errBookingFailed: 'Échec de la réservation. Réessayez.',
     errCompleteBooking: 'Impossible de finaliser la réservation. Réessayez.',
+    errBookingBadPhone:
+      'Veuillez entrer un numéro de téléphone valide avec indicatif pays (ex. +33 6 12 34 56 78).',
+    bookingTryAgain: 'Réessayer',
     defaultAppointment: 'Rendez-vous',
     eventBookingWith: 'Réservation avec {name}',
     eventBookMeeting: 'Réserver une réunion',
@@ -1052,6 +1058,9 @@ const translations = {
     errTooManyAttempts: 'Demasiados intentos. Espere un momento.',
     errBookingFailed: 'Error al reservar. Inténtelo de nuevo.',
     errCompleteBooking: 'No se pudo completar la reserva. Inténtelo de nuevo.',
+    errBookingBadPhone:
+      'Introduzca un teléfono válido con código de país (p. ej. +34 612 345 678).',
+    bookingTryAgain: 'Intentar de nuevo',
     defaultAppointment: 'Cita',
     eventBookingWith: 'Reserva con {name}',
     eventBookMeeting: 'Reservar una reunión',
@@ -1490,6 +1499,8 @@ const translations = {
     errTooManyAttempts: 'محاولات كثيرة. يرجى الانتظار لحظة.',
     errBookingFailed: 'فشل الحجز. حاول مرة أخرى.',
     errCompleteBooking: 'تعذر إتمام الحجز. حاول مرة أخرى.',
+    errBookingBadPhone: 'يرجى إدخال رقم هاتف صالح مع رمز الدولة (مثل +971 50 123 4567).',
+    bookingTryAgain: 'حاول مرة أخرى',
     defaultAppointment: 'موعد',
     eventBookingWith: 'الحجز مع {name}',
     eventBookMeeting: 'احجز اجتماعًا',
