@@ -10,6 +10,7 @@ import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 import { getUiPlanLimits } from '@/lib/plan-features'
 import { resolveBusinessPlanKey } from '@/lib/subscription'
+import { scheduleSyncServicesToCore } from '@/lib/services/syncToCore'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -419,6 +420,7 @@ export async function POST(request, { params }) {
 
     if (coreResult.ok) {
       await clearLocalServiceAfterCoreSync(database, businessId, row.serviceId)
+      scheduleSyncServicesToCore(businessId)
       return NextResponse.json(coreResult.data)
     }
 
@@ -429,6 +431,8 @@ export async function POST(request, { params }) {
     })
 
     await upsertLocalServiceRow(database, businessId, row)
+
+    scheduleSyncServicesToCore(businessId)
 
     return NextResponse.json({
       ok: true,

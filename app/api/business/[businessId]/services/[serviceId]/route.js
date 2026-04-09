@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
+import { scheduleSyncServicesToCore } from '@/lib/services/syncToCore'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -124,6 +125,7 @@ export async function PATCH(request, { params }) {
         { status: res.status }
       )
     }
+    scheduleSyncServicesToCore(businessId)
     return NextResponse.json(data?.ok === false ? data : { ok: true, ...data })
   } catch (e) {
     console.error('[business/services/serviceId] PATCH error', e)
@@ -155,6 +157,7 @@ export async function DELETE(request, { params }) {
       if (!Array.isArray(doc?.localServices) || doc.localServices.length === 0) {
         await col.updateOne(q, { $unset: { pendingCoreServicesSync: '' } })
       }
+      scheduleSyncServicesToCore(businessId)
       return NextResponse.json({ ok: true, deleted: true, source: 'local' })
     }
 
@@ -171,6 +174,7 @@ export async function DELETE(request, { params }) {
         { status: res.status }
       )
     }
+    scheduleSyncServicesToCore(businessId)
     return NextResponse.json(data?.ok === false ? data : { ok: true, ...data })
   } catch (e) {
     console.error('[business/services/serviceId] DELETE error', e)

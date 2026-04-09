@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
+import { scheduleSyncServicesToCore } from '@/lib/services/syncToCore'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -165,6 +166,8 @@ export async function POST(request, segmentCtx) {
       op.$unset = $unset
     }
     await col.updateOne(businessIdQuery(businessId), op)
+
+    scheduleSyncServicesToCore(businessId)
 
     return NextResponse.json({
       ok: true,
