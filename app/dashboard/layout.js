@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { SETUP_NEW_BUSINESS_PATH } from '@/lib/setup-entry'
+import { TrialGateProvider } from '@/components/TrialGateProvider'
 
 /**
  * BOO-47B: Users with no businesses (local DB) always go to /setup first.
@@ -14,6 +15,7 @@ export default function DashboardLayout({ children }) {
   const [token, setToken] = useState(null)
   /** When user is logged in, false until business list check finishes (or redirect to setup). */
   const [allowShell, setAllowShell] = useState(false)
+  const [trialBizId, setTrialBizId] = useState(null)
 
   useEffect(() => {
     try {
@@ -49,6 +51,9 @@ export default function DashboardLayout({ children }) {
           router.replace(SETUP_NEW_BUSINESS_PATH)
           return
         }
+        const first = list[0]
+        const bid = first?.businessId || first?.id
+        if (bid) setTrialBizId(bid)
       } catch {
         /* same as Home fetchPhoneSetupStatus: allow dashboard if request fails */
       }
@@ -69,5 +74,9 @@ export default function DashboardLayout({ children }) {
     )
   }
 
-  return children
+  return (
+    <TrialGateProvider token={token} businessId={trialBizId}>
+      {children}
+    </TrialGateProvider>
+  )
 }

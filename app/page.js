@@ -20,6 +20,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { QrCode, Share2, Settings, ExternalLink, Check, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2, Star, ListTodo, LayoutGrid } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import UpgradePrompt from "./components/UpgradePrompt";
+import { TrialGateProvider } from "./components/TrialGateProvider";
 import PlanFeatureLock from "./components/PlanFeatureLock";
 import { getPlanName, getUiPlanLimits, normalizePlanKey } from "./lib/plan-features";
 import { bookingLanguageBadge } from "./lib/bookingLanguageDisplay";
@@ -1682,6 +1683,7 @@ function HomeContent(props) {
         </div>
       )}
 
+      <TrialGateProvider token={token} businessId={primaryBusinessId}>
       <div className="container mx-auto max-w-6xl p-6">
         {forceDashboard && (
           <ProvisioningAlertBanner token={token} show={!!token} />
@@ -2414,6 +2416,7 @@ function HomeContent(props) {
           />
         </div>
       </div>
+      </TrialGateProvider>
       {recurringSeriesOverlay ? (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60"

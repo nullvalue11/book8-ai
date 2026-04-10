@@ -88,7 +88,7 @@ export const homepageByLocale = {
     calSat: 'Sat',
 
     simplePricing: 'Simple Pricing',
-    plansFrom: 'Starter from $29/mo. Growth includes a 14-day trial with card on file.',
+    plansFrom: 'Starter from $29/mo. Growth includes a 14-day trial — no credit card required.',
     compareDetails: 'Compare details →',
     starter: 'Starter',
     growth: 'Growth',
@@ -186,7 +186,7 @@ export const homepageByLocale = {
     loadingEllipsis: 'Loading…',
     getStartedShort: 'Get Started',
     subscribeToPlan: 'Subscribe to {plan}',
-    trialCardNote: 'No charge for 14 days. Cancel anytime. Card required.',
+    trialCardNote: 'No charge for 14 days. Cancel anytime. No credit card required.',
     privacyBackHome: 'Back to Home',
     privacyTitle: 'Privacy Policy',
     privacyLastUpdated: 'Last Updated: March 17, 2026',
@@ -283,7 +283,7 @@ export const homepageByLocale = {
     footerLegal: 'Legal',
     footerConnect: 'Connect',
     footerBookDemo: 'Start setup',
-    growthTrialIncluded: '14-day free trial included — card on file.',
+    growthTrialIncluded: '14-day free trial included — no credit card required.',
     vetClinics: 'Vet clinics',
     tattooShops: 'Tattoo shops',
     landingGetStartedGrowth: 'Start Growth trial →'

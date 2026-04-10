@@ -140,6 +140,10 @@ export async function POST(request) {
       cancel.searchParams.set('businessId', bid)
       cancel.searchParams.set('checkout', 'canceled')
       cancelUrl = cancel.toString()
+    } else if (returnTo === 'upgrade' && businessId && typeof businessId === 'string') {
+      const bid = businessId.trim()
+      successUrl = `${baseRoot}/upgrade/success?businessId=${encodeURIComponent(bid)}`
+      cancelUrl = `${baseRoot}/upgrade?businessId=${encodeURIComponent(bid)}`
     } else if (businessId) {
       successUrl = `${baseRoot}/dashboard/business?checkout=success&businessId=${encodeURIComponent(businessId)}`
       cancelUrl = `${baseRoot}/dashboard/business?checkout=canceled&businessId=${encodeURIComponent(businessId)}`

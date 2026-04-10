@@ -189,6 +189,8 @@ function loadConfig() {
     const BILLING_TIMEZONE = getEnvVar('BILLING_TIMEZONE', false, 'UTC')
     const TRIAL_PERIOD_DAYS_RAW = getEnvVar('TRIAL_PERIOD_DAYS', false, '14')
     const TRIAL_PERIOD_DAYS = Math.max(1, Math.min(90, parseInt(TRIAL_PERIOD_DAYS_RAW, 10) || 14))
+    const TRIAL_GRACE_DAYS_RAW = getEnvVar('TRIAL_GRACE_DAYS', false, '7')
+    const TRIAL_GRACE_DAYS = Math.max(0, Math.min(30, parseInt(TRIAL_GRACE_DAYS_RAW, 10) || 7))
     
     const hasStripe = STRIPE_SECRET_KEY && STRIPE_PUBLISHABLE_KEY && STRIPE_WEBHOOK_SECRET
     const stripePublishableKeyForElements =
@@ -330,6 +332,7 @@ function loadConfig() {
       BOOK8_CORE_API_KEY,
       BILLING_TIMEZONE,
       TRIAL_PERIOD_DAYS,
+      TRIAL_GRACE_DAYS,
       
       // Optional
       TAVILY_API_KEY,
