@@ -5,9 +5,9 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.book8.io";
 
 export const metadata = {
   metadataBase: new URL(baseUrl),
-  title: 'Book8-AI — AI Receptionist for Businesses | 70+ Languages',
+  title: 'Book8 — Never miss a call. In any language.',
   description:
-    'AI-powered phone receptionist that answers calls, books appointments, and speaks 70+ languages. Voice AI, SMS booking, and online scheduling for any service business. Try free for 14 days.',
+    'AI phone receptionist that answers 24/7, books appointments, and speaks 70+ languages. Stop losing customers to voicemail.',
   alternates: {
     canonical: '/',
   },
@@ -17,19 +17,26 @@ export const metadata = {
     apple: '/brand/book8_ai_inverse_avatar.png',
   },
   openGraph: {
-    title: 'Book8-AI — Your AI Receptionist. Always On. Always Booking.',
+    title: 'Book8 — Never miss a call. In any language.',
     description:
-      'AI receptionist that answers calls in 70+ languages, books appointments, and sends confirmations. Built for barbers, clinics, studios, and any service business.',
+      'AI phone receptionist that answers 24/7, books appointments, and speaks 70+ languages. Stop losing customers to voicemail.',
     url: baseUrl,
     siteName: 'Book8-AI',
-    images: [{ url: '/brand/book8_ai_social_icon.png', width: 1200, height: 630 }],
+    images: [
+      {
+        url: '/brand/book8_ai_social_icon.png',
+        width: 1200,
+        height: 630,
+        alt: 'Book8 — Never miss a call. In any language.',
+      },
+    ],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Book8-AI — Your AI Receptionist. Always On. Always Booking.',
+    title: 'Book8 — Never miss a call. In any language.',
     description:
-      'AI receptionist that answers calls in 70+ languages, books appointments, and sends confirmations. Built for service businesses worldwide.',
+      'AI phone receptionist that answers 24/7, books appointments, and speaks 70+ languages. Stop losing customers to voicemail.',
     images: ['/brand/book8_ai_social_icon.png'],
   },
   verification: {

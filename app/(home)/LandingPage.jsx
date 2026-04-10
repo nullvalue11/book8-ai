@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
   Check,
-  ChevronDown,
   Globe,
   Menu,
   X,
@@ -421,17 +420,19 @@ export default function LandingPage() {
             viewport={{ once: true, margin: '-40px' }}
             variants={stagger}
           >
-            <motion.p
-              variants={reveal}
-              className="text-xs uppercase tracking-[0.2em] text-[#A78BFA] mb-4 font-semibold"
-            >
-              {h.heroKicker}
-            </motion.p>
+            {h.heroKicker ? (
+              <motion.p
+                variants={reveal}
+                className="text-xs uppercase tracking-[0.2em] text-[#A78BFA] mb-4 font-semibold"
+              >
+                {h.heroKicker}
+              </motion.p>
+            ) : null}
             <motion.h1
               variants={reveal}
               className="text-[2.25rem] leading-tight md:text-5xl lg:text-6xl font-extrabold text-white font-[family-name:var(--font-brico)]"
             >
-              {h.heroTitle1} {h.heroTitle2}{' '}
+              {[h.heroTitle1, h.heroTitle2].filter(Boolean).join(' ')}{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#A78BFA] to-[#34D399]">
                 {h.heroTitle3} {h.heroTitle4}
               </span>
@@ -442,6 +443,14 @@ export default function LandingPage() {
             >
               {h.heroSubtitle}
             </motion.p>
+            {h.heroTrustedCities ? (
+              <motion.p
+                variants={reveal}
+                className="mt-4 text-xs md:text-sm text-[#68668A] max-w-2xl mx-auto leading-relaxed"
+              >
+                {h.heroTrustedCities}
+              </motion.p>
+            ) : null}
             <motion.div
               variants={reveal}
               className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center"
@@ -454,13 +463,12 @@ export default function LandingPage() {
                   {h.getStartedFree}
                 </Button>
               </Link>
-              <a
-                href="#how-it-works"
+              <Link
+                href="/b/diamond-car-wash-rideau"
                 className="inline-flex items-center justify-center gap-2 text-[#9593A8] hover:text-white transition-colors py-3"
               >
-                {h.seeHowItWorks}
-                <ChevronDown className="w-4 h-4 animate-bounce rtl:rotate-180" aria-hidden />
-              </a>
+                {h.seeLiveDemo}
+              </Link>
             </motion.div>
           </motion.div>
 
