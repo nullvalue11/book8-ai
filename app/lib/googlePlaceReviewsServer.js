@@ -9,6 +9,7 @@ import {
   corePlacesConfigured,
   corePlacesInternalHeaders
 } from '@/api/places/_lib/core-places'
+import { sortGoogleReviewsForPublicDisplay } from '@/lib/googleReviewsSort'
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 
@@ -104,9 +105,11 @@ export function normalizePlacesDetailsToReviewCache(raw) {
   const totalRaw = result.user_ratings_total ?? result.userRatingCount
   const userRatingsTotal = typeof totalRaw === 'number' && totalRaw >= 0 ? Math.floor(totalRaw) : 0
   const revs = Array.isArray(result.reviews) ? result.reviews : []
-  const reviews = revs.slice(0, 5).map((r) =>
+  const mapped = revs.map((r) =>
     mapOneReviewRow(r && typeof r === 'object' ? /** @type {Record<string, unknown>} */ (r) : {})
   )
+  /** BOO-89B: rank by rating × recency before taking top 5 (legacy API returns ≤5 snippets). */
+  const reviews = sortGoogleReviewsForPublicDisplay(mapped).slice(0, 5)
 
   if (rating == null && reviews.length === 0 && userRatingsTotal === 0) return null
 

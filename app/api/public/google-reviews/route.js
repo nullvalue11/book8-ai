@@ -13,6 +13,7 @@ import {
   cacheIsFresh,
   isPartialGoogleReviewsPayload
 } from '@/lib/googlePlaceReviewsServer'
+import { sortGoogleReviewsForPublicDisplay } from '@/lib/googleReviewsSort'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -32,10 +33,13 @@ function publicJson(cache) {
   if (!cache || typeof cache !== 'object') {
     return { rating: null, userRatingsTotal: 0, reviews: [] }
   }
+  const raw = Array.isArray(cache.reviews) ? cache.reviews : []
+  /** BOO-89B: re-sort cached payloads so deploy takes effect without waiting for cache TTL */
+  const reviews = sortGoogleReviewsForPublicDisplay(raw).slice(0, 5)
   return {
     rating: cache.rating ?? null,
     userRatingsTotal: typeof cache.userRatingsTotal === 'number' ? cache.userRatingsTotal : 0,
-    reviews: Array.isArray(cache.reviews) ? cache.reviews : []
+    reviews
   }
 }
 

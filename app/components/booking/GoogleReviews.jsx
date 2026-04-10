@@ -56,6 +56,9 @@ export default function GoogleReviews({ handle }) {
             <span className="font-semibold text-white">{Number(data.rating).toFixed(1)}</span>
             <span className="text-gray-400">· {total} Google reviews</span>
           </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Showing recent, highly rated reviews first
+          </p>
         </div>
         <span className="text-sm text-gray-500 font-medium">Google</span>
       </div>
