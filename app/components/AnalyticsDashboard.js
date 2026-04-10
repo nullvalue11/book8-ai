@@ -304,10 +304,6 @@ export default function AnalyticsDashboard({
           </CardContent>
         </Card>
       )}
-
-      {analytics.meta && (
-        <div className="text-xs text-muted-foreground text-right">Query time: {analytics.meta.query_time_ms}ms</div>
-      )}
     </div>
   )
 }
