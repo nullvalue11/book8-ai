@@ -26,11 +26,24 @@ export function normalizeAggregateStats(raw) {
     return n <= 1 ? n * 100 : n
   }
 
+  // book8-core-api GET /aggregate/stats returns totalBookingsThisMonth / totalCallsThisMonth (BOO-67A)
   return {
-    totalBookings: Number(raw.totalBookings ?? raw.bookings ?? raw.bookingsThisMonth ?? 0) || 0,
-    totalCalls: Number(raw.totalCalls ?? raw.calls ?? raw.callsThisMonth ?? 0) || 0,
+    totalBookings:
+      Number(
+        raw.totalBookingsThisMonth ??
+          raw.totalBookings ??
+          raw.bookings ??
+          raw.bookingsThisMonth ??
+          0
+      ) || 0,
+    totalCalls:
+      Number(
+        raw.totalCallsThisMonth ?? raw.totalCalls ?? raw.calls ?? raw.callsThisMonth ?? 0
+      ) || 0,
     noShowRate: pct(raw.noShowRate ?? raw.no_show_rate ?? raw.avgNoShowRate),
-    activeLocations: Number(raw.activeLocations ?? raw.locationsCount ?? loc.length ?? 0) || 0,
+    activeLocations:
+      Number(raw.activeLocations ?? raw.totalBusinesses ?? raw.locationsCount ?? loc.length ?? 0) ||
+      0,
     locationRows: Array.isArray(loc) ? loc.map(normalizeLocationRow) : []
   }
 }
