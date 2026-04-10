@@ -29,6 +29,7 @@ import {
   formatBookingDashboardDateTime,
   resolveBusinessTimezoneFromOwnedList
 } from "@/lib/bookingDisplayTime";
+import { getBookingStartMs, isRecentPastBooking, isUpcomingBooking } from "@/lib/bookingListUtils";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function formatDuration(seconds) {
@@ -703,22 +704,17 @@ function HomeContent(props) {
       setServicesMap(sMap);
       const list = bookingsRes?.bookings ?? (bookingsRes?.ok ? [] : []);
       const now = new Date();
+      const nowMs = now.getTime();
+      const ms14d = 14 * 24 * 3600000;
+      const pastCutoff = nowMs - ms14d;
       const upcoming = (Array.isArray(list) ? list : [])
-        .filter((b) => (b.status === "confirmed" || !b.status) && new Date(b.slot?.start || b.startTime || 0) >= now)
-        .sort((a, b) => new Date(a.slot?.start || a.startTime || 0) - new Date(b.slot?.start || b.startTime || 0))
+        .filter((b) => isUpcomingBooking(b, nowMs))
+        .sort((a, b) => (getBookingStartMs(a) || 0) - (getBookingStartMs(b) || 0))
         .slice(0, 10);
       setUpcomingBookings(upcoming);
-      const ms14d = 14 * 24 * 3600000;
-      const pastCutoff = now.getTime() - ms14d;
       const pastRecent = (Array.isArray(list) ? list : [])
-        .filter((b) => {
-          const st = new Date(b.slot?.start || b.startTime || 0).getTime();
-          if (Number.isNaN(st)) return false;
-          const status = (b.status || "confirmed").toLowerCase();
-          if (status === "canceled" || status === "cancelled") return false;
-          return st < now.getTime() && st >= pastCutoff;
-        })
-        .sort((a, b) => new Date(b.slot?.start || b.startTime || 0) - new Date(a.slot?.start || a.startTime || 0))
+        .filter((b) => isRecentPastBooking(b, nowMs, pastCutoff))
+        .sort((a, b) => (getBookingStartMs(b) || 0) - (getBookingStartMs(a) || 0))
         .slice(0, 25);
       setRecentPastBookings(pastRecent);
     } catch (err) {
@@ -1048,22 +1044,17 @@ function HomeContent(props) {
         setServicesMap(sMap);
         const list = bookingsData?.bookings ?? (bookingsData?.ok ? [] : []);
         const now = new Date();
+        const nowMs = now.getTime();
+        const ms14d = 14 * 24 * 3600000;
+        const pastCutoff = nowMs - ms14d;
         const upcoming = (Array.isArray(list) ? list : [])
-          .filter((b) => (b.status === "confirmed" || !b.status) && new Date(b.slot?.start || b.startTime || 0) >= now)
-          .sort((a, b) => new Date(a.slot?.start || a.startTime || 0) - new Date(b.slot?.start || b.startTime || 0))
+          .filter((b) => isUpcomingBooking(b, nowMs))
+          .sort((a, b) => (getBookingStartMs(a) || 0) - (getBookingStartMs(b) || 0))
           .slice(0, 10);
         setUpcomingBookings(upcoming);
-        const ms14d = 14 * 24 * 3600000;
-        const pastCutoff = now.getTime() - ms14d;
         const pastRecent = (Array.isArray(list) ? list : [])
-          .filter((b) => {
-            const st = new Date(b.slot?.start || b.startTime || 0).getTime();
-            if (Number.isNaN(st)) return false;
-            const status = (b.status || "confirmed").toLowerCase();
-            if (status === "canceled" || status === "cancelled") return false;
-            return st < now.getTime() && st >= pastCutoff;
-          })
-          .sort((a, b) => new Date(b.slot?.start || b.startTime || 0) - new Date(a.slot?.start || a.startTime || 0))
+          .filter((b) => isRecentPastBooking(b, nowMs, pastCutoff))
+          .sort((a, b) => (getBookingStartMs(b) || 0) - (getBookingStartMs(a) || 0))
           .slice(0, 25);
         setRecentPastBookings(pastRecent);
       })
@@ -1849,10 +1840,13 @@ function HomeContent(props) {
                       const serviceName = servicesMap[booking.serviceId] || booking.serviceName || booking.serviceId || "Appointment";
                       const customer = booking.customer?.name || booking.customerName || "Unknown";
                       const phone = booking.customer?.phone || booking.customerPhone || "";
-                      const start = booking.slot?.start || booking.startTime || booking.start;
-                      const durationMin = booking.slot?.start && booking.slot?.end
-                        ? Math.round((new Date(booking.slot.end) - new Date(booking.slot.start)) / 60000)
-                        : booking.durationMinutes ?? null;
+                      const startMs = getBookingStartMs(booking);
+                      const start = startMs != null ? new Date(startMs) : null;
+                      const endRaw = booking.slot?.end || booking.endTime;
+                      const durationMin =
+                        startMs != null && endRaw
+                          ? Math.round((new Date(endRaw).getTime() - startMs) / 60000)
+                          : booking.durationMinutes ?? null;
                       const lang =
                         booking.language != null && String(booking.language).trim() !== ""
                           ? bookingLanguageBadge(booking.language)
@@ -1868,7 +1862,7 @@ function HomeContent(props) {
                         <div key={booking.id || booking._id || i} className="py-3 first:pt-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-foreground shrink-0">
-                              {start ? formatBookingDashboardDateTime(start, businessDisplayTimezone) : "—"}
+                              {start ? formatBookingDashboardDateTime(start.toISOString(), businessDisplayTimezone) : "—"}
                             </span>
                             <span className="w-px h-4 bg-border inline-block mx-1 shrink-0 self-center" aria-hidden />
                             <span className="text-foreground">{customer}</span>
@@ -1972,7 +1966,7 @@ function HomeContent(props) {
                       const serviceName =
                         servicesMap[booking.serviceId] || booking.serviceName || booking.serviceId || "Appointment";
                       const customer = booking.customer?.name || booking.customerName || "Unknown";
-                      const start = booking.slot?.start || booking.startTime || booking.start;
+                      const startMsPast = getBookingStartMs(booking);
                       const last4 = booking.paymentMethodSummary?.last4 || "";
                       const brand = booking.paymentMethodSummary?.brand || "";
                       const cardLabel =
@@ -1992,7 +1986,12 @@ function HomeContent(props) {
                           <div className="min-w-0 space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium text-foreground text-sm">
-                                {start ? formatBookingDashboardDateTime(start, businessDisplayTimezone) : "—"}
+                                {startMsPast != null
+                                  ? formatBookingDashboardDateTime(
+                                      new Date(startMsPast).toISOString(),
+                                      businessDisplayTimezone
+                                    )
+                                  : "—"}
                               </span>
                               {isNoShow ? (
                                 <span className="text-xs font-semibold text-red-600 dark:text-red-400 border border-red-500/40 rounded px-2 py-0.5">
@@ -2443,7 +2442,7 @@ function HomeContent(props) {
             ) : (
               <ul className="space-y-2 text-sm">
                 {recurringSeriesOverlay.bookings.map((b) => {
-                  const st = b.slot?.start || b.startTime;
+                  const stMs = getBookingStartMs(b);
                   const occ = b.recurring?.occurrenceNumber;
                   const tot = b.recurring?.totalOccurrences;
                   const low = (b.status || "").toLowerCase();
@@ -2459,7 +2458,12 @@ function HomeContent(props) {
                           : "—"}
                       </span>
                       <span className="text-muted-foreground">
-                        {st ? formatBookingDashboardDateTime(st, businessDisplayTimezone) : "—"}
+                        {stMs != null
+                          ? formatBookingDashboardDateTime(
+                              new Date(stMs).toISOString(),
+                              businessDisplayTimezone
+                            )
+                          : "—"}
                         {canceled ? ` · ${rc.canceledShort || "Canceled"}` : ""}
                       </span>
                     </li>

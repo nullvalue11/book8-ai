@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
+import { getBookingStartMs } from '@/lib/bookingListUtils'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -76,6 +77,7 @@ export async function GET(request, { params }) {
     const data = await res.json().catch(() => ({}))
     let bookings = Array.isArray(data?.bookings) ? data.bookings : Array.isArray(data) ? data : []
     if (!Array.isArray(bookings)) bookings = []
+    const coreBookingCount = bookings.length
 
     // Merge `language` from local Mongo bookings (web flow stores here; core-api list may omit it)
     try {
@@ -191,7 +193,8 @@ export async function GET(request, { params }) {
       console.warn('[business/bookings] language merge skipped:', e?.message)
     }
 
-    // BOO-60B: attach local-only rows (e.g. recurring siblings not in core-api list)
+    // BOO-87B: attach any Mongo booking not returned by core-api (voice/web lag, sync gaps, recurring siblings).
+    let mergedFromLocal = 0
     try {
       const localsAll = await database
         .collection('bookings')
@@ -206,9 +209,17 @@ export async function GET(request, { params }) {
         if (!lid || seen.has(lid)) continue
         const st = (lb.status || 'confirmed').toLowerCase()
         if (st === 'canceled' || st === 'cancelled') continue
-        const occ = lb.recurring?.occurrenceNumber
-        if (!(lb.recurring?.enabled && typeof occ === 'number' && occ > 1)) continue
+        if (
+          getBookingStartMs({
+            slot: lb.slot || { start: lb.startTime, end: lb.endTime },
+            startTime: lb.startTime,
+            start: lb.start
+          }) == null
+        ) {
+          continue
+        }
         seen.add(lid)
+        mergedFromLocal += 1
         bookings.push({
           id: lb.id,
           bookingId: lb.id,
@@ -232,6 +243,13 @@ export async function GET(request, { params }) {
     } catch (e) {
       console.warn('[business/bookings] local-only merge skipped:', e?.message)
     }
+
+    console.log('[business/bookings]', {
+      businessId,
+      coreBookingCount,
+      mergedFromLocal,
+      total: bookings.length
+    })
 
     return NextResponse.json({ ok: true, bookings })
   } catch (err) {
