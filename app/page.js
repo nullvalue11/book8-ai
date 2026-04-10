@@ -25,6 +25,10 @@ import { getPlanName, getUiPlanLimits, normalizePlanKey } from "./lib/plan-featu
 import { bookingLanguageBadge } from "./lib/bookingLanguageDisplay";
 import { toast } from "sonner";
 import { resolveBusinessPlanKey } from "@/lib/subscription-shared";
+import {
+  formatBookingDashboardDateTime,
+  resolveBusinessTimezoneFromOwnedList
+} from "@/lib/bookingDisplayTime";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function formatDuration(seconds) {
@@ -300,6 +304,12 @@ function HomeContent(props) {
     }
     return ownedBusinesses[0];
   }, [ownedBusinesses, primaryBusinessId]);
+
+  /** BOO-86B: all booking times on the home dashboard use this IANA zone (Mongo `business.timezone`). */
+  const businessDisplayTimezone = useMemo(
+    () => resolveBusinessTimezoneFromOwnedList(ownedBusinesses, primaryBusinessId),
+    [ownedBusinesses, primaryBusinessId]
+  );
 
   const showTrialingPlanBanner = useMemo(() => {
     if (billingSubscription?.status !== "trialing" || !billingSubscription?.trialEnd) return false;
@@ -1858,7 +1868,7 @@ function HomeContent(props) {
                         <div key={booking.id || booking._id || i} className="py-3 first:pt-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-foreground shrink-0">
-                              {start ? new Date(start).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"}
+                              {start ? formatBookingDashboardDateTime(start, businessDisplayTimezone) : "—"}
                             </span>
                             <span className="w-px h-4 bg-border inline-block mx-1 shrink-0 self-center" aria-hidden />
                             <span className="text-foreground">{customer}</span>
@@ -1982,15 +1992,7 @@ function HomeContent(props) {
                           <div className="min-w-0 space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium text-foreground text-sm">
-                                {start
-                                  ? new Date(start).toLocaleString(undefined, {
-                                      weekday: "short",
-                                      month: "short",
-                                      day: "numeric",
-                                      hour: "numeric",
-                                      minute: "2-digit"
-                                    })
-                                  : "—"}
+                                {start ? formatBookingDashboardDateTime(start, businessDisplayTimezone) : "—"}
                               </span>
                               {isNoShow ? (
                                 <span className="text-xs font-semibold text-red-600 dark:text-red-400 border border-red-500/40 rounded px-2 py-0.5">
@@ -2405,7 +2407,12 @@ function HomeContent(props) {
         </div>
 
         <div className="mt-6">
-          <AnalyticsDashboard token={token} subscribed={isSubscribed} planLimits={planLimits} />
+          <AnalyticsDashboard
+            token={token}
+            subscribed={isSubscribed}
+            planLimits={planLimits}
+            businessTimeZone={businessDisplayTimezone}
+          />
         </div>
       </div>
       {recurringSeriesOverlay ? (
@@ -2452,7 +2459,7 @@ function HomeContent(props) {
                           : "—"}
                       </span>
                       <span className="text-muted-foreground">
-                        {st ? new Date(st).toLocaleString() : "—"}
+                        {st ? formatBookingDashboardDateTime(st, businessDisplayTimezone) : "—"}
                         {canceled ? ` · ${rc.canceledShort || "Canceled"}` : ""}
                       </span>
                     </li>

@@ -5,8 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { TrendingUp, Calendar, RotateCcw, XCircle, Bell, Lock, RefreshCw } from 'lucide-react'
 import { Button } from './ui/button'
+import { formatAnalyticsChartDayLabel, DEFAULT_BUSINESS_TIMEZONE } from '@/lib/bookingDisplayTime'
 
-export default function AnalyticsDashboard({ token, subscribed = false, planLimits = null, onSubscriptionRequired }) {
+export default function AnalyticsDashboard({
+  token,
+  subscribed = false,
+  planLimits = null,
+  onSubscriptionRequired,
+  businessTimeZone = DEFAULT_BUSINESS_TIMEZONE
+}) {
   const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -190,14 +197,14 @@ export default function AnalyticsDashboard({ token, subscribed = false, planLimi
     ? kpiCardsAll
     : kpiCardsAll.filter(card => card.title === 'Total Bookings' || card.title === 'Cancellations')
 
-  const lineChartData = series.map(day => ({
-    date: new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+  const lineChartData = series.map((day) => ({
+    date: formatAnalyticsChartDayLabel(day.date, businessTimeZone),
     bookings: day.bookings,
     reminders: day.reminders_sent
   }))
 
-  const barChartData = series.map(day => ({
-    date: new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+  const barChartData = series.map((day) => ({
+    date: formatAnalyticsChartDayLabel(day.date, businessTimeZone),
     reschedules: day.reschedules,
     cancellations: day.cancellations
   }))
