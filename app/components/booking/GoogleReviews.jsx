@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Star } from 'lucide-react'
+import { sortGoogleReviewsForPublicDisplay } from '@/lib/googleReviewsSort'
 
 /**
  * BOO-81B: Google Places reviews on public booking page
@@ -35,7 +36,9 @@ export default function GoogleReviews({ handle }) {
   if (loading || !data || data.rating == null) return null
 
   const total = typeof data.userRatingsTotal === 'number' ? data.userRatingsTotal : 0
-  const reviews = Array.isArray(data.reviews) ? data.reviews : []
+  const raw = Array.isArray(data.reviews) ? data.reviews : []
+  /** BOO-89B: same ordering as API; keeps UI correct if payload order ever changes */
+  const reviews = sortGoogleReviewsForPublicDisplay(raw).slice(0, 5)
 
   return (
     <section className="mt-12 max-w-3xl mx-auto px-4" dir="ltr">
