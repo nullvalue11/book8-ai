@@ -172,6 +172,9 @@ export async function POST(request) {
       line_items: lineItems,
       success_url: successUrl,
       cancel_url: cancelUrl,
+      ...(resolvedBusiness && {
+        client_reference_id: resolvedBusiness.businessId || resolvedBusiness.id
+      }),
       metadata: {
         userId: user.id,
         priceId: priceId,

@@ -168,6 +168,8 @@ export async function POST(request) {
     console.log('[api/subscribe] Customer:', customerId)
     console.log('[api/subscribe] Price:', priceId)
     
+    const canonicalBizId = business.businessId || business.id || businessId
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
@@ -178,15 +180,22 @@ export async function POST(request) {
       }],
       success_url: `${baseUrl}/dashboard/business?checkout=success&businessId=${businessId}`,
       cancel_url: `${baseUrl}/dashboard/business?checkout=canceled&businessId=${businessId}`,
+      client_reference_id: canonicalBizId,
       metadata: {
         userId: user.id,
-        businessId: business.businessId,
+        businessId: canonicalBizId,
         businessName: business.name,
         timezone: business.timezone || 'America/Toronto',
         category: business.category || null,
         plan: 'starter',
         priceId,
         numberSetupMethod: 'pending'
+      },
+      subscription_data: {
+        metadata: {
+          userId: user.id,
+          businessId: canonicalBizId
+        }
       }
     })
     

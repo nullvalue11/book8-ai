@@ -17,6 +17,7 @@ import {
 } from '@/lib/trialLifecycleEmail'
 import { provisionOnCoreApi } from '@/lib/provision-business'
 import { syncPlanToCore } from '@/lib/sync-calendar-to-core'
+import { syncSubscriptionToCoreApi } from '@/lib/syncSubscriptionToCoreApi'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -209,6 +210,25 @@ async function handleSubscriptionEvent(event, stripe, database) {
         await syncPlanToCore({ businessId: resolvedBizId, plan }).catch((e) =>
           console.warn('[webhooks/stripe] syncPlanToCore:', e?.message || e)
         )
+      }
+
+      let businessIdForCoreSync = resolvedBizId
+      if (!businessIdForCoreSync) {
+        const raw = obj.metadata?.businessId || obj.client_reference_id
+        if (raw) {
+          const bizDoc = await database.collection(BUSINESS_COLLECTION).findOne({
+            $or: [{ businessId: raw }, { id: raw }]
+          })
+          businessIdForCoreSync = bizDoc ? bizDoc.businessId || bizDoc.id : raw
+        }
+      }
+      if (businessIdForCoreSync && subscriptionId) {
+        await syncSubscriptionToCoreApi({
+          businessId: businessIdForCoreSync,
+          subscriptionStatus: subscription.status,
+          stripeSubscriptionId:
+            typeof subscriptionId === 'string' ? subscriptionId : String(subscriptionId)
+        })
       }
 
       // Trial started email (Growth checkout with trial)
@@ -555,6 +575,28 @@ async function handleSubscriptionEvent(event, stripe, database) {
         }
       }
 
+      const syncIds = new Set()
+      const rawMetaBiz = subscription.metadata?.businessId
+      if (rawMetaBiz) {
+        let bid = rawMetaBiz
+        const bizDoc = await database.collection(BUSINESS_COLLECTION).findOne({
+          $or: [{ businessId: rawMetaBiz }, { id: rawMetaBiz }]
+        })
+        if (bizDoc) bid = bizDoc.businessId || bizDoc.id
+        if (bid) syncIds.add(bid)
+      }
+      for (const row of bizRows) {
+        const bid = row.businessId || row.id
+        if (bid) syncIds.add(bid)
+      }
+      for (const bid of syncIds) {
+        await syncSubscriptionToCoreApi({
+          businessId: bid,
+          subscriptionStatus: subscription.status,
+          stripeSubscriptionId: subscriptionId
+        })
+      }
+
       return
     }
     
@@ -602,7 +644,35 @@ async function handleSubscriptionEvent(event, stripe, database) {
           }
         }
       )
-      
+
+      const deletedBizRows = await database
+        .collection(BUSINESS_COLLECTION)
+        .find({ 'subscription.stripeCustomerId': customerId })
+        .project({ businessId: 1, id: 1 })
+        .toArray()
+      const subIdDeleted = obj.id
+      const syncDel = new Set()
+      const rawDelMeta = obj.metadata?.businessId
+      if (rawDelMeta) {
+        let bid = rawDelMeta
+        const bizDoc = await database.collection(BUSINESS_COLLECTION).findOne({
+          $or: [{ businessId: rawDelMeta }, { id: rawDelMeta }]
+        })
+        if (bizDoc) bid = bizDoc.businessId || bizDoc.id
+        if (bid) syncDel.add(bid)
+      }
+      for (const row of deletedBizRows) {
+        const bid = row.businessId || row.id
+        if (bid) syncDel.add(bid)
+      }
+      for (const bid of syncDel) {
+        await syncSubscriptionToCoreApi({
+          businessId: bid,
+          subscriptionStatus: 'canceled',
+          stripeSubscriptionId: subIdDeleted
+        })
+      }
+
       return
     }
     

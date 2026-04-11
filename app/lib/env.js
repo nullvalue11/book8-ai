@@ -184,7 +184,11 @@ function loadConfig() {
     
     // Billing/Usage Reporting (uses existing CRON_SECRET for auth)
     const CORE_API_BASE_URL = getEnvVar('CORE_API_BASE_URL', false)
+    /** Alias for CORE_API_BASE_URL (BOO-100B / Vercel naming). If set, used as core-api origin. */
+    const CORE_API_URL = getEnvVar('CORE_API_URL', false)
     const CORE_API_INTERNAL_SECRET = getEnvVar('CORE_API_INTERNAL_SECRET', false)
+    /** Alias for internal calls; must match core-api (BOO-100B). */
+    const INTERNAL_API_SECRET = getEnvVar('INTERNAL_API_SECRET', false)
     const BOOK8_CORE_API_KEY = getEnvVar('BOOK8_CORE_API_KEY', false)
     const BILLING_TIMEZONE = getEnvVar('BILLING_TIMEZONE', false, 'UTC')
     const TRIAL_PERIOD_DAYS_RAW = getEnvVar('TRIAL_PERIOD_DAYS', false, '14')
@@ -328,7 +332,9 @@ function loadConfig() {
       
       // Billing/Usage Reporting
       CORE_API_BASE_URL,
+      CORE_API_URL,
       CORE_API_INTERNAL_SECRET,
+      INTERNAL_API_SECRET,
       BOOK8_CORE_API_KEY,
       BILLING_TIMEZONE,
       TRIAL_PERIOD_DAYS,

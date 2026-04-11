@@ -240,6 +240,7 @@ export async function POST(request, { params }) {
       line_items: lineItems,
       success_url: `${baseUrl}/dashboard/business?checkout=success&businessId=${businessId}`,
       cancel_url: `${baseUrl}/dashboard/business?checkout=canceled&businessId=${businessId}`,
+      client_reference_id: business.businessId || business.id || businessId,
       metadata: {
         userId: user.id,
         businessId: business.businessId,
