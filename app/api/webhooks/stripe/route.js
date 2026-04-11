@@ -17,7 +17,8 @@ import {
 } from '@/lib/trialLifecycleEmail'
 import { provisionOnCoreApi } from '@/lib/provision-business'
 import { syncPlanToCore } from '@/lib/sync-calendar-to-core'
-import { syncSubscriptionToCoreApi } from '@/lib/syncSubscriptionToCoreApi'
+import { syncSubscriptionWithDeadLetter } from '@/lib/syncSubscriptionToCoreApi'
+import { ensureSyncFailureIndexes } from '@/models/SyncFailure'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -42,6 +43,7 @@ async function connectToMongo() {
         .collection('provisioningAlerts')
         .createIndex({ timestamp: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 })
       await db.collection('provisioningAlerts').createIndex({ businessId: 1, resolved: 1 })
+      await ensureSyncFailureIndexes(db.collection('sync_failures'))
     } catch {}
     indexesEnsured = true
   }
@@ -223,11 +225,14 @@ async function handleSubscriptionEvent(event, stripe, database) {
         }
       }
       if (businessIdForCoreSync && subscriptionId) {
-        await syncSubscriptionToCoreApi({
+        await syncSubscriptionWithDeadLetter(database, {
           businessId: businessIdForCoreSync,
           subscriptionStatus: subscription.status,
           stripeSubscriptionId:
-            typeof subscriptionId === 'string' ? subscriptionId : String(subscriptionId)
+            typeof subscriptionId === 'string' ? subscriptionId : String(subscriptionId),
+          stripeCustomerId: customerId,
+          stripeEventId: event.id,
+          source: event.type
         })
       }
 
@@ -590,10 +595,13 @@ async function handleSubscriptionEvent(event, stripe, database) {
         if (bid) syncIds.add(bid)
       }
       for (const bid of syncIds) {
-        await syncSubscriptionToCoreApi({
+        await syncSubscriptionWithDeadLetter(database, {
           businessId: bid,
           subscriptionStatus: subscription.status,
-          stripeSubscriptionId: subscriptionId
+          stripeSubscriptionId: subscriptionId,
+          stripeCustomerId: customerId,
+          stripeEventId: event.id,
+          source: event.type
         })
       }
 
@@ -666,10 +674,13 @@ async function handleSubscriptionEvent(event, stripe, database) {
         if (bid) syncDel.add(bid)
       }
       for (const bid of syncDel) {
-        await syncSubscriptionToCoreApi({
+        await syncSubscriptionWithDeadLetter(database, {
           businessId: bid,
           subscriptionStatus: 'canceled',
-          stripeSubscriptionId: subIdDeleted
+          stripeSubscriptionId: subIdDeleted,
+          stripeCustomerId: customerId,
+          stripeEventId: event.id,
+          source: event.type
         })
       }
 

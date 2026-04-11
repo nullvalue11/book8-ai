@@ -4,6 +4,7 @@
  */
 
 import { env } from '@/lib/env'
+import { recordSyncFailure } from '@/models/SyncFailure'
 
 function coreApiBaseUrl() {
   const raw =
@@ -74,4 +75,50 @@ export async function syncSubscriptionToCoreApi({
     console.error('[subscription-sync] Network error:', err.message)
     return { ok: false, error: 'network_error' }
   }
+}
+
+/**
+ * Wraps sync to core-api and persists failures to `sync_failures` (BOO-44B).
+ * @param {import('mongodb').Db} database
+ */
+export async function syncSubscriptionWithDeadLetter(database, params) {
+  const {
+    businessId,
+    subscriptionStatus,
+    stripeSubscriptionId,
+    stripeCustomerId,
+    stripeEventId,
+    source
+  } = params
+
+  const result = await syncSubscriptionToCoreApi({
+    businessId,
+    subscriptionStatus,
+    stripeSubscriptionId
+  })
+
+  if (!result.ok) {
+    console.error(
+      `[subscription-sync] FAILED business=${businessId} status=${subscriptionStatus} source=${source} error=${result.error} http=${result.status ?? 'none'}`
+    )
+
+    try {
+      await recordSyncFailure(database, {
+        businessId,
+        stripeSubscriptionId,
+        stripeCustomerId,
+        stripeEventId,
+        subscriptionStatus,
+        lastError: result.error || 'unknown',
+        lastErrorStatus: result.status,
+        source
+      })
+    } catch (dlqErr) {
+      console.error(
+        `[subscription-sync] DEAD-LETTER WRITE FAILED business=${businessId} err=${dlqErr.message}`
+      )
+    }
+  }
+
+  return result
 }
