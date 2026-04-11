@@ -302,7 +302,7 @@ export default function PublicProfileSettingsPage() {
         body: JSON.stringify(body)
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Save failed')
+      if (!res.ok) throw new Error(data.error || data.message || 'Save failed')
       setMessage({ type: 'success', text: 'Public profile saved.' })
     } catch (e) {
       setMessage({ type: 'error', text: e.message || 'Save failed' })

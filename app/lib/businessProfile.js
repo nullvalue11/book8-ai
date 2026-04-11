@@ -235,6 +235,108 @@ export function sanitizeBusinessProfileForPublic(profile) {
   }
 }
 
+/**
+ * Nested address on book8-core-api `businessProfile` → flat fields used in book8-ai UI.
+ * @param {Record<string, unknown> | null | undefined} coreBp
+ * @returns {Partial<BusinessProfileInput> | null}
+ */
+export function flatAddressFromCoreBusinessProfile(coreBp) {
+  if (!coreBp || typeof coreBp !== 'object') return null
+  const addr = coreBp.address
+  if (!addr || typeof addr !== 'object') return null
+  const streetLine = trimOrEmpty(
+    /** @type {{ street?: string, line1?: string }} */ (addr).street ??
+      /** @type {{ line1?: string }} */ (addr).line1 ??
+      ''
+  )
+  const street2 = trimOrEmpty(
+    /** @type {{ street2?: string, line2?: string }} */ (addr).street2 ??
+      /** @type {{ line2?: string }} */ (addr).line2 ??
+      ''
+  )
+  return {
+    street: streetLine,
+    street2,
+    city: trimOrEmpty(addr.city ?? ''),
+    provinceState: trimOrEmpty(
+      addr.province ?? addr.provinceState ?? /** @type {{ region?: string }} */ (addr).region ?? ''
+    ),
+    postalCode: trimOrEmpty(addr.postalCode ?? addr.postal_code ?? ''),
+    country: trimOrEmpty(addr.country ?? '').toUpperCase() || 'US'
+  }
+}
+
+/**
+ * Merge core-api `businessProfile.address` over local Mongo profile for GET responses.
+ */
+export function mergeCoreProfileAddressIntoLocal(localProfile, coreBusiness) {
+  if (!coreBusiness || typeof coreBusiness !== 'object') return localProfile
+  const coreBp = coreBusiness.businessProfile
+  if (!coreBp || typeof coreBp !== 'object') return localProfile
+  const flat = flatAddressFromCoreBusinessProfile(coreBp)
+  if (!flat) return localProfile
+  const base = localProfile && typeof localProfile === 'object' ? { ...localProfile } : {}
+  const hasAny =
+    trimOrEmpty(flat.street) ||
+    trimOrEmpty(flat.city) ||
+    trimOrEmpty(flat.provinceState) ||
+    trimOrEmpty(flat.postalCode) ||
+    (flat.country && flat.country !== 'US')
+  if (hasAny) Object.assign(base, flat)
+  return base
+}
+
+/**
+ * Build `businessProfile` JSON for PATCH /api/businesses/:id/profile (nested address + optional fields).
+ * @param {BusinessProfileInput} mergedProfile
+ * @returns {Record<string, unknown>}
+ */
+export function mergedLocalProfileToCoreBusinessProfileBody(mergedProfile) {
+  const p = mergedProfile && typeof mergedProfile === 'object' ? mergedProfile : {}
+  const street = trimOrEmpty(p.street)
+  const street2 = trimOrEmpty(p.street2)
+  const city = trimOrEmpty(p.city)
+  const province = trimOrEmpty(p.provinceState)
+  const postalCode = trimOrEmpty(p.postalCode)
+  const country = trimOrEmpty(p.country).toUpperCase() || 'US'
+  const streetCombined = [street, street2].filter(Boolean).join(', ')
+  const formattedParts = [street, street2, city, province, postalCode, country].filter(Boolean)
+  const formattedLine = formattedParts.length ? formattedParts.join(', ') : ''
+
+  /** @type {Record<string, string>} */
+  const address = {}
+  if (streetCombined) address.street = streetCombined
+  if (city) address.city = city
+  if (province) address.province = province
+  if (postalCode) address.postalCode = postalCode
+  if (country) address.country = country
+  if (formattedLine) address.formattedLine = formattedLine
+
+  /** @type {Record<string, unknown>} */
+  const businessProfile = {}
+  if (Object.keys(address).length > 0) {
+    businessProfile.address = address
+  }
+
+  const phone = trimOrEmpty(p.phone)
+  const email = trimOrEmpty(p.email)
+  const description = trimOrEmpty(p.description)
+  const website = trimOrEmpty(p.website)
+  if (phone) businessProfile.phone = phone
+  if (email) businessProfile.email = email
+  if (description) businessProfile.description = description
+  if (website) businessProfile.website = website
+
+  if (p.social && typeof p.social === 'object') {
+    businessProfile.social = p.social
+  }
+  if (p.weeklyHours && typeof p.weeklyHours === 'object') {
+    businessProfile.weeklyHours = p.weeklyHours
+  }
+
+  return businessProfile
+}
+
 export function formatAddressLines(profile) {
   if (!profile) return []
   const lines = []

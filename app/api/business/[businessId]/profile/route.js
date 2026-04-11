@@ -7,8 +7,13 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME } from '@/lib/schemas/business'
-import { parseBusinessProfileBody, normalizeBusinessLogo } from '@/lib/businessProfile'
+import {
+  parseBusinessProfileBody,
+  normalizeBusinessLogo,
+  mergeCoreProfileAddressIntoLocal
+} from '@/lib/businessProfile'
 import { sanitizeGooglePlacesForPublic } from '@/lib/googlePlaces'
+import { getCoreBusinessRecord, patchCoreBusinessProfile } from '@/lib/coreApiBusinessProfile'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,40 +32,20 @@ async function connect() {
 async function verifyOwner(request, database, businessId) {
   const auth = request.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
-  if (!token) return { error: 'Authentication required', status: 401, userId: null }
+  if (!token) return { error: 'Authentication required', status: 401, userId: null, user: null }
   const jwt = (await import('jsonwebtoken')).default
   let payload
   try {
     payload = jwt.verify(token, env.JWT_SECRET)
   } catch {
-    return { error: 'Invalid or expired token', status: 401, userId: null }
+    return { error: 'Invalid or expired token', status: 401, userId: null, user: null }
   }
   const business = await database.collection(COLLECTION_NAME).findOne({ businessId })
-  if (!business) return { error: 'Business not found', status: 404, userId: null }
-  if (business.ownerUserId !== payload.sub) return { error: 'Access denied', status: 403, userId: null }
-  return { business, userId: payload.sub }
-}
-
-async function syncCoreApiProfile(businessId, profile) {
-  const baseUrl = (env.CORE_API_BASE_URL || '').replace(/\/$/, '')
-  const apiKey = env.BOOK8_CORE_API_KEY || ''
-  if (!baseUrl || !apiKey) return
-  try {
-    const res = await fetch(`${baseUrl}/api/business/${encodeURIComponent(businessId)}/profile`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-book8-api-key': apiKey
-      },
-      body: JSON.stringify({ businessProfile: profile }),
-      cache: 'no-store'
-    })
-    if (!res.ok) {
-      console.warn('[business/profile] core-api PATCH non-OK:', res.status)
-    }
-  } catch (e) {
-    console.warn('[business/profile] core-api sync failed:', e?.message || e)
-  }
+  if (!business) return { error: 'Business not found', status: 404, userId: null, user: null }
+  if (business.ownerUserId !== payload.sub) return { error: 'Access denied', status: 403, userId: null, user: null }
+  const user = await database.collection('users').findOne({ id: payload.sub })
+  if (!user) return { error: 'User not found', status: 404, userId: null, user: null }
+  return { business, userId: payload.sub, user }
 }
 
 export async function GET(request, { params }) {
@@ -121,12 +106,38 @@ export async function PATCH(request, { params }) {
     const preservedLogo = normalizeBusinessLogo(existingProfile.logo)
     if (preservedLogo) mergedProfile.logo = preservedLogo
 
+    const apiKey = env.BOOK8_CORE_API_KEY || ''
+    if (apiKey) {
+      const coreResult = await patchCoreBusinessProfile(businessId, auth.user?.email, mergedProfile)
+      if (!coreResult.ok) {
+        const status = coreResult.status
+        let message = coreResult.error
+        if (status === 402) {
+          message =
+            message ||
+            'Your plan or trial does not allow this update. Upgrade or fix billing to continue.'
+        }
+        if (status === 403) {
+          message = message || 'You do not have permission to update this business profile.'
+        }
+        if (status === 401) {
+          message =
+            message ||
+            'Could not verify your account with the booking service. Sign in again, or use the same email as on file for this business.'
+        }
+        return NextResponse.json(
+          { ok: false, error: message, code: coreResult.code },
+          { status: status >= 400 && status < 600 ? status : 502 }
+        )
+      }
+    } else {
+      console.warn('[business/profile PATCH] BOOK8_CORE_API_KEY not set; saving to Mongo only')
+    }
+
     await database.collection(COLLECTION_NAME).updateOne(
       { businessId },
       { $set: { businessProfile: mergedProfile, updatedAt: new Date() } }
     )
-
-    void syncCoreApiProfile(businessId, mergedProfile)
 
     return NextResponse.json({ ok: true, businessProfile: mergedProfile })
   } catch (e) {
