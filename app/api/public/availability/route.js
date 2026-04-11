@@ -87,6 +87,20 @@ async function getGoogleFreeBusy(owner, startDate, endDate, selectedCalendarIds,
   }
 }
 
+function isRecoverableCalendarError(err) {
+  if (!err) return false
+  const code = err.code || err.error
+  if (
+    code === 'GOOGLE_INVALID_GRANT' ||
+    code === 'GOOGLE_CALENDAR_NOT_CONNECTED' ||
+    code === 'GOOGLE_TOKEN_EXPIRED'
+  ) {
+    return true
+  }
+  if (err.status === 401) return true
+  return false
+}
+
 function isSlotBusy(slotStart, slotEnd, busySlots) {
   for (const busy of busySlots) {
     const busyStart = new Date(busy.start)
@@ -437,29 +451,47 @@ export async function GET(request) {
     }
     
     const freeBusyResult = await getGoogleFreeBusy(owner, startOfDay, endOfDay, selectedCalendarIds, debugContext)
-    
-    // If there's a Google error, return it to the client with consistent format
+
+    let busyBlocks = []
+    let calendarSyncWarning = false
+
     if (freeBusyResult.error) {
-      return NextResponse.json({
-        ok: false,
-        code: freeBusyResult.error.code,
-        message: freeBusyResult.error.message,
-        hint: freeBusyResult.error.hint,
-        error: freeBusyResult.error.message
-      }, { 
-        status: 401,
-        headers: {
-          'X-RateLimit-Limit': '10',
-          'X-RateLimit-Remaining': rateLimit.remaining.toString()
-        }
-      })
+      if (isRecoverableCalendarError(freeBusyResult.error)) {
+        const bizLabel = business?.businessId || business?.id || 'n/a'
+        console.warn(
+          `[public-availability] Calendar sync unavailable for business=${bizLabel} handle=${handle} error=${freeBusyResult.error.code || freeBusyResult.error.error || 'unknown'}. Falling back to working-hours slots.`
+        )
+        busyBlocks = []
+        calendarSyncWarning = true
+      } else {
+        console.error(
+          `[public-availability] Hard calendar error for business=${business?.businessId || business?.id || 'n/a'}`,
+          freeBusyResult.error
+        )
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'calendar_service_error',
+            message: 'Unable to check calendar at this time.'
+          },
+          {
+            status: 500,
+            headers: {
+              'X-RateLimit-Limit': '10',
+              'X-RateLimit-Remaining': rateLimit.remaining.toString()
+            }
+          }
+        )
+      }
+    } else {
+      busyBlocks = freeBusyResult.busy || []
     }
 
     // Filter out busy slots
     let availableSlots = slots.filter(slot => {
       const slotStart = new Date(slot.start)
       const slotEnd = new Date(slot.end)
-      return !isSlotBusy(slotStart, slotEnd, freeBusyResult.busy)
+      return !isSlotBusy(slotStart, slotEnd, busyBlocks)
     })
 
     if (business && providerId) {
@@ -483,6 +515,7 @@ export async function GET(request) {
             timezone: guestTz,
             ownerName: ownerName || owner.name || handle,
             businessName: business?.name || ownerName || owner.name || null,
+            calendarSyncWarning,
             settings: {
               duration: durationMin,
               buffer: bufferMin,
@@ -514,6 +547,7 @@ export async function GET(request) {
       timezone: guestTz,
       ownerName: ownerName || owner.name || handle,
       businessName: business?.name || ownerName || owner.name || null,
+      calendarSyncWarning,
       settings: {
         duration: durationMin,
         buffer: bufferMin,
