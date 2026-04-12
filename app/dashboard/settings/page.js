@@ -10,7 +10,7 @@ import TimeZonePicker from '@/components/TimeZonePicker'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { ArrowLeft, Loader2, Settings, Calendar, CreditCard, Globe, Users, Shield, Camera } from 'lucide-react'
+import { ArrowLeft, Loader2, Settings, Calendar, CreditCard, Globe, Users, Shield, Camera, LineChart } from 'lucide-react'
 import { isValidIanaTimeZone } from '@/lib/timezones'
 import { PRIMARY_LANGUAGE_OPTIONS } from '@/lib/primary-languages'
 
@@ -215,6 +215,18 @@ function SettingsContent() {
               <Link href="/dashboard/settings/billing">
                 <CreditCard className="h-4 w-4 mr-2" />
                 Billing
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link
+                href={
+                  selectedBusinessId
+                    ? `/dashboard/insights?businessId=${encodeURIComponent(selectedBusinessId)}`
+                    : '/dashboard/insights'
+                }
+              >
+                <LineChart className="h-4 w-4 mr-2" />
+                Revenue insights
               </Link>
             </Button>
           </CardContent>

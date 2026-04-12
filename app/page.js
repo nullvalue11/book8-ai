@@ -17,7 +17,7 @@ import { trFormat } from "@/lib/translations";
 import DataPrivacy from "./(home)/DataPrivacy";
 import SocialMediaLinks from "./components/SocialMediaLinks";
 import ThemeToggle from "@/components/ThemeToggle";
-import { QrCode, Share2, Settings, ExternalLink, Check, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2, Star, ListTodo, LayoutGrid } from "lucide-react";
+import { QrCode, Share2, Settings, ExternalLink, Check, Lock, CreditCard, Building2, Sparkles, Crown, Phone, Calendar, Activity, CheckCircle2, XCircle, Loader2, Star, ListTodo, LayoutGrid, LineChart } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import UpgradePrompt from "./components/UpgradePrompt";
 import { TrialGateProvider } from "./components/TrialGateProvider";
@@ -2385,6 +2385,20 @@ function HomeContent(props) {
                   >
                     <Star className="w-4 h-4 mr-2" />
                     Reviews
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() =>
+                      primaryBusinessId
+                        ? router.push(
+                            `/dashboard/insights?businessId=${encodeURIComponent(primaryBusinessId)}`
+                          )
+                        : router.push('/dashboard/insights')
+                    }
+                  >
+                    <LineChart className="w-4 h-4 mr-2" />
+                    Revenue insights
                   </Button>
                   <Button
                     variant="outline"
