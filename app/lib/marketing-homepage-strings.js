@@ -130,7 +130,7 @@ export const homepageByLocale = {
     pricingCallFootnote: 'AI phone agent minutes are metered at $0.10 CAD/min. Usage is tracked automatically.',
     landingStarterPlanNote: 'Billed monthly after signup. No free trial on Starter.',
     landingEnterprisePlanNote: 'Custom billing, contracts, and annual options — contact us for details.',
-    footerCopyright: '© {year} 11111221 Canada Inc. All rights reserved.',
+    footerCopyright: '© {year} Book8. All rights reserved.',
     footerSupportEmail: 'support@book8.io',
     footerSupportLabel: 'Support',
 
@@ -416,7 +416,7 @@ export const homepageByLocale = {
       'Les minutes d’agent téléphonique IA sont facturées à 0,10 $ CAD/min. La consommation est suivie automatiquement.',
     landingStarterPlanNote: 'Facturation mensuelle après inscription. Pas d’essai gratuit sur Starter.',
     landingEnterprisePlanNote: 'Facturation personnalisée et options annuelles — contactez-nous.',
-    footerCopyright: '© {year} 11111221 Canada Inc. Tous droits réservés.',
+    footerCopyright: '© {year} Book8. Tous droits réservés.',
     footerSupportEmail: 'support@book8.io',
     footerSupportLabel: 'Assistance',
 
@@ -702,7 +702,7 @@ export const homepageByLocale = {
       'Los minutos del agente telefónico IA se facturan a 0,10 CAD/min. El uso se contabiliza automáticamente.',
     landingStarterPlanNote: 'Facturación mensual tras el registro. Sin prueba gratis en Starter.',
     landingEnterprisePlanNote: 'Facturación y contratos a medida — contáctenos.',
-    footerCopyright: '© {year} 11111221 Canada Inc. Todos los derechos reservados.',
+    footerCopyright: '© {year} Book8. Todos los derechos reservados.',
     footerSupportEmail: 'support@book8.io',
     footerSupportLabel: 'Soporte',
 
@@ -982,7 +982,7 @@ export const homepageByLocale = {
       'دقائق وكيل الهاتف الذكي تُقاس بـ 0.10 دولار كندي/الدقيقة. يتم تتبع الاستخدام تلقائيًا.',
     landingStarterPlanNote: 'فوترة شهرية بعد التسجيل. لا تجربة مجانية على Starter.',
     landingEnterprisePlanNote: 'فوترة وعقود مخصصة — تواصل معنا.',
-    footerCopyright: '© {year} 11111221 Canada Inc. جميع الحقوق محفوظة.',
+    footerCopyright: '© {year} Book8. جميع الحقوق محفوظة.',
     footerSupportEmail: 'support@book8.io',
     footerSupportLabel: 'الدعم',
 

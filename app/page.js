@@ -1471,7 +1471,7 @@ function HomeContent(props) {
                 </nav>
               </div>
               <p className="text-white/40 text-sm text-center border-t border-white/5 pt-6">
-                © {new Date().getFullYear()} Book8-AI Inc. All rights reserved.
+                © {new Date().getFullYear()} Book8. All rights reserved.
               </p>
             </div>
           </div>

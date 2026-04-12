@@ -23,7 +23,7 @@ export default function TermsPage() {
             <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
               <span className="text-white text-xs font-bold">B8</span>
             </div>
-            <span className="text-white font-semibold">Book8-AI</span>
+            <span className="text-white font-semibold">Book8</span>
           </div>
         </div>
       </header>
@@ -34,17 +34,26 @@ export default function TermsPage() {
           <h1 className="text-4xl font-bold text-white mb-2">Terms and Conditions</h1>
           <p className="text-zinc-400 text-sm mb-8">Last Updated: March 17, 2026</p>
 
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8 space-y-3">
+            <p className="text-zinc-300 m-0">
+              Book8 is a trade name of 11111221 Canada INC., a corporation incorporated in Ontario, Canada.
+            </p>
+            <p className="text-zinc-300 m-0">
+              All references to &quot;Book8,&quot; &quot;we,&quot; &quot;us,&quot; and &quot;our&quot; in these Terms refer to 11111221 Canada INC. operating as Book8.
+            </p>
+          </div>
+
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-4">1. Agreement to Terms</h2>
             <p className="text-zinc-300">
-              By accessing or using Book8-AI (&quot;Service&quot;), operated by 11111221 Canada INC. (&quot;Book8-AI,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), you agree to be bound by these Terms and Conditions. If you do not agree, do not use the Service.
+              By accessing or using Book8 (&quot;Service&quot;), you agree to be bound by these Terms and Conditions. If you do not agree, do not use the Service.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-4">2. Description of Service</h2>
             <p className="text-zinc-300">
-              Book8-AI is an AI-powered voice booking and scheduling platform. Businesses subscribe to receive an AI phone agent that handles appointment bookings, sends SMS and email confirmations, and manages appointment reminders on their behalf.
+              Book8 is an AI-powered voice booking and scheduling platform. Businesses subscribe to receive an AI phone agent that handles appointment bookings, sends SMS and email confirmations, and manages appointment reminders on their behalf.
             </p>
           </section>
 
@@ -73,7 +82,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-4">5. SMS and Voice Communications</h2>
             <p className="text-zinc-300">
-              By using Book8-AI, you and your customers consent to receive communications as follows:
+              By using Book8, you and your customers consent to receive communications as follows:
             </p>
 
             <h3 className="text-xl font-semibold text-white mt-6 mb-3">5.1 For Business Subscribers</h3>
@@ -98,7 +107,7 @@ export default function TermsPage() {
 
             <h3 className="text-xl font-semibold text-white mt-6 mb-3">5.3 Voice Calls</h3>
             <ul className="list-disc list-inside text-zinc-300 space-y-2">
-              <li>Inbound calls to Book8-AI phone numbers are handled by an AI voice agent.</li>
+              <li>Inbound calls to Book8 phone numbers are handled by an AI voice agent.</li>
               <li>Calls may be recorded and transcribed for quality assurance and booking accuracy.</li>
               <li>Call recordings are retained for up to 90 days.</li>
             </ul>
@@ -121,7 +130,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-4">7. Intellectual Property</h2>
             <ul className="list-disc list-inside text-zinc-300 space-y-2">
-              <li>The Service, including its design, features, and content, is owned by Book8-AI and protected by intellectual property laws.</li>
+              <li>The Service, including its design, features, and content, is owned by Book8 and protected by intellectual property laws.</li>
               <li>You retain ownership of your business data and customer information.</li>
               <li>You grant us a limited license to use your data solely to provide the Service.</li>
             </ul>
@@ -164,7 +173,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-4">11. Indemnification</h2>
             <p className="text-zinc-300">
-              You agree to indemnify and hold harmless Book8-AI, its officers, directors, employees, and agents from any claims, damages, or expenses arising from your use of the Service or violation of these Terms.
+              You agree to indemnify and hold harmless Book8, its officers, directors, employees, and agents from any claims, damages, or expenses arising from your use of the Service or violation of these Terms.
             </p>
           </section>
 
@@ -200,12 +209,15 @@ export default function TermsPage() {
               If you have questions about these Terms, contact us:
             </p>
             <p className="text-zinc-300">
-              <strong className="text-white">Book8-AI Inc.</strong><br />
+              <strong className="text-white">Book8</strong><br />
               Email: <a href="mailto:support@book8.io" className="text-brand-400 hover:text-brand-300">support@book8.io</a><br />
               Mailing Address:<br />
-              Book8-AI<br />
+              Book8<br />
               Ottawa, Ontario<br />
               Canada
+            </p>
+            <p className="text-zinc-500 text-sm mt-4 mb-0">
+              Book8 is a trade name of 11111221 Canada INC.
             </p>
           </section>
         </div>
