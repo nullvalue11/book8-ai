@@ -50,12 +50,13 @@ export async function GET(request) {
     }
 
     const baseUrl = (env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com').replace(/\/$/, '')
-    const apiKey = env.BOOK8_CORE_API_KEY || ''
 
+    // Do NOT send BOOK8_CORE_API_KEY here: core-api returns only active services for unauthenticated
+    // GET /services. With the API key, the same endpoint returns *all* services (dashboard use),
+    // which would show deactivated services on the public booking page (book8.io/b/...).
     const res = await fetch(`${baseUrl}/api/businesses/${business.businessId}/services`, {
       headers: {
-        'Content-Type': 'application/json',
-        ...(apiKey && { 'x-book8-api-key': apiKey })
+        'Content-Type': 'application/json'
       },
       cache: 'no-store'
     })
