@@ -22,7 +22,9 @@ export default function GoogleReviews({ handle }) {
     fetch(`/api/public/google-reviews?handle=${encodeURIComponent(h)}`)
       .then((r) => r.json())
       .then((d) => {
-        if (!cancelled && d?.ok) setData(d)
+        if (!cancelled && d?.ok) {
+          setData(d)
+        }
       })
       .catch(() => {})
       .finally(() => {
@@ -33,10 +35,15 @@ export default function GoogleReviews({ handle }) {
     }
   }, [handle])
 
-  if (loading || !data || data.rating == null) return null
+  if (loading || !data || data.ok === false) return null
 
   const total = typeof data.userRatingsTotal === 'number' ? data.userRatingsTotal : 0
   const raw = Array.isArray(data.reviews) ? data.reviews : []
+  const hasRating = data.rating != null && Number(data.rating) > 0
+  const hasSnippets = raw.length > 0
+  if (!hasRating && !hasSnippets && total <= 0) return null
+
+  const mapsUrl = typeof data.googleMapsUrl === 'string' && /^https:\/\//i.test(data.googleMapsUrl) ? data.googleMapsUrl : null
   /** BOO-89B: same ordering as API; keeps UI correct if payload order ever changes */
   const reviews = sortGoogleReviewsForPublicDisplay(raw).slice(0, 5)
 
@@ -46,22 +53,31 @@ export default function GoogleReviews({ handle }) {
         <div>
           <h2 className="text-2xl font-bold text-white">What customers are saying</h2>
           <div className="flex flex-wrap items-center gap-2 mt-1">
-            <div className="flex" aria-hidden>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Star
-                  key={n}
-                  className={`w-5 h-5 ${
-                    n <= Math.round(data.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-zinc-500'
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="font-semibold text-white">{Number(data.rating).toFixed(1)}</span>
-            <span className="text-gray-400">· {total} Google reviews</span>
+            {hasRating ? (
+              <>
+                <div className="flex" aria-hidden>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star
+                      key={n}
+                      className={`w-5 h-5 ${
+                        n <= Math.round(Number(data.rating)) ? 'fill-yellow-400 text-yellow-400' : 'text-zinc-500'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="font-semibold text-white">{Number(data.rating).toFixed(1)}</span>
+              </>
+            ) : null}
+            <span className="text-gray-400">
+              {hasRating ? '· ' : ''}
+              {total} Google {total === 1 ? 'review' : 'reviews'}
+            </span>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Showing recent, highly rated reviews first
-          </p>
+          {hasSnippets ? (
+            <p className="text-xs text-gray-500 mt-1">Showing recent, highly rated reviews first</p>
+          ) : mapsUrl ? (
+            <p className="text-xs text-gray-500 mt-1">Read more reviews on Google.</p>
+          ) : null}
         </div>
         <span className="text-sm text-gray-500 font-medium">Google</span>
       </div>
@@ -103,6 +119,19 @@ export default function GoogleReviews({ handle }) {
 
       {total > 5 ? (
         <p className="text-center text-sm text-gray-500 mt-4">Showing {reviews.length} of {total} reviews</p>
+      ) : null}
+
+      {mapsUrl ? (
+        <p className="text-center mt-6">
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-violet-400 hover:text-violet-300 text-sm font-medium"
+          >
+            View listing on Google Maps
+          </a>
+        </p>
       ) : null}
     </section>
   )

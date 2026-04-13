@@ -43,6 +43,33 @@ function publicJson(cache) {
   }
 }
 
+/**
+ * When there is no `placeId` (or Places Details failed), still show stars/count from
+ * `business.googlePlaces` if onboarding/sync stored them — otherwise the footer block is empty.
+ */
+function embeddedGoogleSummaryFromBusiness(business) {
+  const g = business?.googlePlaces
+  if (!g || typeof g !== 'object') return null
+  const rating = typeof g.rating === 'number' && g.rating > 0 ? g.rating : null
+  const totalRaw = g.reviewCount ?? g.userRatingCount ?? g.user_ratings_total ?? g.userRatingsTotal
+  const userRatingsTotal = typeof totalRaw === 'number' && totalRaw >= 0 ? Math.floor(totalRaw) : 0
+  if (rating == null && userRatingsTotal === 0) return null
+  return {
+    rating,
+    userRatingsTotal,
+    reviews: [],
+    lastFetchedAt: new Date()
+  }
+}
+
+function googleMapsUrlFromBusiness(business) {
+  const g = business?.googlePlaces
+  if (!g || typeof g !== 'object') return null
+  const u = g.googleMapsUrl || g.url
+  if (typeof u === 'string' && /^https:\/\//i.test(u)) return u.slice(0, 2048)
+  return null
+}
+
 export async function GET(request) {
   try {
     const url = new URL(request.url)
@@ -69,13 +96,17 @@ export async function GET(request) {
         business.googlePlaces.placeId.trim()) ||
       ''
 
+    const embedded = embeddedGoogleSummaryFromBusiness(business)
+    const mapsUrl = googleMapsUrlFromBusiness(business)
+
     if (!placeId) {
-      return NextResponse.json({ ok: true, ...publicJson(null) })
+      const payload = embedded ? publicJson(embedded) : publicJson(null)
+      return NextResponse.json({ ok: true, ...payload, googleMapsUrl: mapsUrl })
     }
 
     const cached = business.googleReviewsCache
     if (!forceRefresh && cacheIsFresh(cached)) {
-      return NextResponse.json({ ok: true, ...publicJson(cached) })
+      return NextResponse.json({ ok: true, ...publicJson(cached), googleMapsUrl: mapsUrl })
     }
 
     const fresh = await fetchFreshGoogleReviewsForPlaceId(placeId)
@@ -87,14 +118,15 @@ export async function GET(request) {
           { $set: { googleReviewsCache: fresh, updatedAt: new Date() } }
         )
       }
-      return NextResponse.json({ ok: true, ...publicJson(fresh) })
+      return NextResponse.json({ ok: true, ...publicJson(fresh), googleMapsUrl: mapsUrl })
     }
 
     if (!forceRefresh && cached && !isPartialGoogleReviewsPayload(cached)) {
-      return NextResponse.json({ ok: true, ...publicJson(cached) })
+      return NextResponse.json({ ok: true, ...publicJson(cached), googleMapsUrl: mapsUrl })
     }
 
-    return NextResponse.json({ ok: true, ...publicJson(null) })
+    const fallbackPayload = embedded ? publicJson(embedded) : publicJson(null)
+    return NextResponse.json({ ok: true, ...fallbackPayload, googleMapsUrl: mapsUrl })
   } catch (e) {
     console.error('[public/google-reviews]', e)
     return NextResponse.json({ ok: false, error: 'Internal error' }, { status: 500 })
