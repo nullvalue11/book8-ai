@@ -60,6 +60,12 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.12 } }
 }
 
+/** Ambient hero background (book8.io) — Cloudinary; poster for first paint + prefers-reduced-motion */
+const HERO_VIDEO_MP4 =
+  'https://res.cloudinary.com/dajigxues/video/upload/v1776042404/1776038788329-1wlqn44ghbd_vhsc0u.mp4'
+const HERO_VIDEO_POSTER =
+  'https://res.cloudinary.com/dajigxues/image/upload/v1776042436/Flow-image-gemini_y7rmvc.png'
+
 function Aurora() {
   return (
     <div
@@ -410,9 +416,36 @@ export default function LandingPage() {
         ) : null}
       </header>
 
-      {/* Hero */}
-      <section className="relative pt-28 pb-16 md:pt-36 md:pb-24 px-4" dir={isRtl ? 'rtl' : 'ltr'}>
-        <div className="mx-auto max-w-6xl">
+      {/* Hero — ambient video only in this section (Option A: all breakpoints) */}
+      <section
+        className="relative isolate overflow-hidden bg-[#0B1020] pt-28 pb-16 md:pt-36 md:pb-24 px-4"
+        dir={isRtl ? 'rtl' : 'ltr'}
+      >
+        <video
+          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover motion-reduce:hidden"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          poster={HERO_VIDEO_POSTER}
+          aria-hidden
+        >
+          <source src={HERO_VIDEO_MP4} type="video/mp4" />
+        </video>
+        {/* Decorative static fallback when user prefers reduced motion (same asset as video poster) */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={HERO_VIDEO_POSTER}
+          alt=""
+          className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full object-cover motion-reduce:block"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-[#0B1020]/60 via-[#0B1020]/40 to-[#0B1020]/70"
+          aria-hidden
+        />
+        <div className="relative z-10 mx-auto max-w-6xl">
           <motion.div
             className="text-center max-w-3xl mx-auto mb-12 md:mb-16"
             initial="hidden"
