@@ -422,7 +422,7 @@ export default function LandingPage() {
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         <video
-          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover motion-reduce:hidden"
+          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover opacity-[0.12] motion-reduce:hidden"
           autoPlay
           loop
           muted
@@ -438,11 +438,11 @@ export default function LandingPage() {
         <img
           src={HERO_VIDEO_POSTER}
           alt=""
-          className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full object-cover motion-reduce:block"
+          className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full object-cover opacity-[0.12] motion-reduce:block"
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-[#0B1020]/60 via-[#0B1020]/40 to-[#0B1020]/70"
+          className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-[#0B1020]/85 via-[#0B1020]/85 to-[#0B1020]/88"
           aria-hidden
         />
         <div className="relative z-10 mx-auto max-w-6xl">
