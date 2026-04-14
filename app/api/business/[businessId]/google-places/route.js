@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
+import { safeCompare } from '@/lib/auth-utils'
 import { COLLECTION_NAME } from '@/lib/schemas/business'
 import { sanitizeGooglePlacesForPublic, placeDetailsToStoredGooglePlaces } from '@/lib/googlePlaces'
 import {
@@ -65,9 +66,17 @@ export async function POST(request, { params }) {
     }
 
     const database = await connect()
-    const auth = await verifyOwner(request, database, businessId)
-    if (auth.error) {
-      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+
+    if (authorizedByInternalSecret(request)) {
+      const biz = await database.collection(COLLECTION_NAME).findOne({ businessId })
+      if (!biz) {
+        return NextResponse.json({ ok: false, error: 'Business not found' }, { status: 404 })
+      }
+    } else {
+      const auth = await verifyOwner(request, database, businessId)
+      if (auth.error) {
+        return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+      }
     }
 
     if (!corePlacesConfigured()) {
