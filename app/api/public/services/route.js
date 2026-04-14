@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
+import { GOOGLE_MAPS_BROWSER_KEY } from '@/lib/publicRuntimeConfig'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 import { findBusinessByPublicHandle } from '@/lib/public-business-lookup'
 import {
@@ -106,8 +107,8 @@ export async function GET(request) {
       services,
       businessId: business.businessId,
       googlePlaceId,
-      /** BOO-106B: domain-restricted key for Static Maps img on /b/[handle] (safe to expose) */
-      mapsBrowserKey: env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY || null,
+      /** BOO-106B: domain-restricted key for Static Maps img on /b/[handle] (same as publicRuntimeConfig GOOGLE_MAPS_BROWSER_KEY) */
+      mapsBrowserKey: GOOGLE_MAPS_BROWSER_KEY || null,
       businessName: business.name || null,
       category: business.category || null,
       city: business.city || null,
