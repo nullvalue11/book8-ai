@@ -46,6 +46,21 @@ async function verifyOwner(request, database, businessId) {
   return { error: null, status: 200, business }
 }
 
+/**
+ * Ops / internal re-sync: x-book8-internal-secret must match INTERNAL_API_SECRET or OPS_INTERNAL_SECRET.
+ */
+function authorizedByInternalSecret(request) {
+  const raw = request.headers.get('x-book8-internal-secret')
+  if (raw == null || typeof raw !== 'string') return false
+  const header = raw.trim()
+  if (!header) return false
+  const internal = env.INTERNAL_API_SECRET
+  const ops = env.OPS_INTERNAL_SECRET
+  if (internal && safeCompare(header, internal)) return true
+  if (ops && safeCompare(header, ops)) return true
+  return false
+}
+
 export async function POST(request, { params }) {
   try {
     const { businessId } = params
