@@ -8,6 +8,10 @@ import { MongoClient } from 'mongodb'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME } from '@/lib/schemas/business'
 import { sanitizeGooglePlacesForPublic, placeDetailsToStoredGooglePlaces } from '@/lib/googlePlaces'
+import {
+  coverPhotoFromSyncPayload,
+  ensureCoverPhotoCached
+} from '@/lib/placeCoverPhotoCache'
 import { corePlacesBaseUrl, corePlacesConfigured, corePlacesInternalHeaders } from '@/api/places/_lib/core-places'
 
 export const runtime = 'nodejs'
@@ -73,7 +77,7 @@ export async function POST(request, { params }) {
     const base = corePlacesBaseUrl()
     const headersJson = corePlacesInternalHeaders(true)
 
-    /** @type {ReturnType<typeof sanitizeGooglePlacesForPublic>} */
+    /** @type {ReturnType<typeof sanitizeGooglePlacesForPublic> | null} */
     let googlePlaces = null
 
     const syncUrl = `${base}/api/businesses/${encodeURIComponent(businessId)}/sync-google-places`
@@ -88,6 +92,12 @@ export async function POST(request, { params }) {
         const d = await syncRes.json().catch(() => ({}))
         if (d.googlePlaces && typeof d.googlePlaces === 'object') {
           googlePlaces = sanitizeGooglePlacesForPublic(d.googlePlaces)
+          const sc = coverPhotoFromSyncPayload(
+            /** @type {Record<string, unknown>} */ (d.googlePlaces).coverPhoto
+          )
+          if (googlePlaces && sc) {
+            googlePlaces = { ...googlePlaces, coverPhoto: sc }
+          }
         }
       }
     } catch {
@@ -119,6 +129,12 @@ export async function POST(request, { params }) {
       return NextResponse.json({ ok: false, error: 'Could not load Google Places data' }, { status: 502 })
     }
 
+    if (!googlePlaces.placeId) {
+      googlePlaces = { ...googlePlaces, placeId }
+    }
+
+    googlePlaces = await ensureCoverPhotoCached(googlePlaces, businessId)
+
     await database.collection(COLLECTION_NAME).updateOne(
       { businessId },
       {
@@ -127,7 +143,8 @@ export async function POST(request, { params }) {
       }
     )
 
-    return NextResponse.json({ ok: true, googlePlaces })
+    const googlePlacesResponse = sanitizeGooglePlacesForPublic(googlePlaces) || googlePlaces
+    return NextResponse.json({ ok: true, googlePlaces: googlePlacesResponse })
   } catch (e) {
     console.error('[google-places POST]', e)
     return NextResponse.json({ ok: false, error: e.message || 'Server error' }, { status: 500 })

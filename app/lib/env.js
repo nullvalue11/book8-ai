@@ -149,6 +149,12 @@ function loadConfig() {
 
     /** Optional server key for Places Details (reviews on booking page). Core Places is tried first. BOO-81B */
     const GOOGLE_MAPS_API_KEY = getEnvVar('GOOGLE_MAPS_API_KEY', false, '')
+    /** BOO-106B: optional; browser-restricted key for Static Maps on public /b/[handle] */
+    const NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY = getEnvVar('NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY', false, '')
+    /** BOO-106B: cache Google Place cover photos (book8-business-<id>-cover) */
+    const CLOUDINARY_CLOUD_NAME = getEnvVar('CLOUDINARY_CLOUD_NAME', false, '')
+    const CLOUDINARY_API_KEY = getEnvVar('CLOUDINARY_API_KEY', false, '')
+    const CLOUDINARY_API_SECRET = getEnvVar('CLOUDINARY_API_SECRET', false, '')
     
     // Email Service (Resend)
     const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', true)
@@ -290,6 +296,12 @@ function loadConfig() {
       GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID || null,
       GOOGLE_CLIENT_SECRET: GOOGLE_CLIENT_SECRET || null,
       GOOGLE_MAPS_API_KEY: GOOGLE_MAPS_API_KEY ? String(GOOGLE_MAPS_API_KEY).trim() : null,
+      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY
+        ? String(NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY).trim()
+        : null,
+      CLOUDINARY_CLOUD_NAME: CLOUDINARY_CLOUD_NAME ? String(CLOUDINARY_CLOUD_NAME).trim() : null,
+      CLOUDINARY_API_KEY: CLOUDINARY_API_KEY ? String(CLOUDINARY_API_KEY).trim() : null,
+      CLOUDINARY_API_SECRET: CLOUDINARY_API_SECRET ? String(CLOUDINARY_API_SECRET).trim() : null,
       
       // Email
       RESEND_API_KEY,

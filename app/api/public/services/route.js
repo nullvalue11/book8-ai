@@ -93,10 +93,21 @@ export async function GET(request) {
       .toArray()
     const reviewsSummary = aggregatePublishedReviews(revRows, 100)
 
+    const googlePlaceId =
+      (typeof business.googlePlaceId === 'string' && business.googlePlaceId.trim()) ||
+      (business.googlePlaces &&
+        typeof business.googlePlaces === 'object' &&
+        typeof business.googlePlaces.placeId === 'string' &&
+        business.googlePlaces.placeId.trim()) ||
+      null
+
     return NextResponse.json({
       ok: true,
       services,
       businessId: business.businessId,
+      googlePlaceId,
+      /** BOO-106B: domain-restricted key for Static Maps img on /b/[handle] (safe to expose) */
+      mapsBrowserKey: env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY || null,
       businessName: business.name || null,
       category: business.category || null,
       city: business.city || null,

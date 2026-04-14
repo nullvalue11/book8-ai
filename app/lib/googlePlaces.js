@@ -136,6 +136,7 @@ export function sanitizeGooglePlacesForPublic(raw) {
       const ref =
         /** @type {Record<string, unknown>} */ (ph).reference ||
         /** @type {Record<string, unknown>} */ (ph).photoReference ||
+        /** @type {Record<string, unknown>} */ (ph).photo_reference ||
         /** @type {Record<string, unknown>} */ (ph).name
       if (typeof ref === 'string' && ref.trim()) {
         photos.push({ reference: ref.trim().slice(0, 512) })
@@ -143,20 +144,31 @@ export function sanitizeGooglePlacesForPublic(raw) {
     }
   }
 
-  const placeId = typeof p.placeId === 'string' ? p.placeId.slice(0, 256) : null
+  const placeId = typeof p.placeId === 'string' ? p.placeId.trim().slice(0, 256) : null
+
+  /** BOO-106B: public booking page — Cloudinary URL only (never raw Google photo URLs) */
+  let coverPhotoPublic = null
+  const coverRaw = p.coverPhoto && typeof p.coverPhoto === 'object' ? /** @type {Record<string, unknown>} */ (p.coverPhoto) : null
+  if (coverRaw && typeof coverRaw.cloudinaryUrl === 'string' && /^https:\/\//i.test(coverRaw.cloudinaryUrl)) {
+    coverPhotoPublic = { cloudinaryUrl: coverRaw.cloudinaryUrl.trim().slice(0, 2048) }
+  }
+
   if (
     !displayName &&
     rating == null &&
     !googleMapsUrl &&
     lat == null &&
     photos.length === 0 &&
-    !formattedAddress
+    !formattedAddress &&
+    !coverPhotoPublic
   ) {
+    if (placeId) return { placeId }
     return null
   }
 
   return {
     ...(placeId ? { placeId } : {}),
+    ...(coverPhotoPublic ? { coverPhoto: coverPhotoPublic } : {}),
     ...(displayName ? { displayName } : {}),
     ...(rating != null ? { rating } : {}),
     ...(reviewCount != null ? { reviewCount } : {}),

@@ -15,6 +15,8 @@ import { businessProfileHasPublicDisplay } from '@/lib/businessProfile'
 import { CATEGORY_NAMES } from '@/lib/constants/businessCategories'
 import StripeCardStep from '@/components/StripeCardStep'
 import { Switch } from '@/components/ui/switch'
+import CoverPhotoBanner from './CoverPhotoBanner'
+import BusinessMap from './BusinessMap'
 
 function toLocalYmd(d) {
   if (!d || !(d instanceof Date) || Number.isNaN(d.getTime())) return ''
@@ -82,6 +84,9 @@ export default function PublicBookingPage({ params }) {
   const [noShowProtection, setNoShowProtection] = useState(null)
   /** Sanitized subset from /api/public/services */
   const [googlePlaces, setGooglePlaces] = useState(null)
+  /** BOO-106B: top-level or nested place id for Places hero + map */
+  const [googlePlaceId, setGooglePlaceId] = useState(null)
+  const [mapsBrowserKey, setMapsBrowserKey] = useState('')
   /** BOO-57B: owner-uploaded portfolio photos */
   const [portfolio, setPortfolio] = useState([])
   const [portfolioFilter, setPortfolioFilter] = useState('all')
@@ -126,6 +131,12 @@ export default function PublicBookingPage({ params }) {
       (Array.isArray(g.photos) && g.photos.length > 0)
     )
   }, [googlePlaces])
+
+  /** BOO-106B: show cover + map strip when business is linked to Google Places */
+  const showPlaceHero = useMemo(
+    () => !!(googlePlaceId || (googlePlaces && typeof googlePlaces.placeId === 'string' && googlePlaces.placeId.trim())),
+    [googlePlaceId, googlePlaces]
+  )
 
   const portfolioCategories = useMemo(() => {
     const s = new Set()
@@ -337,6 +348,16 @@ export default function PublicBookingPage({ params }) {
         }
         if (!cancelled && res.ok && data.businessId) {
           setPublicBusinessId(String(data.businessId))
+        }
+        if (!cancelled && res.ok && data.googlePlaceId) {
+          setGooglePlaceId(String(data.googlePlaceId).trim())
+        } else if (!cancelled && res.ok) {
+          setGooglePlaceId(null)
+        }
+        if (!cancelled && res.ok && typeof data.mapsBrowserKey === 'string') {
+          setMapsBrowserKey(data.mapsBrowserKey)
+        } else if (!cancelled && res.ok) {
+          setMapsBrowserKey('')
         }
         if (!cancelled && res.ok) {
           setWaitlistEnabled(data.waitlistEnabled !== false)
@@ -1103,6 +1124,14 @@ export default function PublicBookingPage({ params }) {
       dir={language === 'ar' ? 'rtl' : 'ltr'}
       className="min-h-screen bg-gray-950 text-white dark"
     >
+      {/* BOO-106B: Google Places cover + title (only when place is linked) */}
+      {showPlaceHero ? (
+        <CoverPhotoBanner
+          coverImageUrl={googlePlaces?.coverPhoto?.cloudinaryUrl ?? null}
+          businessName={ownerName?.trim() || formatHandleAsDisplayName(handle)}
+          formattedAddress={googlePlaces?.formattedAddress ?? null}
+        />
+      ) : null}
       {/* Booking page is intentionally always-dark for brand consistency across all embedded contexts */}
       {/* BOO-57B: business portfolio first, then Google photos */}
       {filteredPortfolio.length > 0 ? (
@@ -1277,9 +1306,11 @@ export default function PublicBookingPage({ params }) {
               />
             ) : null}
             <div className="min-w-0">
+            {!showPlaceHero ? (
             <h1 className="text-2xl font-bold text-white">
               {ownerName?.trim() || formatHandleAsDisplayName(handle)}
             </h1>
+            ) : null}
             {googlePlaces?.rating ? (
               <div className="flex items-center gap-1.5 text-sm mt-1">
                 <span className="text-yellow-400" aria-hidden>
@@ -1496,6 +1527,14 @@ export default function PublicBookingPage({ params }) {
                 )}
               </section>
             )}
+
+            {showPlaceHero ? (
+              <BusinessMap
+                location={googlePlaces?.location}
+                formattedAddress={googlePlaces?.formattedAddress ?? null}
+                mapsApiKey={mapsBrowserKey}
+              />
+            ) : null}
 
             {providers.length > 0 && !servicesLoading && (
               <section className={language === 'ar' ? 'rtl:text-right' : ''}>
