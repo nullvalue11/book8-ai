@@ -22,6 +22,7 @@ import { normalizePrimaryLanguage } from '@/lib/primary-languages'
 import { getUiPlanLimits } from '@/lib/plan-features'
 import { resolveBusinessPlanKey } from '@/lib/subscription'
 import { parseBusinessProfileBody } from '@/lib/businessProfile'
+import { fireWelcomeEmailAsync } from '@/lib/welcomeEmail'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -340,7 +341,7 @@ export async function POST(request) {
           inheritedPlan
         )
 
-        await provisionOnCoreApi({
+        const provisioned = await provisionOnCoreApi({
           businessId,
           name: name.trim(),
           plan: inheritedPlan,
@@ -353,6 +354,9 @@ export async function POST(request) {
           stripeCustomerId: source.subscription?.stripeCustomerId ?? undefined,
           stripeSubscriptionId: source.subscription?.stripeSubscriptionId ?? undefined
         })
+        if (provisioned != null) {
+          fireWelcomeEmailAsync(database, businessId)
+        }
       }
     }
 

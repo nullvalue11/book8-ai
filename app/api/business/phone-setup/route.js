@@ -9,6 +9,7 @@ import {
   hasCoreApiInternalCredentials
 } from '@/lib/core-api-internal'
 import { slackOps } from '@/lib/slack-notifier'
+import { fireWelcomeEmailAsync } from '@/lib/welcomeEmail'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -423,6 +424,8 @@ export async function POST(request) {
       { businessId },
       { $set: mongoFields }
     )
+
+    fireWelcomeEmailAsync(database, businessId)
 
     return NextResponse.json({
       ok: true,
