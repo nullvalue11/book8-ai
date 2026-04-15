@@ -158,6 +158,12 @@ function loadConfig() {
     const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', true)
     const EMAIL_FROM = getEnvVar('EMAIL_FROM', false, 'Book8-AI <onboarding@resend.dev>')
     const EMAIL_REPLY_TO = getEnvVar('EMAIL_REPLY_TO', false, 'support@book8.ai')
+    /** BOO-109A: From address for welcome email. Default uses support@book8.io — that address/domain must be verified in Resend before production sends succeed. */
+    const WELCOME_EMAIL_FROM = getEnvVar(
+      'WELCOME_EMAIL_FROM',
+      false,
+      'Book8 Support <support@book8.io>'
+    )
     
     // Stripe (Payment Processing)
     const STRIPE_SECRET_KEY = getEnvVar('STRIPE_SECRET_KEY', true)
@@ -302,6 +308,7 @@ function loadConfig() {
       RESEND_API_KEY,
       EMAIL_FROM,
       EMAIL_REPLY_TO,
+      WELCOME_EMAIL_FROM,
       
       // Stripe
       STRIPE: hasStripe ? {

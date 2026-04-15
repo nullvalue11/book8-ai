@@ -149,7 +149,7 @@ export async function sendWelcomeEmailToBusiness(database, businessId, opts = {}
     const { Resend } = await import('resend')
     const resend = new Resend(env.RESEND_API_KEY)
     await resend.emails.send({
-      from: env.EMAIL_FROM,
+      from: env.WELCOME_EMAIL_FROM,
       to,
       reply_to: env.EMAIL_REPLY_TO,
       subject,
