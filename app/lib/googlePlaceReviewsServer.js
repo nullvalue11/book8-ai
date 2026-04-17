@@ -9,119 +9,14 @@ import {
   corePlacesConfigured,
   corePlacesInternalHeaders
 } from '@/api/places/_lib/core-places'
-import { sortGoogleReviewsForPublicDisplay } from '@/lib/googleReviewsSort'
+import {
+  normalizePlacesDetailsToReviewCache,
+  isPartialGoogleReviewsPayload
+} from '@/lib/googlePlaceReviewsNormalize'
+
+export { normalizePlacesDetailsToReviewCache, isPartialGoogleReviewsPayload }
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
-
-/**
- * Rating-only payload (no review count / no snippets) — wrong for BOO-82B: core often returns this
- * while legacy Details with `fields=rating,user_ratings_total,reviews` returns full data.
- */
-export function isPartialGoogleReviewsPayload(payload) {
-  if (!payload || typeof payload !== 'object') return true
-  const rating = payload.rating
-  const total = typeof payload.userRatingsTotal === 'number' ? payload.userRatingsTotal : 0
-  const revs = Array.isArray(payload.reviews) ? payload.reviews : []
-  if (rating == null) return revs.length === 0 && total === 0
-  if (total > 0) return false
-  if (revs.length > 0) return false
-  return true
-}
-
-/**
- * @param {Record<string, unknown>} x — one review from legacy or Places API (New)-shaped payload
- */
-function mapOneReviewRow(x) {
-  const o = x && typeof x === 'object' ? x : {}
-  let authorName =
-    typeof o.author_name === 'string'
-      ? o.author_name
-      : typeof o.authorName === 'string'
-        ? o.authorName
-        : ''
-  if (!authorName && o.authorAttribution && typeof o.authorAttribution === 'object') {
-    const d = /** @type {Record<string, unknown>} */ (o.authorAttribution).displayName
-    if (typeof d === 'string') authorName = d
-  }
-
-  let text = typeof o.text === 'string' ? o.text : ''
-  if (!text && o.text && typeof o.text === 'object') {
-    const inner = /** @type {Record<string, unknown>} */ (o.text).text
-    if (typeof inner === 'string') text = inner
-  }
-
-  let time = typeof o.time === 'number' ? o.time : 0
-  if (!time && typeof o.publishTime === 'string') {
-    const t = Date.parse(o.publishTime)
-    if (!Number.isNaN(t)) time = Math.floor(t / 1000)
-  }
-
-  const relativeTimeDescription =
-    typeof o.relative_time_description === 'string'
-      ? o.relative_time_description
-      : typeof o.relativeTimeDescription === 'string'
-        ? o.relativeTimeDescription
-        : typeof o.relativePublishTimeDescription === 'string'
-          ? o.relativePublishTimeDescription
-          : ''
-
-  let profilePhotoUrl =
-    typeof o.profile_photo_url === 'string'
-      ? o.profile_photo_url
-      : typeof o.profilePhotoUrl === 'string'
-        ? o.profilePhotoUrl
-        : ''
-  if (!profilePhotoUrl && o.authorAttribution && typeof o.authorAttribution === 'object') {
-    const uri = /** @type {Record<string, unknown>} */ (o.authorAttribution).photoUri
-    if (typeof uri === 'string') profilePhotoUrl = uri
-  }
-
-  const ratingN = typeof o.rating === 'number' ? o.rating : 0
-  return {
-    authorName,
-    rating: ratingN,
-    text,
-    time,
-    relativeTimeDescription,
-    profilePhotoUrl
-  }
-}
-
-/**
- * @param {unknown} raw — JSON from Places Details (legacy or core-wrapped)
- * @returns {{ rating: number | null, userRatingsTotal: number, reviews: object[], lastFetchedAt: Date } | null}
- */
-export function normalizePlacesDetailsToReviewCache(raw) {
-  if (!raw || typeof raw !== 'object') return null
-  const o = /** @type {Record<string, unknown>} */ (raw)
-  const result =
-    (o.result && typeof o.result === 'object' ? /** @type {Record<string, unknown>} */ (o.result) : null) ||
-    (o.place && typeof o.place === 'object' ? /** @type {Record<string, unknown>} */ (o.place) : null) ||
-    o
-
-  if (!result || typeof result !== 'object') return null
-
-  const rating = typeof result.rating === 'number' && result.rating > 0 ? result.rating : null
-  const totalRaw = result.user_ratings_total ?? result.userRatingCount
-  const userRatingsTotal = typeof totalRaw === 'number' && totalRaw >= 0 ? Math.floor(totalRaw) : 0
-  const revs = Array.isArray(result.reviews) ? result.reviews : []
-  const mapped = revs.map((r) =>
-    mapOneReviewRow(r && typeof r === 'object' ? /** @type {Record<string, unknown>} */ (r) : {})
-  )
-  /** BOO-89B: rank by rating × recency before taking top 5 (legacy API returns ≤5 snippets). */
-  const reviews = sortGoogleReviewsForPublicDisplay(mapped).slice(0, 5)
-
-  if (rating == null && reviews.length === 0 && userRatingsTotal === 0) return null
-
-  const out = {
-    rating,
-    userRatingsTotal,
-    reviews,
-    lastFetchedAt: new Date()
-  }
-
-  return out
-}
 
 /**
  * @param {string} placeId
@@ -144,6 +39,13 @@ export async function fetchFreshGoogleReviewsForPlaceId(placeId) {
       })
       if (detRes.ok) {
         const raw = await detRes.json().catch(() => null)
+        if (env.DEBUG_LOGS && raw != null && typeof raw === 'object') {
+          console.log('[google-reviews] CORE_RAW_DEBUG', {
+            placeId: pid,
+            rawKeys: Object.keys(raw),
+            rawSample: JSON.stringify(raw).slice(0, 500)
+          })
+        }
         const normalized = normalizePlacesDetailsToReviewCache(raw)
         if (normalized && !isPartialGoogleReviewsPayload(normalized)) return normalized
         if (normalized && isPartialGoogleReviewsPayload(normalized)) partialFallback = normalized

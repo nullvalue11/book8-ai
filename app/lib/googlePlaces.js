@@ -8,7 +8,7 @@ const MAX_PHOTOS_PUBLIC = 5
  * @param {unknown} raw
  * @returns {Record<string, unknown> | null}
  */
-function asPlaceRecord(raw) {
+export function asPlaceRecord(raw) {
   if (!raw || typeof raw !== 'object') return null
   const o = /** @type {Record<string, unknown>} */ (raw)
   if (o.payload && typeof o.payload === 'object') {
