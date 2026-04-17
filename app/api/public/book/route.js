@@ -213,7 +213,7 @@ export async function POST(request) {
     const baseUrl = (env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com').replace(/\/$/, '')
     const coreSecret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET || ''
 
-    if (business && coreSecret) {
+    if (business && coreSecret && !business.isDemo) {
       try {
         const slotStartISO = startTime.toISOString()
         const slotEndISO = endTime.toISOString()
@@ -288,7 +288,7 @@ export async function POST(request) {
           { status: 503 }
         )
       }
-    } else if (business && !coreSecret) {
+    } else if (business && !coreSecret && !business.isDemo) {
       return NextResponse.json(
         { ok: false, error: 'Booking is temporarily unavailable. Please try again later.' },
         { status: 503 }

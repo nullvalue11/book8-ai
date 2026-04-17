@@ -102,6 +102,8 @@ export default function PublicBookingPage({ params }) {
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false)
   const [waitlistSuccess, setWaitlistSuccess] = useState(false)
   const [waitlistSubmitError, setWaitlistSubmitError] = useState('')
+  /** OPTION-D: Book8 Demo outreach page */
+  const [pageIsDemo, setPageIsDemo] = useState(false)
   /** BOO-60B */
   const [recurringEnabled, setRecurringEnabled] = useState(false)
   const [recurringFrequency, setRecurringFrequency] = useState('weekly')
@@ -305,6 +307,7 @@ export default function PublicBookingPage({ params }) {
     setWaitlistSuccess(false)
     setWaitlistSubmitError('')
     setWaitlistForm({ name: '', email: '', phone: '' })
+    setPageIsDemo(false)
     setRecurringEnabled(false)
     setRecurringFrequency('weekly')
     setRecurringIntervalDays(7)
@@ -337,6 +340,9 @@ export default function PublicBookingPage({ params }) {
         }
         if (res.ok && data.plan != null) {
           if (!cancelled) setBusinessPlanTier(String(data.plan).toLowerCase())
+        }
+        if (res.ok) {
+          if (!cancelled) setPageIsDemo(!!data.isDemo)
         }
         if (res.ok && data.multilingual != null) {
           if (!cancelled) setBusinessMultilingual(!!data.multilingual)
@@ -1124,6 +1130,15 @@ export default function PublicBookingPage({ params }) {
       dir={language === 'ar' ? 'rtl' : 'ltr'}
       className="min-h-screen bg-gray-950 text-white dark"
     >
+      {pageIsDemo ? (
+        <div className="text-xs text-gray-400 text-center py-2 border-b border-gray-800 px-4">
+          This is a Book8 demo page.{' '}
+          <a href="https://book8.io" className="underline hover:text-gray-300">
+            Learn more
+          </a>
+          .
+        </div>
+      ) : null}
       {/* BOO-106B: Google Places cover + title (only when place is linked) */}
       {showPlaceHero ? (
         <CoverPhotoBanner

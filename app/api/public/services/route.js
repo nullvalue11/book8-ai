@@ -21,6 +21,38 @@ import { sanitizeGooglePlacesForPublic } from '@/lib/googlePlaces'
 import { sanitizePortfolioForPublic } from '@/lib/portfolio'
 import { REVIEWS_COLLECTION, aggregatePublishedReviews } from '@/lib/reviews'
 
+function slugifyEmbeddedServiceId(name, i) {
+  const s = String(name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 40)
+  return s || `svc_${i}`
+}
+
+/** Mongo-embedded `business.services` → core-shaped rows for /b/[handle] when core has none (OPTION-D demo). */
+function normalizeEmbeddedPublicServices(rawList) {
+  if (!Array.isArray(rawList) || rawList.length === 0) return []
+  return rawList.map((s, i) => {
+    const name = String(s.name || '').trim() || `Service ${i + 1}`
+    const durationMinutes = Math.max(5, Math.floor(Number(s.durationMinutes) || 30))
+    const price = s.price != null && !Number.isNaN(Number(s.price)) ? Number(s.price) : null
+    const currency = typeof s.currency === 'string' && s.currency.trim() ? s.currency.trim() : 'CAD'
+    const sid =
+      (typeof s.serviceId === 'string' && s.serviceId.trim()) ||
+      (typeof s.id === 'string' && s.id.trim()) ||
+      `svc_book8demo_${slugifyEmbeddedServiceId(name, i)}`
+    return {
+      serviceId: sid,
+      id: sid,
+      name,
+      durationMinutes,
+      price,
+      currency
+    }
+  })
+}
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
@@ -64,17 +96,23 @@ export async function GET(request) {
 
     const data = await res.json().catch(() => ({}))
 
-    if (!res.ok) {
+    // core-api may return { services: [...] } or array directly
+    let services = Array.isArray(data) ? data : (data?.services || [])
+    const embedded = normalizeEmbeddedPublicServices(business.services)
+
+    if (business.isDemo && embedded.length > 0) {
+      services = embedded
+    } else if ((!res.ok || services.length === 0) && embedded.length > 0) {
+      services = embedded
+    } else if (!res.ok) {
       return NextResponse.json(
         data?.error ? { ok: false, error: data.error } : { ok: false, error: 'Failed to load services' },
         { status: res.status }
       )
     }
 
-    // core-api may return { services: [...] } or array directly
-    const services = Array.isArray(data) ? data : (data?.services || [])
     const plan = normalizePlanKey(business.plan || business.subscription?.plan)
-    const multilingual = !!getPlanFeatures(plan).multilingual
+    const multilingual = !!getPlanFeatures(plan).multilingual || !!business.isDemo
     const bookingPhone =
       business.assignedTwilioNumber ||
       business.phone ||
@@ -105,6 +143,7 @@ export async function GET(request) {
     return NextResponse.json({
       ok: true,
       services,
+      isDemo: !!business.isDemo,
       businessId: business.businessId,
       googlePlaceId,
       /** BOO-106B: domain-restricted key for Static Maps img on /b/[handle] (same as publicRuntimeConfig GOOGLE_MAPS_BROWSER_KEY) */
