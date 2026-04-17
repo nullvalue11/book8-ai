@@ -47,12 +47,12 @@ export async function GET(request) {
 
     // Get owner info for organizer email
     const owner = await database.collection('users').findOne({ id: booking.userId })
-    const organizerEmail = owner?.email || 'noreply@book8.ai'
+    const organizerEmail = owner?.email || 'noreply@book8.io'
     const organizerName = owner?.scheduling?.handle || 'Book8-AI'
 
     // Generate ICS file
     const icsContent = buildICS({
-      uid: `booking-${bookingId}@book8.ai`,
+      uid: `booking-${bookingId}@book8.io`,
       start: booking.startTime,
       end: booking.endTime,
       summary: booking.title,

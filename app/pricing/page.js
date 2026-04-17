@@ -347,10 +347,10 @@ function PricingContent() {
           <p>
             {h.footerQuestions}{" "}
             <a
-              href="mailto:support@book8.ai"
+              href="mailto:support@book8.io"
               className="underline hover:no-underline text-foreground font-medium"
             >
-              support@book8.ai
+              support@book8.io
             </a>
           </p>
         </div>

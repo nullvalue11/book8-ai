@@ -196,7 +196,7 @@ function CallForwardingInner() {
         <footer className="mt-14 text-center space-y-3">
           <p className="text-[#94A3B8] text-sm font-medium">{c.stillNeedHelp}</p>
           <a
-            href="mailto:support@book8.ai"
+            href="mailto:support@book8.io"
             className="inline-flex items-center justify-center gap-2 text-[#A78BFA] hover:text-[#E9D5FF] text-sm font-medium"
           >
             <Mail className="w-4 h-4" />

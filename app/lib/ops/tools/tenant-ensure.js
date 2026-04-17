@@ -63,7 +63,7 @@ export async function execute(args, ctx) {
   // Create minimal business record
   const newBusiness = {
     id: businessId,
-    email: `${businessId}@placeholder.book8.ai`,
+    email: `${businessId}@placeholder.book8.io`,
     name: `Business ${businessId}`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
