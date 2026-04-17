@@ -19,6 +19,8 @@ import {
   formatTrialEndForLocale,
   resolveOwnerFirstName
 } from '@/lib/welcomeEmailCore'
+import { deliverWelcomeEmailAndStamp } from '@/lib/welcomeEmailResendDispatch'
+import { sendResendEmail } from '@/lib/resendSend'
 
 export {
   formatE164ForDisplay,
@@ -145,36 +147,35 @@ export async function sendWelcomeEmailToBusiness(database, businessId, opts = {}
     return { ok: false, skipped: 'no_resend' }
   }
 
-  try {
-    const { Resend } = await import('resend')
-    const resend = new Resend(env.RESEND_API_KEY)
-    await resend.emails.send({
-      from: env.WELCOME_EMAIL_FROM,
-      to,
-      reply_to: env.EMAIL_REPLY_TO,
-      subject,
-      html,
-      text: plainLines.join('\n')
-    })
-  } catch (e) {
-    console.error('[welcome-email] send failed:', e?.message || e)
-    return { ok: false, error: e?.message }
+  const sendPayload = {
+    from: env.WELCOME_EMAIL_FROM,
+    to,
+    reply_to: env.EMAIL_REPLY_TO,
+    subject,
+    html,
+    text: plainLines.join('\n')
   }
 
-  await collection.updateOne(
-    { _id: business._id },
-    {
-      $push: {
-        'notifications.sent': {
-          type: 'welcome-email',
-          sentAt: new Date(),
-          channel: 'email'
-        }
+  const resendSend = async (payload) => {
+    const { Resend } = await import('resend')
+    const resend = new Resend(env.RESEND_API_KEY)
+    const out = await sendResendEmail(resend, payload)
+    if (!out.ok) {
+      return {
+        data: null,
+        error: { message: out.error, statusCode: out.statusCode, name: out.name }
       }
     }
-  )
+    return { data: { id: out.id }, error: null }
+  }
 
-  return { ok: true, sent: true }
+  return deliverWelcomeEmailAndStamp({
+    collection,
+    businessDoc: business,
+    sendPayload,
+    resendSend,
+    logAddresses: { to, from: env.WELCOME_EMAIL_FROM }
+  })
 }
 
 /**

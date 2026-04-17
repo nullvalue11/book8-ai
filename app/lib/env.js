@@ -157,12 +157,12 @@ function loadConfig() {
     // Email Service (Resend)
     const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', true)
     const EMAIL_FROM = getEnvVar('EMAIL_FROM', false, 'Book8-AI <onboarding@resend.dev>')
-    const EMAIL_REPLY_TO = getEnvVar('EMAIL_REPLY_TO', false, 'support@book8.ai')
-    /** BOO-109A: From address for welcome email. Default uses support@book8.io — that address/domain must be verified in Resend before production sends succeed. */
+    const EMAIL_REPLY_TO = getEnvVar('EMAIL_REPLY_TO', false, 'support@book8.io')
+    /** BOO-109A: From address for welcome email. Default uses send.book8.io — that address/domain must be verified in Resend before production sends succeed. */
     const WELCOME_EMAIL_FROM = getEnvVar(
       'WELCOME_EMAIL_FROM',
       false,
-      'Book8 Support <support@book8.io>'
+      'Book8 <noreply@send.book8.io>'
     )
     
     // Stripe (Payment Processing)
