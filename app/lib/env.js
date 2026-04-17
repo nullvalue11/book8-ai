@@ -147,8 +147,12 @@ function loadConfig() {
       console.warn('[env] WARNING: Google OAuth not configured. Calendar and social login features will be disabled.')
     }
 
-    /** Optional server key for Places Details (reviews on booking page). Core Places is tried first. BOO-81B */
-    const GOOGLE_MAPS_API_KEY = getEnvVar('GOOGLE_MAPS_API_KEY', false, '')
+    /**
+     * Optional server key for Places Details (reviews on booking page). Core Places is tried first. BOO-81B
+     * BOO-96B-follow: Vercel stores this as GOOGLE_MAPS_SERVER_KEY; fall back to GOOGLE_MAPS_API_KEY elsewhere.
+     */
+    const GOOGLE_MAPS_API_KEY =
+      getEnvVar('GOOGLE_MAPS_SERVER_KEY', false, '') || getEnvVar('GOOGLE_MAPS_API_KEY', false, '')
     /** BOO-106B: cache Google Place cover photos (book8-business-<id>-cover) */
     const CLOUDINARY_CLOUD_NAME = getEnvVar('CLOUDINARY_CLOUD_NAME', false, '')
     const CLOUDINARY_API_KEY = getEnvVar('CLOUDINARY_API_KEY', false, '')
