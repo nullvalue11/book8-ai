@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { env, isFeatureEnabled } from '@/lib/env'
+import { sendResendEmail } from '@/lib/resendSend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -43,7 +44,7 @@ export async function GET(request) {
     })
 
     try {
-      const result = await resend.emails.send({
+      const result = await sendResendEmail(resend, {
         from: 'Book8-AI <bookings@book8.io>',
         to,
         subject: 'Book8-AI Test Email - Production',
@@ -52,7 +53,7 @@ export async function GET(request) {
             <h2>✅ Test Email from Book8-AI</h2>
             <p>This is a production test email from Book8-AI.</p>
             <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
-            <p><strong>From:</strong> Book8-AI &lt;bookings@book8.ai&gt;</p>
+            <p><strong>From:</strong> Book8-AI &lt;bookings@book8.io&gt;</p>
             <p><strong>To:</strong> ${to}</p>
             <hr>
             <p style="color: #666; font-size: 12px;">
@@ -62,16 +63,32 @@ export async function GET(request) {
         `
       })
 
+      if (!result.ok) {
+        console.error('[debug/test-email] Resend rejected', result)
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'Resend rejected send',
+            details: {
+              message: result.error,
+              statusCode: result.statusCode,
+              name: result.name
+            },
+            env: envCheck
+          },
+          { status: 502 }
+        )
+      }
+
       console.log('[debug/test-email] Resend SUCCESS', {
-        id: result?.id,
-        data: result
+        id: result.id
       })
 
       return NextResponse.json({
         ok: true,
         message: 'Email sent successfully',
         result: {
-          id: result?.id,
+          id: result.id,
           to,
           from: 'Book8-AI <bookings@book8.io>',
           timestamp: new Date().toISOString()

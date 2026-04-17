@@ -4,6 +4,7 @@ import { verifyRescheduleToken, generateRescheduleToken } from '@/lib/security/r
 import { buildICS } from '@/lib/ics'
 import { recomputeReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
+import { sendResendEmail } from '@/lib/resendSend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -230,7 +231,7 @@ export async function POST(request) {
         
         // Generate updated ICS
         const ics = buildICS({ 
-          uid: `booking-${booking.id}@book8.ai`,
+          uid: `booking-${booking.id}@book8.io`,
           start: newStartTime.toISOString(), 
           end: newEndTime.toISOString(), 
           summary: booking.title, 
@@ -245,8 +246,8 @@ export async function POST(request) {
         const guestTz = timezone || booking.guestTimezone || booking.timeZone
 
         // Send to guest
-        await resend.emails.send({ 
-          from: 'Book8-AI <bookings@book8.io>', 
+        const guestOut = await sendResendEmail(resend, {
+          from: 'Book8-AI <bookings@book8.io>',
           to: booking.guestEmail,
           cc: owner.email,
           subject: `Meeting rescheduled: ${booking.title}`,
@@ -284,13 +285,16 @@ export async function POST(request) {
               <p>The updated meeting has been saved to your calendar.</p>
             </div>
           `,
-          attachments: [{ 
-            filename: 'meeting.ics', 
-            content: Buffer.from(ics).toString('base64') 
-          }] 
+          attachments: [{
+            filename: 'meeting.ics',
+            content: Buffer.from(ics).toString('base64')
+          }]
         })
-
-        console.log('[reschedule] Confirmation emails sent')
+        if (!guestOut.ok) {
+          console.error('[reschedule] Guest email rejected', guestOut)
+        } else {
+          console.log('[reschedule] Confirmation emails sent', { id: guestOut.id })
+        }
       }
     } catch (e) {
       console.error('[reschedule] Email error:', e?.message || e)

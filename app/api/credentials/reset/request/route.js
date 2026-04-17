@@ -5,6 +5,7 @@ import { Resend } from 'resend'
 import bcrypt from 'bcryptjs'
 import { signResetToken, ttlMinutes } from '@/lib/security/resetToken'
 import { env } from '@/lib/env'
+import { sendResendEmail } from '@/lib/resendSend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -99,14 +100,22 @@ export async function POST(req) {
   <p style="color:#555;font-size:12px">Need help? Reply to this email.</p>
 </div>`
       const text = `Reset your Book8-AI password\n\nWe received a request to reset your Book8-AI password.\nReset link (expires in ${mins} minutes):\n${resetLink}\n\nIf you didn't request this, you can ignore this email. Need help? Reply to this email.`
-      await resend.emails.send({
+      const out = await sendResendEmail(resend, {
         from: env.EMAIL_FROM,
         to: user.email,
         reply_to: env.EMAIL_REPLY_TO,
         subject: 'Reset your Book8-AI password',
         html,
-        text,
+        text
       })
+      if (!out.ok) {
+        console.error(`[reset][${reqId}] resend rejected`, {
+          to: user.email,
+          error: out.error,
+          statusCode: out.statusCode,
+          name: out.name
+        })
+      }
     } catch (e) {
       console.error(`[reset][${reqId}] email send failed`, e?.message || e)
     }

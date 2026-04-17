@@ -63,6 +63,7 @@ import { calculateReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
 import { corsHeaders } from '@/lib/cors-allow'
 import { isSubscribed } from '@/lib/subscription'
+import { sendResendEmail } from '@/lib/resendSend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -432,12 +433,12 @@ export async function POST(request) {
         )
 
         const icsContent = buildICS({
-          uid: `booking-${bookingId}@book8.ai`,
+          uid: `booking-${bookingId}@book8.io`,
           start: startTime.toISOString(),
           end: endTime.toISOString(),
           summary: bookingTitle,
           description: `${notes || ''}\n\n---\nSource: Book8-AI Phone Agent\nBooking ID: ${bookingId}`,
-          organizer: 'noreply@book8.ai',
+          organizer: 'noreply@book8.io',
           attendees: [{ email: guestEmail, name: guestName }],
           method: 'REQUEST'
         })
@@ -449,7 +450,7 @@ export async function POST(request) {
           language
         })
 
-        await resend.emails.send({
+        const emailOut = await sendResendEmail(resend, {
           from: 'Book8-AI <bookings@book8.io>',
           to: guestEmail,
           cc: owner.email,
@@ -462,8 +463,16 @@ export async function POST(request) {
             }
           ]
         })
-
-        console.log(`[agent:book] Confirmation email sent to ${guestEmail}`)
+        if (!emailOut.ok) {
+          console.error('[agent:book] Resend rejected confirmation', {
+            to: guestEmail,
+            error: emailOut.error,
+            statusCode: emailOut.statusCode,
+            name: emailOut.name
+          })
+        } else {
+          console.log(`[agent:book] Confirmation email sent to ${guestEmail}`, { id: emailOut.id })
+        }
       }
     } catch (error) {
       console.error('[agent:book] Email error:', error.message)

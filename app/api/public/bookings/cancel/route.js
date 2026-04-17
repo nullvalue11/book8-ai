@@ -26,6 +26,7 @@ import { buildICS } from '@/lib/ics'
 import { verifyActionToken, verifyCancelToken } from '@/lib/security/resetToken'
 import { renderHostCancel } from '@/lib/emailRenderer'
 import { env } from '@/lib/env'
+import { sendResendEmail } from '@/lib/resendSend'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 import { cancellationFeeApplies, computeNoShowFeeCents } from '@/lib/no-show-protection'
 import { createOffSessionCharge } from '@/lib/no-show-stripe'
@@ -218,7 +219,7 @@ export async function POST(request) {
         
         // Generate cancellation ICS
         const ics = buildICS({ 
-          uid: `booking-${booking.id}@book8.ai`,
+          uid: `booking-${booking.id}@book8.io`,
           start: booking.startTime, 
           end: booking.endTime, 
           summary: booking.title, 
@@ -231,9 +232,9 @@ export async function POST(request) {
         })
 
         // Send to guest
-        await resend.emails.send({ 
-          from: 'Book8-AI <bookings@book8.io>', 
-          to: booking.guestEmail, 
+        const guestOut = await sendResendEmail(resend, {
+          from: 'Book8-AI <bookings@book8.io>',
+          to: booking.guestEmail,
           subject: `Meeting canceled: ${booking.title}`,
           html: `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -254,29 +255,36 @@ export async function POST(request) {
               <p>This cancellation has been saved to your calendar.</p>
             </div>
           `,
-          attachments: [{ 
-            filename: 'canceled.ics', 
-            content: Buffer.from(ics).toString('base64') 
-          }] 
+          attachments: [{
+            filename: 'canceled.ics',
+            content: Buffer.from(ics).toString('base64')
+          }]
         })
+        if (!guestOut.ok) {
+          console.error('[cancel] Guest cancellation email rejected', guestOut)
+        }
 
         // Send to host
         if (renderHostCancel) {
           try {
             const hostEmailHtml = await renderHostCancel(booking, user, booking.guestTimezone)
-            await resend.emails.send({
+            const hostOut = await sendResendEmail(resend, {
               from: 'Book8-AI <notifications@book8.io>',
               to: user.email,
               subject: `Booking canceled: ${booking.customerName || 'Guest'} – ${booking.title}`,
               html: hostEmailHtml
             })
-            console.log('[cancel] Host notification sent')
+            if (!hostOut.ok) {
+              console.error('[cancel] Host notification rejected', hostOut)
+            } else {
+              console.log('[cancel] Host notification sent', { id: hostOut.id })
+            }
           } catch (hostError) {
             console.error('[cancel] Host notification error:', hostError.message)
           }
         }
 
-        console.log('[cancel] Cancellation emails sent')
+        if (guestOut.ok) console.log('[cancel] Guest cancellation email sent', { id: guestOut.id })
       }
     } catch (e) {
       console.error('[cancel] Email error:', e?.message || e)
@@ -342,18 +350,30 @@ export async function GET(request) {
       const { Resend } = await import('resend')
       const resend = new Resend(env.RESEND_API_KEY)
       const ics = buildICS({ uid: booking.id, start: booking.startTime, end: booking.endTime, summary: booking.title, description: booking.notes, organizer: user.email, attendees: [{ email: user.email }, { email: booking.customerName ? `${booking.customerName} <${booking.customerEmail || ''}>` : (booking.customerEmail || '') }], method: 'CANCEL' })
-      await resend.emails.send({ from: env.EMAIL_FROM, to: user.email, reply_to: env.EMAIL_REPLY_TO, subject: 'Booking canceled', html: `<p>The meeting ${booking.title} was canceled.</p>`, attachments: [{ filename: 'cancel.ics', content: Buffer.from(ics).toString('base64') }] })
-      
+      const guestOut = await sendResendEmail(resend, {
+        from: env.EMAIL_FROM,
+        to: user.email,
+        reply_to: env.EMAIL_REPLY_TO,
+        subject: 'Booking canceled',
+        html: `<p>The meeting ${booking.title} was canceled.</p>`,
+        attachments: [{ filename: 'cancel.ics', content: Buffer.from(ics).toString('base64') }]
+      })
+      if (!guestOut.ok) console.error('[public/cancel] Guest email rejected', guestOut)
+
       // Send host notification (synchronous)
       try {
         const hostEmailHtml = await renderHostCancel(booking, user, booking.guestTimezone)
-        await resend.emails.send({
+        const hostOut = await sendResendEmail(resend, {
           from: 'Book8-AI <notifications@book8.io>',
           to: user.email,
           subject: `Booking canceled: ${booking.customerName || 'Guest'} – ${booking.title}`,
           html: hostEmailHtml
         })
-        console.log('[public/cancel] Host notification sent')
+        if (!hostOut.ok) {
+          console.error('[public/cancel] Host notification rejected', hostOut)
+        } else {
+          console.log('[public/cancel] Host notification sent', { id: hostOut.id })
+        }
       } catch (hostError) {
         console.error('[public/cancel] Host notification error:', hostError.message)
       }

@@ -19,6 +19,7 @@ import {
   buildRecurringSlotTimes,
   parseRecurringFromRequest
 } from '@/lib/recurring-bookings'
+import { sendResendEmail } from '@/lib/resendSend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -587,12 +588,12 @@ export async function POST(request) {
 
         // Generate ICS
         const icsContent = buildICS({
-          uid: `booking-${bookingId}@book8.ai`,
+          uid: `booking-${bookingId}@book8.io`,
           start: startTime.toISOString(),
           end: endTime.toISOString(),
           summary: booking.title,
           description: `${notes || ''}\n\n---\nSource: Book8-AI Public Booking\nBooking ID: ${bookingId}`,
-          organizer: 'noreply@book8.ai',
+          organizer: 'noreply@book8.io',
           attendees: [{ email, name }],
           method: 'REQUEST'
         })
@@ -605,9 +606,8 @@ export async function POST(request) {
           language
         })
 
-        let emailResult
         try {
-          emailResult = await resend.emails.send({
+          const emailResult = await sendResendEmail(resend, {
             from: 'Book8-AI <bookings@book8.io>',
             to: email,
             cc: owner.email,
@@ -621,18 +621,30 @@ export async function POST(request) {
             ]
           })
 
-          console.log('[booking/email] Resend response SUCCESS', {
-            id: emailResult?.id,
-            data: emailResult
-          })
-          
-          emailDebug = { 
-            status: 'sent', 
-            id: emailResult?.id || null,
-            to: email,
-            cc: owner.email
+          if (!emailResult.ok) {
+            console.error('[booking/email] Resend API error', {
+              error: emailResult.error,
+              statusCode: emailResult.statusCode,
+              name: emailResult.name
+            })
+            emailDebug = {
+              status: 'failed',
+              error: emailResult.error,
+              code: null,
+              statusCode: emailResult.statusCode,
+              name: emailResult.name || null
+            }
+          } else {
+            console.log('[booking/email] Resend response SUCCESS', {
+              id: emailResult.id
+            })
+            emailDebug = {
+              status: 'sent',
+              id: emailResult.id || null,
+              to: email,
+              cc: owner.email
+            }
           }
-
         } catch (err) {
           console.error('[booking/email] Resend error FAILED', {
             message: err?.message,
@@ -641,7 +653,7 @@ export async function POST(request) {
             statusCode: err?.statusCode,
             stack: err?.stack
           })
-          
+
           emailDebug = {
             status: 'failed',
             error: err?.message || 'Unknown error',

@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { buildICS } from '@/lib/ics'
 import { signActionToken, ttlMinutes } from '@/lib/security/resetToken'
 import { env } from '@/lib/env'
+import { sendResendEmail } from '@/lib/resendSend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -94,7 +95,16 @@ export async function POST(req) {
       const { Resend } = await import('resend')
       const resend = new Resend(env.RESEND_API_KEY)
       const ics = buildICS({ uid: booking.id, start: booking.startTime, end: booking.endTime, summary: booking.title, description: booking.notes, organizer: user.email, attendees: [{ email: user.email }, { email: guest.email }] })
-      await resend.emails.send({ from: env.EMAIL_FROM, to: guest.email, cc: user.email, reply_to: env.EMAIL_REPLY_TO, subject: 'Your Book8-AI meeting is confirmed', html: `<p>Hi ${guest.name || ''},</p><p>Your meeting is confirmed.</p><p>${new Date(booking.startTime).toLocaleString()} – ${new Date(booking.endTime).toLocaleString()} (${booking.timeZone})</p><p><a href="${cancelLink}">Cancel meeting</a> (reschedule coming soon)</p>`, attachments: [{ filename: 'invite.ics', content: Buffer.from(ics).toString('base64') }] })
+      const out = await sendResendEmail(resend, {
+        from: env.EMAIL_FROM,
+        to: guest.email,
+        cc: user.email,
+        reply_to: env.EMAIL_REPLY_TO,
+        subject: 'Your Book8-AI meeting is confirmed',
+        html: `<p>Hi ${guest.name || ''},</p><p>Your meeting is confirmed.</p><p>${new Date(booking.startTime).toLocaleString()} – ${new Date(booking.endTime).toLocaleString()} (${booking.timeZone})</p><p><a href="${cancelLink}">Cancel meeting</a> (reschedule coming soon)</p>`,
+        attachments: [{ filename: 'invite.ics', content: Buffer.from(ics).toString('base64') }]
+      })
+      if (!out.ok) console.error('[public/bookings] resend rejected', { to: guest.email, ...out })
     } catch (e) { console.error('[public/bookings] email failed', e?.message || e) }
 
     return NextResponse.json({ ok: true, bookingId: booking.id, eventId })

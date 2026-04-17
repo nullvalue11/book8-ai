@@ -13,6 +13,7 @@ import {
 import { env, isFeatureEnabled } from '@/lib/env'
 import { getCorsAllowOrigin } from '@/lib/cors-allow'
 import { safeCompare } from '@/lib/auth-utils'
+import { sendResendEmail } from '@/lib/resendSend'
 
 export const runtime = 'nodejs'
 
@@ -276,7 +277,7 @@ async function handleRemindersTask(db, runId, logsEnabled, request) {
             
             const idempotencyKey = `reminders/${booking.id}/${reminder.id}`
             
-            await resend.emails.send({
+            const sendOut = await sendResendEmail(resend, {
               from: 'Book8-AI <reminders@book8.io>',
               to: recipientEmail,
               subject,
@@ -285,14 +286,30 @@ async function handleRemindersTask(db, runId, logsEnabled, request) {
                 'X-Idempotency-Key': idempotencyKey
               }
             })
-            
+            if (!sendOut.ok) {
+              failures++
+              console.error(`[cron:reminders] Resend rejected ${reminder.type} ${audience} for ${booking.id}`, {
+                to: recipientEmail,
+                error: sendOut.error,
+                statusCode: sendOut.statusCode,
+                name: sendOut.name
+              })
+              errors.push({
+                bookingId: booking.id,
+                reminderId: reminder.id,
+                error: sendOut.error,
+                statusCode: sendOut.statusCode
+              })
+              continue
+            }
+
             // Mark as sent in database
             const updatedReminders = markReminderSent(booking.reminders, reminder.id)
             await db.collection('bookings').updateOne(
               { id: booking.id },
               { $set: { reminders: updatedReminders } }
             )
-            
+
             successes++
             console.log(`[cron:reminders] Sent ${reminder.type} ${audience} reminder for booking ${booking.id} to ${recipientEmail}`)
           }

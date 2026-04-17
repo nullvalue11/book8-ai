@@ -3,6 +3,7 @@
  */
 
 import { env } from '@/lib/env'
+import { sendResendEmail } from '@/lib/resendSend'
 
 function baseUrl() {
   return (env.BASE_URL || '').replace(/\/$/, '') || 'https://book8.io'
@@ -13,7 +14,7 @@ async function sendIfConfigured({ to, subject, html, text }) {
   try {
     const { Resend } = await import('resend')
     const resend = new Resend(env.RESEND_API_KEY)
-    await resend.emails.send({
+    const out = await sendResendEmail(resend, {
       from: env.EMAIL_FROM,
       to,
       reply_to: env.EMAIL_REPLY_TO,
@@ -21,6 +22,10 @@ async function sendIfConfigured({ to, subject, html, text }) {
       html,
       text: text || undefined
     })
+    if (!out.ok) {
+      console.error('[trialLifecycleEmail]', subject, out.error, out.statusCode, out.name)
+      return { sent: false, error: out.error }
+    }
     return { sent: true }
   } catch (e) {
     console.error('[trialLifecycleEmail]', subject, e?.message || e)

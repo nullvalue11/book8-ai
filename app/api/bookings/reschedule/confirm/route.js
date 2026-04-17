@@ -9,6 +9,7 @@ import { buildICS } from '../../../../lib/ics'
 import { recomputeReminders } from '../../../../lib/reminders'
 import { renderHostReschedule } from '../../../../lib/emailRenderer'
 import { env, isFeatureEnabled } from '../../../../lib/env'
+import { sendResendEmail } from '@/lib/resendSend'
 import { corsHeaders } from '../../../../lib/cors-allow'
 
 export const runtime = 'nodejs'
@@ -328,12 +329,12 @@ export async function POST(request) {
         )
 
         const icsContent = buildICS({
-          uid: `booking-${booking.id}@book8.ai`,
+          uid: `booking-${booking.id}@book8.io`,
           start: newStartTime.toISOString(),
           end: newEndTime.toISOString(),
           summary: booking.title,
           description: `${booking.notes || ''}\n\n---\nSource: Book8-AI Public Booking\nBooking ID: ${booking.id}`,
-          organizer: 'noreply@book8.ai',
+          organizer: 'noreply@book8.io',
           attendees: [{ email: booking.guestEmail, name: booking.customerName }],
           method: 'REQUEST'
         })
@@ -347,7 +348,7 @@ export async function POST(request) {
           timeZone: guestTzLabel
         })
 
-        await resend.emails.send({
+        const guestOut = await sendResendEmail(resend, {
           from: 'Book8-AI <bookings@book8.io>',
           to: booking.guestEmail,
           cc: owner.email,
@@ -360,9 +361,12 @@ export async function POST(request) {
             }
           ]
         })
+        if (!guestOut.ok) {
+          console.error('[reschedule/confirm] Guest email rejected', guestOut)
+        } else {
+          console.log('[reschedule/confirm] Confirmation email sent to guest', { id: guestOut.id })
+        }
 
-        console.log('[reschedule/confirm] Confirmation email sent to guest')
-        
         // Send host notification (synchronous)
         try {
           const oldBooking = { ...booking }
@@ -372,15 +376,18 @@ export async function POST(request) {
             oldBooking,
             booking.guestTimezone
           )
-          
-          await resend.emails.send({
+
+          const hostOut = await sendResendEmail(resend, {
             from: 'Book8-AI <notifications@book8.io>',
             to: owner.email,
             subject: `Booking rescheduled: ${booking.customerName || 'Guest'} – ${booking.title}`,
             html: hostEmailHtml
           })
-          
-          console.log('[reschedule/confirm] Host notification sent')
+          if (!hostOut.ok) {
+            console.error('[reschedule/confirm] Host notification rejected', hostOut)
+          } else {
+            console.log('[reschedule/confirm] Host notification sent', { id: hostOut.id })
+          }
         } catch (hostError) {
           console.error('[reschedule/confirm] Host notification error:', hostError.message)
         }
