@@ -6,11 +6,57 @@
  *
  *   MONGO_URL="..." DB_NAME="book8" node scripts/createBook8DemoBusiness.mjs --dry-run
  *   MONGO_URL="..." DB_NAME="book8" node scripts/createBook8DemoBusiness.mjs
+ *   node scripts/createBook8DemoBusiness.mjs --mongo-host   # print Atlas host only (no secrets)
  */
 
 /* eslint-disable no-console */
 
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { MongoClient } from 'mongodb'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+/**
+ * Load `.env` then `.env.local` (local wins) without the `dotenv` npm package.
+ * Values from these files override existing process.env so a stray local MONGO_URL in the shell
+ * does not mask the project's Atlas URI.
+ */
+function loadEnvFiles() {
+  const root = path.join(__dirname, '..')
+  /** @type {Record<string, string>} */
+  const merged = {}
+  for (const name of ['.env', '.env.local']) {
+    const filePath = path.join(root, name)
+    let text
+    try {
+      text = fs.readFileSync(filePath, 'utf8')
+    } catch {
+      continue
+    }
+    for (const line of text.split(/\r?\n/)) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      const eq = trimmed.indexOf('=')
+      if (eq <= 0) continue
+      const key = trimmed.slice(0, eq).trim()
+      let val = trimmed.slice(eq + 1).trim()
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
+        val = val.slice(1, -1)
+      }
+      merged[key] = val
+    }
+  }
+  for (const [key, val] of Object.entries(merged)) {
+    process.env[key] = val
+  }
+}
+
+loadEnvFiles()
 
 try {
   const { config } = await import('dotenv')
@@ -179,12 +225,28 @@ function buildBusinessDoc(now) {
 }
 
 const dryRun = process.argv.includes('--dry-run')
+const printMongoHost = process.argv.includes('--mongo-host')
 const mongoUrl = process.env.MONGO_URL || process.env.MONGODB_URI
 const dbName = process.env.DB_NAME || 'book8'
+
+if (printMongoHost) {
+  const host = mongoUrl ? mongoUrl.split('@')[1]?.split('/')[0] : ''
+  console.log(host || '(no MONGO_URL or MONGODB_URI after loading .env)')
+  process.exit(0)
+}
 
 if (!mongoUrl) {
   console.error('Missing MONGO_URL or MONGODB_URI')
   process.exit(1)
+}
+
+function mongoUrlLooksLocal(url) {
+  const u = String(url || '')
+  return (
+    /127\.0\.0\.1/.test(u) ||
+    /localhost/i.test(u) ||
+    /mongodb:\/\/[^@]*\/?$/.test(u)
+  )
 }
 
 const userDoc = buildUserDoc(new Date())
@@ -205,6 +267,13 @@ if (dryRun) {
   console.log('[createBook8DemoBusiness] DRY RUN — would upsert:')
   console.log(JSON.stringify({ dbName, users: USERS, businesses: BUSINESSES, userDoc, businessDoc }, null, 2))
   process.exit(0)
+}
+
+if (mongoUrlLooksLocal(mongoUrl) && process.env.ALLOW_LOCAL_MONGO !== '1') {
+  console.error(
+    '[createBook8DemoBusiness] MONGO_URL looks like localhost. Use your Atlas URI in .env / .env.local, or set ALLOW_LOCAL_MONGO=1 to override.'
+  )
+  process.exit(1)
 }
 
 const client = new MongoClient(mongoUrl)
