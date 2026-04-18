@@ -30,6 +30,7 @@ import LanguageSelector from '@/components/LanguageSelector'
 import ThemeToggle from '@/components/ThemeToggle'
 import SocialMediaLinks from '@/components/SocialMediaLinks'
 import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from '@/lib/setup-entry'
+import { useTheme } from 'next-themes'
 import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { getHomepagePricingDisplay, trFormat, bookingLocaleBcp47 } from '@/lib/translations'
 
@@ -69,19 +70,19 @@ const HERO_VIDEO_POSTER =
 function Aurora() {
   return (
     <div
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden opacity-50 dark:opacity-100"
       aria-hidden
     >
       <div
-        className="absolute -top-1/4 start-1/4 h-[60vh] w-[60vh] rounded-full blur-[120px] opacity-40"
+        className="absolute -top-1/4 start-1/4 h-[60vh] w-[60vh] rounded-full blur-[120px] opacity-30 dark:opacity-40"
         style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.55), transparent 70%)' }}
       />
       <div
-        className="absolute bottom-0 end-0 h-[50vh] w-[50vh] rounded-full blur-[100px] opacity-30"
+        className="absolute bottom-0 end-0 h-[50vh] w-[50vh] rounded-full blur-[100px] opacity-20 dark:opacity-30"
         style={{ background: 'radial-gradient(circle, rgba(109,40,217,0.45), transparent 70%)' }}
       />
       <div
-        className="absolute top-1/2 start-1/2 h-[40vh] w-[40vh] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[90px] opacity-20"
+        className="absolute top-1/2 start-1/2 h-[40vh] w-[40vh] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[90px] opacity-15 dark:opacity-20"
         style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.35), transparent 65%)' }}
       />
     </div>
@@ -92,7 +93,7 @@ function Particles() {
   const dots = useMemo(() => Array.from({ length: 48 }, (_, i) => i), [])
   return (
     <div
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden opacity-[0.35]"
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden opacity-[0.12] dark:opacity-[0.35]"
       aria-hidden
     >
       {dots.map((i) => (
@@ -121,7 +122,7 @@ function GlowCard({ children, className = '', delay = 0 }) {
         opacity: { delay: delay * 0.15 + 0.3, duration: 0.5 },
         y: { delay: delay * 0.15 + 0.5, duration: 4, repeat: Infinity, ease: 'easeInOut' }
       }}
-      className={`relative rounded-2xl border border-[rgba(139,92,246,0.35)] bg-[#121228]/95 p-4 shadow-[0_0_40px_-12px_rgba(139,92,246,0.55)] backdrop-blur-md ${className}`}
+      className={`relative rounded-2xl border border-violet-200/80 bg-white/95 p-4 shadow-lg shadow-violet-200/40 backdrop-blur-md dark:border-[rgba(139,92,246,0.35)] dark:bg-[#121228]/95 dark:shadow-[0_0_40px_-12px_rgba(139,92,246,0.55)] ${className}`}
       style={{
         boxShadow:
           '0 0 0 1px rgba(139,92,246,0.2), 0 0 32px -8px rgba(139,92,246,0.35), 0 25px 50px -12px rgba(0,0,0,0.55)'
@@ -221,10 +222,17 @@ const ORBIT_LANGS = ['English', 'Français', 'Español', 'العربية', '中�
 
 export default function LandingPage() {
   const { language, setLanguage, t } = useBookingLanguage()
+  const { resolvedTheme } = useTheme()
+  const [themeReady, setThemeReady] = useState(false)
   const h = t.homepage
   const isRtl = language === 'ar'
   const [navSolid, setNavSolid] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const isLight = themeReady && resolvedTheme === 'light'
+
+  useEffect(() => {
+    setThemeReady(true)
+  }, [])
 
   const calCells = useMonthGrid(2026, 4)
   const calHeaders = [h.calSun, h.calMon, h.calTue, h.calWed, h.calThu, h.calFri, h.calSat]
@@ -337,13 +345,12 @@ export default function LandingPage() {
     'हिन्दी'
   ]
 
-  const rootCls = `${fontDisplay.variable} ${fontSans.variable} font-[family-name:var(--font-jakarta)] text-[#EEEDF5] antialiased`
+  const rootCls = `${fontDisplay.variable} ${fontSans.variable} font-[family-name:var(--font-jakarta)] text-slate-900 dark:text-[#EEEDF5] antialiased`
 
   return (
     <main
       id="main-content"
-      className={`relative isolate min-h-dvh min-h-screen overflow-x-hidden ${rootCls}`}
-      style={{ background: 'linear-gradient(180deg, #06060f 0%, #0b0b1a 40%, #06060f 100%)' }}
+      className={`relative isolate min-h-dvh min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 dark:from-[#06060f] dark:via-[#0b0b1a] dark:to-[#06060f] ${rootCls}`}
       lang={language}
     >
       <Aurora />
@@ -351,31 +358,33 @@ export default function LandingPage() {
 
       <header
         className={`fixed top-0 z-50 w-full transition-all duration-300 ${
-          navSolid ? 'border-b border-[rgba(139,92,246,0.12)] bg-[#06060f]/80 backdrop-blur-xl' : 'bg-transparent'
+          navSolid
+            ? 'border-b border-slate-200/90 bg-white/90 backdrop-blur-xl dark:border-[rgba(139,92,246,0.12)] dark:bg-[#06060f]/80'
+            : 'bg-transparent'
         }`}
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
-          <Link href="/" className="flex items-center gap-2 shrink-0 text-white">
-            <HeaderLogo variant="light" />
+          <Link href="/" className="flex items-center gap-2 shrink-0">
+            <HeaderLogo />
           </Link>
-          <nav className="hidden md:flex items-center gap-8 text-sm text-[#9593A8]">
-            <a href="#features" className="hover:text-white transition-colors">
+          <nav className="hidden md:flex items-center gap-8 text-sm text-slate-600 dark:text-[#9593A8]">
+            <a href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors">
               {h.navFeatures}
             </a>
-            <a href="#how-it-works" className="hover:text-white transition-colors">
+            <a href="#how-it-works" className="hover:text-slate-900 dark:hover:text-white transition-colors">
               {h.navHowItWorks}
             </a>
-            <Link href="/pricing" className="hover:text-white transition-colors">
+            <Link href="/pricing" className="hover:text-slate-900 dark:hover:text-white transition-colors">
               {h.pricing}
             </Link>
           </nav>
           <div className="flex items-center gap-2 md:gap-3">
-            <LanguageSelector value={language} onChange={setLanguage} t={t} variant="dark" />
-            <ThemeToggle variant="landing" className="shrink-0" />
+            <LanguageSelector value={language} onChange={setLanguage} t={t} variant={isLight ? 'light' : 'dark'} />
+            <ThemeToggle variant={isLight ? 'default' : 'landing'} className="shrink-0" />
             <Link
               href="/setup?mode=login"
-              className="hidden sm:inline text-sm text-[#9593A8] hover:text-white px-2"
+              className="hidden sm:inline text-sm text-slate-600 hover:text-slate-900 dark:text-[#9593A8] dark:hover:text-white px-2"
             >
               {h.navSignIn}
             </Link>
@@ -386,7 +395,7 @@ export default function LandingPage() {
             </Link>
             <button
               type="button"
-              className="md:hidden p-2 rounded-lg text-white border border-white/10"
+              className="md:hidden p-2 rounded-lg text-slate-800 border border-slate-200 dark:text-white dark:border-white/10"
               aria-label={h.toggleMenu}
               onClick={() => setMobileOpen((v) => !v)}
             >
@@ -395,7 +404,7 @@ export default function LandingPage() {
           </div>
         </div>
         {mobileOpen ? (
-          <div className="md:hidden border-t border-[rgba(139,92,246,0.12)] bg-[#0b0b1a] px-4 py-4 flex flex-col gap-3 text-[#9593A8]">
+          <div className="md:hidden border-t border-slate-200 bg-slate-50 dark:border-[rgba(139,92,246,0.12)] dark:bg-[#0b0b1a] px-4 py-4 flex flex-col gap-3 text-slate-600 dark:text-[#9593A8]">
             <a href="#features" className="py-2" onClick={() => setMobileOpen(false)}>
               {h.navFeatures}
             </a>
@@ -407,7 +416,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/setup?mode=login"
-              className="py-2 text-white"
+              className="py-2 text-slate-900 dark:text-white"
               onClick={() => setMobileOpen(false)}
             >
               {h.navSignIn}
@@ -418,11 +427,11 @@ export default function LandingPage() {
 
       {/* Hero — ambient video only in this section (Option A: all breakpoints) */}
       <section
-        className="relative isolate overflow-hidden bg-[#0B1020] pt-28 pb-16 md:pt-36 md:pb-24 px-4"
+        className="relative isolate overflow-hidden bg-slate-100 dark:bg-[#0B1020] pt-28 pb-16 md:pt-36 md:pb-24 px-4"
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         <video
-          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover opacity-[0.12] motion-reduce:hidden"
+          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover opacity-[0.06] dark:opacity-[0.12] motion-reduce:hidden"
           autoPlay
           loop
           muted
@@ -438,11 +447,11 @@ export default function LandingPage() {
         <img
           src={HERO_VIDEO_POSTER}
           alt=""
-          className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full object-cover opacity-[0.12] motion-reduce:block"
+          className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full object-cover opacity-[0.06] dark:opacity-[0.12] motion-reduce:block"
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-[#0B1020]/85 via-[#0B1020]/85 to-[#0B1020]/88"
+          className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-slate-100/92 via-slate-100/88 to-slate-50/95 dark:from-[#0B1020]/85 dark:via-[#0B1020]/85 dark:to-[#0B1020]/88"
           aria-hidden
         />
         <div className="relative z-10 mx-auto max-w-6xl">
@@ -463,7 +472,7 @@ export default function LandingPage() {
             ) : null}
             <motion.h1
               variants={reveal}
-              className="text-[2.25rem] leading-tight md:text-5xl lg:text-6xl font-extrabold text-white font-[family-name:var(--font-brico)]"
+              className="text-[2.25rem] leading-tight md:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white font-[family-name:var(--font-brico)]"
             >
               {[h.heroTitle1, h.heroTitle2].filter(Boolean).join(' ')}{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#A78BFA] to-[#34D399]">
@@ -472,14 +481,14 @@ export default function LandingPage() {
             </motion.h1>
             <motion.p
               variants={reveal}
-              className="mt-6 text-base md:text-lg text-[#9593A8] max-w-2xl mx-auto leading-relaxed"
+              className="mt-6 text-base md:text-lg text-slate-600 dark:text-[#9593A8] max-w-2xl mx-auto leading-relaxed"
             >
               {h.heroSubtitle}
             </motion.p>
             {h.heroTrustedCities ? (
               <motion.p
                 variants={reveal}
-                className="mt-4 text-xs md:text-sm text-[#68668A] max-w-2xl mx-auto leading-relaxed"
+                className="mt-4 text-xs md:text-sm text-slate-500 dark:text-[#68668A] max-w-2xl mx-auto leading-relaxed"
               >
                 {h.heroTrustedCities}
               </motion.p>
@@ -498,7 +507,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/b/diamond-car-wash-rideau"
-                className="inline-flex items-center justify-center gap-2 text-[#9593A8] hover:text-white transition-colors py-3"
+                className="inline-flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900 dark:text-[#9593A8] dark:hover:text-white transition-colors py-3"
               >
                 {h.seeLiveDemo}
               </Link>
@@ -511,7 +520,7 @@ export default function LandingPage() {
               <GlowCard delay={0}>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-[#34D399] shrink-0 mt-0.5" />
-                  <p className="text-sm text-[#EEEDF5] leading-snug">{h.floatCardConfirmed}</p>
+                  <p className="text-sm text-slate-800 dark:text-[#EEEDF5] leading-snug">{h.floatCardConfirmed}</p>
                 </div>
               </GlowCard>
             </div>
@@ -519,7 +528,7 @@ export default function LandingPage() {
               <GlowCard delay={1}>
                 <div className="flex items-start gap-3">
                   <Globe className="w-5 h-5 text-[#A78BFA] shrink-0 mt-0.5" />
-                  <p className="text-sm text-[#EEEDF5] leading-snug">{h.floatCardLang}</p>
+                  <p className="text-sm text-slate-800 dark:text-[#EEEDF5] leading-snug">{h.floatCardLang}</p>
                 </div>
               </GlowCard>
             </div>
@@ -663,7 +672,7 @@ export default function LandingPage() {
                       />
                     ))}
                   </div>
-                  <p className="text-sm font-medium text-[#EEEDF5]">{h.floatCardAi}</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-[#EEEDF5]">{h.floatCardAi}</p>
                 </div>
               </GlowCard>
             </div>
@@ -673,7 +682,7 @@ export default function LandingPage() {
 
       {/* Social proof */}
       <motion.section
-        className="py-10 border-y border-[rgba(139,92,246,0.08)]"
+        className="py-10 border-y border-slate-200 dark:border-[rgba(139,92,246,0.08)]"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: '-40px' }}
@@ -681,12 +690,12 @@ export default function LandingPage() {
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         <div className="mx-auto max-w-6xl px-4">
-          <motion.p variants={reveal} className="text-center text-sm text-[#68668A] mb-6">
+          <motion.p variants={reveal} className="text-center text-sm text-slate-500 dark:text-[#68668A] mb-6">
             {h.socialProofHeadline}
           </motion.p>
           <motion.div
             variants={reveal}
-            className="flex flex-wrap justify-center gap-x-10 gap-y-4 text-[#9593A8] text-sm"
+            className="flex flex-wrap justify-center gap-x-10 gap-y-4 text-slate-600 dark:text-[#9593A8] text-sm"
           >
             {[
               { icon: Stethoscope, label: h.dentalClinics },
@@ -730,14 +739,14 @@ export default function LandingPage() {
                 <p className="text-xs font-bold uppercase tracking-widest text-[#A78BFA] mb-2">
                   {f.overline}
                 </p>
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 font-[family-name:var(--font-brico)]">
+                <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4 font-[family-name:var(--font-brico)]">
                   {f.title}
                 </h2>
-                <p className="text-[#9593A8] leading-relaxed text-base md:text-lg">{f.desc}</p>
+                <p className="text-slate-600 dark:text-[#9593A8] leading-relaxed text-base md:text-lg">{f.desc}</p>
               </motion.div>
               <motion.div
                 variants={reveal}
-                className={`rounded-2xl border border-[rgba(139,92,246,0.15)] bg-[#121228] p-10 min-h-[220px] flex items-center justify-center ${
+                className={`rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[rgba(139,92,246,0.15)] dark:bg-[#121228] dark:shadow-none p-10 min-h-[220px] flex items-center justify-center ${
                   f.reverse ? 'lg:order-1' : ''
                 }`}
                 aria-label={h.featA11yLabel}
@@ -756,7 +765,7 @@ export default function LandingPage() {
       {/* How it works */}
       <section
         id="how-it-works"
-        className="relative overflow-hidden py-20 md:py-28 px-4 bg-[#0b0b1a]/50 border-y border-[rgba(139,92,246,0.08)]"
+        className="relative overflow-hidden py-20 md:py-28 px-4 bg-slate-100/80 border-y border-slate-200 dark:bg-[#0b0b1a]/50 dark:border-[rgba(139,92,246,0.08)]"
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         <div className="mx-auto max-w-6xl">
@@ -769,11 +778,11 @@ export default function LandingPage() {
           >
             <motion.h2
               variants={reveal}
-              className="text-3xl md:text-4xl font-bold text-white font-[family-name:var(--font-brico)]"
+              className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white font-[family-name:var(--font-brico)]"
             >
               {h.howItWorks}
             </motion.h2>
-            <motion.p variants={reveal} className="mt-4 text-[#9593A8]">
+            <motion.p variants={reveal} className="mt-4 text-slate-600 dark:text-[#9593A8]">
               {h.howItWorksLead}
             </motion.p>
           </motion.div>
@@ -785,7 +794,7 @@ export default function LandingPage() {
             ].map(({ n, title, desc, Svg }) => (
               <motion.div
                 key={n}
-                className="relative overflow-visible rounded-2xl border border-[rgba(139,92,246,0.12)] bg-[#121228] p-8 pt-10"
+                className="relative overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[rgba(139,92,246,0.12)] dark:bg-[#121228] dark:shadow-none p-8 pt-10"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
@@ -797,10 +806,10 @@ export default function LandingPage() {
                 <div className="mb-6 min-h-[120px] flex items-center justify-center">
                   <Svg />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2 font-[family-name:var(--font-brico)]">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2 font-[family-name:var(--font-brico)]">
                   {title}
                 </h3>
-                <p className="text-sm text-[#9593A8] leading-relaxed">{desc}</p>
+                <p className="text-sm text-slate-600 dark:text-[#9593A8] leading-relaxed">{desc}</p>
               </motion.div>
             ))}
           </div>
@@ -817,10 +826,10 @@ export default function LandingPage() {
             viewport={{ once: true }}
             variants={stagger}
           >
-            <motion.h2 variants={reveal} className="text-3xl md:text-4xl font-bold text-white font-[family-name:var(--font-brico)]">
+            <motion.h2 variants={reveal} className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white font-[family-name:var(--font-brico)]">
               {h.multilingTitle}
             </motion.h2>
-            <motion.p variants={reveal} className="mt-4 text-[#9593A8]">
+            <motion.p variants={reveal} className="mt-4 text-slate-600 dark:text-[#9593A8]">
               {h.multilingSubtitle}
             </motion.p>
           </motion.div>
@@ -836,7 +845,7 @@ export default function LandingPage() {
               transition={{ duration: 36, repeat: Infinity, ease: 'linear' }}
             />
             <div className="absolute inset-0 flex items-center justify-center z-10">
-              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[#1a1a3a] via-[#121228] to-[#0b0b1a] border border-[rgba(139,92,246,0.35)] shadow-[0_0_60px_-10px_rgba(139,92,246,0.6)] flex items-center justify-center">
+              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-slate-100 via-white to-slate-200 border border-violet-200 shadow-lg shadow-violet-200/40 dark:from-[#1a1a3a] dark:via-[#121228] dark:to-[#0b0b1a] dark:border-[rgba(139,92,246,0.35)] dark:shadow-[0_0_60px_-10px_rgba(139,92,246,0.6)] flex items-center justify-center">
                 <Globe className="w-12 h-12 text-[#A78BFA]" />
               </div>
             </div>
@@ -853,7 +862,7 @@ export default function LandingPage() {
                 return (
                   <span
                     key={label}
-                    className="absolute left-1/2 top-1/2 text-[10px] md:text-xs font-semibold px-2.5 py-1 rounded-full bg-[#1a1a3a] text-[#D4C4FC] border border-[rgba(139,92,246,0.35)] shadow-lg whitespace-nowrap"
+                    className="absolute left-1/2 top-1/2 text-[10px] md:text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-violet-900 border border-violet-200 shadow-md dark:bg-[#1a1a3a] dark:text-[#D4C4FC] dark:border-[rgba(139,92,246,0.35)] dark:shadow-lg whitespace-nowrap"
                     style={{
                       transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
                     }}
@@ -868,7 +877,7 @@ export default function LandingPage() {
             {multilingTags.map((tag) => (
               <span
                 key={tag}
-                className="text-xs px-3 py-1.5 rounded-full bg-[#121228] border border-[rgba(139,92,246,0.12)] text-[#9593A8]"
+                className="text-xs px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 dark:bg-[#121228] dark:border-[rgba(139,92,246,0.12)] dark:text-[#9593A8]"
               >
                 {tag}
               </span>
@@ -890,10 +899,10 @@ export default function LandingPage() {
             viewport={{ once: true }}
             variants={stagger}
           >
-            <motion.h2 variants={reveal} className="text-3xl md:text-4xl font-bold text-white font-[family-name:var(--font-brico)]">
+            <motion.h2 variants={reveal} className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white font-[family-name:var(--font-brico)]">
               {h.simplePricing}
             </motion.h2>
-            <motion.p variants={reveal} className="mt-3 text-sm text-[#9593A8]">
+            <motion.p variants={reveal} className="mt-3 text-sm text-slate-600 dark:text-[#9593A8]">
               {h.plansFrom}{' '}
               <Link href="/pricing" className="text-[#A78BFA] hover:underline">
                 {h.compareDetails}
@@ -909,8 +918,8 @@ export default function LandingPage() {
                   key={tier.planId}
                   className={`rounded-2xl border p-6 md:p-8 flex flex-col relative ${
                     tier.highlight
-                      ? 'border-[#8B5CF6]/60 bg-[#121228] shadow-[0_0_50px_-12px_rgba(139,92,246,0.55)] md:scale-[1.02]'
-                      : 'border-[rgba(139,92,246,0.12)] bg-[#121228]/80'
+                      ? 'border-[#8B5CF6]/60 bg-white shadow-xl shadow-violet-200/45 md:scale-[1.02] dark:bg-[#121228] dark:shadow-[0_0_50px_-12px_rgba(139,92,246,0.55)]'
+                      : 'border-slate-200 bg-white/95 dark:border-[rgba(139,92,246,0.12)] dark:bg-[#121228]/80'
                   }`}
                   initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -926,12 +935,12 @@ export default function LandingPage() {
                     <div className="w-10 h-10 rounded-xl bg-[rgba(139,92,246,0.2)] flex items-center justify-center">
                       <Icon className="w-5 h-5 text-[#A78BFA]" aria-hidden />
                     </div>
-                    <h3 className="text-xl font-bold text-white font-[family-name:var(--font-brico)]">{tier.name}</h3>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white font-[family-name:var(--font-brico)]">{tier.name}</h3>
                   </div>
-                  <p className="text-xs text-[#68668A] mb-3 min-h-[2.5rem]">{tier.desc}</p>
-                  <p className="text-3xl font-bold text-white mb-1">
+                  <p className="text-xs text-slate-600 dark:text-[#68668A] mb-3 min-h-[2.5rem]">{tier.desc}</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
                     {tier.price}
-                    <span className="text-base font-medium text-[#9593A8]"> {tier.sub}</span>
+                    <span className="text-base font-medium text-slate-600 dark:text-[#9593A8]"> {tier.sub}</span>
                   </p>
                   {tier.planId === 'growth' ? (
                     <p className="text-xs text-[#34D399] mb-4 font-medium">{h.growthTrialIncluded}</p>
@@ -944,7 +953,7 @@ export default function LandingPage() {
                       className={`w-full h-11 rounded-xl font-semibold ${
                         tier.highlight
                           ? 'bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-[0_0_24px_-6px_rgba(139,92,246,0.9)]'
-                          : 'bg-transparent border border-[rgba(139,92,246,0.35)] text-white hover:bg-[rgba(139,92,246,0.12)]'
+                          : 'bg-transparent border border-violet-500/50 text-violet-800 hover:bg-violet-50 dark:border-[rgba(139,92,246,0.35)] dark:text-white dark:hover:bg-[rgba(139,92,246,0.12)]'
                       }`}
                       size="lg"
                       variant={tier.highlight ? 'default' : 'outline'}
@@ -953,7 +962,7 @@ export default function LandingPage() {
                     </Button>
                   </Link>
                   {tier.planId === 'starter' || tier.planId === 'enterprise' ? (
-                    <p className="text-[11px] text-center text-[#68668A] mt-3 leading-snug">
+                    <p className="text-[11px] text-center text-slate-500 dark:text-[#68668A] mt-3 leading-snug">
                       {tier.planId === 'starter' ? h.landingStarterPlanNote : h.landingEnterprisePlanNote}
                     </p>
                   ) : null}
@@ -961,7 +970,7 @@ export default function LandingPage() {
               )
             })}
           </div>
-          <p className="mt-10 text-center text-xs text-[#68668A] max-w-xl mx-auto leading-relaxed">
+          <p className="mt-10 text-center text-xs text-slate-500 dark:text-[#68668A] max-w-xl mx-auto leading-relaxed">
             {h.pricingCallFootnote}
           </p>
         </div>
@@ -969,7 +978,7 @@ export default function LandingPage() {
 
       {/* Stats */}
       <motion.section
-        className="py-14 border-y border-[rgba(139,92,246,0.08)] bg-[#0b0b1a]/60"
+        className="py-14 border-y border-slate-200 bg-slate-100/90 dark:border-[rgba(139,92,246,0.08)] dark:bg-[#0b0b1a]/60"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
@@ -984,10 +993,10 @@ export default function LandingPage() {
             { v: h.statsSetupValue, l: h.statsSetupLabel }
           ].map((s) => (
             <motion.div key={s.l} variants={reveal} className="text-center">
-              <p className="text-3xl md:text-4xl font-black text-white font-[family-name:var(--font-brico)]">
+              <p className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white font-[family-name:var(--font-brico)]">
                 {s.v}
               </p>
-              <p className="text-sm text-[#9593A8] mt-1">{s.l}</p>
+              <p className="text-sm text-slate-600 dark:text-[#9593A8] mt-1">{s.l}</p>
             </motion.div>
           ))}
         </div>
@@ -996,7 +1005,7 @@ export default function LandingPage() {
       {/* FAQ */}
       <section className="py-20 px-4" dir={isRtl ? 'rtl' : 'ltr'}>
         <div className="mx-auto max-w-3xl">
-          <h2 className="text-3xl font-bold text-white text-center mb-10 font-[family-name:var(--font-brico)]">
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white text-center mb-10 font-[family-name:var(--font-brico)]">
             {h.faqTitle}
           </h2>
           <Accordion type="single" collapsible className="space-y-3">
@@ -1004,12 +1013,12 @@ export default function LandingPage() {
               <AccordionItem
                 key={q}
                 value={q}
-                className="border border-[rgba(139,92,246,0.12)] rounded-xl px-4 bg-[#121228]"
+                className="border border-slate-200 rounded-xl px-4 bg-white shadow-sm dark:border-[rgba(139,92,246,0.12)] dark:bg-[#121228] dark:shadow-none"
               >
-                <AccordionTrigger className="text-start text-white hover:text-[#A78BFA] hover:no-underline">
+                <AccordionTrigger className="text-start text-slate-900 hover:text-violet-700 dark:text-white dark:hover:text-[#A78BFA] hover:no-underline">
                   {q}
                 </AccordionTrigger>
-                <AccordionContent className="text-[#9593A8] pb-4">{a}</AccordionContent>
+                <AccordionContent className="text-slate-600 dark:text-[#9593A8] pb-4">{a}</AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
@@ -1039,7 +1048,7 @@ export default function LandingPage() {
           />
         </div>
         <div className="relative mx-auto max-w-3xl text-center">
-          <h2 className="text-[1.75rem] md:text-5xl font-bold text-white mb-8 font-[family-name:var(--font-brico)] leading-tight">
+          <h2 className="text-[1.75rem] md:text-5xl font-bold text-slate-900 dark:text-white mb-8 font-[family-name:var(--font-brico)] leading-tight">
             {h.finalCtaTitle}
           </h2>
           <Link href={SETUP_NEW_BUSINESS_PATH}>
@@ -1047,80 +1056,80 @@ export default function LandingPage() {
               {h.getStartedFree}
             </Button>
           </Link>
-          <p className="mt-4 text-xs text-[#68668A]">{h.finalCtaRings}</p>
+          <p className="mt-4 text-xs text-slate-500 dark:text-[#68668A]">{h.finalCtaRings}</p>
         </div>
       </motion.section>
 
       {/* Footer */}
       <footer
-        className="border-t border-[rgba(139,92,246,0.12)] py-14 px-4 bg-[#06060f] pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]"
+        className="border-t border-slate-200 py-14 px-4 bg-slate-50 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] dark:border-[rgba(139,92,246,0.12)] dark:bg-[#06060f]"
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         <div className="mx-auto max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           <div>
-            <HeaderLogo variant="light" />
-            <p className="mt-4 text-sm text-[#68668A] leading-relaxed">{h.footerTagline}</p>
+            <HeaderLogo />
+            <p className="mt-4 text-sm text-slate-600 dark:text-[#68668A] leading-relaxed">{h.footerTagline}</p>
             <div className="mt-4">
               <SocialMediaLinks />
             </div>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-[#68668A] mb-3">{h.footerProduct}</p>
-            <ul className="space-y-2 text-sm text-[#9593A8]">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#68668A] mb-3">{h.footerProduct}</p>
+            <ul className="space-y-2 text-sm text-slate-600 dark:text-[#9593A8]">
               <li>
-                <a href="#features" className="hover:text-white transition-colors">
+                <a href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors">
                   {h.navFeatures}
                 </a>
               </li>
               <li>
-                <a href="#pricing" className="hover:text-white transition-colors">
+                <a href="#pricing" className="hover:text-slate-900 dark:hover:text-white transition-colors">
                   {h.navPricing}
                 </a>
               </li>
               <li>
-                <Link href="/pricing" className="hover:text-white transition-colors">
+                <Link href="/pricing" className="hover:text-slate-900 dark:hover:text-white transition-colors">
                   {h.pricing}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-[#68668A] mb-3">{h.footerCompany}</p>
-            <ul className="space-y-2 text-sm text-[#9593A8]">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#68668A] mb-3">{h.footerCompany}</p>
+            <ul className="space-y-2 text-sm text-slate-600 dark:text-[#9593A8]">
               <li>
-                <Link href={SETUP_NEW_BUSINESS_PATH} className="hover:text-white transition-colors">
+                <Link href={SETUP_NEW_BUSINESS_PATH} className="hover:text-slate-900 dark:hover:text-white transition-colors">
                   {h.footerBookDemo}
                 </Link>
               </li>
               <li>
-                <a href={`mailto:${h.footerSupportEmail}`} className="hover:text-white transition-colors">
+                <a href={`mailto:${h.footerSupportEmail}`} className="hover:text-slate-900 dark:hover:text-white transition-colors">
                   {h.footerSupportLabel}
                 </a>
               </li>
             </ul>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-[#68668A] mb-3">{h.footerLegal}</p>
-            <ul className="space-y-2 text-sm text-[#9593A8]">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#68668A] mb-3">{h.footerLegal}</p>
+            <ul className="space-y-2 text-sm text-slate-600 dark:text-[#9593A8]">
               <li>
-                <Link href="/privacy" className="hover:text-white transition-colors">
+                <Link href="/privacy" className="hover:text-slate-900 dark:hover:text-white transition-colors">
                   {h.privacy}
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="hover:text-white transition-colors">
+                <Link href="/terms" className="hover:text-slate-900 dark:hover:text-white transition-colors">
                   {h.termsNav}
                 </Link>
               </li>
             </ul>
-            <p className="text-xs font-bold uppercase tracking-wider text-[#68668A] mb-3 mt-6">{h.footerConnect}</p>
-            <p className="text-sm text-[#9593A8]">{h.footerQuestions}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#68668A] mb-3 mt-6">{h.footerConnect}</p>
+            <p className="text-sm text-slate-600 dark:text-[#9593A8]">{h.footerQuestions}</p>
             <a href={`mailto:${h.footerSupportEmail}`} className="text-sm text-[#A78BFA] hover:underline">
               {h.footerSupportEmail}
             </a>
           </div>
         </div>
-        <div className="mx-auto max-w-6xl mt-12 pt-8 border-t border-[rgba(139,92,246,0.08)] text-center text-xs text-[#68668A]">
+        <div className="mx-auto max-w-6xl mt-12 pt-8 border-t border-slate-200 text-center text-xs text-slate-500 dark:border-[rgba(139,92,246,0.08)] dark:text-[#68668A]">
           {trFormat(h.footerCopyright, { year: String(new Date().getFullYear()) })} · {t.poweredBy}
         </div>
       </footer>

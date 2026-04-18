@@ -23,7 +23,7 @@ function TikTokIcon({ className = 'w-5 h-5' }) {
 }
 
 const linkBase =
-  'inline-flex items-center justify-center rounded-full p-2.5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0F]'
+  'inline-flex items-center justify-center rounded-full p-2.5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-offset-[#0A0A0F]'
 
 export default function SocialMediaLinks({ className = '' }) {
   return (

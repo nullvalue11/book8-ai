@@ -9,12 +9,12 @@
 
 @layer base {
   :root {
-    /* Light Mode (default) */
+    /* Light Mode (default) — strong text on white for WCAG-friendly contrast */
     --brand: #7C4DFF;
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --foreground: 222 47% 9%;
     --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 20% 32%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     --card: 0 0% 100%;
@@ -77,15 +77,19 @@
     letter-spacing: 0.02em;
   }
 
-  /* BOO-66B: solid canvas behind the app — avoids white gaps below footer on mobile (Safari/Chrome) when fixed aurora/particles sit above a light-themed body */
+  /*
+   * Canvas follows theme (next-themes toggles .dark on <html>).
+   * BOO-66B: use semantic background so light/dark both fill the viewport with no gaps.
+   */
   html {
-    background-color: #06060f;
+    background-color: hsl(var(--background));
   }
 
   body {
     min-height: 100dvh;
     min-height: 100vh;
-    background-color: #06060f;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-weight: 400;
     letter-spacing: 0;
   }

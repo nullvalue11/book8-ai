@@ -11,7 +11,7 @@ export function Providers({ children }) {
   return (
     <SessionProvider>
       <SiteLanguageProvider>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem enableColorScheme>
           <div className="relative">
             <SkipToMainLink />
             <HtmlLangUpdater />
