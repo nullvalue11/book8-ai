@@ -62,6 +62,10 @@ export async function GET(request) {
       return NextResponse.redirect(`${base}/?google_error=invalid_state`)
     }
 
+    if (!businessId) {
+      console.warn('[google/callback] No businessId in state — user-level only connect. uid:', uid)
+    }
+
     const oauth = await getOAuth2Client(base)
     if (!oauth) {
       return NextResponse.redirect(`${base}/?google_error=not_configured`)

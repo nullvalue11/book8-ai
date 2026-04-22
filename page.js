@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { buildGoogleConnectUrl, GOOGLE_OAUTH_USER_CONNECT_PURPOSE } from './app/lib/oauth-connect-url'
 
 function formatInTz(iso, tz) {
   try {
@@ -239,7 +240,8 @@ const IntegrationsCard = ({ token, profile, onProfile }) => {
       console.log('[Google Connect] JWT token present:', !!t)
       
       if (t) {
-        const url = `/api/integrations/google/auth?jwt=${encodeURIComponent(t)}`
+        // Legacy integrations card: no business in scope — user-only OAuth (BOO-112B escape hatch)
+        const url = buildGoogleConnectUrl({ jwt: t, purpose: GOOGLE_OAUTH_USER_CONNECT_PURPOSE })
         console.log('[Google Connect] Redirecting to:', url)
         window.location.href = url
       } else {

@@ -24,6 +24,7 @@ import GooglePlacesSearch from '@/components/GooglePlacesSearch'
 import { placeDetailsToProfileFields } from '@/lib/googlePlaces'
 import { getBookingTranslations } from '@/lib/translations'
 import { isValidIanaTimeZone } from '@/lib/timezones'
+import { buildGoogleConnectUrl } from '@/lib/oauth-connect-url'
 import { 
   Building2, 
   CheckCircle2, 
@@ -490,12 +491,12 @@ function BusinessPageContent() {
   async function handleConnectCalendar(biz, provider) {
     setConnectingCalendar(biz.businessId)
     try {
-      const authBase =
-        provider === 'microsoft'
-          ? '/api/integrations/microsoft/auth'
-          : '/api/integrations/google/auth'
-
-      window.location.href = `${authBase}?jwt=${token}&businessId=${biz.businessId}`
+      if (provider === 'google') {
+        // businessId required (BOO-112B) — always in scope on this page
+        window.location.href = buildGoogleConnectUrl({ jwt: token, businessId: biz.businessId })
+      } else {
+        window.location.href = `/api/integrations/microsoft/auth?jwt=${token}&businessId=${biz.businessId}`
+      }
     } catch (err) {
       setError(err.message)
       setConnectingCalendar(null)

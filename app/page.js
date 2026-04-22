@@ -31,6 +31,7 @@ import {
   resolveBusinessTimezoneFromOwnedList
 } from "@/lib/bookingDisplayTime";
 import { getBookingStartMs, isRecentPastBooking, isUpcomingBooking } from "@/lib/bookingListUtils";
+import { buildGoogleConnectUrl } from "@/lib/oauth-connect-url";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function formatDuration(seconds) {
@@ -835,7 +836,11 @@ function HomeContent(props) {
       router.push('/pricing?paywall=1&feature=calendar');
       return;
     }
-    window.location.href = `/api/integrations/google/auth?jwt=${token}`; 
+    if (!primaryBusinessId) {
+      toast.error("Select or create a business first so Google Calendar links to that business.");
+      return;
+    }
+    window.location.href = buildGoogleConnectUrl({ jwt: token, businessId: primaryBusinessId });
   }
   async function connectOutlook() { 
     if (!token) {

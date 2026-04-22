@@ -45,6 +45,7 @@ import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { currencyFromTimezone, detectCurrency } from '@/lib/currency'
 import LanguageSelector from '@/components/LanguageSelector'
 import { trFormat } from '@/lib/translations'
+import { buildGoogleConnectUrl } from '@/lib/oauth-connect-url'
 
 const SETUP_WIZARD_DRAFT_KEY = 'book8_setup_wizard_draft_v1'
 const SETUP_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
@@ -1365,8 +1366,12 @@ function WizardContent() {
       setError('Missing business context for Google Calendar. Try refreshing the page.')
       return
     }
-    const url = `${base}/api/integrations/google/auth?businessId=${encodeURIComponent(bid)}&jwt=${encodeURIComponent(token)}&returnTo=${encodeURIComponent(`${base}/setup?step=4&businessId=${encodeURIComponent(bid)}`)}`
-    window.location.href = url
+    const returnTo = `${base}/setup?step=4&businessId=${encodeURIComponent(bid)}`
+    window.location.href = `${base}${buildGoogleConnectUrl({
+      jwt: token,
+      businessId: bid,
+      returnTo
+    })}`
   }
 
   function handleConnectOutlook() {

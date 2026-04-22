@@ -24,6 +24,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { hasOutlookCalendar } from '@/lib/plan-features'
+import { buildGoogleConnectUrl, GOOGLE_OAUTH_USER_CONNECT_PURPOSE } from '@/lib/oauth-connect-url'
 
 // Calendar provider configurations
 const PROVIDERS = [
@@ -195,8 +196,16 @@ function CalendarIntegrationsContent() {
     
     try {
       if (providerId === 'google') {
-        // Redirect to Google OAuth
-        window.location.href = `/api/integrations/google/auth?jwt=${token}`
+        const businessIdFromUrl = searchParams.get('businessId')
+        if (businessIdFromUrl) {
+          window.location.href = buildGoogleConnectUrl({ jwt: token, businessId: businessIdFromUrl })
+        } else {
+          // Hub without ?businessId= — user-only link (no business.calendar update); prefer dashboard/business Connect
+          window.location.href = buildGoogleConnectUrl({
+            jwt: token,
+            purpose: GOOGLE_OAUTH_USER_CONNECT_PURPOSE
+          })
+        }
       } else if (providerId === 'microsoft') {
         // Redirect to Microsoft OAuth
         window.location.href = `/api/integrations/microsoft/auth?jwt=${token}`

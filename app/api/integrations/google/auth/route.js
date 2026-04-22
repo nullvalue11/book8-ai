@@ -5,6 +5,10 @@ import { headers } from 'next/headers'
 import { getBaseUrl } from '../../../../../lib/baseUrl'
 import { env } from '@/lib/env'
 import { isSubscribed, businessHasCalendarEntitlement } from '@/lib/subscription'
+import {
+  GOOGLE_OAUTH_USER_CONNECT_PURPOSE,
+  validateGoogleAuthEntryQuery
+} from '@/lib/oauth-connect-url'
 
 export const runtime = 'nodejs'
 
@@ -48,9 +52,9 @@ export async function GET(request) {
     const url = new URL(request.url)
     const jwtParam = url.searchParams.get('jwt') || url.searchParams.get('token')
     
-    // Optional: businessId for business-context calendar connections
     const businessId = url.searchParams.get('businessId')
     const returnTo = url.searchParams.get('returnTo')
+    const purpose = url.searchParams.get('purpose')
 
     let userId = null
     if (jwtParam) {
@@ -87,22 +91,39 @@ export async function GET(request) {
     if (!user) {
       return NextResponse.redirect(`${base}/?google_error=user_not_found`)
     }
+
+    const hasBid = !!(businessId && String(businessId).trim())
+    console.info('[Google Auth] entry', {
+      hasBusinessId: hasBid,
+      purpose: purpose || null,
+      uid: userId
+    })
+
+    const entryGate = validateGoogleAuthEntryQuery({ businessId, purpose })
+    if (!entryGate.allowed) {
+      const acceptHeader = request.headers.get('accept') || ''
+      if (acceptHeader.includes('application/json')) {
+        return NextResponse.json(entryGate.body, { status: 400 })
+      }
+      return NextResponse.redirect(`${base}/dashboard/business?google_error=business_id_required`)
+    }
     
     // If businessId is provided, validate ownership and check business subscription
-    if (businessId) {
+    if (hasBid) {
+      const bid = String(businessId).trim()
       const business = await database.collection('businesses').findOne({
         ownerUserId: userId,
-        $or: [{ businessId }, { id: businessId }]
+        $or: [{ businessId: bid }, { id: bid }]
       })
 
       if (!business) {
-        console.log(`[Google Auth] Business ${businessId} not found or not owned by user ${userId}`)
+        console.log(`[Google Auth] Business ${bid} not found or not owned by user ${userId}`)
         return NextResponse.redirect(`${base}/dashboard/business?error=business_not_found`)
       }
 
       if (!businessHasCalendarEntitlement(business, user)) {
         console.log(
-          `[Google Auth] Business ${businessId} subscription gate:`,
+          `[Google Auth] Business ${bid} subscription gate:`,
           JSON.stringify({
             subStatus: business.subscription?.status,
             plan: business.plan,
@@ -111,10 +132,10 @@ export async function GET(request) {
             userSubscribed: isSubscribed(user)
           })
         )
-        return NextResponse.redirect(`${base}/dashboard/business?error=subscription_required&businessId=${businessId}`)
+        return NextResponse.redirect(`${base}/dashboard/business?error=subscription_required&businessId=${bid}`)
       }
     } else {
-      // For non-business calendar connections, check user subscription (legacy behavior)
+      // User-only connect (purpose=user_connect): no businessId in state — updates users.google only
       if (!isSubscribed(user)) {
         console.log(`[Google Auth] User ${userId} blocked - no active subscription`)
         
@@ -136,8 +157,8 @@ export async function GET(request) {
 
     // Include businessId and returnTo in state if provided
     const statePayload = { sub: userId }
-    if (businessId) {
-      statePayload.businessId = businessId
+    if (hasBid) {
+      statePayload.businessId = String(businessId).trim()
     }
     if (returnTo) {
       statePayload.returnTo = returnTo
