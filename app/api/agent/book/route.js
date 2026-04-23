@@ -395,12 +395,13 @@ export async function POST(request) {
         // Update booking with Google event ID
         await database.collection('bookings').updateOne(
           { id: bookingId },
-          { 
-            $set: { 
-              googleEventId, 
+          {
+            $set: {
+              googleEventId,
+              calendarEventId: googleEventId,
               googleCalendarId,
               updatedAt: new Date().toISOString()
-            } 
+            }
           }
         )
 

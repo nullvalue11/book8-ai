@@ -5,6 +5,11 @@ import { buildICS } from '@/lib/ics'
 import { recomputeReminders, normalizeReminderSettings } from '@/lib/reminders'
 import { env, isFeatureEnabled } from '@/lib/env'
 import { sendResendEmail } from '@/lib/resendSend'
+import {
+  getBookingCalendarEventId,
+  resolveCalendarIdForUser,
+  resolveHostUserForBooking
+} from '@/lib/bookingCalendarGcal'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -75,9 +80,8 @@ export async function POST(request) {
       )
     }
 
-    // Get owner info
-    const owner = await database.collection('users').findOne({ id: booking.userId })
-    
+    const { user: owner } = await resolveHostUserForBooking(database, booking)
+
     if (!owner) {
       return NextResponse.json(
         { ok: false, error: 'Owner not found' },
@@ -97,7 +101,12 @@ export async function POST(request) {
         oauth.setCredentials({ refresh_token: owner.google.refreshToken })
         const calendar = google.calendar({ version: 'v3', auth: oauth })
 
-        const selectedCalendarIds = owner.scheduling?.selectedCalendarIds || ['primary']
+        const selectedCalendarIds =
+          (Array.isArray(owner.scheduling?.selectedCalendarIds) && owner.scheduling.selectedCalendarIds.length
+            ? owner.scheduling.selectedCalendarIds
+            : Array.isArray(owner.google?.selectedCalendarIds) && owner.google.selectedCalendarIds.length
+              ? owner.google.selectedCalendarIds
+              : ['primary'])
         const response = await calendar.freebusy.query({
           requestBody: {
             timeMin: newStartTime.toISOString(),
@@ -114,14 +123,13 @@ export async function POST(request) {
               const busyStart = new Date(busy.start)
               const busyEnd = new Date(busy.end)
               
-              // Skip if the busy slot is the current booking
-              if (booking.googleEventId) {
-                // Allow overlap with current booking's time slot
+              if (getBookingCalendarEventId(booking)) {
                 const currentStart = new Date(booking.startTime)
                 const currentEnd = new Date(booking.endTime)
-                
-                if (busyStart.getTime() === currentStart.getTime() && 
-                    busyEnd.getTime() === currentEnd.getTime()) {
+                if (
+                  busyStart.getTime() === currentStart.getTime() &&
+                  busyEnd.getTime() === currentEnd.getTime()
+                ) {
                   continue
                 }
               }
@@ -169,10 +177,12 @@ export async function POST(request) {
       rescheduledAt: new Date().toISOString()
     })
 
+    const eventIdForGcal = getBookingCalendarEventId(booking)
+
     await database.collection('bookings').updateOne(
       { id: booking.id },
-      { 
-        $set: { 
+      {
+        $set: {
           startTime: newStartTime.toISOString(),
           endTime: newEndTime.toISOString(),
           guestTimezone: timezone || booking.guestTimezone,
@@ -180,14 +190,17 @@ export async function POST(request) {
           rescheduleCount: (booking.rescheduleCount || 0) + 1,
           rescheduleHistory,
           reminders: updatedReminders,
-          updatedAt: new Date().toISOString() 
-        } 
+          updatedAt: new Date().toISOString(),
+          ...(eventIdForGcal
+            ? { calendarEventId: eventIdForGcal, googleEventId: eventIdForGcal }
+            : {})
+        }
       }
     )
 
     // Update Google Calendar event
     try {
-      if (booking.googleEventId && owner.google?.refreshToken) {
+      if (eventIdForGcal && owner.google?.refreshToken && env.GOOGLE?.CLIENT_ID) {
         const { google } = await import('googleapis')
         const oauth = new google.auth.OAuth2(
           env.GOOGLE?.CLIENT_ID,
@@ -211,13 +224,14 @@ export async function POST(request) {
           attendees: [{ email: booking.guestEmail }]
         }
 
+        const calendarId = resolveCalendarIdForUser(owner)
         await calendar.events.update({
-          calendarId: booking.googleCalendarId || 'primary',
-          eventId: booking.googleEventId,
+          calendarId,
+          eventId: eventIdForGcal,
           requestBody: event
         })
 
-        console.log('[reschedule] Google event updated:', booking.googleEventId)
+        console.log('[reschedule] Google event updated:', eventIdForGcal)
       }
     } catch (error) {
       console.error('[reschedule] Google Calendar error:', error.message)

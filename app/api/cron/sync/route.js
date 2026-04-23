@@ -14,6 +14,7 @@ import { env, isFeatureEnabled } from '@/lib/env'
 import { getCorsAllowOrigin } from '@/lib/cors-allow'
 import { safeCompare } from '@/lib/auth-utils'
 import { sendResendEmail } from '@/lib/resendSend'
+import { resolveHostUserForBooking } from '@/lib/bookingCalendarGcal'
 
 export const runtime = 'nodejs'
 
@@ -204,8 +205,7 @@ async function handleRemindersTask(db, runId, logsEnabled, request) {
         processed++
         
         try {
-          // Get owner
-          const owner = await db.collection('users').findOne({ id: booking.userId })
+          const { user: owner } = await resolveHostUserForBooking(db, booking)
           if (!owner) {
             console.error(`[cron:reminders] Owner not found for booking ${booking.id}`)
             failures++

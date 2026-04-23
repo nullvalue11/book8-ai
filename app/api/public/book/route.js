@@ -534,7 +534,13 @@ export async function POST(request) {
             
             await database.collection('bookings').updateOne(
               { id: bookingId },
-              { $set: { googleEventId, googleCalendarId } }
+              {
+                $set: {
+                  googleEventId,
+                  calendarEventId: googleEventId,
+                  googleCalendarId
+                }
+              }
             )
             
             console.log('[book] Google event created:', googleEventId)

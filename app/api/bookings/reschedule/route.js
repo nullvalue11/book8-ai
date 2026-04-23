@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import { verifyRescheduleToken } from '../../../lib/security/rescheduleToken'
 import { env, isFeatureEnabled } from '../../../lib/env'
 import { corsHeaders } from '../../../lib/cors-allow'
+import { resolveHostUserForBooking } from '@/lib/bookingCalendarGcal'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -95,8 +96,7 @@ export async function GET(request) {
       )
     }
 
-    // Get owner settings
-    const owner = await database.collection('users').findOne({ id: booking.userId })
+    const { user: owner } = await resolveHostUserForBooking(database, booking)
     if (!owner || !owner.scheduling) {
       return NextResponse.json(
         { ok: false, error: 'Owner not found' },

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { buildICS } from '@/lib/ics'
 import { env } from '@/lib/env'
+import { resolveHostUserForBooking } from '@/lib/bookingCalendarGcal'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,8 +46,7 @@ export async function GET(request) {
       )
     }
 
-    // Get owner info for organizer email
-    const owner = await database.collection('users').findOne({ id: booking.userId })
+    const { user: owner } = await resolveHostUserForBooking(database, booking)
     const organizerEmail = owner?.email || 'noreply@book8.io'
     const organizerName = owner?.scheduling?.handle || 'Book8-AI'
 

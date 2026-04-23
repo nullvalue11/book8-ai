@@ -30,6 +30,11 @@ import { sendResendEmail } from '@/lib/resendSend'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 import { cancellationFeeApplies, computeNoShowFeeCents } from '@/lib/no-show-protection'
 import { createOffSessionCharge } from '@/lib/no-show-stripe'
+import {
+  deleteGoogleCalendarEventForBusiness,
+  getBookingCalendarEventId,
+  resolveHostUserForBooking
+} from '@/lib/bookingCalendarGcal'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -168,28 +173,19 @@ export async function POST(request) {
       }
     }
 
-    // Delete Google event if present
+    // Delete Google Calendar event (core-api: calendarEventId + business.ownerUserId)
     try {
-      if (booking.googleEventId) {
-        const { google } = await import('googleapis')
-        const user = await database.collection('users').findOne({ id: booking.userId })
-        
-        if (user?.google?.refreshToken) {
-          const oauth2 = new google.auth.OAuth2(
-            env.GOOGLE?.CLIENT_ID, 
-            env.GOOGLE?.CLIENT_SECRET, 
-            env.GOOGLE?.REDIRECT_URI
-          )
-          oauth2.setCredentials({ refresh_token: user.google.refreshToken })
-          const cal = google.calendar({ version: 'v3', auth: oauth2 })
-          
-          await cal.events.delete({ 
-            calendarId: booking.googleCalendarId || 'primary', 
-            eventId: booking.googleEventId 
-          })
-          
-          console.log('[cancel] Google event deleted:', booking.googleEventId)
-        }
+      const eventId = getBookingCalendarEventId(booking)
+      if (!eventId) {
+        console.info('[cancel] No calendarEventId / googleEventId on booking:', booking.id, '— skipping GCal delete')
+      } else if (!booking.businessId) {
+        console.warn('[cancel] No businessId on booking — cannot resolve owner OAuth:', booking.id)
+      } else {
+        await deleteGoogleCalendarEventForBusiness(database, env, {
+          businessId: booking.businessId,
+          eventId,
+          logPrefix: '[cancel POST]'
+        })
       }
     } catch (e) {
       console.error('[cancel] Google delete failed:', e?.message || e)
@@ -209,9 +205,9 @@ export async function POST(request) {
 
     await propagateCancellationToCoreApi(booking)
 
-    // Send cancellation emails
+    // Send cancellation emails (host = business owner when businessId is set)
     try {
-      const user = await database.collection('users').findOne({ id: booking.userId })
+      const { user } = await resolveHostUserForBooking(database, booking)
       
       if (env.RESEND_API_KEY && user) {
         const { Resend } = await import('resend')
@@ -325,19 +321,38 @@ export async function GET(request) {
     const booking = await database.collection('bookings').findOne({ id })
     if (!booking) return new Response('<p>Booking not found</p>', { status: 404, headers: { 'Content-Type': 'text/html' } })
 
-    // Delete Google event if present
+    // Delete Google Calendar event: prefer core-api fields + business owner OAuth (BOO-113).
+    // Legacy: google_events map (book8-ai-only bookings with user-scoped map rows).
     try {
-      const map = await database.collection('google_events').findOne({ userId: booking.userId, bookingId: id })
-      if (map?.googleEventId) {
-        const { google } = await import('googleapis')
-        const user = await database.collection('users').findOne({ id: booking.userId })
-        const oauth2 = new google.auth.OAuth2(env.GOOGLE?.CLIENT_ID, env.GOOGLE?.CLIENT_SECRET, env.GOOGLE?.REDIRECT_URI)
-        oauth2.setCredentials({ refresh_token: user?.google?.refreshToken })
-        const cal = google.calendar({ version: 'v3', auth: oauth2 })
-        await cal.events.delete({ calendarId: map.calendarId || 'primary', eventId: map.googleEventId })
-        await database.collection('google_events').deleteOne({ userId: booking.userId, bookingId: id })
+      const eventIdCore = getBookingCalendarEventId(booking)
+      if (eventIdCore && booking.businessId) {
+        await deleteGoogleCalendarEventForBusiness(database, env, {
+          businessId: booking.businessId,
+          eventId: eventIdCore,
+          logPrefix: '[cancel GET]'
+        })
+      } else {
+        const { user: hostUser } = await resolveHostUserForBooking(database, booking)
+        const mapUserId = hostUser?.id || booking.userId
+        const map =
+          mapUserId &&
+          (await database.collection('google_events').findOne({ userId: mapUserId, bookingId: id }))
+        if (map?.googleEventId && hostUser?.google?.refreshToken) {
+          const { google } = await import('googleapis')
+          const oauth2 = new google.auth.OAuth2(
+            env.GOOGLE?.CLIENT_ID,
+            env.GOOGLE?.CLIENT_SECRET,
+            env.GOOGLE?.REDIRECT_URI
+          )
+          oauth2.setCredentials({ refresh_token: hostUser.google.refreshToken })
+          const cal = google.calendar({ version: 'v3', auth: oauth2 })
+          await cal.events.delete({ calendarId: map.calendarId || 'primary', eventId: map.googleEventId })
+          await database.collection('google_events').deleteOne({ userId: mapUserId, bookingId: id })
+        }
       }
-    } catch (e) { console.error('[public/cancel] google delete failed', e?.message || e) }
+    } catch (e) {
+      console.error('[public/cancel] google delete failed', e?.message || e)
+    }
 
     await database.collection('bookings').updateOne({ id }, { $set: { status: 'canceled', updatedAt: new Date().toISOString() } })
     await database.collection('public_booking_tokens').updateOne({ _id: marker._id }, { $set: { used: true, usedAt: new Date() } })
@@ -346,38 +361,59 @@ export async function GET(request) {
 
     // send cancellation emails
     try {
-      const user = await database.collection('users').findOne({ id: booking.userId })
-      const { Resend } = await import('resend')
-      const resend = new Resend(env.RESEND_API_KEY)
-      const ics = buildICS({ uid: booking.id, start: booking.startTime, end: booking.endTime, summary: booking.title, description: booking.notes, organizer: user.email, attendees: [{ email: user.email }, { email: booking.customerName ? `${booking.customerName} <${booking.customerEmail || ''}>` : (booking.customerEmail || '') }], method: 'CANCEL' })
-      const guestOut = await sendResendEmail(resend, {
-        from: env.EMAIL_FROM,
-        to: user.email,
-        reply_to: env.EMAIL_REPLY_TO,
-        subject: 'Booking canceled',
-        html: `<p>The meeting ${booking.title} was canceled.</p>`,
-        attachments: [{ filename: 'cancel.ics', content: Buffer.from(ics).toString('base64') }]
-      })
-      if (!guestOut.ok) console.error('[public/cancel] Guest email rejected', guestOut)
-
-      // Send host notification (synchronous)
-      try {
-        const hostEmailHtml = await renderHostCancel(booking, user, booking.guestTimezone)
-        const hostOut = await sendResendEmail(resend, {
-          from: 'Book8-AI <notifications@book8.io>',
-          to: user.email,
-          subject: `Booking canceled: ${booking.customerName || 'Guest'} – ${booking.title}`,
-          html: hostEmailHtml
+      const { user } = await resolveHostUserForBooking(database, booking)
+      if (!user?.email) {
+        console.warn('[public/cancel] No host user for emails, booking:', id)
+      } else {
+        const { Resend } = await import('resend')
+        const resend = new Resend(env.RESEND_API_KEY)
+        const ics = buildICS({
+          uid: booking.id,
+          start: booking.startTime,
+          end: booking.endTime,
+          summary: booking.title,
+          description: booking.notes,
+          organizer: user.email,
+          attendees: [
+            { email: user.email },
+            {
+              email: booking.customerName
+                ? `${booking.customerName} <${booking.customerEmail || ''}>`
+                : booking.customerEmail || ''
+            }
+          ],
+          method: 'CANCEL'
         })
-        if (!hostOut.ok) {
-          console.error('[public/cancel] Host notification rejected', hostOut)
-        } else {
-          console.log('[public/cancel] Host notification sent', { id: hostOut.id })
+        const guestOut = await sendResendEmail(resend, {
+          from: env.EMAIL_FROM,
+          to: user.email,
+          reply_to: env.EMAIL_REPLY_TO,
+          subject: 'Booking canceled',
+          html: `<p>The meeting ${booking.title} was canceled.</p>`,
+          attachments: [{ filename: 'cancel.ics', content: Buffer.from(ics).toString('base64') }]
+        })
+        if (!guestOut.ok) console.error('[public/cancel] Guest email rejected', guestOut)
+
+        try {
+          const hostEmailHtml = await renderHostCancel(booking, user, booking.guestTimezone)
+          const hostOut = await sendResendEmail(resend, {
+            from: 'Book8-AI <notifications@book8.io>',
+            to: user.email,
+            subject: `Booking canceled: ${booking.customerName || 'Guest'} – ${booking.title}`,
+            html: hostEmailHtml
+          })
+          if (!hostOut.ok) {
+            console.error('[public/cancel] Host notification rejected', hostOut)
+          } else {
+            console.log('[public/cancel] Host notification sent', { id: hostOut.id })
+          }
+        } catch (hostError) {
+          console.error('[public/cancel] Host notification error:', hostError.message)
         }
-      } catch (hostError) {
-        console.error('[public/cancel] Host notification error:', hostError.message)
       }
-    } catch (e) { console.error('[public/cancel] email failed', e?.message || e) }
+    } catch (e) {
+      console.error('[public/cancel] email failed', e?.message || e)
+    }
 
     return new Response('<p>Your meeting was canceled.</p>', { status: 200, headers: { 'Content-Type': 'text/html' } })
   } catch (e) { console.error('[public/cancel] error', e); return new Response('<p>Server error</p>', { status: 500, headers: { 'Content-Type': 'text/html' } }) }

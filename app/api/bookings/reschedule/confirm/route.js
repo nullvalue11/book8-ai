@@ -11,6 +11,11 @@ import { renderHostReschedule } from '../../../../lib/emailRenderer'
 import { env, isFeatureEnabled } from '../../../../lib/env'
 import { sendResendEmail } from '@/lib/resendSend'
 import { corsHeaders } from '../../../../lib/cors-allow'
+import {
+  getBookingCalendarEventId,
+  resolveCalendarIdForUser,
+  resolveHostUserForBooking
+} from '@/lib/bookingCalendarGcal'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -142,8 +147,7 @@ export async function POST(request) {
       )
     }
 
-    // Get owner
-    const owner = await database.collection('users').findOne({ id: booking.userId })
+    const { user: owner } = await resolveHostUserForBooking(database, booking)
     if (!owner) {
       return NextResponse.json(
         { ok: false, error: 'Owner not found' },
@@ -153,7 +157,7 @@ export async function POST(request) {
 
     // Check FreeBusy for new slot
     try {
-      if (owner.google?.refreshToken) {
+      if (owner.google?.refreshToken && env.GOOGLE?.CLIENT_ID && env.GOOGLE?.CLIENT_SECRET) {
         const { google } = await import('googleapis')
         const oauth = new google.auth.OAuth2(
           env.GOOGLE.CLIENT_ID,
@@ -163,7 +167,12 @@ export async function POST(request) {
         oauth.setCredentials({ refresh_token: owner.google.refreshToken })
         const calendar = google.calendar({ version: 'v3', auth: oauth })
 
-        const selectedCalendarIds = owner.scheduling?.selectedCalendarIds || ['primary']
+        const selectedCalendarIds =
+          (Array.isArray(owner.scheduling?.selectedCalendarIds) && owner.scheduling.selectedCalendarIds.length
+            ? owner.scheduling.selectedCalendarIds
+            : Array.isArray(owner.google?.selectedCalendarIds) && owner.google.selectedCalendarIds.length
+              ? owner.google.selectedCalendarIds
+              : ['primary'])
         const response = await calendar.freebusy.query({
           requestBody: {
             timeMin: newStartTime.toISOString(),
@@ -179,12 +188,19 @@ export async function POST(request) {
             for (const busy of cal.busy) {
               const busyStart = new Date(busy.start)
               const busyEnd = new Date(busy.end)
-              
-              // Skip if it's the current booking's event
-              if (booking.googleEventId && busy.id === booking.googleEventId) {
-                continue
+
+              // FreeBusy busy slots have no event id — skip the interval that is this booking's current time
+              if (getBookingCalendarEventId(booking)) {
+                const currentStart = new Date(booking.startTime)
+                const currentEnd = new Date(booking.endTime)
+                if (
+                  busyStart.getTime() === currentStart.getTime() &&
+                  busyEnd.getTime() === currentEnd.getTime()
+                ) {
+                  continue
+                }
               }
-              
+
               if (newStartTime < busyEnd && newEndTime > busyStart) {
                 return NextResponse.json(
                   { ok: false, error: 'The selected time slot is not available' },
@@ -201,7 +217,8 @@ export async function POST(request) {
 
     // Delete old Google Calendar event
     try {
-      if (owner.google?.refreshToken && booking.googleEventId) {
+      const oldEventId = getBookingCalendarEventId(booking)
+      if (owner.google?.refreshToken && oldEventId && env.GOOGLE?.CLIENT_ID) {
         const { google } = await import('googleapis')
         const oauth = new google.auth.OAuth2(
           env.GOOGLE.CLIENT_ID,
@@ -212,11 +229,12 @@ export async function POST(request) {
         const calendar = google.calendar({ version: 'v3', auth: oauth })
 
         try {
+          const calId = resolveCalendarIdForUser(owner)
           await calendar.events.delete({
-            calendarId: booking.googleCalendarId || 'primary',
-            eventId: booking.googleEventId
+            calendarId: calId,
+            eventId: oldEventId
           })
-          console.log('[reschedule/confirm] Deleted old event:', booking.googleEventId)
+          console.log('[reschedule/confirm] Deleted old event:', oldEventId)
         } catch (e) {
           console.error('[reschedule/confirm] Failed to delete old event:', e.message)
         }
@@ -228,7 +246,7 @@ export async function POST(request) {
     // Create new Google Calendar event
     let newGoogleEventId = null
     try {
-      if (owner.google?.refreshToken) {
+      if (owner.google?.refreshToken && env.GOOGLE?.CLIENT_ID) {
         const { google } = await import('googleapis')
         const oauth = new google.auth.OAuth2(
           env.GOOGLE.CLIENT_ID,
@@ -256,7 +274,7 @@ export async function POST(request) {
           attendees: [{ email: booking.guestEmail }]
         }
 
-        const calendarId = booking.googleCalendarId || 'primary'
+        const calendarId = resolveCalendarIdForUser(owner)
         const ins = await calendar.events.insert({ calendarId, requestBody: event })
         newGoogleEventId = ins.data.id
         console.log('[reschedule/confirm] Created new event:', newGoogleEventId)
@@ -272,12 +290,16 @@ export async function POST(request) {
     }
 
     // Update booking
+    const mergedEventId =
+      newGoogleEventId || getBookingCalendarEventId(booking) || null
     const updatedBooking = {
       startTime: newStartTime.toISOString(),
       endTime: newEndTime.toISOString(),
       status: 'confirmed',
       rescheduleCount: rescheduleCount + 1,
-      googleEventId: newGoogleEventId || booking.googleEventId,
+      ...(mergedEventId
+        ? { calendarEventId: mergedEventId, googleEventId: mergedEventId }
+        : {}),
       reminders: updatedReminders,
       updatedAt: new Date().toISOString()
     }
@@ -299,10 +321,9 @@ export async function POST(request) {
 
     await database.collection('bookings').updateOne(
       { id: booking.id },
-      { 
-        $set: updatedBooking,
-        $push: { rescheduleHistory: historyEntry },
-        $set: { rescheduleNonces: updatedNonces }
+      {
+        $set: { ...updatedBooking, rescheduleNonces: updatedNonces },
+        $push: { rescheduleHistory: historyEntry }
       }
     )
 

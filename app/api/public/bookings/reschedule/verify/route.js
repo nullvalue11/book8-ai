@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb'
 import { verifyRescheduleToken } from '@/lib/security/rescheduleToken'
 import { env } from '@/lib/env'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
+import { resolveHostUserForBooking } from '@/lib/bookingCalendarGcal'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,12 +56,14 @@ export async function GET(request) {
       )
     }
 
-    // Get owner handle for availability lookup: user scheduling > first business
-    const owner = await database.collection('users').findOne({ id: booking.userId })
+    const { user: owner, business: hostBusiness } = await resolveHostUserForBooking(database, booking)
     let handle = owner?.scheduling?.handle || null
-    if (!handle) {
+    if (!handle && hostBusiness) {
+      handle = hostBusiness.handle || hostBusiness.businessId || null
+    }
+    if (!handle && owner?.id) {
       const business = await database.collection(BUSINESS_COLLECTION).findOne(
-        { ownerUserId: booking.userId },
+        { ownerUserId: owner.id },
         { sort: { createdAt: 1 } }
       )
       handle = business?.handle || business?.businessId || null
