@@ -93,11 +93,18 @@ export async function POST(request) {
     for (const biz of affected) {
       const bizId = biz.businessId || biz.id
       if (bizId) {
-        await syncCalendarToCore({
-          businessId: bizId,
-          provider: null,
-          connected: false
-        })
+        try {
+          await syncCalendarToCore({
+            businessId: bizId,
+            connected: false,
+            provider: null,
+            connectedAt: null,
+            calendarId: null,
+            lastSyncedAt: null
+          })
+        } catch (syncErr) {
+          console.warn('[google/disconnect] syncCalendarToCore failed (non-blocking):', syncErr?.message || syncErr)
+        }
       }
     }
 

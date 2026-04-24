@@ -1,51 +1,69 @@
 import { env } from '@/lib/env'
+import { buildSyncCalendarStatePayload } from './syncCalendarStatePayload.js'
 
 /**
- * Syncs calendar connection status to core-api's business record.
- * Called after Google or Outlook calendar connect/disconnect.
+ * Syncs calendar connection status to core-api's business record (BOO-117B).
+ * Called after Google or Microsoft calendar connect/disconnect.
+ * Never throws — failures are logged and returned as `{ ok: false, ... }`.
  */
-export async function syncCalendarToCore({ businessId, provider, connected }) {
-  const CORE_API_URL =
-    env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
-  const secret = env.CORE_API_INTERNAL_SECRET || env.OPS_INTERNAL_SECRET
-
-  if (!secret) {
-    console.warn('[sync-calendar-to-core] No internal secret configured — skipping sync')
-    return
+export async function syncCalendarToCore({
+  businessId,
+  connected,
+  provider,
+  connectedAt,
+  calendarId,
+  lastSyncedAt
+}) {
+  if (!businessId) {
+    console.warn('[syncCalendarToCore] Missing businessId, skipping')
+    return { ok: false, reason: 'missing_businessId' }
   }
 
-  if (!businessId) {
-    console.warn('[sync-calendar-to-core] No businessId — skipping sync')
-    return
+  const coreApiUrlRaw =
+    env.CORE_API_URL || env.CORE_API_BASE_URL || 'https://book8-core-api.onrender.com'
+  const coreApiUrl = String(coreApiUrlRaw).replace(/\/$/, '')
+  const secret =
+    env.CORE_API_INTERNAL_SECRET || env.INTERNAL_API_SECRET || env.OPS_INTERNAL_SECRET
+
+  if (!secret) {
+    console.warn('[syncCalendarToCore] Missing CORE_API_INTERNAL_SECRET (or INTERNAL_API_SECRET), skipping')
+    return { ok: false, reason: 'missing_secret' }
   }
 
   try {
-    const baseUrl = CORE_API_URL.replace(/\/$/, '')
-    const response = await fetch(`${baseUrl}/internal/business/update-calendar`, {
+    const response = await fetch(`${coreApiUrl}/internal/business/sync-calendar-state`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-book8-internal-secret': secret
       },
-      body: JSON.stringify({
-        businessId,
-        calendarProvider: connected ? provider : null,
-        calendarConnected: connected
-      })
+      body: JSON.stringify(
+        buildSyncCalendarStatePayload({
+          businessId,
+          connected,
+          provider,
+          connectedAt,
+          calendarId,
+          lastSyncedAt
+        })
+      )
     })
 
     if (!response.ok) {
-      console.warn('[sync-calendar-to-core] Core-api returned:', response.status)
-    } else {
-      console.log('[sync-calendar-to-core] Synced to core-api:', {
-        businessId,
-        provider,
-        connected
+      const body = await response.text().catch(() => '')
+      console.warn('[syncCalendarToCore] Non-OK response:', {
+        status: response.status,
+        body: body.slice(0, 300)
       })
+      return { ok: false, status: response.status }
     }
+
+    const data = await response.json().catch(() => ({}))
+    console.log('[syncCalendarToCore] Synced:', { businessId, skipped: data.skipped || false })
+    return { ok: true, ...data }
   } catch (err) {
-    // Fire-and-forget — never crash the connect flow
-    console.warn('[sync-calendar-to-core] Failed to sync:', err.message)
+    console.error('[syncCalendarToCore] Error:', err?.message || err)
+    return { ok: false, error: err?.message }
   }
 }
 

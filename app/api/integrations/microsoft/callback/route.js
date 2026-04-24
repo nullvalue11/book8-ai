@@ -109,13 +109,14 @@ export async function GET(request) {
     )
 
     if (businessId) {
+      const connectedAt = new Date().toISOString()
       const updateResult = await database.collection('businesses').updateOne(
         { businessId, ownerUserId: uid },
         {
           $set: {
             calendar: {
               connected: true,
-              connectedAt: new Date().toISOString(),
+              connectedAt,
               provider: 'microsoft',
               calendarId: decodedEmail || null
             },
@@ -126,7 +127,18 @@ export async function GET(request) {
 
       if (updateResult.matchedCount > 0) {
         console.info(`[Microsoft Callback] Updated business ${businessId} with calendar connection`)
-        await syncCalendarToCore({ businessId, provider: 'microsoft', connected: true })
+        try {
+          await syncCalendarToCore({
+            businessId,
+            connected: true,
+            provider: 'microsoft',
+            connectedAt,
+            calendarId: decodedEmail || null,
+            lastSyncedAt: microsoftObj.lastSyncedAt || null
+          })
+        } catch (syncErr) {
+          console.warn('[Microsoft Callback] syncCalendarToCore failed (non-blocking):', syncErr?.message || syncErr)
+        }
         const redirectUrl = returnTo || `${base}/dashboard/business?outlook_connected=1&businessId=${businessId}`
         return NextResponse.redirect(redirectUrl)
       }

@@ -102,23 +102,35 @@ export async function GET(request) {
 
     // If this is a business-context connection, update the business document
     if (businessId) {
+      const connectedAt = new Date().toISOString()
       const updateResult = await database.collection('businesses').updateOne(
         { ownerUserId: uid, $or: [{ businessId }, { id: businessId }] },
-        { 
-          $set: { 
+        {
+          $set: {
             calendar: {
               connected: true,
-              connectedAt: new Date().toISOString(),
-              provider: 'google',
+              connectedAt,
+              provider: 'google'
             },
-            updatedAt: new Date() 
-          } 
+            updatedAt: new Date()
+          }
         }
       )
-      
+
       if (updateResult.matchedCount > 0) {
         console.info(`[Google Callback] Updated business ${businessId} with calendar connection`)
-        await syncCalendarToCore({ businessId, provider: 'google', connected: true })
+        try {
+          await syncCalendarToCore({
+            businessId,
+            connected: true,
+            provider: 'google',
+            connectedAt,
+            calendarId: null,
+            lastSyncedAt: null
+          })
+        } catch (syncErr) {
+          console.warn('[Google Callback] syncCalendarToCore failed (non-blocking):', syncErr?.message || syncErr)
+        }
         const redirectUrl = returnTo || `${base}/dashboard/business?google_connected=1&businessId=${businessId}`
         return NextResponse.redirect(redirectUrl)
       } else {
