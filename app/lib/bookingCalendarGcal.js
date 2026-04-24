@@ -47,6 +47,33 @@ export async function resolveHostUserForBooking(database, booking) {
   return { user: null, business: null }
 }
 
+/** True when Google Calendar / OAuth indicates a revoked or invalid refresh token. */
+export function isInvalidGrantGoogleError(err) {
+  if (!err || typeof err !== 'object') return false
+  return (
+    String(err.message || '').includes('invalid_grant') ||
+    err.code === 401 ||
+    err.response?.status === 401
+  )
+}
+
+/**
+ * Persist reconnect hint on the owner when Google rejects the token (e.g. invalid_grant).
+ * @param {import('mongodb').Db} database
+ * @param {string} ownerUserId
+ */
+export async function markUserGoogleNeedsReconnect(database, ownerUserId) {
+  await database.collection('users').updateOne(
+    { id: ownerUserId },
+    {
+      $set: {
+        'google.needsReconnect': true,
+        'google.lastError': new Date().toISOString()
+      }
+    }
+  )
+}
+
 /**
  * Delete a Google Calendar event for a business (owner OAuth). Resilient: never throws to caller.
  * @returns {Promise<{ ok: boolean, deleted: boolean, reason?: string }>}
@@ -93,21 +120,9 @@ export async function deleteGoogleCalendarEventForBusiness(database, env, { busi
     return { ok: true, deleted: true }
   } catch (err) {
     console.error(`${logPrefix} Google delete failed:`, err?.message || err)
-    const isInvalidGrant =
-      err?.message?.includes('invalid_grant') ||
-      err?.code === 401 ||
-      err?.response?.status === 401
-    if (isInvalidGrant) {
+    if (isInvalidGrantGoogleError(err)) {
       try {
-        await database.collection('users').updateOne(
-          { id: business.ownerUserId },
-          {
-            $set: {
-              'google.needsReconnect': true,
-              'google.lastError': new Date().toISOString()
-            }
-          }
-        )
+        await markUserGoogleNeedsReconnect(database, business.ownerUserId)
       } catch {
         /* ignore */
       }
