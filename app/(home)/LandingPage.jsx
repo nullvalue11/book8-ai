@@ -1062,74 +1062,103 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer
-        className="border-t border-slate-200 py-14 px-4 bg-slate-50 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] dark:border-[rgba(139,92,246,0.12)] dark:bg-[#06060f]"
+        className="border-t border-slate-200 bg-slate-100 py-14 px-4 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] dark:border-[rgba(139,92,246,0.12)] dark:bg-[#06060f]"
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         <div className="mx-auto max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           <div>
             <HeaderLogo />
-            <p className="mt-4 text-sm text-slate-600 dark:text-[#68668A] leading-relaxed">{h.footerTagline}</p>
+            <p className="mt-4 text-sm leading-relaxed text-slate-700 dark:text-[#68668A]">{h.footerTagline}</p>
             <div className="mt-4">
               <SocialMediaLinks />
             </div>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#68668A] mb-3">{h.footerProduct}</p>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-[#9593A8]">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#68668A]">
+              {h.footerProduct}
+            </p>
+            <ul className="space-y-2 text-sm text-slate-800 dark:text-[#9593A8]">
               <li>
-                <a href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <a
+                  href="#features"
+                  className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
+                >
                   {h.navFeatures}
                 </a>
               </li>
               <li>
-                <a href="#pricing" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <a
+                  href="#pricing"
+                  className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
+                >
                   {h.navPricing}
                 </a>
               </li>
               <li>
-                <Link href="/pricing" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link
+                  href="/pricing"
+                  className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
+                >
                   {h.pricing}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#68668A] mb-3">{h.footerCompany}</p>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-[#9593A8]">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#68668A]">
+              {h.footerCompany}
+            </p>
+            <ul className="space-y-2 text-sm text-slate-800 dark:text-[#9593A8]">
               <li>
-                <Link href={SETUP_NEW_BUSINESS_PATH} className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link
+                  href={SETUP_NEW_BUSINESS_PATH}
+                  className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
+                >
                   {h.footerBookDemo}
                 </Link>
               </li>
               <li>
-                <a href={`mailto:${h.footerSupportEmail}`} className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <a
+                  href={`mailto:${h.footerSupportEmail}`}
+                  className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
+                >
                   {h.footerSupportLabel}
                 </a>
               </li>
             </ul>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#68668A] mb-3">{h.footerLegal}</p>
-            <ul className="space-y-2 text-sm text-slate-600 dark:text-[#9593A8]">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#68668A]">
+              {h.footerLegal}
+            </p>
+            <ul className="space-y-2 text-sm text-slate-800 dark:text-[#9593A8]">
               <li>
-                <Link href="/privacy" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link
+                  href="/privacy"
+                  className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
+                >
                   {h.privacy}
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link
+                  href="/terms"
+                  className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
+                >
                   {h.termsNav}
                 </Link>
               </li>
             </ul>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#68668A] mb-3 mt-6">{h.footerConnect}</p>
-            <p className="text-sm text-slate-600 dark:text-[#9593A8]">{h.footerQuestions}</p>
+            <p className="mb-3 mt-6 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#68668A]">
+              {h.footerConnect}
+            </p>
+            <p className="text-sm text-slate-700 dark:text-[#9593A8]">{h.footerQuestions}</p>
             <a href={`mailto:${h.footerSupportEmail}`} className="text-sm text-[#A78BFA] hover:underline">
               {h.footerSupportEmail}
             </a>
           </div>
         </div>
-        <div className="mx-auto max-w-6xl mt-12 pt-8 border-t border-slate-200 text-center text-xs text-slate-500 dark:border-[rgba(139,92,246,0.08)] dark:text-[#68668A]">
+        <div className="mx-auto mt-12 max-w-6xl border-t border-slate-300 pt-8 text-center text-xs text-slate-600 dark:border-[rgba(139,92,246,0.08)] dark:text-[#68668A]">
           {trFormat(h.footerCopyright, { year: String(new Date().getFullYear()) })} · {t.poweredBy}
         </div>
       </footer>

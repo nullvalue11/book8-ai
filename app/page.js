@@ -1444,38 +1444,50 @@ function HomeContent(props) {
         {/* Data Privacy Section - after login */}
         <DataPrivacy />
 
-        {/* Footer */}
-        <footer className="border-t border-white/10 mt-16">
+        {/* Footer — light + dark readable (guest home below LandingPage) */}
+        <footer className="mt-16 border-t border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-transparent">
           <div className="container mx-auto max-w-6xl px-6 py-8">
             <div className="flex flex-col gap-8">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+              <div className="flex flex-col items-center justify-between gap-6 lg:flex-row">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">B8</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500">
+                    <span className="text-xs font-bold text-white">B8</span>
                   </div>
-                  <span className="text-white/80 font-medium">Book8-AI</span>
+                  <span className="font-medium text-slate-800 dark:text-white/80">Book8-AI</span>
                 </div>
                 <nav
                   aria-label="Footer"
                   className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 text-sm"
                 >
-                  <Link href="/pricing" className="text-white/60 hover:text-white transition-colors">
+                  <Link
+                    href="/pricing"
+                    className="text-slate-600 transition-colors hover:text-slate-900 dark:text-white/60 dark:hover:text-white"
+                  >
                     Pricing
                   </Link>
-                  <Link href="/privacy" className="text-white/60 hover:text-white transition-colors">
+                  <Link
+                    href="/privacy"
+                    className="text-slate-600 transition-colors hover:text-slate-900 dark:text-white/60 dark:hover:text-white"
+                  >
                     Privacy Policy
                   </Link>
-                  <Link href="/terms" className="text-white/60 hover:text-white transition-colors">
+                  <Link
+                    href="/terms"
+                    className="text-slate-600 transition-colors hover:text-slate-900 dark:text-white/60 dark:hover:text-white"
+                  >
                     Terms &amp; Conditions
                   </Link>
-                  <Link href="#data-transparency" className="text-white/60 hover:text-white transition-colors">
+                  <Link
+                    href="#data-transparency"
+                    className="text-slate-600 transition-colors hover:text-slate-900 dark:text-white/60 dark:hover:text-white"
+                  >
                     Data Usage
                   </Link>
-                  <span className="hidden sm:block w-px h-4 bg-white/20 shrink-0" aria-hidden />
+                  <span className="hidden h-4 w-px shrink-0 bg-slate-300 sm:block dark:bg-white/20" aria-hidden />
                   <SocialMediaLinks />
                 </nav>
               </div>
-              <p className="text-white/40 text-sm text-center border-t border-white/5 pt-6">
+              <p className="border-t border-slate-200 pt-6 text-center text-sm text-slate-500 dark:border-white/5 dark:text-white/40">
                 © {new Date().getFullYear()} Book8. All rights reserved.
               </p>
             </div>
