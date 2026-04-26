@@ -234,6 +234,8 @@ function HomeContent(props) {
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [calendars, setCalendars] = useState([]);
   const [savingCalendars, setSavingCalendars] = useState(false);
+  const [disconnectConfirm, setDisconnectConfirm] = useState(null) // null | "google" | "microsoft"
+  const [disconnecting, setDisconnecting] = useState(false)
 
   const [archivedCount, setArchivedCount] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -894,6 +896,27 @@ function HomeContent(props) {
       await fetchGoogleStatus();
     } catch (err) {
       toast.error(err.message || "Sync failed");
+    }
+  }
+
+  async function confirmDisconnect() {
+    if (!disconnectConfirm) return
+    setDisconnecting(true)
+    try {
+      const res = await api(`/integrations/${disconnectConfirm}/disconnect`, { method: "POST" })
+      if (!res?.ok) throw new Error(res?.error || "Disconnect failed")
+      if (disconnectConfirm === "google") {
+        setGoogleStatus({ connected: false, lastSyncedAt: null })
+      } else {
+        setOutlookStatus({ connected: false, lastSyncedAt: null })
+      }
+      setPrimaryCalendarProvider(null)
+      toast.success("Calendar disconnected")
+    } catch (err) {
+      toast.error(err.message || "Disconnect failed")
+    } finally {
+      setDisconnecting(false)
+      setDisconnectConfirm(null)
     }
   }
 
@@ -2121,6 +2144,14 @@ function HomeContent(props) {
                   <div className="flex flex-wrap gap-2 mt-2">
                     <Button size="sm" variant="secondary" onClick={openCalendars}>Choose calendars</Button>
                     <Button size="sm" onClick={syncGoogle}>Sync now</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                      onClick={() => setDisconnectConfirm("google")}
+                    >
+                      Disconnect
+                    </Button>
                   </div>
                 )}
                 {calendarDialogOpen && (
@@ -2194,6 +2225,18 @@ function HomeContent(props) {
                           : "Connect"}
                     </Button>
                   </div>
+                  {primaryCalendarProvider === "microsoft" && isSubscribed && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                        onClick={() => setDisconnectConfirm("microsoft")}
+                      >
+                        Disconnect
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </PlanFeatureLock>
 
@@ -2508,6 +2551,36 @@ function HomeContent(props) {
           </div>
         </div>
       ) : null}
+      {disconnectConfirm && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="disconnect-cal-title"
+          onClick={() => !disconnecting && setDisconnectConfirm(null)}
+        >
+          <div
+            className="bg-card border border-border rounded-lg max-w-md w-full shadow-lg p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="disconnect-cal-title" className="text-lg font-semibold mb-2">
+              Disconnect {disconnectConfirm === "google" ? "Google Calendar" : "Outlook"}?
+            </h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              This will stop new bookings from being added to your calendar. Existing events stay unchanged.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" size="sm" onClick={() => setDisconnectConfirm(null)} disabled={disconnecting}>
+                Cancel
+              </Button>
+              <Button variant="destructive" size="sm" onClick={confirmDisconnect} disabled={disconnecting}>
+                {disconnecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Disconnect
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
