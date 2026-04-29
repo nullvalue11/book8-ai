@@ -37,8 +37,9 @@ export interface OpsFetchResult<T = any> {
  * We ALWAYS prefer BASE_URL (NEXT_PUBLIC_BASE_URL) over localhost.
  */
 async function getEnvConfig(): Promise<{ baseUrl: string; secret: string }> {
-  const envModule = (await import('@/lib/env.js')) as { env: Record<string, unknown> }
-  const env = envModule.env
+  // @ts-ignore - env.js is a JavaScript module
+  const envModule = await import('@/lib/env')
+  const env = (envModule as any).env || envModule
 
   if (!env || typeof env !== 'object') {
     throw new Error('Invalid env module export')
