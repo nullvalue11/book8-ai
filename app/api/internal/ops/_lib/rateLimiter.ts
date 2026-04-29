@@ -91,11 +91,25 @@ interface RateLimitDoc {
 let client: MongoClient | null = null
 let db: Db | null = null
 
+function requireMongoUrl(): string {
+  const url = env.MONGO_URL
+  if (typeof url !== 'string' || !url.trim()) {
+    throw new Error('[rateLimiter] MONGO_URL is required')
+  }
+  return url.trim()
+}
+
+function resolveDbName(): string {
+  const name = env.DB_NAME
+  if (typeof name === 'string' && name.trim()) return name.trim()
+  return 'book8'
+}
+
 async function getDatabase(): Promise<Db> {
   if (!client) {
-    client = new MongoClient(env.MONGO_URL)
+    client = new MongoClient(requireMongoUrl())
     await client.connect()
-    db = client.db(env.DB_NAME)
+    db = client.db(resolveDbName())
   }
   return db!
 }
