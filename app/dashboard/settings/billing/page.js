@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import HeaderLogo from "@/components/HeaderLogo";
 import { toast } from "sonner";
 import { ENABLE_METERED_BILLING_UI } from "@/lib/publicRuntimeConfig";
+import CancelSubscriptionModal from "@/components/CancelSubscriptionModal";
+import RestoreSubscriptionBanner from "@/components/RestoreSubscriptionBanner";
 import { 
   CreditCard, 
   Check, 
@@ -35,6 +37,8 @@ function BillingContent() {
   const [upgradeLoading, setUpgradeLoading] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [showCanceled, setShowCanceled] = useState(false);
+  const [businesses, setBusinesses] = useState([]);
+  const [cancelModalBusiness, setCancelModalBusiness] = useState(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -86,6 +90,17 @@ function BillingContent() {
       const plansData = await plansRes.json();
       if (plansData.ok) {
         setPlans(plansData.plans);
+      }
+
+      const bizRes = await fetch("/api/business/register", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store"
+      });
+      const bizData = await bizRes.json().catch(() => ({}));
+      if (bizRes.ok && Array.isArray(bizData.businesses)) {
+        setBusinesses(bizData.businesses);
+      } else {
+        setBusinesses([]);
       }
     } catch (err) {
       console.error("Failed to fetch data:", err);
@@ -139,6 +154,34 @@ function BillingContent() {
   const subscription = user?.subscription;
   const isActive = subscription?.status === "active" || subscription?.status === "trialing";
 
+  function subscriptionStatusLabel(status) {
+    const s = String(status || "none").toLowerCase();
+    if (s === "active") return "Active";
+    if (s === "trialing") return "Trialing";
+    if (s === "past_due") return "Past due";
+    if (s === "canceled" || s === "cancelled") return "Canceled";
+    if (s === "none") return "No subscription";
+    return s;
+  }
+
+  function businessBillingMeta(b) {
+    const sub = b.subscription || {};
+    const status = String(sub.status || "none").toLowerCase();
+    const hasStripe = !!sub.hasStripeSubscription;
+    const ce = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : null;
+    const now = new Date();
+    const isRestorable = sub.cancelAtPeriodEnd === true && ce && ce > now;
+    const canCancel =
+      hasStripe &&
+      ["active", "trialing", "past_due"].includes(status) &&
+      sub.cancelAtPeriodEnd !== true &&
+      status !== "canceled" &&
+      status !== "cancelled";
+    const planKey = sub.plan || b.plan || "starter";
+    const plan = planDetails[planKey] || planDetails.starter;
+    return { sub, status, hasStripe, ce, isRestorable, canCancel, planKey, plan };
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto max-w-4xl p-6">
@@ -180,6 +223,85 @@ function BillingContent() {
       )}
 
       <h1 className="text-2xl font-bold">Billing & Subscription</h1>
+
+      {businesses.length > 0 && (
+        <Card className="bg-card/50 backdrop-blur border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5" /> Your businesses
+            </CardTitle>
+            <CardDescription>
+              Each business has its own subscription. Cancel or restore per business below.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {businesses.map((b) => {
+              const { sub, status, isRestorable, canCancel, planKey, plan } = businessBillingMeta(b);
+              const Icon = plan?.icon || Building2;
+              const periodLabel = sub.currentPeriodEnd
+                ? new Date(sub.currentPeriodEnd).toLocaleDateString()
+                : "—";
+              return (
+                <div
+                  key={b.businessId || b.id}
+                  className="rounded-lg border border-white/10 bg-muted/20 p-4 space-y-3"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div
+                        className={`w-10 h-10 rounded-lg bg-gradient-to-br ${plan?.color || "from-gray-500 to-gray-600"} flex items-center justify-center shrink-0`}
+                      >
+                        <Icon className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold truncate">{b.name || "Business"}</h3>
+                        <p className="text-xs text-muted-foreground font-mono truncate">
+                          ID: {b.businessId || b.id}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Plan: <span className="text-foreground font-medium">{plan?.name || planKey}</span>{" "}
+                          {plan?.price ? `(${plan.price}/mo)` : ""}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Status:{" "}
+                          <span className="capitalize text-foreground">{subscriptionStatusLabel(sub.status)}</span>
+                        </p>
+                        {sub.cancelAtPeriodEnd ? (
+                          <p className="text-sm text-amber-600 dark:text-amber-400">
+                            Cancels on {periodLabel}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Next billing: {periodLabel}</p>
+                        )}
+                      </div>
+                    </div>
+                    {canCancel && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 border-white/20"
+                        onClick={() => setCancelModalBusiness(b)}
+                      >
+                        Cancel subscription
+                      </Button>
+                    )}
+                  </div>
+                  {isRestorable && (
+                    <RestoreSubscriptionBanner
+                      businessId={b.businessId || b.id}
+                      businessName={b.name}
+                      periodEndIso={sub.currentPeriodEnd}
+                      token={token}
+                      onRestored={fetchUserAndPlans}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Current Plan */}
       <Card className="bg-card/50 backdrop-blur border-white/10">
@@ -333,6 +455,14 @@ function BillingContent() {
           </CardContent>
         </Card>
       )}
+
+      <CancelSubscriptionModal
+        open={!!cancelModalBusiness}
+        business={cancelModalBusiness}
+        token={token}
+        onClose={() => setCancelModalBusiness(null)}
+        onCompleted={fetchUserAndPlans}
+      />
     </div>
   );
 }

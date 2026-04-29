@@ -427,7 +427,15 @@ export async function GET(request) {
       subscription: {
         status: b.subscription?.status || 'none',
         plan: planKey,
-        stripePriceId: b.subscription?.stripePriceId || null
+        stripePriceId: b.subscription?.stripePriceId || null,
+        // Billing / cancel UI (BOO-CANCEL-1C): safe subset for owner dashboard — no raw Stripe IDs
+        currentPeriodStart: b.subscription?.currentPeriodStart || null,
+        currentPeriodEnd: b.subscription?.currentPeriodEnd || null,
+        cancelAtPeriodEnd: b.subscription?.cancelAtPeriodEnd === true,
+        activatedAt: b.subscription?.activatedAt || null,
+        hasStripeSubscription: !!(
+          b.subscription?.stripeSubscriptionId && b.subscription?.stripeCustomerId
+        )
       },
       calendar: { 
         connected: b.calendar?.connected || false,
