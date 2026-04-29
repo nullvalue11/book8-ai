@@ -37,15 +37,14 @@ export interface OpsFetchResult<T = any> {
  * We ALWAYS prefer BASE_URL (NEXT_PUBLIC_BASE_URL) over localhost.
  */
 async function getEnvConfig(): Promise<{ baseUrl: string; secret: string }> {
-  // @ts-ignore - env.js is a JavaScript module
-  const envModule = await import('@/lib/env.js')
-  const env = envModule.env || envModule.default?.env || envModule
+  const envModule = (await import('@/lib/env.js')) as { env: Record<string, unknown> }
+  const env = envModule.env
 
   if (!env || typeof env !== 'object') {
     throw new Error('Invalid env module export')
   }
 
-  const secret = env.OPS_INTERNAL_SECRET
+  const secret = String(env.OPS_INTERNAL_SECRET ?? '')
   if (!secret || !String(secret).trim()) {
     throw new Error('OPS_INTERNAL_SECRET is required for Ops Console API requests')
   }
@@ -53,8 +52,8 @@ async function getEnvConfig(): Promise<{ baseUrl: string; secret: string }> {
   let baseUrl: string
 
   const isProduction = env.IS_PRODUCTION || env.NODE_ENV === 'production'
-  const opsInternalUrl = env.OPS_INTERNAL_BASE_URL || ''
-  const publicBaseUrl = env.BASE_URL || ''
+  const opsInternalUrl = String(env.OPS_INTERNAL_BASE_URL ?? '')
+  const publicBaseUrl = String(env.BASE_URL ?? '')
 
   if (isProduction || opsInternalUrl.includes('localhost') || !opsInternalUrl) {
     baseUrl = publicBaseUrl || 'http://localhost:3000'

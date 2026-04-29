@@ -15,6 +15,7 @@ import {
   sendTrialConvertedEmail,
   sendPaymentFailedEmail
 } from '@/lib/trialLifecycleEmail'
+import { sendEndOfAccessEmail } from '@/lib/cancellationEmail'
 import { provisionOnCoreApi } from '@/lib/provision-business'
 import { syncPlanToCore } from '@/lib/sync-calendar-to-core'
 import { syncSubscriptionWithDeadLetter } from '@/lib/syncSubscriptionToCoreApi'
@@ -546,8 +547,12 @@ async function handleSubscriptionEvent(event, stripe, database) {
       
       console.log(`[webhooks/stripe] ${type}: Updated user ${user.id} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
       
-      // Also update any business linked to this customer
+      // Also update any business linked to this customer.
+      // BOO-CANCEL-1B: mirror cancel_at_period_end flag from Stripe to Mongo so the dashboard reflects
+      // pending cancellations even when they are toggled outside our /api/billing/cancel endpoint
+      // (e.g. Stripe Customer Portal). Idempotent — just a $set on a boolean.
       const mappedStatus = stripeStatusToBusinessSubscriptionStatus(subscription.status)
+      const cancelAtPeriodEnd = subscription.cancel_at_period_end === true
       await database.collection(BUSINESS_COLLECTION).updateMany(
         { 'subscription.stripeCustomerId': customerId },
         {
@@ -561,6 +566,7 @@ async function handleSubscriptionEvent(event, stripe, database) {
             'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
             'subscription.trialStart': billingFields.trialStart,
             'subscription.trialEnd': billingFields.trialEnd,
+            'subscription.cancelAtPeriodEnd': cancelAtPeriodEnd,
             updatedAt: new Date()
           }
         }
@@ -611,53 +617,131 @@ async function handleSubscriptionEvent(event, stripe, database) {
     // Handle subscription deleted
     if (type === 'customer.subscription.deleted') {
       const customerId = obj.customer
-      
+
       const user = await database.collection('users').findOne({
         'subscription.stripeCustomerId': customerId
       })
-      
+
       if (!user) {
         console.log(`[webhooks/stripe] ${type}: No user found for customer ${customerId}`)
-        return
-      }
-      
-      await database.collection('users').updateOne(
-        { id: user.id },
-        {
-          $set: {
-            'subscription.status': 'canceled',
-            'subscription.canceledAt': new Date().toISOString(),
-            'subscription.updatedAt': new Date().toISOString(),
-            // Keep history, but remove plan display so UI doesn't show stale tiers.
-            'subscription.plan': null,
-            // Also remove business plan display if present.
-            'subscription.planTier': null
+        // Continue — there may still be a business linked to this customer.
+      } else {
+        await database.collection('users').updateOne(
+          { id: user.id },
+          {
+            $set: {
+              'subscription.status': 'canceled',
+              'subscription.canceledAt': new Date().toISOString(),
+              'subscription.updatedAt': new Date().toISOString(),
+              // Keep history, but remove plan display so UI doesn't show stale tiers.
+              'subscription.plan': null,
+              // Also remove business plan display if present.
+              'subscription.planTier': null
+            }
           }
-        }
-      )
-      
-      console.log(`[webhooks/stripe] ${type}: Marked subscription as canceled for user ${user.id}`)
-      
-      // Also update any business linked to this customer
-      await database.collection(BUSINESS_COLLECTION).updateMany(
-        { 'subscription.stripeCustomerId': customerId },
-        {
-          $set: {
-            'subscription.status': SUBSCRIPTION_STATUS.CANCELED,
-            'subscription.canceledAt': new Date().toISOString(),
-            'features.billingEnabled': false,
-            'subscription.plan': null,
-            plan: null,
-            updatedAt: new Date()
-          }
-        }
-      )
+        )
 
-      const deletedBizRows = await database
+        console.log(
+          `[webhooks/stripe] ${type}: Marked subscription as canceled for user ${user.id}`
+        )
+      }
+
+      // BOO-CANCEL-1B: idempotent soft-delete of any business attached to this customer.
+      // Gate end-of-access email + business_soft_deleted audit on softDeletedAt so Stripe replays
+      // do not double-send; Path A may set canceledAt before this webhook without softDeletedAt yet.
+      const businessesForDelete = await database
         .collection(BUSINESS_COLLECTION)
         .find({ 'subscription.stripeCustomerId': customerId })
-        .project({ businessId: 1, id: 1 })
         .toArray()
+
+      const nowIso = new Date().toISOString()
+      for (const biz of businessesForDelete) {
+        const bid = biz.businessId || biz.id
+        const wasAlreadyCanceled = !!biz?.subscription?.canceledAt
+        const wasAlreadySoftDeleted = !!biz?.softDeletedAt
+
+        const setFields = {
+          'subscription.status': SUBSCRIPTION_STATUS.CANCELED,
+          'features.billingEnabled': false,
+          'subscription.plan': null,
+          'subscription.cancelAtPeriodEnd': false,
+          plan: null,
+          updatedAt: new Date()
+        }
+        // Only stamp canceledAt the FIRST time we see a deletion.
+        if (!wasAlreadyCanceled) {
+          setFields['subscription.canceledAt'] = nowIso
+        }
+        if (!wasAlreadySoftDeleted) {
+          setFields.softDeletedAt = nowIso
+        }
+
+        await database.collection(BUSINESS_COLLECTION).updateOne(
+          { $or: [{ businessId: bid }, { id: bid }] },
+          { $set: setFields }
+        )
+
+        if (!wasAlreadySoftDeleted) {
+          try {
+            await database.collection('billing_audit_logs').insertOne({
+              event: 'business_soft_deleted',
+              businessId: bid,
+              stripeSubscriptionId: obj.id || null,
+              stripeCustomerId: customerId,
+              stripeEventId: event.id,
+              source: type,
+              createdAt: new Date()
+            })
+          } catch (auditErr) {
+            console.error(
+              '[webhooks/stripe] business_soft_deleted audit log failed:',
+              auditErr?.message || auditErr
+            )
+          }
+
+          // End-of-access email — only on first soft-delete stamp (not on Stripe webhook replays).
+          try {
+            const ownerEmail = user?.email || biz?.ownerEmail || null
+            if (ownerEmail) {
+              await sendEndOfAccessEmail({
+                to: ownerEmail,
+                businessName: biz?.name || user?.name || 'your business'
+              })
+            }
+          } catch (emailErr) {
+            console.error(
+              '[webhooks/stripe] end-of-access email failed:',
+              emailErr?.message || emailErr
+            )
+          }
+        } else {
+          console.log(
+            `[webhooks/stripe] ${type}: business ${bid} already soft-deleted — skipping email + audit (idempotent replay)`
+          )
+        }
+      }
+
+      // No businesses linked? Still write a fallback users-level update for legacy data.
+      if (businessesForDelete.length === 0) {
+        await database.collection(BUSINESS_COLLECTION).updateMany(
+          { 'subscription.stripeCustomerId': customerId },
+          {
+            $set: {
+              'subscription.status': SUBSCRIPTION_STATUS.CANCELED,
+              'subscription.canceledAt': nowIso,
+              'features.billingEnabled': false,
+              'subscription.plan': null,
+              plan: null,
+              updatedAt: new Date()
+            }
+          }
+        )
+      }
+
+      const deletedBizRows = businessesForDelete.map((b) => ({
+        businessId: b.businessId,
+        id: b.id
+      }))
       const subIdDeleted = obj.id
       const syncDel = new Set()
       const rawDelMeta = obj.metadata?.businessId
