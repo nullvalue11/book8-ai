@@ -18,7 +18,8 @@ import {
   Rocket,
   Building2,
   ArrowLeft,
-  Phone
+  Phone,
+  Loader2
 } from "lucide-react";
 
 const planDetails = {
@@ -39,6 +40,7 @@ function BillingContent() {
   const [showCanceled, setShowCanceled] = useState(false);
   const [businesses, setBusinesses] = useState([]);
   const [cancelModalBusiness, setCancelModalBusiness] = useState(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -124,7 +126,17 @@ function BillingContent() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ priceId: plans[planId] })
+        body: JSON.stringify({
+          priceId: plans[planId],
+          ...(businesses.length === 1 &&
+          (businesses[0].businessId || businesses[0].id)
+            ? {
+                businessId: String(
+                  businesses[0].businessId || businesses[0].id
+                ).trim()
+              }
+            : {})
+        })
       });
 
       const data = await res.json();
@@ -137,6 +149,28 @@ function BillingContent() {
       toast.error(err.message || "Checkout failed");
     } finally {
       setUpgradeLoading({ ...upgradeLoading, [planId]: false });
+    }
+  }
+
+  async function openStripePortal() {
+    if (!token) return;
+    setPortalLoading(true);
+    try {
+      const res = await fetch("/api/billing/portal", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json"
+        }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok || !data?.url) {
+        throw new Error(data?.error || "Could not open billing portal");
+      }
+      window.location.href = data.url;
+    } catch (e) {
+      toast.error(e?.message || "Portal failed");
+    } finally {
+      setPortalLoading(false);
     }
   }
 
@@ -446,10 +480,16 @@ function BillingContent() {
               </div>
               <Button
                 variant="outline"
-                onClick={() => window.open("https://billing.stripe.com/p/login/test", "_blank")}
+                onClick={openStripePortal}
+                disabled={portalLoading}
                 className="w-full sm:w-auto shrink-0 whitespace-nowrap"
               >
-                <ExternalLink className="w-4 h-4 mr-2" /> Stripe Portal
+                {portalLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                )}
+                Stripe Portal
               </Button>
             </div>
           </CardContent>

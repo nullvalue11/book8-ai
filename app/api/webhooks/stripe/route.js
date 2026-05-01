@@ -162,9 +162,10 @@ async function handleSubscriptionEvent(event, stripe, database) {
       
       console.log(`[webhooks/stripe] checkout.session.completed: Updated user ${userId} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
       
-      // Also update business entity if businessId is in metadata.
-      // Resolve by businessId or id — metadata may have slug/handle from legacy checkouts.
-      const rawBusinessId = obj.metadata?.businessId
+      // Also update business entity if businessId is in session or subscription metadata.
+      // Session metadata is primary; subscription.metadata is fallback (e.g. setup sent bid in URL only).
+      const rawBusinessId =
+        obj.metadata?.businessId || subscription.metadata?.businessId || null
       let resolvedBizId = rawBusinessId
       if (rawBusinessId) {
         const bizDoc = await database.collection(BUSINESS_COLLECTION).findOne({
@@ -217,7 +218,11 @@ async function handleSubscriptionEvent(event, stripe, database) {
 
       let businessIdForCoreSync = resolvedBizId
       if (!businessIdForCoreSync) {
-        const raw = obj.metadata?.businessId || obj.client_reference_id
+        const raw =
+          obj.metadata?.businessId ||
+          obj.client_reference_id ||
+          subscription.metadata?.businessId ||
+          null
         if (raw) {
           const bizDoc = await database.collection(BUSINESS_COLLECTION).findOne({
             $or: [{ businessId: raw }, { id: raw }]
@@ -553,6 +558,41 @@ async function handleSubscriptionEvent(event, stripe, database) {
       // (e.g. Stripe Customer Portal). Idempotent — just a $set on a boolean.
       const mappedStatus = stripeStatusToBusinessSubscriptionStatus(subscription.status)
       const cancelAtPeriodEnd = subscription.cancel_at_period_end === true
+
+      // BOO-CANCEL-1C: First-time link when subscription.metadata.businessId is set but the
+      // business row has no subscription.stripeCustomerId yet (updateMany below would match 0).
+      const rawMetaBizLink = subscription.metadata?.businessId
+      if (rawMetaBizLink) {
+        let bidLink = rawMetaBizLink
+        const bizDocLink = await database.collection(BUSINESS_COLLECTION).findOne({
+          $or: [{ businessId: rawMetaBizLink }, { id: rawMetaBizLink }]
+        })
+        if (bizDocLink) bidLink = bizDocLink.businessId || bizDocLink.id
+        if (bidLink) {
+          await database.collection(BUSINESS_COLLECTION).updateOne(
+            { $or: [{ businessId: bidLink }, { id: bidLink }] },
+            {
+              $set: {
+                'subscription.status': mappedStatus,
+                'subscription.stripeCustomerId': customerId,
+                'subscription.stripeSubscriptionId': subscriptionId,
+                'subscription.stripePriceId': billingFields.stripePriceId,
+                'subscription.plan': plan,
+                plan,
+                'subscription.currentPeriodStart': billingFields.currentPeriodStart,
+                'subscription.currentPeriodEnd': billingFields.currentPeriodEnd,
+                'subscription.trialStart': billingFields.trialStart,
+                'subscription.trialEnd': billingFields.trialEnd,
+                'subscription.cancelAtPeriodEnd': cancelAtPeriodEnd,
+                'subscription.updatedAt': new Date(),
+                'features.billingEnabled': true,
+                updatedAt: new Date()
+              }
+            }
+          )
+        }
+      }
+
       await database.collection(BUSINESS_COLLECTION).updateMany(
         { 'subscription.stripeCustomerId': customerId },
         {

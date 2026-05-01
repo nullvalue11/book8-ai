@@ -1306,7 +1306,7 @@ function WizardContent() {
       },
       body: JSON.stringify({
         priceId,
-        businessId: wizardData.businessId,
+        businessId: bid,
         returnTo: 'setup'
       })
     })
