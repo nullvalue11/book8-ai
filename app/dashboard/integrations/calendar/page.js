@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { hasOutlookCalendar } from '@/lib/plan-features'
 import { buildGoogleConnectUrl, GOOGLE_OAUTH_USER_CONNECT_PURPOSE } from '@/lib/oauth-connect-url'
+import { pricingPaywallUrl } from '@/lib/pricingPaywallUrl'
 
 // Calendar provider configurations
 const PROVIDERS = [
@@ -86,6 +87,8 @@ function CalendarIntegrationsContent() {
   // Connected providers
   const [connectedProviders, setConnectedProviders] = useState({})
   const [loadingStatus, setLoadingStatus] = useState(true)
+  /** First owned business — passed to /pricing so checkout gets businessId in metadata */
+  const [activeBusinessId, setActiveBusinessId] = useState(null)
   
   // Load auth
   useEffect(() => {
@@ -138,6 +141,21 @@ function CalendarIntegrationsContent() {
     if (token) {
       fetchSubscriptionStatus()
       fetchConnectionStatus()
+      ;(async () => {
+        try {
+          const res = await fetch('/api/business/register', {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store'
+          })
+          const d = await res.json().catch(() => ({}))
+          if (res.ok && d.ok && Array.isArray(d.businesses) && d.businesses[0]) {
+            const b = d.businesses[0]
+            setActiveBusinessId(b.businessId || b.id || null)
+          }
+        } catch {
+          /* ignore */
+        }
+      })()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
@@ -316,7 +334,11 @@ function CalendarIntegrationsContent() {
             <Button 
               size="sm" 
               className="ml-auto"
-              onClick={() => router.push('/pricing?paywall=1&feature=calendar')}
+              onClick={() =>
+                router.push(
+                  pricingPaywallUrl({ businessId: activeBusinessId, feature: 'calendar' })
+                )
+              }
             >
               View Plans
             </Button>
@@ -413,7 +435,11 @@ function CalendarIntegrationsContent() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => router.push('/pricing?paywall=1&feature=calendar')}
+                      onClick={() =>
+                        router.push(
+                          pricingPaywallUrl({ businessId: activeBusinessId, feature: 'calendar' })
+                        )
+                      }
                     >
                       <Lock className="w-4 h-4 mr-2" />
                       Subscribe to Connect
@@ -422,7 +448,11 @@ function CalendarIntegrationsContent() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => router.push('/pricing?paywall=1&feature=calendar')}
+                      onClick={() =>
+                        router.push(
+                          pricingPaywallUrl({ businessId: activeBusinessId, feature: 'calendar' })
+                        )
+                      }
                     >
                       <Lock className="w-4 h-4 mr-2" />
                       Upgrade to Growth
@@ -431,7 +461,7 @@ function CalendarIntegrationsContent() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => router.push('/pricing?paywall=1')}
+                      onClick={() => router.push(pricingPaywallUrl({ businessId: activeBusinessId }))}
                     >
                       <Crown className="w-4 h-4 mr-2" />
                       Upgrade to Enterprise

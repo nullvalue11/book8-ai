@@ -11,6 +11,7 @@ import HeaderLogo from "@/components/HeaderLogo";
 import { ArrowLeft, Plus, Check, Loader2, AlertCircle, Trash2 } from "lucide-react";
 import { currencyFromTimezone, detectCurrency, formatPrice } from "@/lib/currency";
 import { toast } from "sonner";
+import { pricingPaywallUrl } from "@/lib/pricingPaywallUrl";
 
 function parseOptionalPriceInput(str) {
   if (str == null || String(str).trim() === "") return null;
@@ -403,7 +404,11 @@ function ServicesContent() {
                   <button
                     type="button"
                     className="underline underline-offset-2"
-                    onClick={() => router.push("/pricing?paywall=1&feature=services")}
+                    onClick={() =>
+                      router.push(
+                        pricingPaywallUrl({ businessId, feature: "services" })
+                      )
+                    }
                   >
                     Upgrade to add more.
                   </button>

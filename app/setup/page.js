@@ -43,6 +43,7 @@ import { guessCountryFromTimeZone, getSubdivisionsForCountry } from '@/lib/regio
 import { toast } from 'sonner'
 import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { currencyFromTimezone, detectCurrency } from '@/lib/currency'
+import { pricingPaywallUrl } from '@/lib/pricingPaywallUrl'
 import LanguageSelector from '@/components/LanguageSelector'
 import { trFormat } from '@/lib/translations'
 import { buildGoogleConnectUrl } from '@/lib/oauth-connect-url'
@@ -2571,7 +2572,11 @@ function WizardContent() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => router.push('/pricing')}
+                      onClick={() =>
+                        router.push(
+                          pricingPaywallUrl({ businessId: wizardData.businessId || undefined })
+                        )
+                      }
                       className={cn(
                         'h-14 w-full rounded-md border border-[#1e1e2e] bg-[#0A0A0F]/80 flex flex-col items-center justify-center px-2 text-center opacity-60 hover:opacity-80 transition-opacity cursor-pointer'
                       )}
@@ -3072,7 +3077,11 @@ function WizardContent() {
                       <Button
                         type="button"
                         className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
-                        onClick={() => router.push('/pricing')}
+                        onClick={() =>
+                          router.push(
+                            pricingPaywallUrl({ businessId: wizardData.businessId || undefined })
+                          )
+                        }
                       >
                         Upgrade to Growth →
                       </Button>

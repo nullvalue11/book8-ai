@@ -32,6 +32,7 @@ import {
 } from "@/lib/bookingDisplayTime";
 import { getBookingStartMs, isRecentPastBooking, isUpcomingBooking } from "@/lib/bookingListUtils";
 import { buildGoogleConnectUrl } from "@/lib/oauth-connect-url";
+import { pricingPaywallUrl } from "@/lib/pricingPaywallUrl";
 
 function formatDT(dt) { try { return new Date(dt).toLocaleString(); } catch { return dt; } }
 function formatDuration(seconds) {
@@ -835,7 +836,12 @@ function HomeContent(props) {
       return;
     }
     if (!isSubscribed) {
-      router.push('/pricing?paywall=1&feature=calendar');
+      router.push(
+        pricingPaywallUrl({
+          businessId: primaryBusinessId || undefined,
+          feature: "calendar"
+        })
+      );
       return;
     }
     if (!primaryBusinessId) {
@@ -850,11 +856,21 @@ function HomeContent(props) {
       return;
     }
     if (!isSubscribed) {
-      router.push('/pricing?paywall=1&feature=calendar');
+      router.push(
+        pricingPaywallUrl({
+          businessId: primaryBusinessId || undefined,
+          feature: "calendar"
+        })
+      );
       return;
     }
     if (planLimits && planLimits.outlookCalendar === false) {
-      router.push('/pricing?paywall=1&feature=calendar');
+      router.push(
+        pricingPaywallUrl({
+          businessId: primaryBusinessId || undefined,
+          feature: "calendar"
+        })
+      );
       return;
     }
     if (!primaryBusinessId) {
@@ -1713,7 +1729,13 @@ function HomeContent(props) {
                   size="sm"
                   variant="outline"
                   className="shrink-0 font-semibold shadow-md !border-white/90 !bg-white !text-neutral-900 hover:!bg-neutral-100 hover:!text-neutral-950 dark:!bg-white dark:!text-neutral-950 dark:hover:!bg-neutral-100"
-                  onClick={() => router.push('/pricing?paywall=1')}
+                  onClick={() =>
+                    router.push(
+                      pricingPaywallUrl({
+                        businessId: primaryBusinessId || undefined
+                      })
+                    )
+                  }
                 >
                   Subscribe Now
                 </Button>
@@ -2097,7 +2119,13 @@ function HomeContent(props) {
                       <Button 
                         size="sm" 
                         className="mt-3 bg-brand-500 hover:bg-brand-600"
-                        onClick={() => router.push('/pricing?paywall=1')}
+                        onClick={() =>
+                          router.push(
+                            pricingPaywallUrl({
+                              businessId: primaryBusinessId || undefined
+                            })
+                          )
+                        }
                       >
                         View Plans
                       </Button>
@@ -2176,6 +2204,7 @@ function HomeContent(props) {
               <PlanFeatureLock
                 available={!isSubscribed || !planLimits || planLimits.outlookCalendar !== false}
                 requiredPlan="Growth"
+                businessId={primaryBusinessId || undefined}
               >
                 <div className="rounded-md border p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -2210,7 +2239,13 @@ function HomeContent(props) {
                       variant={primaryCalendarProvider === "microsoft" ? "secondary" : "default"}
                       onClick={
                         planLimits && planLimits.outlookCalendar === false
-                          ? () => router.push('/pricing?paywall=1&feature=calendar')
+                          ? () =>
+                              router.push(
+                                pricingPaywallUrl({
+                                  businessId: primaryBusinessId || undefined,
+                                  feature: "calendar"
+                                })
+                              )
                           : connectOutlook
                       }
                       className="shrink-0"
@@ -2487,6 +2522,7 @@ function HomeContent(props) {
             subscribed={isSubscribed}
             planLimits={planLimits}
             businessTimeZone={businessDisplayTimezone}
+            businessId={primaryBusinessId || undefined}
           />
         </div>
       </div>

@@ -6,13 +6,15 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { TrendingUp, Calendar, RotateCcw, XCircle, Bell, Lock, RefreshCw } from 'lucide-react'
 import { Button } from './ui/button'
 import { formatAnalyticsChartDayLabel, DEFAULT_BUSINESS_TIMEZONE } from '@/lib/bookingDisplayTime'
+import { pricingPaywallUrl } from '@/lib/pricingPaywallUrl'
 
 export default function AnalyticsDashboard({
   token,
   subscribed = false,
   planLimits = null,
   onSubscriptionRequired,
-  businessTimeZone = DEFAULT_BUSINESS_TIMEZONE
+  businessTimeZone = DEFAULT_BUSINESS_TIMEZONE,
+  businessId = null
 }) {
   const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -116,7 +118,15 @@ export default function AnalyticsDashboard({
                         Refresh Analytics
                       </Button>
                     ) : (
-                      <Button size="sm" onClick={() => window.location.href = '/pricing?paywall=1&feature=analytics'}>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          window.location.href = pricingPaywallUrl({
+                            businessId,
+                            feature: 'analytics'
+                          })
+                        }}
+                      >
                         View Plans
                       </Button>
                     )}
@@ -297,7 +307,12 @@ export default function AnalyticsDashboard({
             </p>
             <Button
               size="sm"
-              onClick={() => { window.location.href = '/pricing?paywall=1&feature=analytics'; }}
+              onClick={() => {
+                window.location.href = pricingPaywallUrl({
+                  businessId,
+                  feature: 'analytics'
+                })
+              }}
             >
               Upgrade to Growth
             </Button>

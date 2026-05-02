@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import HeaderLogo from "@/components/HeaderLogo";
 import { toast } from "sonner";
 import { ENABLE_METERED_BILLING_UI } from "@/lib/publicRuntimeConfig";
+import { pricingPaywallUrl } from "@/lib/pricingPaywallUrl";
 import CancelSubscriptionModal from "@/components/CancelSubscriptionModal";
 import RestoreSubscriptionBanner from "@/components/RestoreSubscriptionBanner";
 import { 
@@ -382,7 +383,13 @@ function BillingContent() {
               <p className="text-sm text-muted-foreground mb-4">
                 Choose a plan below to get started with Book8-AI
               </p>
-              <Button onClick={() => router.push("/pricing")}>
+              <Button
+                onClick={() => {
+                  const bid =
+                    businesses[0]?.businessId || businesses[0]?.id || null;
+                  router.push(pricingPaywallUrl({ businessId: bid }));
+                }}
+              >
                 View Plans
               </Button>
             </div>
