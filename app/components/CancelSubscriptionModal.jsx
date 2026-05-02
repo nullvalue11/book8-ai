@@ -100,6 +100,8 @@ export default function CancelSubscriptionModal({ open, onClose, business, token
   const refundCents = useMemo(() => refundCentsHint(business), [business]);
   const periodEndIso = business?.subscription?.currentPeriodEnd || null;
   const periodEndLabel = formatPeriodDate(periodEndIso);
+  const isTrialing =
+    String(business?.subscription?.status || "").toLowerCase() === "trialing";
 
   const reset = useCallback(() => {
     setStep(1);
@@ -249,7 +251,30 @@ export default function CancelSubscriptionModal({ open, onClose, business, token
         {step === 2 && (
           <>
             <h2 className="text-lg font-semibold mb-3">Choose how to cancel</h2>
-            {eligibleHint ? (
+            {isTrialing ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  You&apos;re on a free trial — there&apos;s no payment to refund. You can cancel at the end of your
+                  current period and keep full access until then.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-auto whitespace-normal py-3 text-left justify-start"
+                  onClick={() => goStep2Pick("period_end")}
+                >
+                  <span className="block font-medium">Cancel at period end</span>
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    Keep using Book8 until {periodEndLabel || "the end of your billing period"}
+                  </span>
+                </Button>
+                <div className="mt-4 flex justify-start">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setStep(1)}>
+                    Go back
+                  </Button>
+                </div>
+              </div>
+            ) : eligibleHint ? (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">You have two options:</p>
                 <div className="grid gap-2">

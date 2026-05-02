@@ -128,32 +128,55 @@ export async function attachMeteredItemToSubscription(stripe, subscriptionId) {
 }
 
 /**
+ * Resolve billing period bounds from a Stripe Subscription.
+ * Prefers top-level current_period_* (legacy API); falls back to the base plan
+ * subscription item (Basil / 2025-03-31+ API where periods live on items).
+ *
+ * @param {object} sub - Stripe subscription object
+ * @returns {{ start: number|null, end: number|null }} Unix seconds, or nulls if unknown
+ */
+export function getSubscriptionPeriodUnix(sub) {
+  if (!sub || typeof sub !== 'object') return { start: null, end: null }
+  let start = sub.current_period_start ?? null
+  let end = sub.current_period_end ?? null
+  if (start == null || end == null) {
+    const meteredPriceId = env.STRIPE?.PRICE_CALL_MINUTE_METERED || ''
+    const baseItem = (sub.items?.data || []).find(
+      (i) => i.price?.id && i.price.id !== meteredPriceId
+    )
+    start = baseItem?.current_period_start ?? start
+    end = baseItem?.current_period_end ?? end
+  }
+  return { start: start ?? null, end: end ?? null }
+}
+
+/**
  * Extract and return billing-related fields from a subscription
- * 
+ *
  * @param {object} subscription - Stripe subscription object
  * @returns {object} Billing fields to store
  */
 export function extractSubscriptionBillingFields(subscription) {
   const meteredPriceId = env.STRIPE?.PRICE_CALL_MINUTE_METERED
   const callMinutesItemId = getCallMinutesItemId(subscription, meteredPriceId)
-  
-  // Find the base plan item (first non-metered item)
+
+  // Base plan item: first line with a price id that is not the metered minutes price (Basil-era safe)
   const basePlanItem = subscription.items?.data?.find(
-    item => item.price?.id !== meteredPriceId
+    (item) => item.price?.id && item.price.id !== meteredPriceId
   )
-  
+
+  const { start: periodStart, end: periodEnd } = getSubscriptionPeriodUnix(subscription)
+
   return {
     stripeCustomerId: subscription.customer,
     stripeSubscriptionId: subscription.id,
     stripeCallMinutesItemId: callMinutesItemId,
     stripePriceId: basePlanItem?.price?.id || null,
     status: subscription.status,
-    currentPeriodStart: subscription.current_period_start 
-      ? new Date(subscription.current_period_start * 1000).toISOString() 
-      : null,
-    currentPeriodEnd: subscription.current_period_end 
-      ? new Date(subscription.current_period_end * 1000).toISOString() 
-      : null,
+    currentPeriodStart:
+      periodStart != null ? new Date(periodStart * 1000).toISOString() : null,
+    currentPeriodEnd:
+      periodEnd != null ? new Date(periodEnd * 1000).toISOString() : null,
     trialStart: subscription.trial_start
       ? new Date(subscription.trial_start * 1000).toISOString()
       : null,

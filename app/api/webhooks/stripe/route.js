@@ -524,13 +524,11 @@ async function handleSubscriptionEvent(event, stripe, database) {
         return
       }
       
-      // Retrieve full subscription if items not expanded
-      let subscription = obj
-      if (!obj.items?.data?.[0]?.price) {
-        subscription = await stripe.subscriptions.retrieve(subscriptionId, {
-          expand: ['items.data.price']
-        })
-      }
+      // Always retrieve with expanded items so Basil-era API has item-level
+      // current_period_* and price ids for extractSubscriptionBillingFields.
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+        expand: ['items.data.price']
+      })
       
       // Extract billing fields
       const billingFields = extractSubscriptionBillingFields(subscription)

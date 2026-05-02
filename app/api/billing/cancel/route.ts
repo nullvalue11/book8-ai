@@ -35,7 +35,7 @@ import jwt from 'jsonwebtoken'
 import { getToken } from 'next-auth/jwt'
 // @ts-ignore - env.js is a JavaScript module
 import { env } from '@/lib/env.js'
-import { getStripe } from '@/lib/stripeSubscription'
+import { getStripe, getSubscriptionPeriodUnix } from '@/lib/stripeSubscription'
 import { COLLECTION_NAME, SUBSCRIPTION_STATUS } from '@/lib/schemas/business'
 import {
   sendImmediateCancelWithRefundEmail,
@@ -485,9 +485,11 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const periodEndIso = updatedSub?.current_period_end
-    ? new Date(updatedSub.current_period_end * 1000).toISOString()
-    : sub.currentPeriodEnd || null
+  const periodUnix = getSubscriptionPeriodUnix(updatedSub)
+  const periodEndIso =
+    periodUnix.end != null
+      ? new Date(periodUnix.end * 1000).toISOString()
+      : sub.currentPeriodEnd || null
 
   const nowIso = new Date().toISOString()
   await businessesCol.updateOne(
