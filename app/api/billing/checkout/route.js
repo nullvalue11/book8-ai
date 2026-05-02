@@ -182,7 +182,6 @@ export async function POST(request) {
         resolvedBusinessFound: !!resolvedBusiness,
         resolvedBusinessId:
           resolvedBusiness?.businessId || resolvedBusiness?.id || null,
-        dbName: process.env.DB_NAME,
         timestamp: new Date().toISOString()
       })
     )
