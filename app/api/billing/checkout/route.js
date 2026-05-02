@@ -166,6 +166,27 @@ export async function POST(request) {
       else if (priceId === env.STRIPE?.PRICE_STARTER) planName = 'starter'
     }
 
+    console.log(
+      '[CHECKOUT-DIAG]',
+      JSON.stringify({
+        body: {
+          businessId: body?.businessId,
+          priceId: body?.priceId,
+          returnTo: body?.returnTo
+        },
+        userId: user?.id || user?._id || null,
+        bidUsed:
+          businessId && typeof businessId === 'string' && businessId.trim()
+            ? businessId.trim()
+            : null,
+        resolvedBusinessFound: !!resolvedBusiness,
+        resolvedBusinessId:
+          resolvedBusiness?.businessId || resolvedBusiness?.id || null,
+        dbName: process.env.DB_NAME,
+        timestamp: new Date().toISOString()
+      })
+    )
+
     const sessionPayload = {
       customer: customerId,
       mode: 'subscription',

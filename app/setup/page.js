@@ -1298,6 +1298,16 @@ function WizardContent() {
     }
     setSaving(true)
     setError('')
+    console.log(
+      '[SETUP-DIAG]',
+      JSON.stringify({
+        wizardData_businessId: wizardData?.businessId || null,
+        query_businessId: searchParams.get('businessId'),
+        bid_resolved: bid,
+        priceId,
+        timestamp: new Date().toISOString()
+      })
+    )
     fetch('/api/billing/checkout', {
       method: 'POST',
       headers: {
