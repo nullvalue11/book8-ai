@@ -600,9 +600,11 @@ function WizardContent() {
           typeof Intl !== 'undefined'
             ? Intl.DateTimeFormat().resolvedOptions().timeZone
             : 'UTC'
+        const urlBusinessId = searchParams.get('businessId')?.trim() || null
         setWizardData((prev) => ({
           ...prev,
-          businessId: null,
+          // Preserve businessId from URL when resetting wizard (e.g. mid-flow reload)
+          businessId: urlBusinessId || null,
           handle: null,
           businessName: '',
           category: 'barber',
@@ -657,12 +659,12 @@ function WizardContent() {
         const calendarProvider = primary.calendar?.provider || null
 
         let step = 1
-        if (primary.businessId && primary.name) {
+        if (primary.businessId) {
           setWizardData((prev) => ({
             ...prev,
             businessId: primary.businessId,
             handle: primary.handle,
-            businessName: primary.name,
+            businessName: primary.name || prev.businessName || '',
             category: primary.category || 'other',
             customCategory: primary.customCategory || '',
             city: primary.city || prev.city || '',
@@ -778,7 +780,11 @@ function WizardContent() {
         if (draft?.isNewBusinessFlow && draft.wizardData && typeof draft.wizardData === 'object') {
           const step = Math.min(7, Math.max(1, Number(draft.currentStep) || 1))
           setCurrentStep(step)
-          setWizardData((prev) => ({ ...prev, ...draft.wizardData }))
+          setWizardData((prev) => ({
+            ...prev,
+            ...draft.wizardData,
+            businessId: prev.businessId || draft.wizardData?.businessId || null
+          }))
           if (Array.isArray(draft.step5Rows) && draft.step5Rows.length > 0) {
             setStep5Rows(draft.step5Rows)
           }
@@ -1250,6 +1256,12 @@ function WizardContent() {
         throw new Error(regData.error || 'Failed to register business')
       }
       updateWizard({ businessId: regData.businessId })
+      if (typeof window !== 'undefined' && regData.businessId) {
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.set('businessId', regData.businessId)
+        newUrl.searchParams.set('step', '2')
+        window.history.replaceState({}, '', newUrl.toString())
+      }
       const refetchRes = await fetch('/api/business/register', {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store'
@@ -1298,16 +1310,6 @@ function WizardContent() {
     }
     setSaving(true)
     setError('')
-    console.log(
-      '[SETUP-DIAG]',
-      JSON.stringify({
-        wizardData_businessId: wizardData?.businessId || null,
-        query_businessId: searchParams.get('businessId'),
-        bid_resolved: bid,
-        priceId,
-        timestamp: new Date().toISOString()
-      })
-    )
     fetch('/api/billing/checkout', {
       method: 'POST',
       headers: {
