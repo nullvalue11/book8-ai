@@ -43,7 +43,6 @@ import { guessCountryFromTimeZone, getSubdivisionsForCountry } from '@/lib/regio
 import { toast } from 'sonner'
 import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { currencyFromTimezone, detectCurrency } from '@/lib/currency'
-import { pricingPaywallUrl } from '@/lib/pricingPaywallUrl'
 import LanguageSelector from '@/components/LanguageSelector'
 import { trFormat } from '@/lib/translations'
 import { buildGoogleConnectUrl } from '@/lib/oauth-connect-url'
@@ -601,11 +600,9 @@ function WizardContent() {
           typeof Intl !== 'undefined'
             ? Intl.DateTimeFormat().resolvedOptions().timeZone
             : 'UTC'
-        const urlBusinessId = searchParams.get('businessId')?.trim() || null
         setWizardData((prev) => ({
           ...prev,
-          // Preserve businessId from URL when resetting wizard (e.g. mid-flow reload)
-          businessId: urlBusinessId || null,
+          businessId: null,
           handle: null,
           businessName: '',
           category: 'barber',
@@ -648,24 +645,23 @@ function WizardContent() {
           )
           if (match) primary = match
         }
+        // Do NOT treat display plan tier (defaults to "starter" via resolveBusinessPlanKey) as a paid
+        // subscription — that falsely showed "You already have an active plan" for brand-new businesses.
+        const subStatus = String(primary.subscription?.status || '').toLowerCase()
         const planActive =
-          primary.subscription?.status === 'active' ||
-          primary.subscription?.status === 'trialing' ||
-          ['starter', 'growth', 'enterprise'].includes(
-            String(
-              primary.subscriptionPlan || primary.plan || primary.subscription?.plan || ''
-            ).toLowerCase()
-          )
+          subStatus === 'active' ||
+          subStatus === 'trialing' ||
+          subStatus === 'past_due'
         const calendarConnected = primary.calendar?.connected || false
         const calendarProvider = primary.calendar?.provider || null
 
         let step = 1
-        if (primary.businessId) {
+        if (primary.businessId && primary.name) {
           setWizardData((prev) => ({
             ...prev,
             businessId: primary.businessId,
             handle: primary.handle,
-            businessName: primary.name || prev.businessName || '',
+            businessName: primary.name,
             category: primary.category || 'other',
             customCategory: primary.customCategory || '',
             city: primary.city || prev.city || '',
@@ -781,11 +777,7 @@ function WizardContent() {
         if (draft?.isNewBusinessFlow && draft.wizardData && typeof draft.wizardData === 'object') {
           const step = Math.min(7, Math.max(1, Number(draft.currentStep) || 1))
           setCurrentStep(step)
-          setWizardData((prev) => ({
-            ...prev,
-            ...draft.wizardData,
-            businessId: prev.businessId || draft.wizardData?.businessId || null
-          }))
+          setWizardData((prev) => ({ ...prev, ...draft.wizardData }))
           if (Array.isArray(draft.step5Rows) && draft.step5Rows.length > 0) {
             setStep5Rows(draft.step5Rows)
           }
@@ -1257,12 +1249,6 @@ function WizardContent() {
         throw new Error(regData.error || 'Failed to register business')
       }
       updateWizard({ businessId: regData.businessId })
-      if (typeof window !== 'undefined' && regData.businessId) {
-        const newUrl = new URL(window.location.href)
-        newUrl.searchParams.set('businessId', regData.businessId)
-        newUrl.searchParams.set('step', '2')
-        window.history.replaceState({}, '', newUrl.toString())
-      }
       const refetchRes = await fetch('/api/business/register', {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store'
@@ -2572,11 +2558,7 @@ function WizardContent() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() =>
-                        router.push(
-                          pricingPaywallUrl({ businessId: wizardData.businessId || undefined })
-                        )
-                      }
+                      onClick={() => router.push('/pricing')}
                       className={cn(
                         'h-14 w-full rounded-md border border-[#1e1e2e] bg-[#0A0A0F]/80 flex flex-col items-center justify-center px-2 text-center opacity-60 hover:opacity-80 transition-opacity cursor-pointer'
                       )}
@@ -3077,11 +3059,7 @@ function WizardContent() {
                       <Button
                         type="button"
                         className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
-                        onClick={() =>
-                          router.push(
-                            pricingPaywallUrl({ businessId: wizardData.businessId || undefined })
-                          )
-                        }
+                        onClick={() => router.push('/pricing')}
                       >
                         Upgrade to Growth →
                       </Button>
