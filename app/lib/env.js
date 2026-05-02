@@ -62,11 +62,27 @@ const REQUIRED_ENV_VAR_KEYS = [
 ]
 
 /**
+ * True during `next build` when Next collects route data; CI/Vercel often omit runtime-only
+ * secrets from the *build* env even when they exist for Production runtime.
+ */
+function isNextJsBuildPhase() {
+  return (
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.NEXT_PHASE === 'phase-development-build' ||
+    process.env.npm_lifecycle_event === 'build'
+  )
+}
+
+/**
  * Fail fast before loadConfig if required vars are missing or blank.
  * @throws {EnvValidationError}
  */
 export function validateRequiredEnvVars() {
-  const missing = REQUIRED_ENV_VAR_KEYS.filter(
+  const keysToRequire = isNextJsBuildPhase()
+    ? REQUIRED_ENV_VAR_KEYS.filter((k) => k !== 'RESEND_API_KEY')
+    : REQUIRED_ENV_VAR_KEYS
+
+  const missing = keysToRequire.filter(
     (key) => !process.env[key] || String(process.env[key]).trim() === ''
   )
   if (missing.length > 0) {
@@ -77,14 +93,10 @@ export function validateRequiredEnvVars() {
 
   // Block verbose debug logs in real production runtime, but not during `next build`
   // (Vercel/CI use NODE_ENV=production for builds; DEBUG_LOGS may still be set on the project).
-  const isNextBuild =
-    process.env.NEXT_PHASE === 'phase-production-build' ||
-    process.env.NEXT_PHASE === 'phase-development-build' ||
-    process.env.npm_lifecycle_event === 'build'
   if (
     process.env.NODE_ENV === 'production' &&
     process.env.DEBUG_LOGS === 'true' &&
-    !isNextBuild
+    !isNextJsBuildPhase()
   ) {
     throw new EnvValidationError(
       'DEBUG_LOGS=true is not allowed in production. Set DEBUG_LOGS=false or remove it.'
@@ -158,8 +170,8 @@ function loadConfig() {
     const CLOUDINARY_API_KEY = getEnvVar('CLOUDINARY_API_KEY', false, '')
     const CLOUDINARY_API_SECRET = getEnvVar('CLOUDINARY_API_SECRET', false, '')
     
-    // Email Service (Resend)
-    const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', true)
+    // Email Service (Resend) — required at runtime; optional during `next build` (see isNextJsBuildPhase).
+    const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', !isNextJsBuildPhase())
     const EMAIL_FROM = getEnvVar('EMAIL_FROM', false, 'Book8-AI <onboarding@resend.dev>')
     const EMAIL_REPLY_TO = getEnvVar('EMAIL_REPLY_TO', false, 'support@book8.io')
     /** BOO-109A: From address for welcome email. Default uses send.book8.io — that address/domain must be verified in Resend before production sends succeed. */
