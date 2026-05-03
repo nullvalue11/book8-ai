@@ -503,6 +503,8 @@ function WizardContent() {
   const [phoneStepPollKey, setPhoneStepPollKey] = useState(0)
   /** Tracks last step index so we detect entering Step 6 (choice always starts at pick). */
   const phoneStepPrevRef = useRef(null)
+  /** BOO-TRIAL-GATE-1B: one toast when returning from canceled Stripe Checkout */
+  const checkoutCanceledToastShown = useRef(false)
   const [bookingHost, setBookingHost] = useState('book8.io')
   /** Step 5: core service IDs to remove when saving (e.g. provisioned defaults) */
   const [step5CoreServiceIds, setStep5CoreServiceIds] = useState([])
@@ -817,6 +819,18 @@ function WizardContent() {
   useEffect(() => {
     loadInitialState()
   }, [loadInitialState])
+
+  useEffect(() => {
+    if (checkoutCanceledToastShown.current) return
+    if (searchParams.get('checkout') !== 'canceled') return
+    checkoutCanceledToastShown.current = true
+    toast('Checkout canceled — pick a plan to continue.')
+    const bid = searchParams.get('businessId')
+    const qs = new URLSearchParams()
+    qs.set('step', '2')
+    if (bid) qs.set('businessId', bid)
+    router.replace(`/setup?${qs.toString()}`)
+  }, [searchParams, router])
 
   // Re-sync after OAuth return (same-tab navigation); checkout uses full redirect — loadInitialState already runs on mount
   useEffect(() => {
@@ -1288,7 +1302,7 @@ function WizardContent() {
     }
   }
 
-  // Step 2: Plan selection -> Stripe checkout (Starter / Enterprise) or cardless Growth trial (BOO-98B)
+  // Step 2: Plan selection -> Stripe checkout (Starter, Growth with trial, Enterprise)
   function handleStep2Submit(priceId) {
     const bid = wizardData.businessId || searchParams.get('businessId')
     if (!priceId || !bid) {
@@ -1322,35 +1336,6 @@ function WizardContent() {
         setError(err.message || 'Checkout failed')
         setSaving(false)
       })
-  }
-
-  async function handleStartGrowthTrial() {
-    const bid = wizardData.businessId || searchParams.get('businessId')
-    if (!bid || !token) {
-      setError('Missing business or session')
-      return
-    }
-    setSaving(true)
-    setError('')
-    try {
-      const res = await fetch(`/api/business/${encodeURIComponent(bid)}/start-growth-trial`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await res.json()
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || 'Could not start trial')
-      }
-      updateWizard({
-        subscriptionPlan: 'growth',
-        planActive: true
-      })
-      setCurrentStep(3)
-    } catch (err) {
-      setError(err.message || 'Failed to start trial')
-    } finally {
-      setSaving(false)
-    }
   }
 
   function handleStep2Skip() {
@@ -2326,8 +2311,8 @@ function WizardContent() {
             <div>
               <h1 className="text-2xl font-bold text-white">Choose your plan</h1>
               <p className="text-[#94A3B8] mt-1">
-                Compare Starter, Growth, and Enterprise. Growth includes a 14-day full-access trial — no credit card
-                required. Starter and Enterprise use secure checkout.
+                Compare Starter, Growth, and Enterprise. Growth includes a 14-day full-access trial with secure checkout.
+                Starter and Enterprise use the same checkout flow.
               </p>
             </div>
             {wizardData.planActive ? (
@@ -2426,7 +2411,7 @@ function WizardContent() {
                           After trial: AI voice, SMS, multi-calendar, up to 5 businesses.
                         </p>
                         <p className="mt-2 text-xs !text-[#A78BFA] leading-snug">
-                          14-day trial — no credit card required.
+                          14-day trial — card on file. Cancel anytime before billing starts.
                         </p>
                       </div>
                       <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] lg:min-h-[10.5rem] border-t !border-[#8B5CF6]/10">
@@ -2452,15 +2437,15 @@ function WizardContent() {
                     <div className="px-5 pb-5 pt-4 shrink-0 !bg-[#0A0A0F] border-t !border-[#8B5CF6]/10">
                       <Button
                         className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
-                        onClick={() => void handleStartGrowthTrial()}
+                        onClick={() => handleStep2Submit(planPriceIds.growth)}
                         disabled={saving || !planPriceIds.growth}
                       >
                         {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                        Start 14-day free trial
+                        Continue to checkout
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
                       <p className="text-[10px] !text-[#64748B] text-center leading-snug mt-2">
-                        Full access for 14 days. No credit card required.
+                        Full access for 14 days. You won&apos;t be charged until the trial ends.
                       </p>
                     </div>
                   </CardContent>

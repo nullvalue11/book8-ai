@@ -1,6 +1,9 @@
 /**
  * POST /api/business/:businessId/start-growth-trial
  * BOO-98B: Start 14-day Growth trial without Stripe (cardless).
+ *
+ * DEPRECATED 2026-05-02 (BOO-TRIAL-GATE-1B) — setup wizard now uses Stripe Checkout for Growth.
+ * Safe to delete after ~30 days if no callers remain.
  */
 import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
