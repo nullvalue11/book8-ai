@@ -243,28 +243,9 @@ async function handleSubscriptionEvent(event, stripe, database) {
       }
 
       // Trial started email (Growth checkout with trial)
-      let owner = null
-      try {
-        owner = await database.collection('users').findOne({ id: userId })
-      } catch (ownerLookupErr) {
-        console.warn(
-          '[webhooks/stripe] [EMAIL-RUNTIME-CHECK] owner lookup failed',
-          ownerLookupErr?.message || ownerLookupErr
-        )
-      }
-      console.log(
-        '[EMAIL-RUNTIME-CHECK]',
-        JSON.stringify({
-          hasResendKey: !!env.RESEND_API_KEY,
-          hasResendFrom: !!env.EMAIL_FROM,
-          ownerEmail: owner?.email || null,
-          trialEnd: billingFields.trialEnd || null,
-          subStatus: subscription.status,
-          resolvedBizId: resolvedBizId ?? null
-        })
-      )
       if (subscription.status === 'trialing' && billingFields.trialEnd) {
         try {
+          const owner = await database.collection('users').findOne({ id: userId })
           const bizForEmail = resolvedBizId
             ? await database.collection(BUSINESS_COLLECTION).findOne({
                 $or: [{ businessId: resolvedBizId }, { id: resolvedBizId }]
