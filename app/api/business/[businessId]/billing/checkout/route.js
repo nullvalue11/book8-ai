@@ -223,15 +223,22 @@ export async function POST(request, { params }) {
     else if (basePriceId === env.STRIPE?.PRICE_GROWTH) planName = 'growth'
     else if (basePriceId === env.STRIPE?.PRICE_STARTER) planName = 'starter'
 
+    // BOO-TRIAL-ABUSE-1B: one Growth trial per user
+    const trialEverUsed = !!user.trialEverUsed
+    const growthTrialEligible =
+      basePriceId === env.STRIPE?.PRICE_GROWTH && !trialEverUsed
+
     const subMeta = {
       userId: user.id,
       businessId: business.businessId
     }
     const subscriptionData = { metadata: subMeta }
     if (basePriceId === env.STRIPE?.PRICE_GROWTH) {
-      subscriptionData.trial_period_days = env.TRIAL_PERIOD_DAYS ?? 14
       subMeta.plan = 'growth'
-      subMeta.trialStart = new Date().toISOString()
+      if (growthTrialEligible) {
+        subscriptionData.trial_period_days = env.TRIAL_PERIOD_DAYS ?? 14
+        subMeta.trialStart = new Date().toISOString()
+      }
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -249,6 +256,9 @@ export async function POST(request, { params }) {
         timezone: business.timezone || 'America/Toronto',
         category: business.category || null,
         plan: planName,
+        ...(basePriceId === env.STRIPE?.PRICE_GROWTH && {
+          trialEligible: growthTrialEligible ? 'true' : 'false'
+        }),
         numberSetupMethod: 'pending'
       },
       subscription_data: subscriptionData

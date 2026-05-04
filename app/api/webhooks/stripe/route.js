@@ -161,7 +161,15 @@ async function handleSubscriptionEvent(event, stripe, database) {
       })
       
       console.log(`[webhooks/stripe] checkout.session.completed: Updated user ${userId} with subscription ${subscriptionId}, callMinutesItemId: ${billingFields.stripeCallMinutesItemId}`)
-      
+
+      // BOO-TRIAL-ABUSE-1B: permanent one-trial-per-user lock (idempotent — preserves first trialUsedAt)
+      if (subscription.status === 'trialing' && billingFields.trialEnd) {
+        await database.collection('users').updateOne(
+          { id: userId, trialEverUsed: { $ne: true } },
+          { $set: { trialEverUsed: true, trialUsedAt: new Date() } }
+        )
+      }
+
       // Also update business entity if businessId is in session or subscription metadata.
       // Session metadata is primary; subscription.metadata is fallback (e.g. setup sent bid in URL only).
       const rawBusinessId =

@@ -115,6 +115,12 @@ export async function POST(request) {
     
     const trimmedBiz =
       businessId && typeof businessId === 'string' ? businessId.trim() : undefined
+
+    // BOO-TRIAL-ABUSE-1B: one Growth trial per user — skip trial_period_days after first trial
+    const trialEverUsed = !!user.trialEverUsed
+    const growthTrialEligible =
+      priceId === env.STRIPE?.PRICE_GROWTH && !trialEverUsed
+
     const customerId = await ensureStripeCustomerForUser(stripe, {
       user,
       usersCollection: database.collection('users'),
@@ -178,6 +184,9 @@ export async function POST(request) {
       metadata: {
         userId: user.id,
         priceId: priceId,
+        ...(priceId === env.STRIPE?.PRICE_GROWTH && {
+          trialEligible: growthTrialEligible ? 'true' : 'false'
+        }),
         ...(resolvedBusiness && {
           businessId: resolvedBusiness.businessId || resolvedBusiness.id,
           businessName: resolvedBusiness.name || null,
@@ -201,9 +210,11 @@ export async function POST(request) {
         }
         const sub = { metadata: meta }
         if (priceId === env.STRIPE?.PRICE_GROWTH) {
-          sub.trial_period_days = env.TRIAL_PERIOD_DAYS ?? 14
           meta.plan = 'growth'
-          meta.trialStart = new Date().toISOString()
+          if (growthTrialEligible) {
+            sub.trial_period_days = env.TRIAL_PERIOD_DAYS ?? 14
+            meta.trialStart = new Date().toISOString()
+          }
         }
         return sub
       })()

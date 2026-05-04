@@ -69,6 +69,8 @@ function PricingContent() {
   const [feature, setFeature] = useState(null);
   const [businessId, setBusinessId] = useState(null);
   const [sessionSynced, setSessionSynced] = useState(false);
+  /** BOO-TRIAL-ABUSE-1B */
+  const [userTrialEverUsed, setUserTrialEverUsed] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -110,6 +112,31 @@ function PricingContent() {
       cancelled = true;
     };
   }, [status, session?.user?.email, session?.user?.name, session?.provider, token, sessionSynced]);
+
+  useEffect(() => {
+    if (!token) {
+      setUserTrialEverUsed(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/user", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store"
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!cancelled) {
+          setUserTrialEverUsed(!!(r.ok && d.trialEverUsed));
+        }
+      } catch {
+        if (!cancelled) setUserTrialEverUsed(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   useEffect(() => {
     if (searchParams.get("paywall") === "1") {
@@ -206,6 +233,12 @@ function PricingContent() {
     <main id="main-content" className="min-h-screen bg-background text-foreground" dir={isRtl ? "rtl" : "ltr"} lang={language}>
       <Header />
 
+      {isLoggedIn && userTrialEverUsed && (
+        <div className="bg-amber-500/10 border-b border-amber-500/30">
+          <div className="max-w-4xl mx-auto px-6 py-3 text-sm text-amber-200">{h.trialAlreadyUsedBanner}</div>
+        </div>
+      )}
+
       {isPaywall && isLoggedIn && (
         <div className="bg-brand-500/10 border-b border-brand-500/30">
           <div className="max-w-4xl mx-auto px-6 py-4">
@@ -260,7 +293,9 @@ function PricingContent() {
                     </div>
                     <CardTitle className="text-2xl">{plan.name}</CardTitle>
                     {plan.trial && plan.trialHeadline && (
-                      <p className="text-sm font-medium text-brand-600 dark:text-brand-400 mt-1">{plan.trialHeadline}</p>
+                      <p className="text-sm font-medium text-brand-600 dark:text-brand-400 mt-1">
+                        {userTrialEverUsed && plan.id === "growth" ? h.growthHeadlineWhenTrialUsed : plan.trialHeadline}
+                      </p>
                     )}
                     <CardDescription>{plan.description}</CardDescription>
                   </CardHeader>
@@ -283,7 +318,7 @@ function PricingContent() {
                         disabled={!!isLoading[plan.id]}
                         onClick={() => handleSelectPlan(plan.id)}
                       >
-                        {isLoading[plan.id] ? h.loadingEllipsis : h.startFreeTrialShort}{" "}
+                        {isLoading[plan.id] ? h.loadingEllipsis : userTrialEverUsed ? h.growthPaidCtaShort : h.startFreeTrialShort}{" "}
                         <ArrowRight className="w-4 h-4 inline rtl:rotate-180" />
                       </Button>
                     ) : (
@@ -299,7 +334,9 @@ function PricingContent() {
                           }`}
                         >
                           {plan.trial && plan.id === "growth"
-                            ? h.startFreeTrialShort
+                            ? userTrialEverUsed
+                              ? h.growthPaidCtaShort
+                              : h.startFreeTrialShort
                             : isPaywall && isLoggedIn
                               ? trFormat(h.subscribeToPlan, { plan: plan.name })
                               : h.getStartedShort}{" "}
@@ -311,7 +348,7 @@ function PricingContent() {
                     {plan.trial && (
                       <p className="text-xs text-muted-foreground text-center -mt-2 flex items-center justify-center gap-1">
                         <CreditCard className="w-3.5 h-3.5 shrink-0 opacity-80" aria-hidden />
-                        {h.trialCardNote}
+                        {userTrialEverUsed && plan.id === "growth" ? h.growthCheckoutPaidNote : h.trialCardNote}
                       </p>
                     )}
                     {(plan.id === "starter" || plan.id === "enterprise") && (

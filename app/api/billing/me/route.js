@@ -87,7 +87,9 @@ export async function GET(request) {
       planTier: subscription.planTier,
       planName: subscription.planName,
       features: subscription.features,
-      subscription
+      subscription,
+      trialEverUsed: !!user.trialEverUsed,
+      trialUsedAt: user.trialUsedAt || null
     })
     
   } catch (error) {

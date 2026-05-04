@@ -503,6 +503,8 @@ function WizardContent() {
   const [phoneStepPollKey, setPhoneStepPollKey] = useState(0)
   /** Tracks last step index so we detect entering Step 6 (choice always starts at pick). */
   const phoneStepPrevRef = useRef(null)
+  /** BOO-TRIAL-ABUSE-1B: user-level trial lock (from /api/user) */
+  const [userTrialEverUsed, setUserTrialEverUsed] = useState(false)
   /** BOO-TRIAL-GATE-1B: one toast when returning from canceled Stripe Checkout */
   const checkoutCanceledToastShown = useRef(false)
   const [bookingHost, setBookingHost] = useState('book8.io')
@@ -568,6 +570,7 @@ function WizardContent() {
   // Load existing state for returning users
   const loadInitialState = useCallback(async () => {
     if (!token) {
+      setUserTrialEverUsed(false)
       setLoading(false)
       return
     }
@@ -589,6 +592,18 @@ function WizardContent() {
       }
       const bizList = bizData.businesses || []
       setBusinesses(bizList)
+
+      try {
+        const userRes = await fetch('/api/user', {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store'
+        })
+        const userData = await userRes.json().catch(() => ({}))
+        setUserTrialEverUsed(!!(userRes.ok && userData.trialEverUsed))
+      } catch (e) {
+        console.warn('[setup] /api/user fetch failed', e?.message || e)
+        setUserTrialEverUsed(false)
+      }
 
       const oauthResume =
         searchParams.get('google_connected') === '1' ||
@@ -2315,6 +2330,11 @@ function WizardContent() {
                 Starter and Enterprise use the same checkout flow.
               </p>
             </div>
+            {userTrialEverUsed && !wizardData.planActive && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                {t.homepage.trialAlreadyUsedBanner}
+              </div>
+            )}
             {wizardData.planActive ? (
               <Card className={WIZARD_CARD}>
                 <CardContent className="pt-6">
@@ -2401,18 +2421,28 @@ function WizardContent() {
                           <h3 className="text-base font-semibold !text-white">Growth</h3>
                         </div>
                         <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide !text-[#A78BFA]">
-                          Best value · 14-day trial
+                          {userTrialEverUsed
+                            ? t.homepage.growthSetupRibbonPaid
+                            : t.homepage.growthSetupRibbonTrial}
                         </p>
                         <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
                           <span className="text-3xl font-bold tabular-nums !text-white">$99</span>
                           <span className="text-sm !text-[#94A3B8]">USD / monthly</span>
                         </div>
-                        <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
-                          After trial: AI voice, SMS, multi-calendar, up to 5 businesses.
-                        </p>
-                        <p className="mt-2 text-xs !text-[#A78BFA] leading-snug">
-                          14-day trial — card on file. Cancel anytime before billing starts.
-                        </p>
+                        {userTrialEverUsed ? (
+                          <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
+                            {t.homepage.growthCheckoutPaidNote}
+                          </p>
+                        ) : (
+                          <>
+                            <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
+                              After trial: AI voice, SMS, multi-calendar, up to 5 businesses.
+                            </p>
+                            <p className="mt-2 text-xs !text-[#A78BFA] leading-snug">
+                              14-day trial — card on file. Cancel anytime before billing starts.
+                            </p>
+                          </>
+                        )}
                       </div>
                       <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] lg:min-h-[10.5rem] border-t !border-[#8B5CF6]/10">
                         <p className="text-[10px] font-semibold uppercase tracking-wider !text-[#64748B] mb-3">
@@ -2423,7 +2453,9 @@ function WizardContent() {
                             'Everything in Starter',
                             'AI receptionist in 70+ languages',
                             'Google Calendar & Outlook, SMS & auto review requests',
-                            'Public booking page with QR · 14-day trial',
+                            userTrialEverUsed
+                              ? 'Public booking page with QR'
+                              : 'Public booking page with QR · 14-day trial',
                             'Up to 5 businesses'
                           ].map((line) => (
                             <li key={line} className="flex gap-2.5">
@@ -2445,7 +2477,9 @@ function WizardContent() {
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
                       <p className="text-[10px] !text-[#64748B] text-center leading-snug mt-2">
-                        Full access for 14 days. You won&apos;t be charged until the trial ends.
+                        {userTrialEverUsed
+                          ? t.homepage.growthCheckoutPaidNote
+                          : "Full access for 14 days. You won't be charged until the trial ends."}
                       </p>
                     </div>
                   </CardContent>

@@ -34,7 +34,26 @@ export async function GET(request) {
     try { payload = jwt.verify(token, env.JWT_SECRET) } catch { return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }) }
     const u = await database.collection('users').findOne({ id: payload.sub })
     if (!u) return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 })
-    const safe = { id: u.id, email: u.email, name: u.name || '', subscription: u.subscription || null, google: { connected: !!(u.google?.refreshToken || u.google?.connected), lastSyncedAt: u.google?.lastSyncedAt || null, selectedCalendarIds: u.google?.selectedCalendarIds || [] }, scheduling: u.scheduling ? { handle: u.scheduling.handle || null, timeZone: u.scheduling.timeZone || 'UTC', selectedCalendarIds: u.scheduling.selectedCalendarIds || [] } : null }
+    const safe = {
+      id: u.id,
+      email: u.email,
+      name: u.name || '',
+      subscription: u.subscription || null,
+      trialEverUsed: !!u.trialEverUsed,
+      trialUsedAt: u.trialUsedAt || null,
+      google: {
+        connected: !!(u.google?.refreshToken || u.google?.connected),
+        lastSyncedAt: u.google?.lastSyncedAt || null,
+        selectedCalendarIds: u.google?.selectedCalendarIds || []
+      },
+      scheduling: u.scheduling
+        ? {
+            handle: u.scheduling.handle || null,
+            timeZone: u.scheduling.timeZone || 'UTC',
+            selectedCalendarIds: u.scheduling.selectedCalendarIds || []
+          }
+        : null
+    }
     return NextResponse.json(safe)
   } catch (e) {
     console.error('[user] error', e)

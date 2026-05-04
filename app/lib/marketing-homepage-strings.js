@@ -188,6 +188,18 @@ export const homepageByLocale = {
     getStartedShort: 'Get Started',
     subscribeToPlan: 'Subscribe to {plan}',
     trialCardNote: 'No charge for 14 days. Cancel anytime. Card on file to start.',
+    /** BOO-TRIAL-ABUSE-1B */
+    trialAlreadyUsedBanner:
+      "You've already used your free 14-day trial. Selecting Growth will charge your card today. Cancel anytime within 14 days for a full refund.",
+    growthCheckoutPaidNote:
+      'Growth starts immediately — your card is charged at checkout. Cancel anytime within 14 days for a full refund.',
+    /** setup Step 2 Growth card ribbon (vs paid path) */
+    growthSetupRibbonTrial: 'Best value · 14-day trial',
+    growthSetupRibbonPaid: 'Full access · Charged at checkout',
+    /** pricing: Growth headline when user already used their trial */
+    growthHeadlineWhenTrialUsed: 'Charged at checkout — same full Growth access',
+    /** pricing CTA when Growth has no trial period for this user */
+    growthPaidCtaShort: 'Subscribe to Growth',
     privacyBackHome: 'Back to Home',
     privacyTitle: 'Privacy Policy',
     privacyLastUpdated: 'Last Updated: March 17, 2026',
@@ -476,6 +488,14 @@ export const homepageByLocale = {
     getStartedShort: 'Commencer',
     subscribeToPlan: "S'abonner à {plan}",
     trialCardNote: 'Aucun frais pendant 14 jours. Annulation à tout moment. Carte requise.',
+    trialAlreadyUsedBanner:
+      "Vous avez déjà utilisé votre essai gratuit de 14 jours. Le forfait Growth sera facturé dès aujourd'hui. Annulation possible avec remboursement intégral dans les 14 jours.",
+    growthCheckoutPaidNote:
+      'Growth commence tout de suite — paiement à la caisse. Annulation avec remboursement intégral dans les 14 jours.',
+    growthSetupRibbonTrial: 'Meilleur rapport · essai 14 jours',
+    growthSetupRibbonPaid: 'Accès complet · paiement à la caisse',
+    growthHeadlineWhenTrialUsed: 'Paiement à la caisse — tout Growth',
+    growthPaidCtaShort: 'S’abonner à Growth',
     privacyBackHome: "Retour à l'accueil",
     privacyTitle: 'Politique de confidentialité',
     privacyLastUpdated: 'Dernière mise à jour : 17 mars 2026',
@@ -761,6 +781,14 @@ export const homepageByLocale = {
     getStartedShort: 'Comenzar',
     subscribeToPlan: 'Suscribirse a {plan}',
     trialCardNote: 'Sin cargo 14 días. Cancela cuando quieras. Tarjeta requerida.',
+    trialAlreadyUsedBanner:
+      'Ya usaste tu prueba gratuita de 14 días. Al elegir Growth se cobrará hoy. Cancela cuando quieras en 14 días para reembolso completo.',
+    growthCheckoutPaidNote:
+      'Growth empieza al instante — se cobra al completar el checkout. Reembolso completo si cancelas en 14 días.',
+    growthSetupRibbonTrial: 'Mejor valor · prueba 14 días',
+    growthSetupRibbonPaid: 'Acceso completo — cobro al pagar',
+    growthHeadlineWhenTrialUsed: 'Cobro al pagar — mismo Growth completo',
+    growthPaidCtaShort: 'Suscribirse a Growth',
     privacyBackHome: 'Volver al inicio',
     privacyTitle: 'Política de privacidad',
     privacyLastUpdated: 'Última actualización: 17 de marzo de 2026',
@@ -1040,6 +1068,14 @@ export const homepageByLocale = {
     getStartedShort: 'ابدأ',
     subscribeToPlan: 'اشترك في {plan}',
     trialCardNote: 'لا رسوم لمدة 14 يومًا. إلغاء في أي وقت. بطاقة مطلوبة.',
+    trialAlreadyUsedBanner:
+      'لقد استخدمت تجربتك المجانية لمدة 14 يومًا. اختيار Growth يخصم من بطاقتك اليوم. يمكنك الإلغاء خلال 14 يومًا لاسترداد كامل.',
+    growthCheckoutPaidNote:
+      'Growth يفعّل فورًا — الدفع عند إتمام الشراء. إلغاء خلال 14 يومًا لاسترداد كامل.',
+    growthSetupRibbonTrial: 'أفضل قيمة · تجربة 14 يومًا',
+    growthSetupRibbonPaid: 'وصول كامل · الدفع عند الشراء',
+    growthHeadlineWhenTrialUsed: 'الدفع عند الشراء — نفس Growth كاملًا',
+    growthPaidCtaShort: 'الاشتراك في Growth',
     privacyBackHome: 'العودة إلى الرئيسية',
     privacyTitle: 'سياسة الخصوصية',
     privacyLastUpdated: 'آخر تحديث: 17 مارس 2026',
