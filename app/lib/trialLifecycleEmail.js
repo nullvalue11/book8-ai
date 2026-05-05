@@ -47,7 +47,7 @@ export async function sendTrialStartedEmail({
   const cal = calendarProvider || 'Not connected yet'
   const html = `
 <p>Hi ${businessName},</p>
-<p>Welcome to Book8-AI! Your ${env.TRIAL_PERIOD_DAYS ?? 14}-day free trial of the Growth plan is now active.</p>
+<p>Welcome to Book8-AI! Your AI receptionist is now live, ready to capture every call that would have gone to voicemail.</p>
 <p><strong>Here's what's set up for you:</strong></p>
 <ul>
 <li>Phone number: ${phone}</li>
@@ -55,6 +55,12 @@ export async function sendTrialStartedEmail({
 <li>Calendar: ${cal}</li>
 </ul>
 <p>Your card will not be charged until <strong>${trialEndDate}</strong>. If Book8-AI isn't right for your business, cancel anytime before then.</p>
+<p><strong>What this typically means in your first month:</strong></p>
+<ul>
+<li>8-15 appointments captured that would have gone to voicemail</li>
+<li>$640-2,250 in recovered monthly revenue (depending on your service prices)</li>
+<li>Zero missed customer interactions, in 70+ languages</li>
+</ul>
 <p><strong>What to do next:</strong></p>
 <ol>
 <li>Share your phone number with customers</li>

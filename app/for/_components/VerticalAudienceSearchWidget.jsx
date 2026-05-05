@@ -152,10 +152,10 @@ export default function VerticalAudienceSearchWidget({ vertical }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-900 dark:text-white">
-            Never Miss a Call: AI Receptionist Works 24/7
+            Stop losing $1,200-2,500/month to missed calls
           </p>
           <p className="text-xs text-slate-500 mt-1">
-            Your automated phone answering service picks up in 2 seconds, books appointments, and closes deals.
+            Book8 captures every booking that would have gone to voicemail — and pays for itself with 1-2 recovered appointments per month.
           </p>
         </div>
         <div className="hidden sm:block">

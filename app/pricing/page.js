@@ -310,6 +310,18 @@ function PricingContent() {
                       </div>
                     </div>
 
+                    {plan.id === "growth" ? (
+                      <div className="rounded-xl border border-brand-500/20 bg-brand-500/5 px-4 py-3">
+                        <p className="text-sm font-semibold text-foreground">
+                          Pays for itself when Book8 captures just ONE appointment that would have gone to voicemail.
+                        </p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          Average customer recovers 8-15 appointments/month they would have lost. At a typical $80-150
+                          service price, that&apos;s $640-2,250 in recovered monthly revenue.
+                        </p>
+                      </div>
+                    ) : null}
+
                     <PricingPlanFeatureList planId={plan.id} override={override} />
 
                     {plan.id === "growth" && isLoggedIn && isPaywall ? (

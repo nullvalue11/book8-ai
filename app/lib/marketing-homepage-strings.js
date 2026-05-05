@@ -15,18 +15,18 @@ export const homepageByLocale = {
     logout: 'Logout',
     toggleMenu: 'Toggle menu',
 
-    heroTitle1: 'Never miss a call.',
+    heroTitle1: 'Stop losing $1,200-2,500/month to missed calls.',
     heroTitle2: '',
     heroTitle3: 'In any',
     heroTitle4: 'language.',
     heroSubtitle:
-      'Book8 answers your business phone 24/7, books appointments, and speaks 70+ languages — so you stop losing customers to voicemail.',
+      "A typical service business misses 30-50% of incoming calls during peak hours. Book8 catches them all — and pays for itself with 1-2 recovered appointments per month.",
     getStartedFree: 'Start 14-day free trial',
     seeHowItWorks: 'See How It Works',
     seeLiveDemo: 'See a live demo →',
     heroTrustedCities: 'Trusted by local businesses in Ottawa, Montreal, and Dubai.',
-    answersCallsDay: 'Answers calls 24/7',
-    booksInRealTime: 'Books appointments in real time',
+    answersCallsDay: 'Stop losing $1,200-2,500/month to missed calls',
+    booksInRealTime: 'Pays for itself with 1-2 recovered appointments/month',
     speaks70Languages: 'Speaks 70+ languages automatically',
     smsEmailConfirmations: 'SMS + email confirmations',
 
@@ -57,7 +57,8 @@ export const homepageByLocale = {
 
     everythingYouNeed: 'Everything Your Business Needs',
     featVoiceTitle: 'Voice AI Booking',
-    featVoiceDesc: 'AI answers calls 24/7. Books real appointments. Sounds natural.',
+    featVoiceDesc:
+      "Capture every booking — even at 11 PM. A typical business recovers $640-2,250/month when Book8 catches missed calls and converts them into appointments.",
     featLangTitle: 'Speaks 70+ languages',
     featLangDesc:
       'Your AI receptionist automatically detects what language your customer speaks and responds fluently — English, French, Spanish, Arabic, Mandarin, and dozens more. No setup needed.',
