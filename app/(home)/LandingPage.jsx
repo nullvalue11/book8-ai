@@ -1060,6 +1060,45 @@ export default function LandingPage() {
         </div>
       </motion.section>
 
+      {/* By industry */}
+      <section
+        className="py-14 md:py-16 px-4 border-y border-slate-200/90 bg-white/30 dark:border-[rgba(139,92,246,0.08)] dark:bg-[#06060f]/30"
+        dir={isRtl ? 'rtl' : 'ltr'}
+      >
+        <div className="mx-auto max-w-6xl">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white text-center font-[family-name:var(--font-brico)]">
+            By industry
+          </h2>
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {[
+              { href: "/for/barbershops", icon: Scissors, name: "Barbershops" },
+              { href: "/for/dental", icon: Stethoscope, name: "Dental clinics" },
+              { href: "/for/spas-and-beauty", icon: Sparkles, name: "Spas & beauty" },
+              { href: "/for/fitness-studios", icon: Dumbbell, name: "Fitness studios" },
+              { href: "/for/physio-clinics", icon: Stethoscope, name: "Physio clinics" }
+            ].map(({ href, icon: Icon, name }) => (
+              <Link
+                key={href}
+                href={href}
+                className="group rounded-2xl border border-slate-200 bg-white/70 dark:border-[rgba(139,92,246,0.12)] dark:bg-[#121228]/60 p-5 hover:border-[#8B5CF6]/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[rgba(139,92,246,0.12)] border border-[rgba(139,92,246,0.20)] flex items-center justify-center text-[#8B5CF6] group-hover:text-[#7C3AED] transition-colors">
+                    <Icon className="w-5 h-5" aria-hidden />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 dark:text-white truncate">{name}</p>
+                    <p className="text-xs text-slate-500 dark:text-[#9593A8] group-hover:text-[#7C3AED] transition-colors">
+                      See AI receptionist for {name.toLowerCase()}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer
         className="border-t border-slate-200 bg-slate-100 py-14 px-4 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] dark:border-[rgba(139,92,246,0.12)] dark:bg-[#06060f]"
