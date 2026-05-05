@@ -1142,6 +1142,14 @@ export default function LandingPage() {
               </li>
               <li>
                 <Link
+                  href="/sub-processors"
+                  className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
+                >
+                  Sub-Processors
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/terms"
                   className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
                 >

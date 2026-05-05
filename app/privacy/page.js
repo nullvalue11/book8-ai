@@ -67,6 +67,9 @@ export default function PrivacyPolicyPage() {
               <li><a href="#company-info" className="text-brand-400 hover:text-brand-300">Company Information</a></li>
               <li><a href="#information-collected" className="text-brand-400 hover:text-brand-300">Information We Collect</a></li>
               <li><a href="#how-we-use" className="text-brand-400 hover:text-brand-300">How We Use Your Information</a></li>
+              <li><a href="#gdpr-data-retention" className="text-brand-400 hover:text-brand-300">Data Retention (Detailed)</a></li>
+              <li><a href="#encryption-security" className="text-brand-400 hover:text-brand-300">Encryption &amp; Security</a></li>
+              <li><a href="#sub-processors" className="text-brand-400 hover:text-brand-300">Sub-Processors</a></li>
               <li><a href="#data-sharing" className="text-brand-400 hover:text-brand-300">Data Sharing and Third-Party Services</a></li>
               <li><a href="#cookies" className="text-brand-400 hover:text-brand-300">Cookies and Tracking Technologies</a></li>
               <li><a href="#data-retention" className="text-brand-400 hover:text-brand-300">Data Retention</a></li>
@@ -169,6 +172,47 @@ export default function PrivacyPolicyPage() {
               <li>Comply with legal obligations</li>
               <li>Send marketing communications (with your consent)</li>
             </ul>
+          </section>
+
+          {/* Data Retention (detailed) */}
+          <section id="gdpr-data-retention" className="mb-10">
+            <h2 className="text-2xl font-bold text-white mb-4">Data Retention</h2>
+            <p className="text-zinc-300 mb-4">
+              We retain different types of data for different periods to balance service delivery with your right to erasure:
+            </p>
+            <ul className="list-disc list-inside text-zinc-300 space-y-2">
+              <li><strong className="text-white">Account data</strong> (name, email, business info): Retained while your account is active. Deleted within 30 days of account closure unless legally required.</li>
+              <li><strong className="text-white">Booking records:</strong> Retained for 7 years after booking date for tax and legal compliance, then deleted.</li>
+              <li><strong className="text-white">Call recordings &amp; transcripts:</strong> Retained for 90 days, then automatically deleted, unless you request immediate deletion.</li>
+              <li><strong className="text-white">Billing records:</strong> Retained for 7 years per applicable tax law.</li>
+              <li><strong className="text-white">Application logs:</strong> Retained for 30 days.</li>
+              <li><strong className="text-white">Audit logs (security events):</strong> Retained for 12 months.</li>
+            </ul>
+            <p className="text-zinc-300 mt-4">
+              You may request earlier deletion of any data category by contacting{" "}
+              <a href="mailto:privacy@book8.io" className="text-brand-400 hover:text-brand-300">privacy@book8.io</a>.
+              Some retention periods are mandated by law and cannot be shortened.
+            </p>
+          </section>
+
+          {/* Encryption & Security */}
+          <section id="encryption-security" className="mb-10">
+            <h2 className="text-2xl font-bold text-white mb-4">Encryption &amp; Security</h2>
+            <p className="text-zinc-300">
+              All customer data is encrypted at rest using AES-256 (provided by MongoDB Atlas) and in transit using TLS 1.2 or higher. Authentication credentials are stored using industry-standard hashing (bcrypt). Access to production data is restricted to authorized personnel and logged.
+            </p>
+          </section>
+
+          {/* Sub-Processors */}
+          <section id="sub-processors" className="mb-10">
+            <h2 className="text-2xl font-bold text-white mb-4">Sub-Processors</h2>
+            <p className="text-zinc-300">
+              We use third-party sub-processors to deliver our service. The full current list is available at{" "}
+              <Link href="/sub-processors" className="text-brand-400 hover:text-brand-300">
+                book8.io/sub-processors
+              </Link>
+              .
+            </p>
           </section>
 
           {/* Section 4 */}
