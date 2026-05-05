@@ -12,6 +12,8 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { verticals } from "@/for/_data/verticals";
+import { cn } from "@/lib/utils";
 
 function useTypedText({
   text,
@@ -26,7 +28,7 @@ function useTypedText({
     if (prefersReducedMotion) return;
 
     let cancelled = false;
-    let phase = "type"; // type | pause | erase
+    let phase = "type";
     let i = 0;
 
     const tick = () => {
@@ -39,7 +41,6 @@ function useTypedText({
       } else if (phase === "pause") {
         phase = "erase";
       } else {
-        // erase
         i = Math.max(0, i - 1);
         setTyped(text.slice(0, i));
         if (i <= 0) {
@@ -83,13 +84,13 @@ function AnimatedDomainInput({ domain, setDomain, typedDomain }) {
   const showOverlay = !focused && domain.trim().length === 0;
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <Input
         value={domain}
         onChange={(e) => setDomain(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        className="h-11 rounded-xl border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 pr-3"
+        className="h-11 w-full min-w-0 rounded-xl border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 pr-3"
         placeholder=""
         inputMode="url"
       />
@@ -124,33 +125,48 @@ function AnimatedDomainInput({ domain, setDomain, typedDomain }) {
   );
 }
 
-export default function VerticalAudienceSearchWidget({ vertical }) {
+const categories = ["Barber", "Dental", "Spa", "Fitness", "Medical", "Restaurant", "Other"];
+
+const homeIndustryLinks = Object.values(verticals);
+
+export default function AudienceSearchWidget({ vertical, className }) {
   const router = useRouter();
 
   const domainExample = useMemo(() => "yourbusiness.com", []);
   const typedDomain = useTypedText({ text: domainExample });
 
   const [domain, setDomain] = useState("");
-  const [category, setCategory] = useState(vertical.searchCategoryDefault);
+  const defaultCategory = vertical?.searchCategoryDefault ?? "Other";
+  const [category, setCategory] = useState(defaultCategory);
 
   useEffect(() => {
-    setCategory(vertical.searchCategoryDefault);
-  }, [vertical.searchCategoryDefault]);
+    setCategory(vertical?.searchCategoryDefault ?? "Other");
+  }, [vertical?.searchCategoryDefault]);
 
   const onSubmit = () => {
-    // Marketing UX: route into setup and carry along context.
-    const params = new URLSearchParams();
-    params.set("vertical", vertical.slug);
-    if (domain.trim()) params.set("domain", domain.trim());
-    router.push(`/setup?${params.toString()}`);
+    if (vertical) {
+      const params = new URLSearchParams();
+      params.set("vertical", vertical.slug);
+      if (domain.trim()) params.set("domain", domain.trim());
+      router.push(`/setup?${params.toString()}`);
+      return;
+    }
+    if (domain.trim()) {
+      router.push(`/setup?url=${encodeURIComponent(domain.trim())}`);
+    } else {
+      router.push("/setup");
+    }
   };
 
-  const categories = ["Barber", "Dental", "Spa", "Fitness", "Medical", "Restaurant", "Other"];
-
   return (
-    <div className="mt-8 rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm dark:border-[rgba(139,92,246,0.14)] dark:bg-[#121228]/70">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+    <div
+      className={cn(
+        "mt-8 rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm dark:border-[rgba(139,92,246,0.14)] dark:bg-[#121228]/70 max-w-full",
+        className
+      )}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between min-w-0">
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900 dark:text-white">
             Stop losing $1,200-2,500/month to missed calls
           </p>
@@ -158,40 +174,40 @@ export default function VerticalAudienceSearchWidget({ vertical }) {
             Book8 captures every booking that would have gone to voicemail — and pays for itself with 1-2 recovered appointments per month.
           </p>
         </div>
-        <div className="hidden sm:block">
+        <div className="hidden sm:block shrink-0">
           <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white/90">
             70+ languages
           </span>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3">
-        <div>
+      <div className="mt-4 grid grid-cols-1 gap-3 min-w-0">
+        <div className="min-w-0">
           <AnimatedDomainInput domain={domain} setDomain={setDomain} typedDomain={typedDomain} />
 
-          <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
             <Button
               type="button"
               onClick={onSubmit}
-              className="h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6"
+              className="h-11 w-full sm:w-auto shrink-0 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6"
             >
               Listen to your AI
             </Button>
 
-            <p className="text-xs text-slate-500 sm:text-right">
+            <p className="text-xs text-slate-500 sm:text-right min-w-0">
               in 3 minutes, you&apos;ll be talking to your AI
             </p>
           </div>
         </div>
 
-        <div className="pt-3 border-t border-slate-200/70 dark:border-white/10">
+        <div className="pt-3 border-t border-slate-200/70 dark:border-white/10 min-w-0">
           <p className="text-xs uppercase tracking-wide font-semibold text-slate-600 dark:text-[#9593A8]">
             Find your business on Google
           </p>
 
           <div className="mt-2">
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-100/60 text-slate-900 dark:border-[rgba(139,92,246,0.18)] dark:bg-[#0A0A0F] dark:text-white">
+              <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-100/60 text-slate-900 dark:border-[rgba(139,92,246,0.18)] dark:bg-[#0A0A0F] dark:text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -203,35 +219,62 @@ export default function VerticalAudienceSearchWidget({ vertical }) {
               </SelectContent>
             </Select>
 
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <p className="text-[11px] text-slate-500">
-                Popular searches for {vertical.label}:
+            <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+              <p className="text-[11px] text-slate-500 shrink-0">
+                {vertical ? (
+                  <>Popular searches for {vertical.label}:</>
+                ) : (
+                  <>Browse industry guides:</>
+                )}
               </p>
-              <Link
-                href={`/for/${vertical.slug}`}
-                className="text-[11px] font-semibold text-[#8B5CF6] hover:underline"
-              >
-                {vertical.targetSearches[0]}
-              </Link>
+              {vertical ? (
+                <Link
+                  href={`/for/${vertical.slug}`}
+                  className="text-[11px] font-semibold text-[#8B5CF6] hover:underline break-words"
+                >
+                  {vertical.targetSearches[0]}
+                </Link>
+              ) : (
+                <Link
+                  href="/for/barbershops"
+                  className="text-[11px] font-semibold text-[#8B5CF6] hover:underline"
+                >
+                  Barbershops
+                </Link>
+              )}
             </div>
           </div>
 
           <div className="mt-2">
             <div className="flex flex-wrap gap-2">
-              {vertical.targetSearches.map((s) => (
-                <span
-                  key={s}
-                  className="text-xs rounded-full bg-[rgba(139,92,246,0.10)] text-[#6D28D9] border border-[rgba(139,92,246,0.20)] px-3 py-1 dark:text-[#A78BFA]"
-                >
-                  {s}
-                </span>
-              ))}
+              {vertical
+                ? vertical.targetSearches.map((item) => (
+                    <span
+                      key={item}
+                      className="text-xs rounded-full bg-[rgba(139,92,246,0.10)] text-[#6D28D9] border border-[rgba(139,92,246,0.20)] px-3 py-1 dark:text-[#A78BFA]"
+                    >
+                      {item}
+                    </span>
+                  ))
+                : homeIndustryLinks.map((v) => (
+                    <Link
+                      key={v.slug}
+                      href={`/for/${v.slug}`}
+                      className="text-xs rounded-full bg-[rgba(139,92,246,0.10)] text-[#6D28D9] border border-[rgba(139,92,246,0.20)] px-3 py-1 dark:text-[#A78BFA] hover:opacity-90"
+                    >
+                      {v.label}
+                    </Link>
+                  ))}
             </div>
           </div>
 
           <div className="mt-3 flex justify-end">
             <Link
-              href={`/setup?vertical=${encodeURIComponent(vertical.slug)}&manual=1`}
+              href={
+                vertical
+                  ? `/setup?vertical=${encodeURIComponent(vertical.slug)}&manual=1`
+                  : "/setup?manual=1"
+              }
               className="text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-[#9593A8] dark:hover:text-white"
             >
               I&apos;ll enter manually
@@ -242,4 +285,3 @@ export default function VerticalAudienceSearchWidget({ vertical }) {
     </div>
   );
 }
-

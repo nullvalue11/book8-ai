@@ -25,6 +25,7 @@ import { Bricolage_Grotesque, Plus_Jakarta_Sans } from 'next/font/google'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import PricingPlanFeatureList from '@/components/PricingPlanFeatureList'
+import AudienceSearchWidget from '@/components/AudienceSearchWidget'
 import HeaderLogo from '@/components/HeaderLogo'
 import LanguageSelector from '@/components/LanguageSelector'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -456,7 +457,7 @@ export default function LandingPage() {
         />
         <div className="relative z-10 mx-auto max-w-6xl">
           <motion.div
-            className="text-center max-w-3xl mx-auto mb-12 md:mb-16"
+            className="text-center max-w-3xl mx-auto mb-8 md:mb-12"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-40px' }}
@@ -481,33 +482,36 @@ export default function LandingPage() {
             </motion.h1>
             <motion.p
               variants={reveal}
-              className="mt-6 text-base md:text-lg text-slate-600 dark:text-[#9593A8] max-w-2xl mx-auto leading-relaxed"
+              className="mt-5 text-base md:text-[1.0625rem] text-slate-600 dark:text-[#9593A8] max-w-2xl mx-auto leading-relaxed"
             >
               {h.heroSubtitle}
             </motion.p>
             {h.heroTrustedCities ? (
               <motion.p
                 variants={reveal}
-                className="mt-4 text-xs md:text-sm text-slate-500 dark:text-[#68668A] max-w-2xl mx-auto leading-relaxed"
+                className="mt-3 text-xs md:text-sm text-slate-500 dark:text-[#68668A] max-w-2xl mx-auto leading-relaxed"
               >
                 {h.heroTrustedCities}
               </motion.p>
             ) : null}
+            <motion.div variants={reveal} className="mt-5 w-full max-w-2xl mx-auto text-left">
+              <AudienceSearchWidget className="mt-0 shadow-md" />
+            </motion.div>
             <motion.div
               variants={reveal}
-              className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center"
+              className="mt-5 flex flex-col sm:flex-row gap-3 justify-center items-stretch sm:items-center"
             >
               <Link href={SETUP_NEW_BUSINESS_PATH} className="w-full sm:w-auto">
                 <Button
-                  size="lg"
-                  className="w-full sm:w-auto h-12 md:h-14 px-8 rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-base shadow-[0_0_40px_-8px_rgba(139,92,246,0.8)]"
+                  size="default"
+                  className="w-full sm:w-auto h-11 px-6 rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-sm shadow-[0_0_28px_-8px_rgba(139,92,246,0.55)]"
                 >
                   {h.getStartedFree}
                 </Button>
               </Link>
               <Link
                 href="/b/diamond-car-wash-rideau"
-                className="inline-flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900 dark:text-[#9593A8] dark:hover:text-white transition-colors py-3"
+                className="inline-flex items-center justify-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-[#9593A8] dark:hover:text-white transition-colors py-2"
               >
                 {h.seeLiveDemo}
               </Link>

@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import VerticalAudienceSearchWidget from "./VerticalAudienceSearchWidget";
+import AudienceSearchWidget from "@/components/AudienceSearchWidget";
 import { verticals } from "../_data/verticals";
 
 function ByIndustryFooter() {
@@ -48,7 +48,7 @@ export default function VerticalLanding({ verticalKey }) {
                 </h1>
                 <p className="mt-4 text-slate-600 dark:text-[#9593A8] text-base md:text-lg">{vertical.heroSubhead}</p>
 
-                <VerticalAudienceSearchWidget vertical={vertical} />
+                <AudienceSearchWidget vertical={vertical} />
               </div>
 
               <div className="space-y-6">
