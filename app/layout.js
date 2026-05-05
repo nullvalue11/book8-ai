@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Providers } from "./components/Providers";
+import CookieConsentBanner from "./components/CookieConsentBanner";
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.book8.io";
 
@@ -50,6 +51,7 @@ export default function RootLayout({ children }) {
       <body className="min-h-dvh min-h-screen text-foreground antialiased">
         <Providers>
           {children}
+          <CookieConsentBanner />
         </Providers>
       </body>
     </html>

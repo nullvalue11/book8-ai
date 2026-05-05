@@ -1511,6 +1511,12 @@ function HomeContent(props) {
                     Privacy Policy
                   </Link>
                   <Link
+                    href="/sub-processors"
+                    className="text-slate-600 transition-colors hover:text-slate-900 dark:text-white/60 dark:hover:text-white"
+                  >
+                    Sub-Processors
+                  </Link>
+                  <Link
                     href="/terms"
                     className="text-slate-600 transition-colors hover:text-slate-900 dark:text-white/60 dark:hover:text-white"
                   >
