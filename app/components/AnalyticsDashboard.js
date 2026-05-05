@@ -3,10 +3,11 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { TrendingUp, Calendar, RotateCcw, XCircle, Bell, Lock, RefreshCw } from 'lucide-react'
+import { TrendingUp, TrendingDown, DollarSign, Calendar, RotateCcw, XCircle, Bell, Lock, RefreshCw } from 'lucide-react'
 import { Button } from './ui/button'
 import { formatAnalyticsChartDayLabel, DEFAULT_BUSINESS_TIMEZONE } from '@/lib/bookingDisplayTime'
 import { pricingPaywallUrl } from '@/lib/pricingPaywallUrl'
+import { formatPrice } from '@/lib/currency'
 
 export default function AnalyticsDashboard({
   token,
@@ -161,6 +162,17 @@ export default function AnalyticsDashboard({
 
   const kpis = analytics.kpis || {}
   const series = analytics.series || []
+  const revenueCaptured = analytics.revenueCaptured || null
+
+  const revenueCents = Number(revenueCaptured?.thisMonthCents ?? 0) || 0
+  const prevRevenueCents = Number(revenueCaptured?.previousMonthCents ?? 0) || 0
+  const revenueCurrency = revenueCaptured?.currency || 'USD'
+  const revenueBookingCount = Number(revenueCaptured?.bookingCount ?? 0) || 0
+  const pricesConfigured = revenueCaptured?.pricesConfigured !== false
+  const showDelta = prevRevenueCents > 0
+  const deltaCents = revenueCents - prevRevenueCents
+  const deltaUp = deltaCents >= 0
+  const deltaIcon = deltaUp ? TrendingUp : TrendingDown
 
   const hasMeaningfulData =
     (Number(kpis.bookings) || 0) > 0 ||
@@ -230,6 +242,54 @@ export default function AnalyticsDashboard({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Revenue captured (prominent, first tile) */}
+        {revenueCaptured ? (
+          <Card className="overflow-hidden border-brand-500/20 bg-brand-500/5">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Revenue captured this month
+                </CardTitle>
+                <div className="p-2 rounded-full bg-brand-500/10">
+                  <DollarSign className="h-4 w-4 text-brand-500" aria-hidden />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {pricesConfigured ? (
+                <>
+                  <div className="text-3xl font-bold">
+                    {formatPrice(revenueCents / 100, revenueCurrency)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    From {revenueBookingCount.toLocaleString()} booking{revenueBookingCount === 1 ? '' : 's'} captured this month
+                  </p>
+                  {showDelta ? (
+                    <p className={`mt-2 text-xs font-medium flex items-center gap-1 ${deltaUp ? 'text-emerald-600' : 'text-amber-700'}`}>
+                      {React.createElement(deltaIcon, { className: 'h-3.5 w-3.5', 'aria-hidden': true })}
+                      {formatPrice(Math.abs(deltaCents) / 100, revenueCurrency)} vs last month
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-foreground">
+                    Set up service prices to see recovered revenue
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      window.location.href = '/dashboard/services'
+                    }}
+                  >
+                    Configure services →
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
         {kpiCards.map((kpi, index) => {
           const Icon = kpi.icon
           return (
