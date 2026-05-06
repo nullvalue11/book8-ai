@@ -90,17 +90,23 @@ function AnimatedDomainInput({ domain, setDomain, typedDomain }) {
         onChange={(e) => setDomain(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        className="h-11 w-full min-w-0 rounded-xl border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 pr-3"
+        className={cn(
+          "h-11 w-full min-w-0 rounded-xl pr-3 transition-colors",
+          "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400",
+          "dark:border-slate-600/70 dark:bg-slate-900/55 dark:text-slate-100 dark:placeholder:text-slate-500",
+          "focus-visible:border-slate-300 dark:focus-visible:border-[rgba(139,92,246,0.35)]",
+          "focus-visible:ring-2 focus-visible:!ring-offset-0 focus-visible:!ring-violet-500/40 dark:focus-visible:!ring-[#A78BFA]/40"
+        )}
         placeholder=""
         inputMode="url"
       />
 
       {showOverlay ? (
         <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
-          <span className="text-sm text-slate-400">
+          <span className="text-sm text-slate-400 dark:text-slate-500">
             {typedDomain}
             <span
-              className="ml-0.5 inline-block w-[2px] h-[14px] bg-slate-400 align-middle rounded-sm"
+              className="ml-0.5 inline-block w-[2px] h-[14px] bg-slate-400 dark:bg-slate-500 align-middle rounded-sm"
               style={{
                 animation: "b8-blink 1.1s step-end infinite"
               }}
