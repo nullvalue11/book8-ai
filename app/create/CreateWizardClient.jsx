@@ -208,8 +208,6 @@ export default function CreateWizardClient() {
     router.push(`/signup?profileData=${encodeURIComponent(b64)}`)
   }
 
-  const tzValue = timezoneIds.includes(form.timezone) ? form.timezone : form.timezone
-
   return (
     <div className="min-h-dvh bg-[#0A0A0F] text-slate-100">
       <header className="border-b border-white/10 bg-[#0A0A0F]/90 backdrop-blur">
@@ -360,7 +358,7 @@ export default function CreateWizardClient() {
                   <div className="space-y-2">
                     <Label className="text-[#E2E8F0]">Timezone</Label>
                     <Select
-                      value={tzValue}
+                      value={form.timezone}
                       onValueChange={(v) => setForm((f) => ({ ...f, timezone: v }))}
                     >
                       <SelectTrigger className="h-11 border-white/10 bg-[#0A0A0F] text-white">
