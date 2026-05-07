@@ -39,7 +39,7 @@ export default function VoicePicker({ value, onChange, defaultLang = 'en-US' }) 
       >
         {WIZARD_LANGUAGES.map((l) => (
           <option key={l.code} value={l.code}>
-            {l.flag} {l.name}
+            {l.name}
           </option>
         ))}
       </select>
