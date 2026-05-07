@@ -10,6 +10,16 @@ import ServicesEditor from './ServicesEditor'
 const STEP1_KEY = 'book8.wizard.step1'
 const STEP2_KEY = 'book8.wizard.step2'
 const PROFILE_STORAGE_KEY = 'book8.wizard.profileFromCreate'
+const STEP2_VERSION = 2
+
+function mapShortLangToWizardCode(short) {
+  const s = String(short || '').trim().toLowerCase()
+  if (s === 'en') return 'en-US'
+  if (s === 'fr') return 'fr-FR'
+  if (s === 'es') return 'es-419'
+  if (s === 'ar') return 'ar'
+  return 'en-US'
+}
 
 function base64EncodeUtf8(jsonString) {
   return Buffer.from(String(jsonString || ''), 'utf8').toString('base64')
@@ -73,7 +83,7 @@ export default function Step2Agent({ descriptionParam, verticalParam, onBack, on
   const step1Meta = step1?.meta || {}
   const step1Inference = step1?.inference || null
 
-  const defaultVoiceLang = ['en', 'fr', 'es', 'ar'].includes(step1Form.language) ? step1Form.language : 'en'
+  const defaultVoiceLang = mapShortLangToWizardCode(step1Form.language)
   const defaultHours = defaultHoursForCategory(step1Form.category)
   const defaultServices = (() => {
     const fromSample = toServiceRows(step1Meta.sampleServices)
@@ -93,7 +103,28 @@ export default function Step2Agent({ descriptionParam, verticalParam, onBack, on
       const raw = sessionStorage.getItem(STEP2_KEY)
       if (!raw) return
       const d = JSON.parse(raw)
-      if (!d || d.v !== 1) return
+      if (!d || typeof d !== 'object') return
+
+      // Migration v1 -> v2: short language codes -> richer wizard codes
+      if (d.v === 1) {
+        const upgraded = {
+          ...d,
+          v: STEP2_VERSION,
+          voiceLang: mapShortLangToWizardCode(d.voiceLang),
+          savedAt: typeof d.savedAt === 'string' ? d.savedAt : new Date().toISOString()
+        }
+        try {
+          sessionStorage.setItem(STEP2_KEY, JSON.stringify(upgraded))
+        } catch {
+          /* ignore */
+        }
+        if (upgraded.voiceLang) setVoiceLang(upgraded.voiceLang)
+        if (upgraded.hours) setHours(upgraded.hours)
+        if (Array.isArray(upgraded.services)) setServices(upgraded.services)
+        return
+      }
+
+      if (d.v !== STEP2_VERSION) return
       if (d.voiceLang) setVoiceLang(d.voiceLang)
       if (d.hours) setHours(d.hours)
       if (Array.isArray(d.services)) setServices(d.services)
@@ -111,7 +142,7 @@ export default function Step2Agent({ descriptionParam, verticalParam, onBack, on
         sessionStorage.setItem(
           STEP2_KEY,
           JSON.stringify({
-            v: 1,
+            v: STEP2_VERSION,
             voiceLang,
             hours,
             services,
@@ -141,7 +172,7 @@ export default function Step2Agent({ descriptionParam, verticalParam, onBack, on
     }
 
     const step2 = {
-      v: 1,
+      v: STEP2_VERSION,
       voiceLang,
       hours,
       services: cleaned.map((r) => ({
@@ -199,7 +230,7 @@ export default function Step2Agent({ descriptionParam, verticalParam, onBack, on
       <section className="rounded-2xl border border-white/10 bg-[#121228]/60 p-6 sm:p-8">
         <h3 className="text-lg font-semibold text-white">Voice</h3>
         <p className="mt-1 text-sm text-[#94A3B8]">
-          Choose how your receptionist sounds. (Audio previews coming soon.)
+          Your AI receptionist will speak this language by default.
         </p>
         <div className="mt-5">
           <VoicePicker value={voiceLang} onChange={setVoiceLang} defaultLang={defaultVoiceLang} />
