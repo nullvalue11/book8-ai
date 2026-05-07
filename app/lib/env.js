@@ -233,6 +233,8 @@ function loadConfig() {
     
     // Optional Services
     const TAVILY_API_KEY = getEnvVar('TAVILY_API_KEY', false)
+    /** Public wizard business-profile inference (Claude Haiku). Optional: endpoint falls back to safe defaults when unset. */
+    const ANTHROPIC_API_KEY = getEnvVar('ANTHROPIC_API_KEY', false, '')
     const CRON_SECRET = getEnvVar('CRON_SECRET', false)
 
     // n8n provisioning retry (dashboard → webhook, not core-api)
@@ -372,6 +374,7 @@ function loadConfig() {
       
       // Optional
       TAVILY_API_KEY,
+      ANTHROPIC_API_KEY: ANTHROPIC_API_KEY ? String(ANTHROPIC_API_KEY).trim() : null,
       CRON_SECRET,
       
       // Features
@@ -399,6 +402,7 @@ function loadConfig() {
       RESEND: !!config.RESEND_API_KEY,
       STRIPE: !!config.STRIPE,
       TAVILY: !!config.TAVILY_API_KEY,
+      ANTHROPIC: !!config.ANTHROPIC_API_KEY,
       DEBUG_LOGS: config.DEBUG_LOGS
     })
     

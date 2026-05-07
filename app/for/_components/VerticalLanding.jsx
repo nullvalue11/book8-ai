@@ -105,7 +105,7 @@ export default function VerticalLanding({ verticalKey }) {
             </div>
 
             <div className="mt-10 flex justify-center">
-              <Link href={`/setup?vertical=${encodeURIComponent(vertical.slug)}`}>
+              <Link href={`/create?vertical=${encodeURIComponent(vertical.slug)}`}>
                 <Button className="h-14 px-10 rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-lg font-semibold shadow-[0_0_40px_-6px_rgba(139,92,246,0.85)]">
                   {vertical.ctaText}
                 </Button>

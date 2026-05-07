@@ -176,7 +176,7 @@ function isInternationalBusinessPhoneValid(value) {
   return cleaned.startsWith('+') && cleaned.replace(/\D/g, '').length >= 7
 }
 
-function SetupAuthScreen({ onAuthenticated, initialLoginMode = false }) {
+function SetupAuthScreen({ onAuthenticated, initialLoginMode = false, oauthRedirectPath = '/setup' }) {
   const { t, language, setLanguage } = useBookingLanguage()
   const a = t.auth
   const [formData, setFormData] = useState({ email: '', password: '', name: '' })
@@ -266,7 +266,7 @@ function SetupAuthScreen({ onAuthenticated, initialLoginMode = false }) {
                 setIsLoading(true)
                 try {
                   await signIn('google', {
-                    callbackUrl: '/auth/oauth-callback?redirect=%2Fsetup',
+                    callbackUrl: `/auth/oauth-callback?redirect=${encodeURIComponent(oauthRedirectPath)}`,
                     redirect: true
                   })
                 } catch (err) {
@@ -291,7 +291,7 @@ function SetupAuthScreen({ onAuthenticated, initialLoginMode = false }) {
                 setIsLoading(true)
                 try {
                   await signIn('azure-ad', {
-                    callbackUrl: '/auth/oauth-callback?redirect=%2Fsetup',
+                    callbackUrl: `/auth/oauth-callback?redirect=${encodeURIComponent(oauthRedirectPath)}`,
                     redirect: true
                   })
                 } catch (err) {
@@ -438,6 +438,8 @@ function WizardContent() {
   const { t } = useBookingLanguage()
   const cf = t.callForwarding
   const isLoginMode = searchParams.get('mode') === 'login'
+  const oauthRedirectPath =
+    searchParams.get('profileSource') === 'wizard' ? '/setup?profileSource=wizard' : '/setup'
   const [token, setToken] = useState(null)
   const [appReady, setAppReady] = useState(false)
 
@@ -1859,9 +1861,17 @@ function WizardContent() {
     return (
       <SetupAuthScreen
         initialLoginMode={isLoginMode}
+        oauthRedirectPath={oauthRedirectPath}
         onAuthenticated={() => {
           const t = localStorage.getItem('book8_token')
           setToken(t)
+          try {
+            if (typeof window !== 'undefined' && sessionStorage.getItem('book8.wizard.profileFromCreate')) {
+              router.replace('/setup?profileSource=wizard')
+            }
+          } catch {
+            /* ignore */
+          }
         }}
       />
     )

@@ -21,6 +21,7 @@
         "paperclip:patch-claude": "node scripts/paperclip-patch-claude-command.mjs"
     },
     "dependencies": {
+        "@anthropic-ai/sdk": "^0.95.0",
         "@dotlottie/react-player": "^1.6.19",
         "@hookform/resolvers": "^5.1.1",
         "@radix-ui/react-accordion": "^1.2.11",

@@ -153,14 +153,14 @@ export default function AudienceSearchWidget({ vertical, className }) {
     if (vertical) {
       const params = new URLSearchParams();
       params.set("vertical", vertical.slug);
-      if (domain.trim()) params.set("domain", domain.trim());
-      router.push(`/setup?${params.toString()}`);
+      if (domain.trim()) params.set("description", domain.trim());
+      router.push(`/create?${params.toString()}`);
       return;
     }
     if (domain.trim()) {
-      router.push(`/setup?url=${encodeURIComponent(domain.trim())}`);
+      router.push(`/create?description=${encodeURIComponent(domain.trim())}`);
     } else {
-      router.push("/setup");
+      router.push("/create");
     }
   };
 
@@ -278,8 +278,8 @@ export default function AudienceSearchWidget({ vertical, className }) {
             <Link
               href={
                 vertical
-                  ? `/setup?vertical=${encodeURIComponent(vertical.slug)}&manual=1`
-                  : "/setup?manual=1"
+                  ? `/create?vertical=${encodeURIComponent(vertical.slug)}`
+                  : "/create"
               }
               className="text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-[#9593A8] dark:hover:text-white"
             >
