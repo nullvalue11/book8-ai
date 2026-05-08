@@ -22,20 +22,15 @@ export default function WizardSidebar({
 
   if (variant === 'mobile') {
     return (
-      <div className="flex items-center justify-between gap-2">
-        {WIZARD_STEPS.slice(0, 2).map((s, idx) => {
+      <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
+        {WIZARD_STEPS.map((s, idx) => {
           const stepNum = idx + 1
           const isCurrent = stepNum === currentStep
           const isCompleted = completed.has(stepNum)
           return (
             <div
               key={s.title}
-              className={cn(
-                'flex-1 rounded-xl border px-3 py-2 text-sm',
-                isCurrent
-                  ? 'border-[#8B5CF6]/50 bg-[#8B5CF6]/10 text-white'
-                  : 'border-white/10 bg-white/[0.02] text-[#94A3B8]'
-              )}
+              className={cn('flex-none rounded-xl border px-3 py-2 text-sm', isCurrent ? 'border-[#8B5CF6]/50 bg-[#8B5CF6]/10 text-white' : 'border-white/10 bg-white/[0.02] text-[#94A3B8]')}
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
