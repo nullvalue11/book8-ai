@@ -46,6 +46,12 @@ import { currencyFromTimezone, detectCurrency } from '@/lib/currency'
 import LanguageSelector from '@/components/LanguageSelector'
 import { trFormat } from '@/lib/translations'
 import { buildGoogleConnectUrl } from '@/lib/oauth-connect-url'
+import {
+  readWizardPrefillPayload,
+  wizardPayloadToSetupStatePatch,
+  clearBook8WizardSessionStorage,
+  priceCentsToStep5PriceStr
+} from '@/lib/wizardSetupPrefill'
 
 const SETUP_WIZARD_DRAFT_KEY = 'book8_setup_wizard_draft_v1'
 const SETUP_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
@@ -482,8 +488,14 @@ function WizardContent() {
     subscriptionPlan: null,
     googlePlaceId: null,
     googlePlacesPreview: null,
-    profileWebsite: ''
+    profileWebsite: '',
+    /** BCP-47 voice language from /create wizard; stored on onboardingServicesCatalog at step 5. */
+    wizardVoiceLang: ''
   })
+
+  const wizardPrefillAppliedRef = useRef(false)
+  const wizardPrefillServicesRef = useRef(null)
+  const [showWizardPrefillBanner, setShowWizardPrefillBanner] = useState(false)
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -652,7 +664,8 @@ function WizardContent() {
           profileDescription: '',
           profileSocialInstagram: '',
           profileSocialFacebook: '',
-          profileSocialTiktok: ''
+          profileSocialTiktok: '',
+          wizardVoiceLang: ''
         }))
         setCurrentStep(1)
       } else if (bizList.length > 0) {
@@ -836,6 +849,74 @@ function WizardContent() {
   useEffect(() => {
     loadInitialState()
   }, [loadInitialState])
+
+  const oauthResumeForPrefill = useMemo(
+    () =>
+      searchParams.get('google_connected') === '1' ||
+      searchParams.get('outlook_connected') === '1',
+    [searchParams]
+  )
+  const registerNewBusinessForPrefill = useMemo(
+    () =>
+      !oauthResumeForPrefill &&
+      (searchParams.get('newBusiness') === '1' || searchParams.get('registerNew') === '1'),
+    [searchParams, oauthResumeForPrefill]
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (searchParams.get('profileSource') !== 'wizard') return
+    if (!token || loading) return
+    if (wizardPrefillAppliedRef.current) return
+
+    const stripProfileSource = () => {
+      const qs = new URLSearchParams(searchParams.toString())
+      qs.delete('profileSource')
+      const s = qs.toString()
+      router.replace(s ? `/setup?${s}` : '/setup')
+    }
+
+    const payload = readWizardPrefillPayload()
+    if (!payload) {
+      stripProfileSource()
+      return
+    }
+
+    const allowPrefill = businesses.length === 0 || registerNewBusinessForPrefill
+    if (!allowPrefill) {
+      stripProfileSource()
+      return
+    }
+
+    wizardPrefillAppliedRef.current = true
+    const { wizardPatch, step5Services } = wizardPayloadToSetupStatePatch(payload)
+    setWizardData((prev) => ({ ...prev, ...wizardPatch }))
+
+    if (step5Services.length > 0) {
+      wizardPrefillServicesRef.current = step5Services
+      if (currentStep === 5) {
+        setStep5Rows(
+          step5Services.map((s) => ({
+            rowKey: generateServiceDraftRowKey(),
+            name: s.name,
+            durationMinutes: s.durationMinutes,
+            priceStr: priceCentsToStep5PriceStr(s.priceCents)
+          }))
+        )
+        setStep5Ready(true)
+      }
+    }
+
+    setShowWizardPrefillBanner(true)
+  }, [
+    token,
+    loading,
+    searchParams,
+    businesses,
+    registerNewBusinessForPrefill,
+    router,
+    currentStep
+  ])
 
   useEffect(() => {
     if (checkoutCanceledToastShown.current) return
@@ -1495,6 +1576,16 @@ function WizardContent() {
       if (!cancelled) {
         setStep5CoreServiceIds(ids)
         setStep5Rows((prev) => {
+          const pending = wizardPrefillServicesRef.current
+          if (pending && Array.isArray(pending) && pending.length > 0) {
+            wizardPrefillServicesRef.current = null
+            return pending.map((s) => ({
+              rowKey: generateServiceDraftRowKey(),
+              name: s.name,
+              durationMinutes: s.durationMinutes,
+              priceStr: priceCentsToStep5PriceStr(s.priceCents)
+            }))
+          }
           if (prev.some((r) => (r.name || '').trim().length > 0)) return prev
           if (Array.isArray(list) && list.length > 0) {
             return list.map((s) => ({
@@ -1642,7 +1733,10 @@ function WizardContent() {
           durationMinutes: r.durationMinutes,
           price: r.price,
           currency: step5ServiceCurrency
-        }))
+        })),
+        ...(wizardData.wizardVoiceLang?.trim()
+          ? { agentVoiceLanguage: wizardData.wizardVoiceLang.trim() }
+          : {})
       }
       await fetch(`/api/business/${encodeURIComponent(wizardData.businessId)}`, {
         method: 'PATCH',
@@ -1792,6 +1886,7 @@ function WizardContent() {
       }).catch(() => {})
     }
     clearSetupWizardDraft()
+    clearBook8WizardSessionStorage()
     router.push('/dashboard')
   }
 
@@ -1985,6 +2080,23 @@ function WizardContent() {
             <p className="text-sm text-red-300">{error}</p>
           </div>
         )}
+
+        {showWizardPrefillBanner ? (
+          <div className="mb-6 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100 flex items-start gap-3">
+            <Check className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" aria-hidden />
+            <p className="min-w-0 flex-1 leading-snug">
+              We&apos;ve pre-filled your info from the wizard. Review each step and continue.
+            </p>
+            <button
+              type="button"
+              className="shrink-0 rounded-md p-1 text-emerald-200/90 hover:text-white hover:bg-white/10"
+              aria-label="Dismiss notification"
+              onClick={() => setShowWizardPrefillBanner(false)}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : null}
 
         {searchParams.get('newBusiness') === '1' && currentStep === 1 && (
           <div className="mb-6 rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-4 py-3 text-sm text-[#E9D5FF]">
