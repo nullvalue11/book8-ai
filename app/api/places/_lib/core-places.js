@@ -1,7 +1,8 @@
 import { env } from '@/lib/env'
 
+/** Core API origin for Places proxy — use `CORE_API_URL` (Vercel / BOO-100B convention). */
 export function corePlacesBaseUrl() {
-  return (env.CORE_API_BASE_URL || '').replace(/\/$/, '')
+  return (env.CORE_API_URL || '').replace(/\/$/, '')
 }
 
 export function corePlacesConfigured() {

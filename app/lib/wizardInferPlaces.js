@@ -1,6 +1,7 @@
 /**
  * Google Places enrichment for /api/wizard/infer-profile (BOO-WIZARD-INFER-V2-1B).
- * Uses core-api Places (same path as /api/places/*), never throws — callers fall back to LLM-only.
+ * Uses core-api Places via `@/api/places/_lib/core-places` (`CORE_API_URL` + `CORE_API_INTERNAL_SECRET`).
+ * Never throws — callers fall back to LLM-only.
  */
 
 import { placeDetailsToProfileFields } from '@/lib/googlePlaces'
