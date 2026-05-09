@@ -563,7 +563,7 @@ export default function LandingPage() {
             </motion.div>
             <motion.div variants={reveal} className="mt-8 w-full max-w-2xl mx-auto text-left">
               <p className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">
-                {h.heroBrowseIndustries}
+                {h.heroBrowseIndustries}:
               </p>
               <div className="flex flex-wrap gap-2">
                 {Object.values(verticals).map((v) => (
