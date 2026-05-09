@@ -15,7 +15,7 @@ export const homepageByLocale = {
     logout: 'Logout',
     toggleMenu: 'Toggle menu',
 
-    heroTitle1: 'Your AI receptionist — books in any language,',
+    heroTitle1: 'Your AI receptionist, books in any language,',
     heroTitle2: '',
     heroTitle3: '24/7',
     heroTitle4: '',
@@ -319,7 +319,7 @@ export const homepageByLocale = {
     logout: 'Déconnexion',
     toggleMenu: 'Ouvrir le menu',
 
-    heroTitle1: 'Votre réceptionniste IA — prend des rendez-vous dans toute langue,',
+    heroTitle1: 'Votre réceptionniste IA, prend des rendez-vous dans toute langue,',
     heroTitle2: '',
     heroTitle3: '24h/24',
     heroTitle4: '',
@@ -617,7 +617,7 @@ export const homepageByLocale = {
     logout: 'Cerrar sesión',
     toggleMenu: 'Abrir menú',
 
-    heroTitle1: 'Tu recepcionista con IA — agenda en cualquier idioma,',
+    heroTitle1: 'Tu recepcionista con IA, agenda en cualquier idioma,',
     heroTitle2: '',
     heroTitle3: '24/7',
     heroTitle4: '',
@@ -914,7 +914,7 @@ export const homepageByLocale = {
     logout: 'تسجيل الخروج',
     toggleMenu: 'قائمة التنقل',
 
-    heroTitle1: 'موظف الاستقبال الذكي لديك — يحجز بأي لغة،',
+    heroTitle1: 'موظف الاستقبال الذكي لديك، يحجز بأي لغة،',
     heroTitle2: '',
     heroTitle3: 'على مدار الساعة',
     heroTitle4: '',
