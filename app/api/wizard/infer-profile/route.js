@@ -8,6 +8,10 @@ import Anthropic from '@anthropic-ai/sdk'
 import { env } from '@/lib/env'
 import { isValidIanaTimeZone } from '@/lib/timezones'
 import { verticals } from '@/for/_data/verticals'
+import {
+  detectInputType,
+  enrichProfileWithGooglePlaces
+} from '@/lib/wizardInferPlaces'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,7 +25,9 @@ const rateBucket =
   globalThis.__book8WizardInferRateLimit ??
   (globalThis.__book8WizardInferRateLimit = new Map())
 
-const SYSTEM_PROMPT = `You are a business profile inference engine. Given a URL or short description of a business, return a plausible business profile in strict JSON format. Use sensible defaults for missing data, marking those fields with "_confidence": "low".
+const SYSTEM_PROMPT = `You are a business profile inference engine. The user's input may be either a URL (e.g. "acmebarbershop.com") or a free-text business name (e.g. "Acme Barber Shop"). Adapt your inference accordingly. Do not try to parse a URL out of a free-text business name.
+
+Return a plausible business profile in strict JSON format. Use sensible defaults for missing data, marking those fields with "_confidence": "low".
 
 Output schema (JSON only, no markdown):
 {
@@ -42,8 +48,9 @@ Output schema (JSON only, no markdown):
 }
 
 Rules:
-- Always parse the input charitably. "dropbarber.com" → "Drop Barber" (split on common patterns, capitalize)
-- If no category signal in URL, infer from description. If neither, default to "other" with low confidence.
+- For URL inputs: parse charitably. "dropbarber.com" → "Drop Barber" (split on common patterns, capitalize).
+- For business-name inputs: treat the entire string as the business name; infer category from wording (barber, dental, spa, etc.).
+- If no category signal, default to "other" with low confidence.
 - Default country to "United States" unless URL TLD or text suggests otherwise (.ca → Canada, .uk → UK, etc.)
 - Sample services should be priced realistically (barber: $25-45, dental cleaning: $80-150, spa: $60-180, etc.)
 - Return JSON ONLY. No markdown fences. No explanation. No preamble.`
@@ -125,6 +132,33 @@ function normalizeWebsiteUrl(url, fallbackFromInput) {
   return ''
 }
 
+function defaultDataSources() {
+  return {
+    businessName: 'llm',
+    address: 'llm',
+    phoneNumber: 'llm',
+    websiteUrl: 'llm',
+    category: 'llm',
+    description: 'llm',
+    country: 'llm',
+    timezone: 'llm',
+    language: 'llm',
+    sampleServices: 'llm',
+    googlePlaceId: 'llm'
+  }
+}
+
+function normalizeDataSources(partial) {
+  const d = defaultDataSources()
+  if (partial && typeof partial === 'object') {
+    for (const k of Object.keys(d)) {
+      const v = /** @type {Record<string, unknown>} */ (partial)[k]
+      if (v === 'google' || v === 'llm') /** @type {Record<string, string>} */ (d)[k] = v
+    }
+  }
+  return d
+}
+
 function coerceServices(raw) {
   if (!Array.isArray(raw)) return []
   const out = []
@@ -177,6 +211,15 @@ function safeProfile(partial, inputDescription) {
     address: ['high', 'low'].includes(conf.address) ? conf.address : 'low',
     category: ['high', 'medium'].includes(conf.category) ? conf.category : 'medium'
   }
+  const phoneRaw = partial?.phoneNumber
+  const phoneNumber =
+    phoneRaw != null && String(phoneRaw).trim()
+      ? String(phoneRaw).trim().slice(0, 40)
+      : null
+  const gidRaw = partial?.googlePlaceId
+  const googlePlaceId =
+    typeof gidRaw === 'string' && gidRaw.trim() ? gidRaw.trim().slice(0, 256) : null
+  const _dataSources = normalizeDataSources(partial?._dataSources)
   return {
     businessName,
     description,
@@ -187,7 +230,10 @@ function safeProfile(partial, inputDescription) {
     address,
     websiteUrl,
     sampleServices,
-    _confidence
+    _confidence,
+    phoneNumber,
+    googlePlaceId,
+    _dataSources
   }
 }
 
@@ -207,7 +253,8 @@ function defaultProfile(inputDescription) {
         businessName: 'low',
         address: 'low',
         category: 'low'
-      }
+      },
+      _dataSources: defaultDataSources()
     },
     inputDescription
   )
@@ -247,6 +294,7 @@ export async function POST(request) {
 
   const rawDesc = body.description
   const description = sanitizeDescription(typeof rawDesc === 'string' ? rawDesc : '')
+  const inputType = detectInputType(description)
   const verticalRaw = typeof body.vertical === 'string' ? body.vertical : ''
   const vertical = verticalRaw.trim().slice(0, 64)
 
@@ -256,7 +304,10 @@ export async function POST(request) {
 
   const hint = verticalHintLine(vertical)
   const system = hint ? `${SYSTEM_PROMPT}\n\n${hint}` : SYSTEM_PROMPT
-  const userLine = `Infer a business profile for this input:\n${description || '(empty — return cautious defaults with low confidence)'}`
+  const userLine =
+    inputType === 'businessName'
+      ? `Infer a business profile for this BUSINESS NAME (this is not a website URL — do not treat it as a domain):\n${description || '(empty — return cautious defaults with low confidence)'}`
+      : `Infer a business profile for this input:\n${description || '(empty — return cautious defaults with low confidence)'}`
 
   let profile = defaultProfile(description)
   let inferenceOk = true
@@ -291,6 +342,19 @@ export async function POST(request) {
       error: 'inference_failed',
       profile
     })
+  }
+
+  try {
+    const enriched = await enrichProfileWithGooglePlaces(
+      profile,
+      inputType,
+      description,
+      request,
+      normalizeWebsiteUrl
+    )
+    profile = safeProfile(enriched, description)
+  } catch (e) {
+    console.warn('[wizard/infer-profile] places enrich skipped:', e?.message || e)
   }
 
   return NextResponse.json({ ok: true, profile })
