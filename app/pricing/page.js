@@ -19,6 +19,7 @@ import {
   countryFromBrowserLocale,
   normalizePlansPricingPayload
 } from "@/lib/plansPricingPublic";
+import { guessCountryFromTimeZone } from "@/lib/region-data";
 import {
   Select,
   SelectContent,
@@ -31,6 +32,39 @@ const PRICING_COUNTRY_SESSION_KEY = "book8_pricing_country_preference";
 
 /** USD minor units — fallback while pricing loads or if core is unavailable (matches previous marketing copy). */
 const FALLBACK_USD_MINOR = { starter: 2900, growth: 9900, enterprise: 29900 };
+/** CAD minor units — same nominal numbers, displayed with CA$ prefix when no live CAD pricing yet. */
+const FALLBACK_CAD_MINOR = { starter: 2900, growth: 9900, enterprise: 29900 };
+
+/** Map a country code to its default fallback currency (used while live pricing loads). */
+function fallbackCurrencyForCountry(country) {
+  const cc = String(country || "").toUpperCase();
+  if (cc === "CA") return "cad";
+  if (cc === "AE") return "aed";
+  return "usd";
+}
+
+/** Pick the default fallback minor-unit table for a given country. */
+function fallbackMinorTableForCountry(country) {
+  const cc = String(country || "").toUpperCase();
+  if (cc === "CA") return FALLBACK_CAD_MINOR;
+  return FALLBACK_USD_MINOR;
+}
+
+/** Default pricing region: locale first, timezone second, otherwise US. */
+function defaultPricingCountry() {
+  const fromLocale = countryFromBrowserLocale();
+  if (fromLocale && fromLocale !== "US") return fromLocale;
+  if (typeof Intl !== "undefined") {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const fromTz = guessCountryFromTimeZone(tz);
+      if (fromTz) return fromTz;
+    } catch {
+      /* ignore */
+    }
+  }
+  return fromLocale || "US";
+}
 
 function PricingContent() {
   const router = useRouter();
@@ -173,7 +207,7 @@ function PricingContent() {
       setPricingCountry(stored.toUpperCase());
       return;
     }
-    setPricingCountry(countryFromBrowserLocale());
+    setPricingCountry(defaultPricingCountry());
   }, [searchParams]);
 
   useEffect(() => {
@@ -358,7 +392,7 @@ function PricingContent() {
                     livePricing?.starter ||
                     livePricing?.growth ||
                     livePricing?.enterprise
-                  )?.currency?.toUpperCase() || (pricingCountry === "AE" ? "AED" : "USD")}`}
+                  )?.currency?.toUpperCase() || fallbackCurrencyForCountry(pricingCountry).toUpperCase()}`}
             </span>
             <Select value={pricingCountry} onValueChange={setCountryAndPersist}>
               <SelectTrigger
@@ -369,6 +403,7 @@ function PricingContent() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="US">United States (USD)</SelectItem>
+                <SelectItem value="CA">Canada (CAD)</SelectItem>
                 <SelectItem value="AE">United Arab Emirates (AED)</SelectItem>
               </SelectContent>
             </Select>
@@ -378,11 +413,12 @@ function PricingContent() {
               const Icon = plan.icon;
               const override = getHomepagePricingDisplay(h, plan.id);
               const tier = livePricing?.[plan.id];
-              const fallbackMinor = FALLBACK_USD_MINOR[plan.id];
+              const fallbackCurrency = fallbackCurrencyForCountry(pricingCountry);
+              const fallbackMinor = fallbackMinorTableForCountry(pricingCountry)[plan.id];
               const priceLabel = tier
                 ? formatPrice(tier.amount, tier.currency)
-                : formatPrice(fallbackMinor, "usd");
-              const curUpper = (tier?.currency || "usd").toUpperCase();
+                : formatPrice(fallbackMinor, fallbackCurrency);
+              const curUpper = (tier?.currency || fallbackCurrency).toUpperCase();
               const pricePulse = pricingLoading && !tier;
               return (
                 <Card

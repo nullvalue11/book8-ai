@@ -56,6 +56,17 @@ function readPricingCountryPreference() {
 
 /** Fallback amounts (minor units) when core pricing is unavailable — matches marketing /pricing. */
 const WIZARD_FALLBACK_USD_MINOR = { starter: 2900, growth: 9900, enterprise: 29900 }
+/** CAD fallback amounts mirror USD numbers but render with the CA$ prefix. */
+const WIZARD_FALLBACK_CAD_MINOR = { starter: 2900, growth: 9900, enterprise: 29900 }
+
+/** Pick the localized fallback table + currency code for a country (used when live pricing missing). */
+function wizardFallbackForCountry(country) {
+  const cc = String(country || '').toUpperCase()
+  if (cc === 'CA') {
+    return { table: WIZARD_FALLBACK_CAD_MINOR, currency: 'cad' }
+  }
+  return { table: WIZARD_FALLBACK_USD_MINOR, currency: 'usd' }
+}
 import LanguageSelector from '@/components/LanguageSelector'
 import { trFormat } from '@/lib/translations'
 import { buildGoogleConnectUrl } from '@/lib/oauth-connect-url'
@@ -525,6 +536,11 @@ function WizardContent() {
     growth: null,
     enterprise: null
   })
+  /** Step 2 fallback (when localized pricing missing): localized to profileCountry. */
+  const planFallback = useMemo(
+    () => wizardFallbackForCountry(wizardData.profileCountry),
+    [wizardData.profileCountry]
+  )
   /** Step 7 (You're Live): idle | loading | live | provisioning | error */
   const [step7LineState, setStep7LineState] = useState('idle')
   const [step7RetryKey, setStep7RetryKey] = useState(0)
@@ -2548,10 +2564,10 @@ function WizardContent() {
                                   planPricingDisplay.starter.amount,
                                   planPricingDisplay.starter.currency
                                 )
-                              : formatPrice(WIZARD_FALLBACK_USD_MINOR.starter, 'usd')}
+                              : formatPrice(planFallback.table.starter, planFallback.currency)}
                           </span>
                           <span className="text-sm !text-[#94A3B8]">
-                            {(planPricingDisplay?.starter?.currency || 'usd').toUpperCase()} / monthly
+                            {(planPricingDisplay?.starter?.currency || planFallback.currency).toUpperCase()} / monthly
                           </span>
                         </div>
                         <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
@@ -2618,10 +2634,10 @@ function WizardContent() {
                                   planPricingDisplay.growth.amount,
                                   planPricingDisplay.growth.currency
                                 )
-                              : formatPrice(WIZARD_FALLBACK_USD_MINOR.growth, 'usd')}
+                              : formatPrice(planFallback.table.growth, planFallback.currency)}
                           </span>
                           <span className="text-sm !text-[#94A3B8]">
-                            {(planPricingDisplay?.growth?.currency || 'usd').toUpperCase()} / monthly
+                            {(planPricingDisplay?.growth?.currency || planFallback.currency).toUpperCase()} / monthly
                           </span>
                         </div>
                         {userTrialEverUsed ? (
@@ -2702,10 +2718,10 @@ function WizardContent() {
                                   planPricingDisplay.enterprise.amount,
                                   planPricingDisplay.enterprise.currency
                                 )
-                              : formatPrice(WIZARD_FALLBACK_USD_MINOR.enterprise, 'usd')}
+                              : formatPrice(planFallback.table.enterprise, planFallback.currency)}
                           </span>
                           <span className="text-sm !text-[#94A3B8]">
-                            {(planPricingDisplay?.enterprise?.currency || 'usd').toUpperCase()} / month · per
+                            {(planPricingDisplay?.enterprise?.currency || planFallback.currency).toUpperCase()} / month · per
                             location
                           </span>
                         </div>
