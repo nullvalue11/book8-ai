@@ -518,7 +518,7 @@ export default function LandingPage() {
             {h.heroKicker ? (
               <motion.p
                 variants={reveal}
-                className="text-xs uppercase tracking-[0.2em] text-[#A78BFA] mb-4 font-semibold"
+                className="text-base md:text-lg text-[#A78BFA] mb-4 font-semibold"
               >
                 {h.heroKicker}
               </motion.p>
@@ -527,23 +527,38 @@ export default function LandingPage() {
               variants={reveal}
               className="text-[2.25rem] leading-tight md:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white font-[family-name:var(--font-brico)]"
             >
-              <span className="block min-[480px]:inline">
-                {[h.heroTitle1, h.heroTitle2].filter(Boolean).join(' ')}
-              </span>
-              {h.heroTitle3 || h.heroTitle4 ? (
+              {h.heroLine1 ? (
                 <>
-                  <span className="hidden min-[480px]:inline"> </span>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#A78BFA] to-[#34D399]">
-                    {h.heroTitle3}
-                    {h.heroTitle3 && h.heroTitle4 ? ' ' : ''}
-                    {h.heroTitle4}
+                  <span className="block">{h.heroLine1}</span>
+                  <span className="block">{h.heroLine2}</span>
+                  <span className="block">
+                    {h.heroLine3Before}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#38BDF8] to-[#34D399]">
+                      {h.heroLine3Gradient}
+                    </span>
                   </span>
                 </>
-              ) : null}
+              ) : (
+                <>
+                  <span className="block min-[480px]:inline">
+                    {[h.heroTitle1, h.heroTitle2].filter(Boolean).join(' ')}
+                  </span>
+                  {h.heroTitle3 || h.heroTitle4 ? (
+                    <>
+                      <span className="hidden min-[480px]:inline"> </span>
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#A78BFA] to-[#34D399]">
+                        {h.heroTitle3}
+                        {h.heroTitle3 && h.heroTitle4 ? ' ' : ''}
+                        {h.heroTitle4}
+                      </span>
+                    </>
+                  ) : null}
+                </>
+              )}
             </motion.h1>
             <motion.p
               variants={reveal}
-              className="mt-5 text-base md:text-[1.0625rem] text-slate-600 dark:text-[#9593A8] max-w-2xl mx-auto leading-relaxed"
+              className="mt-5 text-base md:text-[1.0625rem] text-slate-600 dark:text-[#9593A8] max-w-2xl mx-auto leading-relaxed whitespace-pre-line"
             >
               {h.heroSubtitle}
             </motion.p>
