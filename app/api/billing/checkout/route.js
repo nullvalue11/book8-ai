@@ -136,6 +136,15 @@ export async function POST(request) {
     if (countryHint) {
       localizedPricing = await fetchPlansPricingFromCore(countryHint)
       regionalIds = collectPriceIds(localizedPricing)
+      // BOO-MULTI-CURRENCY-FIX-1B: when a country was requested but the backend has
+      // no env vars / Stripe price IDs configured for that currency, fall back to
+      // the default (USD) price IDs and emit a warning so ops can fix env config.
+      if (regionalIds.length === 0) {
+        console.warn(
+          `[billing/checkout] No localized Stripe prices for country=${countryHint}; ` +
+            'falling back to default currency (env vars not set).'
+        )
+      }
     }
     
     const trimmedBiz =
