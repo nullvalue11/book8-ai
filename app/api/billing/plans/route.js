@@ -23,6 +23,8 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import jwt from 'jsonwebtoken'
 import { env } from '@/lib/env'
+import { fetchPlansPricingFromCore } from '@/lib/plansPricingServer'
+import { normalizeCountryCode } from '@/lib/plansPricingPublic'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -67,14 +69,54 @@ export async function GET(request) {
         { status: auth.status }
       )
     }
-    
+
+    const countryParam = request.nextUrl.searchParams.get('country')
+    const country = countryParam != null ? normalizeCountryCode(countryParam) : null
+    const localized = country ? await fetchPlansPricingFromCore(country) : null
+
+    const pickId = (tier) =>
+      (tier && tier.priceId) ||
+      null
+
     // Return available plans
     const plans = {
-      starter: env.STRIPE?.PRICE_STARTER || null,
-      growth: env.STRIPE?.PRICE_GROWTH || null,
-      enterprise: env.STRIPE?.PRICE_ENTERPRISE || null
+      starter:
+        pickId(localized?.starter) || env.STRIPE?.PRICE_STARTER || null,
+      growth: pickId(localized?.growth) || env.STRIPE?.PRICE_GROWTH || null,
+      enterprise:
+        pickId(localized?.enterprise) || env.STRIPE?.PRICE_ENTERPRISE || null
     }
-    
+
+    const display =
+      localized && (localized.starter || localized.growth || localized.enterprise)
+        ? {
+            starter: localized.starter
+              ? {
+                  amount: localized.starter.amount,
+                  currency: localized.starter.currency
+                }
+              : null,
+            growth: localized.growth
+              ? {
+                  amount: localized.growth.amount,
+                  currency: localized.growth.currency
+                }
+              : null,
+            enterprise: localized.enterprise
+              ? {
+                  amount: localized.enterprise.amount,
+                  currency: localized.enterprise.currency
+                }
+              : null
+          }
+        : null
+
+    const currency =
+      localized?.starter?.currency ||
+      localized?.growth?.currency ||
+      localized?.enterprise?.currency ||
+      'usd'
+
     // Check if Stripe is configured
     if (!env.STRIPE) {
       return NextResponse.json(
@@ -82,12 +124,14 @@ export async function GET(request) {
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json({
       ok: true,
       plans,
+      display,
       meteredPrice: env.STRIPE?.PRICE_CALL_MINUTE_METERED || null,
-      currency: 'CAD'
+      currency: String(currency).toUpperCase(),
+      country: country || null
     })
     
   } catch (error) {

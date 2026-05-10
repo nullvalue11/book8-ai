@@ -70,6 +70,7 @@ export function guessCountryFromTimeZone(tz) {
   if (t.startsWith('europe/madrid')) return 'ES'
   if (t.startsWith('europe/rome')) return 'IT'
   if (t.startsWith('asia/tokyo')) return 'JP'
+  if (t.startsWith('asia/dubai')) return 'AE'
   if (t.startsWith('asia/kolkata') || t.startsWith('asia/calcutta')) return 'IN'
   if (t.startsWith('america/sao_paulo')) return 'BR'
   return 'US'

@@ -32,9 +32,30 @@ import {
   generateIdempotencyKey
 } from '@/lib/stripeSubscription'
 import { ensureStripeCustomerForUser } from '@/lib/stripeCustomerRecovery'
+import { fetchPlansPricingFromCore } from '@/lib/plansPricingServer'
+import { collectPriceIds, normalizeCountryCode } from '@/lib/plansPricingPublic'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+/** @param {string} priceId @param {import('@/lib/plansPricingPublic').PlansPricingNormalized | null} loc */
+function planNameFromPriceId(priceId, loc) {
+  if (priceId === env.STRIPE?.PRICE_ENTERPRISE || loc?.enterprise?.priceId === priceId) {
+    return 'enterprise'
+  }
+  if (priceId === env.STRIPE?.PRICE_GROWTH || loc?.growth?.priceId === priceId) {
+    return 'growth'
+  }
+  if (priceId === env.STRIPE?.PRICE_STARTER || loc?.starter?.priceId === priceId) {
+    return 'starter'
+  }
+  return 'starter'
+}
+
+/** @param {string} priceId @param {import('@/lib/plansPricingPublic').PlansPricingNormalized | null} loc */
+function isGrowthPriceId(priceId, loc) {
+  return priceId === env.STRIPE?.PRICE_GROWTH || (!!loc?.growth?.priceId && loc.growth.priceId === priceId)
+}
 
 let client, db
 
@@ -89,7 +110,7 @@ export async function POST(request) {
     
     const user = auth.user
     const body = await request.json()
-    const { priceId, businessId, returnTo } = body
+    const { priceId, businessId, returnTo, country: bodyCountry } = body
     requestPriceId = priceId // Store for error handling
     
     if (!priceId) {
@@ -98,28 +119,54 @@ export async function POST(request) {
         { status: 400 }
       )
     }
-    
-    // Validate price ID is one of our known plans
+
     const validPrices = [
       env.STRIPE?.PRICE_STARTER,
       env.STRIPE?.PRICE_GROWTH,
       env.STRIPE?.PRICE_ENTERPRISE
     ].filter(Boolean)
-    
-    if (validPrices.length > 0 && !validPrices.includes(priceId)) {
-      return NextResponse.json(
-        { ok: false, error: 'Invalid price ID' },
-        { status: 400 }
-      )
+
+    let regionalIds = []
+    /** @type {import('@/lib/plansPricingPublic').PlansPricingNormalized | null} */
+    let localizedPricing = null
+    const countryHint =
+      typeof bodyCountry === 'string' && bodyCountry.trim()
+        ? normalizeCountryCode(bodyCountry)
+        : null
+    if (countryHint) {
+      localizedPricing = await fetchPlansPricingFromCore(countryHint)
+      regionalIds = collectPriceIds(localizedPricing)
     }
     
     const trimmedBiz =
       businessId && typeof businessId === 'string' ? businessId.trim() : undefined
 
+    let effectiveCountry = countryHint
+    if (!effectiveCountry && trimmedBiz) {
+      const earlyBiz = await database.collection('businesses').findOne({
+        $or: [{ businessId: trimmedBiz }, { id: trimmedBiz }]
+      })
+      const c = earlyBiz?.country || earlyBiz?.businessProfile?.country
+      if (typeof c === 'string' && c.trim()) {
+        effectiveCountry = normalizeCountryCode(c)
+      }
+    }
+    if (effectiveCountry && regionalIds.length === 0) {
+      localizedPricing = await fetchPlansPricingFromCore(effectiveCountry)
+      regionalIds = collectPriceIds(localizedPricing)
+    }
+
+    const allowList = [...validPrices, ...regionalIds]
+    if (allowList.length > 0 && !allowList.includes(priceId)) {
+      return NextResponse.json(
+        { ok: false, error: 'Invalid price ID' },
+        { status: 400 }
+      )
+    }
+
     // BOO-TRIAL-ABUSE-1B: one Growth trial per user — skip trial_period_days after first trial
     const trialEverUsed = !!user.trialEverUsed
-    const growthTrialEligible =
-      priceId === env.STRIPE?.PRICE_GROWTH && !trialEverUsed
+    const growthTrialEligible = isGrowthPriceId(priceId, localizedPricing) && !trialEverUsed
 
     const customerId = await ensureStripeCustomerForUser(stripe, {
       user,
@@ -167,9 +214,7 @@ export async function POST(request) {
       resolvedBusiness = await database.collection('businesses').findOne({
         $or: [{ businessId: bizId }, { id: bizId }]
       })
-      if (priceId === env.STRIPE?.PRICE_ENTERPRISE) planName = 'enterprise'
-      else if (priceId === env.STRIPE?.PRICE_GROWTH) planName = 'growth'
-      else if (priceId === env.STRIPE?.PRICE_STARTER) planName = 'starter'
+      planName = planNameFromPriceId(priceId, localizedPricing)
     }
 
     const sessionPayload = {
@@ -184,7 +229,7 @@ export async function POST(request) {
       metadata: {
         userId: user.id,
         priceId: priceId,
-        ...(priceId === env.STRIPE?.PRICE_GROWTH && {
+        ...(isGrowthPriceId(priceId, localizedPricing) && {
           trialEligible: growthTrialEligible ? 'true' : 'false'
         }),
         ...(resolvedBusiness && {
@@ -209,7 +254,7 @@ export async function POST(request) {
           })
         }
         const sub = { metadata: meta }
-        if (priceId === env.STRIPE?.PRICE_GROWTH) {
+        if (isGrowthPriceId(priceId, localizedPricing)) {
           meta.plan = 'growth'
           if (growthTrialEligible) {
             sub.trial_period_days = env.TRIAL_PERIOD_DAYS ?? 14

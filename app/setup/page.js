@@ -43,6 +43,19 @@ import { guessCountryFromTimeZone, getSubdivisionsForCountry } from '@/lib/regio
 import { toast } from 'sonner'
 import { useBookingLanguage } from '@/hooks/useBookingLanguage'
 import { currencyFromTimezone, detectCurrency } from '@/lib/currency'
+import { formatPrice } from '@/lib/currencyFormat'
+
+const PRICING_COUNTRY_SESSION_KEY = 'book8_pricing_country_preference'
+
+function readPricingCountryPreference() {
+  if (typeof window === 'undefined') return null
+  const pref = sessionStorage.getItem(PRICING_COUNTRY_SESSION_KEY)
+  if (!pref || !/^[A-Z]{2}$/i.test(pref)) return null
+  return pref.toUpperCase()
+}
+
+/** Fallback amounts (minor units) when core pricing is unavailable — matches marketing /pricing. */
+const WIZARD_FALLBACK_USD_MINOR = { starter: 2900, growth: 9900, enterprise: 29900 }
 import LanguageSelector from '@/components/LanguageSelector'
 import { trFormat } from '@/lib/translations'
 import { buildGoogleConnectUrl } from '@/lib/oauth-connect-url'
@@ -506,6 +519,12 @@ function WizardContent() {
     growth: null,
     enterprise: null
   })
+  /** From GET /api/billing/plans?country= — localized display amounts for step 2 */
+  const [planPricingDisplay, setPlanPricingDisplay] = useState({
+    starter: null,
+    growth: null,
+    enterprise: null
+  })
   /** Step 7 (You're Live): idle | loading | live | provisioning | error */
   const [step7LineState, setStep7LineState] = useState('idle')
   const [step7RetryKey, setStep7RetryKey] = useState(0)
@@ -658,7 +677,8 @@ function WizardContent() {
           profileCity: '',
           profileProvinceState: '',
           profilePostalCode: '',
-          profileCountry: guessCountryFromTimeZone(prev.timezone || tz),
+          profileCountry:
+            readPricingCountryPreference() || guessCountryFromTimeZone(prev.timezone || tz),
           profileBusinessPhone: '',
           profilePublicEmail: '',
           profileDescription: '',
@@ -821,23 +841,6 @@ function WizardContent() {
         }
       }
 
-      // Load plans for step 2
-      try {
-        const plansRes = await fetch('/api/billing/plans', {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: 'no-store'
-        })
-        const plansData = await plansRes.json().catch(() => ({}))
-        if (plansRes.ok && plansData.plans) {
-          setPlanPriceIds({
-            starter: plansData.plans.starter ?? null,
-            growth: plansData.plans.growth ?? null,
-            enterprise: plansData.plans.enterprise ?? null
-          })
-        }
-      } catch (e) {
-        console.warn('[setup] billing/plans fetch failed', e?.message || e)
-      }
     } catch (err) {
       console.error('[setup] Load error', err)
       setError(err.message || 'Failed to load setup')
@@ -849,6 +852,57 @@ function WizardContent() {
   useEffect(() => {
     loadInitialState()
   }, [loadInitialState])
+
+  useEffect(() => {
+    const pref = readPricingCountryPreference()
+    if (!pref) return
+    setWizardData((prev) => {
+      if (prev.businessId) return prev
+      return { ...prev, profileCountry: pref }
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!token) return
+    const cc = String(wizardData.profileCountry || 'US')
+      .toUpperCase()
+      .slice(0, 2)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const plansRes = await fetch(
+          `/api/billing/plans?country=${encodeURIComponent(cc)}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store'
+          }
+        )
+        const plansData = await plansRes.json().catch(() => ({}))
+        if (cancelled) return
+        if (plansRes.ok && plansData.plans) {
+          setPlanPriceIds({
+            starter: plansData.plans.starter ?? null,
+            growth: plansData.plans.growth ?? null,
+            enterprise: plansData.plans.enterprise ?? null
+          })
+        }
+        if (plansData.display && typeof plansData.display === 'object') {
+          setPlanPricingDisplay({
+            starter: plansData.display.starter ?? null,
+            growth: plansData.display.growth ?? null,
+            enterprise: plansData.display.enterprise ?? null
+          })
+        } else {
+          setPlanPricingDisplay({ starter: null, growth: null, enterprise: null })
+        }
+      } catch (e) {
+        console.warn('[setup] billing/plans fetch failed', e?.message || e)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token, wizardData.profileCountry])
 
   const oauthResumeForPrefill = useMemo(
     () =>
@@ -1418,7 +1472,8 @@ function WizardContent() {
       body: JSON.stringify({
         priceId,
         businessId: bid,
-        returnTo: 'setup'
+        returnTo: 'setup',
+        country: wizardData.profileCountry || 'US'
       })
     })
       .then((r) => r.json())
@@ -2487,8 +2542,17 @@ function WizardContent() {
                           <h3 className="text-base font-semibold !text-white">Starter</h3>
                         </div>
                         <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                          <span className="text-3xl font-bold tabular-nums !text-white">$29</span>
-                          <span className="text-sm !text-[#94A3B8]">USD / monthly</span>
+                          <span className="text-3xl font-bold tabular-nums !text-white">
+                            {planPricingDisplay?.starter?.amount != null && planPricingDisplay.starter.currency
+                              ? formatPrice(
+                                  planPricingDisplay.starter.amount,
+                                  planPricingDisplay.starter.currency
+                                )
+                              : formatPrice(WIZARD_FALLBACK_USD_MINOR.starter, 'usd')}
+                          </span>
+                          <span className="text-sm !text-[#94A3B8]">
+                            {(planPricingDisplay?.starter?.currency || 'usd').toUpperCase()} / monthly
+                          </span>
                         </div>
                         <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
                           One location: calendar sync, booking page, reminders.
@@ -2548,8 +2612,17 @@ function WizardContent() {
                             : t.homepage.growthSetupRibbonTrial}
                         </p>
                         <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                          <span className="text-3xl font-bold tabular-nums !text-white">$99</span>
-                          <span className="text-sm !text-[#94A3B8]">USD / monthly</span>
+                          <span className="text-3xl font-bold tabular-nums !text-white">
+                            {planPricingDisplay?.growth?.amount != null && planPricingDisplay.growth.currency
+                              ? formatPrice(
+                                  planPricingDisplay.growth.amount,
+                                  planPricingDisplay.growth.currency
+                                )
+                              : formatPrice(WIZARD_FALLBACK_USD_MINOR.growth, 'usd')}
+                          </span>
+                          <span className="text-sm !text-[#94A3B8]">
+                            {(planPricingDisplay?.growth?.currency || 'usd').toUpperCase()} / monthly
+                          </span>
                         </div>
                         {userTrialEverUsed ? (
                           <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
@@ -2622,8 +2695,19 @@ function WizardContent() {
                           <h3 className="text-base font-semibold !text-white">Enterprise</h3>
                         </div>
                         <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                          <span className="text-3xl font-bold tabular-nums !text-white">$299</span>
-                          <span className="text-sm !text-[#94A3B8]">USD / month · per location</span>
+                          <span className="text-3xl font-bold tabular-nums !text-white">
+                            {planPricingDisplay?.enterprise?.amount != null &&
+                            planPricingDisplay.enterprise.currency
+                              ? formatPrice(
+                                  planPricingDisplay.enterprise.amount,
+                                  planPricingDisplay.enterprise.currency
+                                )
+                              : formatPrice(WIZARD_FALLBACK_USD_MINOR.enterprise, 'usd')}
+                          </span>
+                          <span className="text-sm !text-[#94A3B8]">
+                            {(planPricingDisplay?.enterprise?.currency || 'usd').toUpperCase()} / month · per
+                            location
+                          </span>
                         </div>
                         <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
                           Franchises & multi-location: one dashboard, synced services, priority support.

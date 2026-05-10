@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,9 +14,27 @@ import { Zap, Building2, Rocket, ArrowRight, AlertCircle, CreditCard } from "luc
 import { toast } from "sonner";
 import { useBookingLanguage } from "@/hooks/useBookingLanguage";
 import { getHomepagePricingDisplay, trFormat } from "@/lib/translations";
+import { formatPrice } from "@/lib/currencyFormat";
+import {
+  countryFromBrowserLocale,
+  normalizePlansPricingPayload
+} from "@/lib/plansPricingPublic";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+
+const PRICING_COUNTRY_SESSION_KEY = "book8_pricing_country_preference";
+
+/** USD minor units — fallback while pricing loads or if core is unavailable (matches previous marketing copy). */
+const FALLBACK_USD_MINOR = { starter: 2900, growth: 9900, enterprise: 29900 };
 
 function PricingContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const { language, t } = useBookingLanguage();
@@ -28,7 +46,6 @@ function PricingContent() {
       {
         id: "starter",
         name: h.starter,
-        price: "$29",
         period: h.perMonth,
         description: h.individualsSmallBiz,
         icon: Zap,
@@ -39,7 +56,6 @@ function PricingContent() {
       {
         id: "growth",
         name: h.growth,
-        price: "$99",
         priceLine: h.moAfterTrial,
         trialHeadline: h.growthTrialHeadline,
         description: h.pricingGrowthBlurb,
@@ -51,7 +67,6 @@ function PricingContent() {
       {
         id: "enterprise",
         name: h.enterprise,
-        price: "$299",
         period: h.perMonthPerLocation,
         description: h.pricingEnterpriseBlurb,
         icon: Building2,
@@ -62,6 +77,10 @@ function PricingContent() {
     ],
     [h]
   );
+
+  const [pricingCountry, setPricingCountry] = useState("US");
+  const [livePricing, setLivePricing] = useState(null);
+  const [pricingLoading, setPricingLoading] = useState(true);
 
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState({});
@@ -139,6 +158,65 @@ function PricingContent() {
   }, [token]);
 
   useEffect(() => {
+    const qp = searchParams.get("country");
+    if (qp && /^[A-Z]{2}$/i.test(qp.trim())) {
+      const upper = qp.trim().toUpperCase();
+      setPricingCountry(upper);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(PRICING_COUNTRY_SESSION_KEY, upper);
+      }
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const stored = sessionStorage.getItem(PRICING_COUNTRY_SESSION_KEY);
+    if (stored && /^[A-Z]{2}$/i.test(stored)) {
+      setPricingCountry(stored.toUpperCase());
+      return;
+    }
+    setPricingCountry(countryFromBrowserLocale());
+  }, [searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPricingLoading(true);
+    const url = `/api/plans/pricing?country=${encodeURIComponent(pricingCountry)}`;
+    fetch(url, { cache: "no-store" })
+      .then((r) => r.json().catch(() => null))
+      .then((body) => {
+        if (cancelled) return;
+        const normalized = body && body.ok !== false ? normalizePlansPricingPayload(body) : null;
+        setLivePricing(normalized);
+      })
+      .catch(() => {
+        if (!cancelled) setLivePricing(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPricingLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pricingCountry]);
+
+  const setCountryAndPersist = useCallback(
+    (cc) => {
+      const upper = String(cc || "US")
+        .trim()
+        .toUpperCase()
+        .slice(0, 2);
+      if (!/^[A-Z]{2}$/.test(upper)) return;
+      setPricingCountry(upper);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(PRICING_COUNTRY_SESSION_KEY, upper);
+      }
+      const p = new URLSearchParams(searchParams.toString());
+      p.set("country", upper);
+      router.replace(`${pathname}?${p.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
+
+  useEffect(() => {
     if (searchParams.get("paywall") === "1") {
       setIsPaywall(true);
     }
@@ -173,10 +251,13 @@ function PricingContent() {
     setIsLoading((prev) => ({ ...prev, [planId]: true }));
 
     try {
-      const res = await fetch("/api/billing/plans", {
-        headers: { Authorization: `Bearer ${authToken}` },
-        credentials: "include"
-      });
+      const res = await fetch(
+        `/api/billing/plans?country=${encodeURIComponent(pricingCountry)}`,
+        {
+          headers: { Authorization: `Bearer ${authToken}` },
+          credentials: "include"
+        }
+      );
       const data = await res.json();
 
       if (!data.ok) {
@@ -197,7 +278,8 @@ function PricingContent() {
         credentials: "include",
         body: JSON.stringify({
           priceId,
-          businessId: businessId || undefined
+          businessId: businessId || undefined,
+          country: pricingCountry
         })
       });
 
@@ -268,10 +350,40 @@ function PricingContent() {
 
       <section className="pb-24 px-6">
         <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 sm:gap-3 text-sm text-muted-foreground mb-8 px-2 text-center">
+            <span>
+              {pricingLoading
+                ? "Loading prices…"
+                : `Showing prices in ${(
+                    livePricing?.starter ||
+                    livePricing?.growth ||
+                    livePricing?.enterprise
+                  )?.currency?.toUpperCase() || (pricingCountry === "AE" ? "AED" : "USD")}`}
+            </span>
+            <Select value={pricingCountry} onValueChange={setCountryAndPersist}>
+              <SelectTrigger
+                className="w-[min(100%,220px)] h-9 border-border bg-card text-foreground"
+                aria-label="Change billing region / currency"
+              >
+                <SelectValue placeholder="Region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="US">United States (USD)</SelectItem>
+                <SelectItem value="AE">United Arab Emirates (AED)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {plans.map((plan) => {
               const Icon = plan.icon;
               const override = getHomepagePricingDisplay(h, plan.id);
+              const tier = livePricing?.[plan.id];
+              const fallbackMinor = FALLBACK_USD_MINOR[plan.id];
+              const priceLabel = tier
+                ? formatPrice(tier.amount, tier.currency)
+                : formatPrice(fallbackMinor, "usd");
+              const curUpper = (tier?.currency || "usd").toUpperCase();
+              const pricePulse = pricingLoading && !tier;
               return (
                 <Card
                   key={plan.id}
@@ -303,9 +415,15 @@ function PricingContent() {
                   <CardContent className="space-y-6">
                     <div>
                       <div className="flex items-baseline gap-1 flex-wrap">
-                        <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+                        <span
+                          className={`text-4xl font-bold text-foreground tabular-nums ${pricePulse ? "animate-pulse opacity-80" : ""}`}
+                        >
+                          {priceLabel}
+                        </span>
                         <span className="text-muted-foreground">
-                          {plan.trial && plan.priceLine ? plan.priceLine : plan.period}
+                          {plan.trial && plan.priceLine
+                            ? plan.priceLine
+                            : `${curUpper} · ${plan.period}`}
                         </span>
                       </div>
                     </div>
