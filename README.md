@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Book8-AI
 
 **Scheduling, voice, and web search — wired with a modular workflow engine.**
@@ -234,7 +233,7 @@ For support and questions:
 **Book8-AI** - Where scheduling meets AI intelligence.
 
 *Last updated: January 2025 - SSH signing enabled*
-=======
+
 # Book8-AI — MVP
 
 A modern, modular scheduling and AI integration service.

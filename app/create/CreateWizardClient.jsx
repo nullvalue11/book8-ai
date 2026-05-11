@@ -46,6 +46,7 @@ function CreateWizardInner({ acceptLanguageHint = null }) {
 
   const [currentStep, setCurrentStep] = useState(0)
   const [channels, setChannels] = useState(null)
+  const [postAuthBusinessId, setPostAuthBusinessId] = useState(null)
   const [wizardSessionId, setWizardSessionId] = useState('')
 
   const [authToken, setAuthToken] = useState(() => {
@@ -100,7 +101,10 @@ function CreateWizardInner({ acceptLanguageHint = null }) {
               try {
                 const rec = JSON.parse(raw1)
                 const label = rec?.form?.countryLabel
-                return countryLabelToProfileCode(label) || detectWizardCountry(searchParams)
+                return (
+                  countryLabelToProfileCode(label) ||
+                  detectWizardCountry(searchParams, { acceptLanguage: acceptLanguageHint })
+                )
               } catch {
                 return detectWizardCountry(searchParams, { acceptLanguage: acceptLanguageHint })
               }
@@ -344,6 +348,7 @@ function CreateWizardInner({ acceptLanguageHint = null }) {
           ) : (
             <Step5WhatsApp
               wizardSessionId={wizardSessionId}
+              businessId={postAuthBusinessId}
               onBack={() => setCurrentStep(4)}
               onContinueToSetup={() => router.push('/setup?profileSource=wizard')}
             />
