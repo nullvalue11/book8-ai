@@ -10,7 +10,17 @@ import Header from "@/components/Header";
 import PricingPlanFeatureList from "@/components/PricingPlanFeatureList";
 import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from "@/lib/setup-entry";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Zap, Building2, Rocket, ArrowRight, AlertCircle, CreditCard } from "lucide-react";
+import {
+  Zap,
+  Building2,
+  Rocket,
+  ArrowRight,
+  AlertCircle,
+  CreditCard,
+  Phone,
+  MessageCircle,
+  Mail
+} from "lucide-react";
 import { toast } from "sonner";
 import { useBookingLanguage } from "@/hooks/useBookingLanguage";
 import { getHomepagePricingDisplay, trFormat } from "@/lib/translations";
@@ -20,6 +30,7 @@ import {
   normalizePlansPricingPayload
 } from "@/lib/plansPricingPublic";
 import { guessCountryFromTimeZone } from "@/lib/region-data";
+import { defaultChannelsForCountry } from "@/lib/businessChannels";
 import {
   Select,
   SelectContent,
@@ -231,6 +242,11 @@ function PricingContent() {
       cancelled = true;
     };
   }, [pricingCountry]);
+
+  const planChannelPills = useMemo(() => {
+    const ch = livePricing?.channels || defaultChannelsForCountry(pricingCountry);
+    return ch;
+  }, [livePricing?.channels, pricingCountry]);
 
   const setCountryAndPersist = useCallback(
     (cc) => {
@@ -446,6 +462,26 @@ function PricingContent() {
                       </p>
                     )}
                     <CardDescription>{plan.description}</CardDescription>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {planChannelPills.voice ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground">
+                          <Phone className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                          Phone receptionist
+                        </span>
+                      ) : null}
+                      {planChannelPills.whatsapp ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground">
+                          <MessageCircle className="h-3.5 w-3.5 shrink-0 text-[#25D366]" aria-hidden />
+                          WhatsApp booking
+                        </span>
+                      ) : null}
+                      {planChannelPills.sms ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground">
+                          <Mail className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                          SMS reminders
+                        </span>
+                      ) : null}
+                    </div>
                   </CardHeader>
 
                   <CardContent className="space-y-6">

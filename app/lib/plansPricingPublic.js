@@ -32,6 +32,7 @@ export function normalizeTier(tier) {
 /**
  * @typedef {Object} PlansPricingNormalized
  * @property {string | null} country
+ * @property {{ voice: boolean, whatsapp: boolean, sms: boolean } | null} channels
  * @property {ReturnType<typeof normalizeTier>} starter
  * @property {ReturnType<typeof normalizeTier>} growth
  * @property {ReturnType<typeof normalizeTier>} enterprise
@@ -45,8 +46,18 @@ export function normalizePlansPricingPayload(raw) {
     root.data && typeof root.data === 'object'
       ? /** @type {Record<string, unknown>} */ (root.data)
       : root
+  let channels = null
+  if (data.channels && typeof data.channels === 'object') {
+    const c = /** @type {Record<string, unknown>} */ (data.channels)
+    channels = {
+      voice: !!c.voice,
+      whatsapp: !!c.whatsapp,
+      sms: !!c.sms
+    }
+  }
   const out = {
     country: typeof data.country === 'string' ? data.country : null,
+    channels,
     starter: normalizeTier(data.starter),
     growth: normalizeTier(data.growth),
     enterprise: normalizeTier(data.enterprise)

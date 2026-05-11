@@ -77,7 +77,13 @@ function isRowValid(r) {
   return nameOk && durationOk && priceOk
 }
 
-export default function Step2Agent({ descriptionParam, verticalParam, onBack, onContinue }) {
+export default function Step2Agent({
+  descriptionParam,
+  verticalParam,
+  onBack,
+  onContinue,
+  voicePrimary = true
+}) {
   const step1 = useMemo(() => readStep1(descriptionParam, verticalParam), [descriptionParam, verticalParam])
   const step1Form = step1?.form || {}
   const step1Meta = step1?.meta || {}
@@ -223,14 +229,18 @@ export default function Step2Agent({ descriptionParam, verticalParam, onBack, on
       <div className="rounded-2xl border border-white/10 bg-[#121228]/60 p-6 sm:p-8">
         <h2 className="text-xl font-bold text-white sm:text-2xl">Customize your AI agent</h2>
         <p className="mt-2 text-sm text-[#94A3B8]">
-          Set the voice, hours, and services your AI will use. You can change these anytime later.
+          {voicePrimary
+            ? 'Set the voice, hours, and services your AI will use. You can change these anytime later.'
+            : 'Set the language, hours, and services your WhatsApp booking assistant will use. You can change these anytime later.'}
         </p>
       </div>
 
       <section className="rounded-2xl border border-white/10 bg-[#121228]/60 p-6 sm:p-8">
-        <h3 className="text-lg font-semibold text-white">Voice</h3>
+        <h3 className="text-lg font-semibold text-white">Language & voice</h3>
         <p className="mt-1 text-sm text-[#94A3B8]">
-          Your AI receptionist will speak this language by default.
+          {voicePrimary
+            ? 'Your AI receptionist will speak this language by default.'
+            : 'Your WhatsApp assistant will use this language by default.'}
         </p>
         <div className="mt-5">
           <VoicePicker value={voiceLang} onChange={setVoiceLang} defaultLang={defaultVoiceLang} />
@@ -239,7 +249,11 @@ export default function Step2Agent({ descriptionParam, verticalParam, onBack, on
 
       <section className="rounded-2xl border border-white/10 bg-[#121228]/60 p-6 sm:p-8">
         <h3 className="text-lg font-semibold text-white">Hours</h3>
-        <p className="mt-1 text-sm text-[#94A3B8]">Your AI will only book appointments during open hours.</p>
+        <p className="mt-1 text-sm text-[#94A3B8]">
+          {voicePrimary
+            ? 'Your AI will only book appointments during open hours.'
+            : 'Your assistant will only book appointments during open hours.'}
+        </p>
         <div className="mt-5">
           <HoursEditor value={hours} onChange={setHours} />
         </div>
@@ -266,7 +280,7 @@ export default function Step2Agent({ descriptionParam, verticalParam, onBack, on
           Back
         </Button>
         <p className="text-xs text-[#64748B] text-center sm:text-left">
-          Step 3 of 7: Save your progress with a free account
+          Step 4 of 6: Save your progress with a free account
         </p>
         <Button
           type="button"

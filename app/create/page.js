@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { headers } from 'next/headers'
 import { Loader2 } from 'lucide-react'
 import CreateWizardClient from './CreateWizardClient'
 
@@ -10,10 +11,11 @@ function CreateFallback() {
   )
 }
 
-export default function CreatePage() {
+export default async function CreatePage() {
+  const acceptLanguage = (await headers()).get('accept-language')
   return (
     <Suspense fallback={<CreateFallback />}>
-      <CreateWizardClient />
+      <CreateWizardClient acceptLanguageHint={acceptLanguage} />
     </Suspense>
   )
 }

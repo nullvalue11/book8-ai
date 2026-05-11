@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,6 +15,7 @@ import {
 import { COUNTRY_OPTIONS } from '@/lib/countries'
 import { PRIMARY_LANGUAGE_OPTIONS } from '@/lib/primary-languages'
 import { getOrderedTimeZoneIds, timeZoneLabel } from '@/lib/timezones'
+import { WIZARD_STEP0_STORAGE_KEY } from './Step0Country'
 
 const STORAGE_KEY = 'book8.wizard.step1'
 
@@ -59,6 +60,7 @@ function profileToFormState(profile) {
 }
 
 export default function Step1Profile({ descriptionParam, verticalParam, onContinue }) {
+  const step0CountryMergedRef = useRef(false)
   const [phase, setPhase] = useState('loading')
   const [form, setForm] = useState(() => profileToFormState({}))
   const [meta, setMeta] = useState({
@@ -150,6 +152,22 @@ export default function Step1Profile({ descriptionParam, verticalParam, onContin
       cancelled = true
     }
   }, [descriptionParam, verticalParam, applyProfile])
+
+  useEffect(() => {
+    if (phase !== 'ready' || step0CountryMergedRef.current) return
+    try {
+      const s0 = sessionStorage.getItem(WIZARD_STEP0_STORAGE_KEY)
+      if (!s0) return
+      const j = JSON.parse(s0)
+      if (j.v !== 1 || !j.profileCountry) return
+      const hit = COUNTRY_OPTIONS.find((c) => c.code === j.profileCountry)
+      if (!hit) return
+      step0CountryMergedRef.current = true
+      setForm((prev) => ({ ...prev, countryLabel: hit.label }))
+    } catch {
+      /* ignore */
+    }
+  }, [phase])
 
   useEffect(() => {
     if (phase !== 'ready') return

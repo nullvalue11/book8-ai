@@ -9,6 +9,7 @@ import { guessCountryFromTimeZone } from '@/lib/region-data'
 export const WIZARD_SESSION_STEP1_KEY = 'book8.wizard.step1'
 export const WIZARD_SESSION_STEP2_KEY = 'book8.wizard.step2'
 export const WIZARD_SESSION_PROFILE_KEY = 'book8.wizard.profileFromCreate'
+export const WIZARD_SESSION_STEP0_KEY = 'book8.wizard.step0'
 
 const SETUP_CATEGORIES = new Set([
   'barber',
@@ -218,7 +219,22 @@ export function readWizardPrefillPayload() {
 export function wizardPayloadToSetupStatePatch(payload) {
   const { step1, step2 } = payload
   const category = mapWizardCategoryToSetup(step1.category)
+  let countryOverride = null
+  if (typeof window !== 'undefined') {
+    try {
+      const s0 = sessionStorage.getItem(WIZARD_SESSION_STEP0_KEY)
+      if (s0) {
+        const j = JSON.parse(s0)
+        if (j.v === 1 && j.profileCountry && /^[A-Z]{2}$/i.test(String(j.profileCountry))) {
+          countryOverride = String(j.profileCountry).toUpperCase().slice(0, 2)
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   const countryCode =
+    countryOverride ||
     countryLabelToProfileCode(step1.country) ||
     guessCountryFromTimeZone(
       typeof step1.timezone === 'string' && step1.timezone.trim() ? step1.timezone : 'UTC'
@@ -277,9 +293,11 @@ export function wizardPayloadToSetupStatePatch(payload) {
 export function clearBook8WizardSessionStorage() {
   if (typeof window === 'undefined') return
   try {
+    sessionStorage.removeItem(WIZARD_SESSION_STEP0_KEY)
     sessionStorage.removeItem(WIZARD_SESSION_STEP1_KEY)
     sessionStorage.removeItem(WIZARD_SESSION_STEP2_KEY)
     sessionStorage.removeItem(WIZARD_SESSION_PROFILE_KEY)
+    sessionStorage.removeItem('book8.wizard.sessionId')
   } catch {
     /* ignore */
   }

@@ -78,7 +78,7 @@ function buildMergedProfileFromSession() {
   return utf8ToBase64(JSON.stringify(combined))
 }
 
-export default function Step3Account({ onBack, onAuthSuccess }) {
+export default function Step3Account({ voicePrimary = true, onBack, onAuthSuccess }) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -96,7 +96,7 @@ export default function Step3Account({ onBack, onAuthSuccess }) {
       if (!raw1 || !raw2) {
         // Preserve description/vertical if present so Step 1 can re-render correctly.
         const params = new URLSearchParams(searchParams.toString())
-        params.set('step', '1')
+        params.set('step', '0')
         params.delete('authJustCompleted')
         void router.replace(`/create?${params.toString()}`)
       }
@@ -196,7 +196,9 @@ export default function Step3Account({ onBack, onAuthSuccess }) {
       <div className="rounded-2xl border border-white/10 bg-[#121228]/60 p-6 sm:p-8">
         <h2 className="text-xl font-bold text-white sm:text-2xl">Save your progress</h2>
         <p className="mt-2 text-sm text-[#94A3B8]">
-          You're 2 minutes from your AI receptionist. Create a free account to keep your setup.
+          {voicePrimary
+            ? "You're 2 minutes from your AI receptionist. Create a free account to keep your setup."
+            : "You're almost there. Create a free account to keep your WhatsApp booking setup."}
         </p>
       </div>
 
@@ -359,7 +361,7 @@ export default function Step3Account({ onBack, onAuthSuccess }) {
             Back
           </Button>
           <div className="text-xs text-[#64748B] sm:text-right">
-            Step 3 of 7: Save your progress with a free account
+            Step 4 of 6: Save your progress with a free account
           </div>
         </div>
       </section>

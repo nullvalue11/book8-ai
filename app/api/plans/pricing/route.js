@@ -4,7 +4,9 @@
  */
 
 import { NextResponse } from 'next/server'
+import { defaultChannelsForCountry } from '@/lib/businessChannels'
 import { fetchPlansPricingFromCore } from '@/lib/plansPricingServer'
+import { normalizeCountryCode } from '@/lib/plansPricingPublic'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,9 +19,12 @@ export async function GET(request) {
     if (!normalized) {
       return NextResponse.json({ ok: false, error: 'Pricing unavailable' })
     }
+    const cc = normalizeCountryCode(normalized.country || country)
+    const channels = defaultChannelsForCountry(cc)
     return NextResponse.json({
       ok: true,
       country: normalized.country,
+      channels,
       starter: normalized.starter,
       growth: normalized.growth,
       enterprise: normalized.enterprise

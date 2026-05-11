@@ -29,7 +29,9 @@ import {
   X,
   Plus,
   Lock,
-  Minus
+  Minus,
+  MessageCircle,
+  Mail
 } from 'lucide-react'
 import TimeZonePicker from '@/components/TimeZonePicker'
 import { cn } from '@/lib/utils'
@@ -76,6 +78,9 @@ import {
   clearBook8WizardSessionStorage,
   priceCentsToStep5PriceStr
 } from '@/lib/wizardSetupPrefill'
+import { defaultChannelsForCountry } from '@/lib/businessChannels'
+import { WIZARD_STEP0_STORAGE_KEY } from '@/create/_components/Step0Country'
+import SetupWhatsAppChannelStep from './_components/SetupWhatsAppChannelStep'
 
 const SETUP_WIZARD_DRAFT_KEY = 'book8_setup_wizard_draft_v1'
 const SETUP_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
@@ -115,6 +120,32 @@ function clearSetupWizardDraft() {
 }
 
 const SETUP_CATEGORY_ORDER = ['barber', 'dental', 'spa', 'fitness', 'medical', 'restaurant', 'other']
+
+function SetupPlanChannelPills({ channels }) {
+  const ch = channels || { voice: true, whatsapp: true, sms: true }
+  return (
+    <div className="flex flex-wrap gap-2 mt-3 mb-1">
+      {ch.voice ? (
+        <span className="inline-flex items-center gap-1 rounded-full border border-[#1e1e2e] bg-[#0A0A0F]/80 px-2.5 py-0.5 text-[10px] font-medium text-white">
+          <Phone className="h-3 w-3 text-[#A78BFA]" aria-hidden />
+          AI phone receptionist
+        </span>
+      ) : null}
+      {ch.whatsapp ? (
+        <span className="inline-flex items-center gap-1 rounded-full border border-[#1e1e2e] bg-[#0A0A0F]/80 px-2.5 py-0.5 text-[10px] font-medium text-white">
+          <MessageCircle className="h-3 w-3 text-[#25D366]" aria-hidden />
+          WhatsApp booking
+        </span>
+      ) : null}
+      {ch.sms ? (
+        <span className="inline-flex items-center gap-1 rounded-full border border-[#1e1e2e] bg-[#0A0A0F]/80 px-2.5 py-0.5 text-[10px] font-medium text-white">
+          <Mail className="h-3 w-3 text-[#A78BFA]" aria-hidden />
+          SMS reminders
+        </span>
+      ) : null}
+    </div>
+  )
+}
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const DAY_LABELS = {
@@ -474,20 +505,24 @@ function WizardContent() {
   const [appReady, setAppReady] = useState(false)
 
   const [currentStep, setCurrentStep] = useState(1)
-  const [wizardData, setWizardData] = useState({
+  const [wizardData, setWizardData] = useState(() => {
+    const tz =
+      typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
+    const pc = guessCountryFromTimeZone(tz)
+    return {
     businessName: '',
     category: 'barber',
     customCategory: '',
     city: '',
-    timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+    timezone: tz,
     profileStreet: '',
     profileStreet2: '',
     profileCity: '',
     profileProvinceState: '',
     profilePostalCode: '',
-    profileCountry: guessCountryFromTimeZone(
-      typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
-    ),
+    profileCountry: pc,
+    /** Regional channel flags; synced from GET /api/business/channels */
+    channels: defaultChannelsForCountry(pc),
     profileBusinessPhone: '',
     profilePublicEmail: '',
     profileDescription: '',
@@ -515,6 +550,7 @@ function WizardContent() {
     profileWebsite: '',
     /** BCP-47 voice language from /create wizard; stored on onboardingServicesCatalog at step 5. */
     wizardVoiceLang: ''
+    }
   })
 
   const wizardPrefillAppliedRef = useRef(false)
@@ -695,6 +731,9 @@ function WizardContent() {
           profilePostalCode: '',
           profileCountry:
             readPricingCountryPreference() || guessCountryFromTimeZone(prev.timezone || tz),
+          channels: defaultChannelsForCountry(
+            readPricingCountryPreference() || guessCountryFromTimeZone(prev.timezone || tz)
+          ),
           profileBusinessPhone: '',
           profilePublicEmail: '',
           profileDescription: '',
@@ -877,6 +916,48 @@ function WizardContent() {
       return { ...prev, profileCountry: pref }
     })
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = sessionStorage.getItem(WIZARD_STEP0_STORAGE_KEY)
+      if (!raw) return
+      const j = JSON.parse(raw)
+      if (j.v !== 1 || !j.channels) return
+      setWizardData((prev) => ({
+        ...prev,
+        channels: j.channels,
+        ...(j.profileCountry && /^[A-Z]{2}$/i.test(String(j.profileCountry))
+          ? { profileCountry: String(j.profileCountry).toUpperCase().slice(0, 2) }
+          : {})
+      }))
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  useEffect(() => {
+    const cc = String(wizardData.profileCountry || 'US')
+      .toUpperCase()
+      .slice(0, 2)
+    if (!/^[A-Z]{2}$/.test(cc)) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/business/channels?country=${encodeURIComponent(cc)}`, {
+          cache: 'no-store'
+        })
+        const data = await res.json().catch(() => ({}))
+        if (cancelled || !res.ok || !data.ok || !data.channels) return
+        setWizardData((prev) => ({ ...prev, channels: data.channels }))
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [wizardData.profileCountry])
 
   useEffect(() => {
     if (!token) return
@@ -1819,9 +1900,11 @@ function WizardContent() {
       }).catch(() => {})
 
       const tier = normalizePlanKey(planForStep)
-      if (tier === 'starter') {
+      if (tier === 'starter' && wizardData.channels?.voice !== false) {
         setCurrentStep(7)
         setStep7LineState('live')
+      } else if (tier === 'starter' && wizardData.channels?.voice === false) {
+        setCurrentStep(6)
       } else {
         setPhoneStepPollKey((k) => k + 1)
         setCurrentStep(6)
@@ -1836,7 +1919,7 @@ function WizardContent() {
   async function handlePhoneStepSubmitPrefs() {
     if (!wizardData.businessId || !token) return
     const tier = normalizePlanKey(wizardData.subscriptionPlan)
-    if (tier === 'starter') {
+    if (tier === 'starter' && wizardData.channels?.voice !== false) {
       setCurrentStep(7)
       return
     }
@@ -1906,7 +1989,7 @@ function WizardContent() {
     }
 
     const tier = normalizePlanKey(wizardData.subscriptionPlan)
-    if (tier === 'starter') {
+    if (tier === 'starter' && wizardData.channels?.voice !== false) {
       setCurrentStep(7)
       phoneStepPrevRef.current = currentStep
       return
@@ -1932,6 +2015,7 @@ function WizardContent() {
   }, [
     currentStep,
     wizardData.subscriptionPlan,
+    wizardData.channels?.voice,
     wizardData.phoneSetup,
     wizardData.existingBusinessNumber
   ])
@@ -2048,11 +2132,19 @@ function WizardContent() {
       ? normalizePlanKey(wizardData.subscriptionPlan)
       : null
   const isStarterSetupProgress = setupPlanTier === 'starter'
-  const skippedStepNumbers = isStarterSetupProgress ? new Set([6]) : new Set()
-  const totalProgressSteps = isStarterSetupProgress ? 6 : 7
-  const progressNumerator =
-    !isStarterSetupProgress ? currentStep : currentStep <= 5 ? currentStep : 6
+  const voiceBlockedRegion = wizardData.channels?.voice === false
+  const skipPhoneStep = isStarterSetupProgress && !voiceBlockedRegion
+  const skippedStepNumbers = skipPhoneStep ? new Set([6]) : new Set()
+  const totalProgressSteps = isStarterSetupProgress ? (voiceBlockedRegion ? 7 : 6) : 7
+  const progressNumerator = !isStarterSetupProgress
+    ? currentStep
+    : voiceBlockedRegion
+      ? currentStep
+      : currentStep <= 5
+        ? currentStep
+        : 6
   const progressPct = (progressNumerator / totalProgressSteps) * 100
+  const setupVoicePrimary = wizardData.channels?.voice !== false
 
   return (
     <main id="main-content" className="min-h-screen bg-[#0A0A0F]">
@@ -2182,7 +2274,9 @@ function WizardContent() {
             <div>
               <h1 className="text-2xl font-bold text-white">Welcome to Book8-AI!</h1>
               <p className="text-[#94A3B8] mt-1">
-                Let&apos;s set up your AI receptionist in under 5 minutes.
+                {setupVoicePrimary
+                  ? "Let's set up your AI receptionist in under 5 minutes."
+                  : "Let's set up your WhatsApp booking assistant in under 5 minutes."}
               </p>
             </div>
             <Card className={WIZARD_CARD}>
@@ -2573,6 +2667,7 @@ function WizardContent() {
                         <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
                           One location: calendar sync, booking page, reminders.
                         </p>
+                        <SetupPlanChannelPills channels={wizardData.channels} />
                       </div>
                       <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] lg:min-h-[10.5rem]">
                         <p className="text-[10px] font-semibold uppercase tracking-wider !text-[#64748B] mb-3">
@@ -2654,6 +2749,7 @@ function WizardContent() {
                             </p>
                           </>
                         )}
+                        <SetupPlanChannelPills channels={wizardData.channels} />
                       </div>
                       <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] lg:min-h-[10.5rem] border-t !border-[#8B5CF6]/10">
                         <p className="text-[10px] font-semibold uppercase tracking-wider !text-[#64748B] mb-3">
@@ -2662,7 +2758,9 @@ function WizardContent() {
                         <ul className="space-y-2 text-sm leading-snug !text-[#94A3B8]">
                           {[
                             'Everything in Starter',
-                            'AI receptionist in 70+ languages',
+                            setupVoicePrimary
+                              ? 'AI receptionist in 70+ languages'
+                              : 'WhatsApp booking AI in 70+ languages',
                             'Google Calendar & Outlook, SMS & auto review requests',
                             userTrialEverUsed
                               ? 'Public booking page with QR'
@@ -2728,6 +2826,7 @@ function WizardContent() {
                         <p className="mt-2 text-sm leading-snug !text-[#94A3B8]">
                           Franchises & multi-location: one dashboard, synced services, priority support.
                         </p>
+                        <SetupPlanChannelPills channels={wizardData.channels} />
                       </div>
                       <div className="px-5 py-4 flex-1 flex flex-col !bg-[#0A0A0F] lg:min-h-[10.5rem]">
                         <p className="text-[10px] font-semibold uppercase tracking-wider !text-[#64748B] mb-3">
@@ -3036,11 +3135,25 @@ function WizardContent() {
           </div>
         )}
 
-        {/* Step 6: Phone line */}
-        {currentStep === 6 && (
+        {/* Step 6: Phone line (NA/UK) or WhatsApp (voice-blocked regions) */}
+        {currentStep === 6 && voiceBlockedRegion ? (
+          <SetupWhatsAppChannelStep
+            businessName={wizardData.businessName}
+            businessId={wizardData.businessId}
+            primaryLanguage={wizardData.primaryLanguage}
+            onBack={() => setCurrentStep(5)}
+            onContinue={() => {
+              setStep7LineState('live')
+              setCurrentStep(7)
+            }}
+            outlineBtnClass={WIZARD_OUTLINE_MUTED}
+            primaryBtnClass="flex-1 bg-[#8B5CF6] hover:bg-[#7C3AED] !text-white"
+          />
+        ) : null}
+        {currentStep === 6 && !voiceBlockedRegion ? (
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">Set up your phone line</h1>
+              <h1 className="text-2xl font-bold text-white">Set up your AI phone receptionist</h1>
               <p className="text-[#94A3B8] mt-1">
                 How would you like customers to reach your AI receptionist?
               </p>
@@ -3268,7 +3381,7 @@ function WizardContent() {
               </CardContent>
             </Card>
           </div>
-        )}
+        ) : null}
 
         {/* Step 7: You're Live! */}
         {currentStep === 7 && (
@@ -3279,18 +3392,38 @@ function WizardContent() {
               </div>
               <h1 className="text-2xl font-bold text-white">You&apos;re Live! 🎉</h1>
               <p className="text-[#94A3B8] mt-1">
-                {normalizePlanKey(wizardData.subscriptionPlan) === 'starter'
-                  ? 'Your online booking page is ready.'
-                  : 'Your AI receptionist is ready.'}
+                {(() => {
+                  const tier = normalizePlanKey(wizardData.subscriptionPlan)
+                  if (tier === 'starter' && !voiceBlockedRegion) {
+                    return 'Your online booking page is ready.'
+                  }
+                  if (!setupVoicePrimary) {
+                    return 'Your WhatsApp booking assistant is ready.'
+                  }
+                  return 'Your AI receptionist is ready.'
+                })()}
               </p>
             </div>
             <Card className={WIZARD_CARD}>
               <CardContent className="pt-6 space-y-6">
                 <div>
-                  <div className="flex items-center gap-2 text-[#8B5CF6] mb-2">
-                    <Phone className="w-5 h-5" />
-                    <span className="font-semibold">Your Booking Line</span>
-                  </div>
+                  {voiceBlockedRegion ? (
+                    <>
+                      <div className="flex items-center gap-2 text-[#25D366] mb-2">
+                        <MessageCircle className="w-5 h-5" />
+                        <span className="font-semibold">WhatsApp booking</span>
+                      </div>
+                      <p className="text-sm !text-[#94A3B8]">
+                        Customers can book through your WhatsApp link. You can copy the link or QR code again anytime
+                        from your dashboard.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 text-[#8B5CF6] mb-2">
+                        <Phone className="w-5 h-5" />
+                        <span className="font-semibold">Your Booking Line</span>
+                      </div>
                   {normalizePlanKey(wizardData.subscriptionPlan) === 'starter' ? (
                     <div className="space-y-4">
                       <p className="text-sm !text-[#94A3B8]">
@@ -3377,6 +3510,8 @@ function WizardContent() {
                         </p>
                       </div>
                     </div>
+                  )}
+                    </>
                   )}
                 </div>
                 <div>

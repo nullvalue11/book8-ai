@@ -3,34 +3,53 @@
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const WIZARD_STEPS = [
+const BASE_WIZARD_STEPS = [
+  { title: 'Business region', short: 'Region' },
   { title: 'Business profile', short: 'Profile' },
   { title: 'Agent customization', short: 'Agent' },
   { title: 'Account setup', short: 'Account' },
   { title: 'Capabilities', short: 'Skills' },
-  { title: 'Test your AI', short: 'Test' },
-  { title: 'Phone line', short: 'Phone' },
-  { title: 'Review & launch', short: 'Launch' }
+  { title: 'Connect & continue', short: 'Connect' }
 ]
 
+/**
+ * @param {{ currentStep: number, completedSteps: Set<number>, variant?: 'desktop' | 'mobile', totalSteps?: number, voicePrimary?: boolean }} props
+ * currentStep is 1-based (1 = country, …, 6 = test/WhatsApp).
+ */
 export default function WizardSidebar({
   currentStep,
   completedSteps,
-  variant = 'desktop'
+  variant = 'desktop',
+  totalSteps = 6,
+  voicePrimary = true
 }) {
   const completed = completedSteps || new Set()
+  const steps = BASE_WIZARD_STEPS.map((s, i) =>
+    i === BASE_WIZARD_STEPS.length - 1
+      ? {
+          ...s,
+          short: voicePrimary ? 'Test' : 'WhatsApp',
+          title: voicePrimary ? 'Test your AI' : 'WhatsApp booking'
+        }
+      : s
+  )
 
   if (variant === 'mobile') {
     return (
       <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
-        {WIZARD_STEPS.map((s, idx) => {
+        {steps.map((s, idx) => {
           const stepNum = idx + 1
           const isCurrent = stepNum === currentStep
           const isCompleted = completed.has(stepNum)
           return (
             <div
               key={s.title}
-              className={cn('flex-none rounded-xl border px-3 py-2 text-sm', isCurrent ? 'border-[#8B5CF6]/50 bg-[#8B5CF6]/10 text-white' : 'border-white/10 bg-white/[0.02] text-[#94A3B8]')}
+              className={cn(
+                'flex-none rounded-xl border px-3 py-2 text-sm',
+                isCurrent
+                  ? 'border-[#8B5CF6]/50 bg-[#8B5CF6]/10 text-white'
+                  : 'border-white/10 bg-white/[0.02] text-[#94A3B8]'
+              )}
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -48,7 +67,9 @@ export default function WizardSidebar({
                   </span>
                   <span className="font-medium truncate">{s.short}</span>
                 </div>
-                <span className="text-xs text-[#64748B] shrink-0">{stepNum}/7</span>
+                <span className="text-xs text-[#64748B] shrink-0">
+                  {stepNum}/{totalSteps}
+                </span>
               </div>
             </div>
           )
@@ -59,7 +80,7 @@ export default function WizardSidebar({
 
   return (
     <nav className="space-y-2" aria-label="Wizard steps">
-      {WIZARD_STEPS.map((s, i) => {
+      {steps.map((s, i) => {
         const n = i + 1
         const isCurrent = n === currentStep
         const isCompleted = completed.has(n)
@@ -95,4 +116,3 @@ export default function WizardSidebar({
     </nav>
   )
 }
-
