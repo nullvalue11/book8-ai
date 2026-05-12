@@ -157,7 +157,12 @@ export default function GlobalCoverageSection() {
     return () => clearInterval(interval)
   }, [inViewport, prefersReducedMotion])
 
-  const bubblePositions = ['top-6 start-6', 'top-6 end-6', 'bottom-6 start-6', 'bottom-6 end-6']
+  const bubblePositions = [
+    'top-3 start-3 md:top-6 md:start-6',
+    'top-3 end-3 md:top-6 md:end-6',
+    'bottom-3 start-3 md:bottom-6 md:start-6',
+    'bottom-3 end-3 md:bottom-6 md:end-6',
+  ]
 
   const globeInner = <GlobeFallback clipPathId={clipPathId} />
 
@@ -192,8 +197,8 @@ export default function GlobalCoverageSection() {
           Books appointments via phone, SMS, public link, and WhatsApp.
         </p>
 
-        <div className="relative mb-6 flex h-[340px] w-full items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-100/90 dark:border-white/10 dark:bg-white/[0.02] md:h-[400px]">
-          <div className="flex h-[200px] w-[200px] items-center justify-center md:h-[260px] md:w-[260px]">
+        <div className="relative mb-6 flex h-[300px] w-full items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-100/90 dark:border-white/10 dark:bg-white/[0.02] md:h-[400px]">
+          <div className="flex h-[160px] w-[160px] items-center justify-center md:h-[260px] md:w-[260px]">
             {prefersReducedMotion ? (
               globeInner
             ) : (
@@ -210,7 +215,7 @@ export default function GlobalCoverageSection() {
           {bubbles.map((bub, i) => (
             <div
               key={i}
-              className={`absolute ${bubblePositions[i]} max-w-[180px] rounded-lg border border-slate-200/90 bg-white/90 px-3 py-2 text-sm shadow-sm transition-all duration-500 dark:border-white/15 dark:bg-white/[0.04] ${
+              className={`absolute ${bubblePositions[i]} max-w-[130px] rounded-lg border border-slate-200/90 bg-white/90 px-2.5 py-2 shadow-sm transition-all duration-500 dark:border-white/15 dark:bg-white/[0.04] md:max-w-[180px] md:px-3 text-xs md:text-sm ${
                 visibleBubbles[i] ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
               }`}
               aria-hidden="true"
