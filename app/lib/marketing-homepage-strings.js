@@ -24,8 +24,7 @@ export const homepageByLocale = {
     heroTitle2: '',
     heroTitle3: '',
     heroTitle4: '',
-    heroSubtitle:
-      'Books appointments via phone, SMS, public link, and WhatsApp.\n\nPays for itself with 1-2 recovered appointments per month.',
+    heroSubtitle: '',
     getStartedFree: 'Start 14-day free trial',
     seeHowItWorks: 'See How It Works',
     seeLiveDemo: 'See a live demo →',
@@ -36,7 +35,7 @@ export const homepageByLocale = {
     heroChannelWhatsapp: 'WhatsApp',
     heroBrowseIndustries: 'Browse by industry',
     answersCallsDay: 'Your AI receptionist',
-    booksInRealTime: 'Pays for itself with 1-2 recovered appointments/month',
+    booksInRealTime: 'Books in real time',
     speaks70Languages: 'Speaks 70+ languages automatically',
     smsEmailConfirmations: 'SMS + email confirmations',
 
@@ -328,8 +327,7 @@ export const homepageByLocale = {
     heroTitle2: '',
     heroTitle3: '24h/24',
     heroTitle4: '',
-    heroSubtitle:
-      'Prend des rendez-vous par téléphone, SMS, lien public et WhatsApp. Rentabilisé avec 1 à 2 rendez-vous récupérés par mois.',
+    heroSubtitle: '',
     getStartedFree: "Commencer l'essai gratuit 14 jours",
     seeHowItWorks: 'Voir comment ça marche',
     seeLiveDemo: 'Voir une démo en direct →',
@@ -626,8 +624,7 @@ export const homepageByLocale = {
     heroTitle2: '',
     heroTitle3: '24/7',
     heroTitle4: '',
-    heroSubtitle:
-      'Agenda citas por teléfono, SMS, enlace público y WhatsApp. Se paga solo con 1-2 citas recuperadas al mes.',
+    heroSubtitle: '',
     getStartedFree: 'Comenzar prueba de 14 días gratis',
     seeHowItWorks: 'Ver cómo funciona',
     seeLiveDemo: 'Ver una demo en vivo →',
@@ -923,8 +920,7 @@ export const homepageByLocale = {
     heroTitle2: '',
     heroTitle3: 'على مدار الساعة',
     heroTitle4: '',
-    heroSubtitle:
-      'يحجز المواعيد عبر الهاتف والرسائل والرابط العام وواتساب. يغطي تكلفته مع 1-2 موعد مسترد شهريًا.',
+    heroSubtitle: '',
     getStartedFree: 'ابدأ تجربة 14 يومًا مجانًا',
     seeHowItWorks: 'شاهد كيف يعمل',
     seeLiveDemo: 'شاهد عرضًا مباشرًا ←',

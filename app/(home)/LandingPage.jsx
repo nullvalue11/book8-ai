@@ -28,6 +28,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Button } from '@/components/ui/button'
 import PricingPlanFeatureList from '@/components/PricingPlanFeatureList'
 import AudienceSearchWidget from '@/components/AudienceSearchWidget'
+import GlobalCoverageSection from '@/components/GlobalCoverageSection'
 import { verticals } from '@/for/_data/verticals'
 import { cn } from '@/lib/utils'
 import HeaderLogo from '@/components/HeaderLogo'
@@ -556,12 +557,14 @@ export default function LandingPage() {
                 </>
               )}
             </motion.h1>
-            <motion.p
-              variants={reveal}
-              className="mt-5 text-base md:text-[1.0625rem] text-slate-600 dark:text-[#9593A8] max-w-2xl mx-auto leading-relaxed whitespace-pre-line"
-            >
-              {h.heroSubtitle}
-            </motion.p>
+            {h.heroSubtitle?.trim() ? (
+              <motion.p
+                variants={reveal}
+                className="mt-5 text-base md:text-[1.0625rem] text-slate-600 dark:text-[#9593A8] max-w-2xl mx-auto leading-relaxed whitespace-pre-line"
+              >
+                {h.heroSubtitle}
+              </motion.p>
+            ) : null}
             {h.heroTrustedCities ? (
               <motion.p
                 variants={reveal}
@@ -782,6 +785,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <GlobalCoverageSection />
 
       {/* Social proof */}
       <motion.section
