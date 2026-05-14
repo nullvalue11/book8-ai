@@ -13,6 +13,7 @@ export async function GET(request) {
 
   const url = new URL(request.url)
   const placeId = (url.searchParams.get('placeId') || '').trim()
+  const sessionToken = (url.searchParams.get('sessionToken') || '').trim()
   if (!placeId) {
     return NextResponse.json({ ok: false, error: 'placeId required' }, { status: 400 })
   }
@@ -23,6 +24,7 @@ export async function GET(request) {
 
   const coreUrl = new URL(`${corePlacesBaseUrl()}/api/places/details`)
   coreUrl.searchParams.set('placeId', placeId)
+  if (sessionToken) coreUrl.searchParams.set('sessionToken', sessionToken)
 
   try {
     const res = await fetch(coreUrl.toString(), {

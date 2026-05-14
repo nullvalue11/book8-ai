@@ -555,6 +555,8 @@ function WizardContent() {
 
   const wizardPrefillAppliedRef = useRef(false)
   const wizardPrefillServicesRef = useRef(null)
+  const homepagePlacePrefillDoneRef = useRef(false)
+  const homepageUrlPrefillDoneRef = useRef(false)
   const [showWizardPrefillBanner, setShowWizardPrefillBanner] = useState(false)
 
   const [loading, setLoading] = useState(false)
@@ -1450,6 +1452,100 @@ function WizardContent() {
     }))
     setError('')
   }, [])
+
+  /** Homepage hero → /setup?placeId=…&sessionToken=… (BOO-HERO-AUTOCOMPLETE-1B) */
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!token || loading) return
+    const placeId = (searchParams.get('placeId') || '').trim()
+    if (!placeId || homepagePlacePrefillDoneRef.current) return
+
+    const allowPrefill =
+      businesses.length === 0 ||
+      registerNewBusinessForPrefill ||
+      searchParams.get('newBusiness') === '1'
+
+    const stripPlaceParams = () => {
+      const qs = new URLSearchParams(searchParams.toString())
+      qs.delete('placeId')
+      qs.delete('sessionToken')
+      const s = qs.toString()
+      router.replace(s ? `/setup?${s}` : '/setup')
+    }
+
+    homepagePlacePrefillDoneRef.current = true
+
+    if (!allowPrefill) {
+      stripPlaceParams()
+      return
+    }
+
+    const sessionToken = (searchParams.get('sessionToken') || '').trim()
+
+    ;(async () => {
+      try {
+        const qs = new URLSearchParams({ placeId })
+        if (sessionToken) qs.set('sessionToken', sessionToken)
+        const res = await fetch(`/api/places/details?${qs}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store'
+        })
+        const details = await res.json().catch(() => null)
+        if (res.ok && details) applyGooglePlaceDetails(placeId, details)
+      } catch {
+        /* ignore — user can still use GooglePlacesSearch */
+      } finally {
+        stripPlaceParams()
+      }
+    })()
+  }, [
+    token,
+    loading,
+    searchParams,
+    businesses.length,
+    registerNewBusinessForPrefill,
+    router,
+    applyGooglePlaceDetails
+  ])
+
+  /** Homepage hero domain mode → /setup?url=… */
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!token || loading) return
+    const rawUrl = (searchParams.get('url') || '').trim()
+    if (!rawUrl || homepageUrlPrefillDoneRef.current) return
+
+    const allowPrefill =
+      businesses.length === 0 ||
+      registerNewBusinessForPrefill ||
+      searchParams.get('newBusiness') === '1'
+
+    const stripUrlParam = () => {
+      const qs = new URLSearchParams(searchParams.toString())
+      qs.delete('url')
+      const s = qs.toString()
+      router.replace(s ? `/setup?${s}` : '/setup')
+    }
+
+    homepageUrlPrefillDoneRef.current = true
+
+    if (!allowPrefill) {
+      stripUrlParam()
+      return
+    }
+
+    let site = rawUrl
+    if (!/^https?:\/\//i.test(site)) site = `https://${site}`
+    setWizardData((prev) => ({ ...prev, profileWebsite: site }))
+    stripUrlParam()
+  }, [
+    token,
+    loading,
+    searchParams,
+    businesses.length,
+    registerNewBusinessForPrefill,
+    router
+  ])
 
   function clearGooglePlacesSelection() {
     updateWizard({ googlePlaceId: null, googlePlacesPreview: null })

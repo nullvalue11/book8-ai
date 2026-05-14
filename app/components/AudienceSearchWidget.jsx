@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import HeroAutocomplete from "@/components/HeroAutocomplete";
 
 function WaveformBars({ reducedMotion }) {
   const bars = [0, 1, 2, 3, 4];
@@ -119,16 +119,39 @@ function ListenToAiButton({ onSubmit, className }) {
 
 export default function AudienceSearchWidget({ vertical, className }) {
   const router = useRouter();
-  const [value, setValue] = useState("");
+  const heroRef = useRef(/** @type {{ resolveCtaSelection: () => unknown, showPickHint?: () => void } | null} */ (null));
+
+  const handleHeroSelect = useCallback(
+    (selection) => {
+      if (selection.type === "place") {
+        router.push(
+          `/setup?placeId=${encodeURIComponent(selection.placeId)}&sessionToken=${encodeURIComponent(selection.sessionToken)}`
+        );
+      } else {
+        router.push(`/setup?url=${encodeURIComponent(selection.url)}`);
+      }
+    },
+    [router]
+  );
 
   const onSubmit = useCallback(() => {
-    const trimmed = value.trim();
-    const params = new URLSearchParams();
-    if (trimmed) params.set("description", trimmed);
-    if (vertical?.slug) params.set("vertical", vertical.slug);
-    const qs = params.toString();
-    router.push(qs ? `/create?${qs}` : "/create");
-  }, [router, value, vertical?.slug]);
+    const sel = heroRef.current?.resolveCtaSelection?.();
+    if (!sel) {
+      heroRef.current?.showPickHint?.();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("book8:hero_autocomplete_skip"));
+      }
+      return;
+    }
+    if (typeof window !== "undefined" && sel.type === "place") {
+      window.dispatchEvent(
+        new CustomEvent("book8:hero_autocomplete_select", {
+          detail: { placeId: sel.placeId, name: sel.name }
+        })
+      );
+    }
+    handleHeroSelect(sel);
+  }, [handleHeroSelect]);
 
   return (
     <div
@@ -144,26 +167,7 @@ export default function AudienceSearchWidget({ vertical, className }) {
       </div>
 
       <div className="min-w-0 space-y-3">
-        <Input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          type="text"
-          autoComplete="off"
-          placeholder="yourbusiness.com or business name"
-          className={cn(
-            "h-11 w-full min-w-0 rounded-xl pr-3 transition-colors",
-            "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400",
-            "dark:border-slate-600/70 dark:bg-slate-900/55 dark:text-slate-100 dark:placeholder:text-slate-500",
-            "focus-visible:border-slate-300 dark:focus-visible:border-[rgba(139,92,246,0.35)]",
-            "focus-visible:ring-2 focus-visible:!ring-offset-0 focus-visible:!ring-violet-500/40 dark:focus-visible:!ring-[#A78BFA]/40"
-          )}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              onSubmit();
-            }
-          }}
-        />
+        <HeroAutocomplete ref={heroRef} placeholder="yourbusiness.com or business name" />
 
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <ListenToAiButton onSubmit={onSubmit} />
