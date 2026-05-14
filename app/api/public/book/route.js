@@ -75,7 +75,8 @@ export async function POST(request) {
       servicePriceCents: bodyServicePriceCents,
       recurring: bodyRecurring,
       serviceName: bodyServiceName,
-      clientRequestId: bodyClientRequestId
+      clientRequestId: bodyClientRequestId,
+      smsConsent
     } = body
     const language = resolveBookingLanguage(request, bodyLanguage)
 
@@ -92,6 +93,18 @@ export async function POST(request) {
         { status: 400 }
       )
     }
+
+    if (smsConsent !== true) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: 'sms_consent_required',
+          error: 'You must agree to SMS notifications to complete booking.'
+        },
+        { status: 400 }
+      )
+    }
+    const smsConsentRecordedAt = new Date().toISOString()
 
     // Rate limiting
     const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
@@ -254,7 +267,9 @@ export async function POST(request) {
                     totalOccurrences: recurringPlan.totalOccurrences
                   }
                 }
-              : {})
+              : {}),
+            smsConsent: true,
+            smsConsentTimestamp: smsConsentRecordedAt
           }
         }
 
@@ -437,7 +452,9 @@ export async function POST(request) {
               intervalDays: recurringPlan.intervalDays
             }
           }
-        : {})
+        : {}),
+      smsConsent: true,
+      smsConsentTimestamp: smsConsentRecordedAt
     }
 
     await database.collection('bookings').insertOne(booking)

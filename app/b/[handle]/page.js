@@ -1,5 +1,6 @@
 "use client"
 import React, { useEffect, useState, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
+import Link from 'next/link'
 import { formatPublicServicePriceDisplay } from '@/lib/currency'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -65,6 +66,7 @@ export default function PublicBookingPage({ params }) {
   const [services, setServices] = useState([])
   const [servicesLoading, setServicesLoading] = useState(true)
   const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '' })
+  const [smsConsent, setSmsConsent] = useState(false)
   const [notesExpanded, setNotesExpanded] = useState(false)
   const [state, setState] = useState('form')
   const [error, setError] = useState('')
@@ -578,6 +580,7 @@ export default function PublicBookingPage({ params }) {
     setBookingResult(null)
     setSelected(null)
     setForm({ name: '', email: '', phone: '', notes: '' })
+    setSmsConsent(false)
     setNotesExpanded(false)
     setError('')
     setBooking(false)
@@ -756,7 +759,8 @@ export default function PublicBookingPage({ params }) {
       invalid_email: t.errEnterEmail,
       slot_unavailable: t.errSlotTaken,
       rate_limit_exceeded: t.errTooManyAttempts,
-      booking_creation_failed: t.errBookingFailed
+      booking_creation_failed: t.errBookingFailed,
+      sms_consent_required: t.smsConsentError
     }
     if (byCode[normalized]) return byCode[normalized]
     if (typeof data?.message === 'string' && data.message.trim()) return data.message.trim()
@@ -794,6 +798,10 @@ export default function PublicBookingPage({ params }) {
     }
     if (noShowConfigButNoStripe) {
       setError(t.noShow.cardError)
+      return
+    }
+    if (!smsConsent) {
+      setError(t.smsConsentError)
       return
     }
 
@@ -855,7 +863,9 @@ export default function PublicBookingPage({ params }) {
                   totalOccurrences: recurringTotalOccurrences
                 }
               }
-            : {})
+            : {}),
+          smsConsent: true,
+          smsConsentTimestamp: new Date().toISOString()
         })
       })
 
@@ -906,12 +916,18 @@ export default function PublicBookingPage({ params }) {
     })
   }
 
+  const bookingBusinessDisplayName = useMemo(
+    () => (ownerName?.trim() || formatHandleAsDisplayName(handle) || 'this business').trim(),
+    [ownerName, handle]
+  )
+
   const canSubmit =
     hasServices &&
     selectedService &&
     selected &&
     form.name?.trim() &&
     form.email?.trim()?.includes('@') &&
+    smsConsent &&
     !booking &&
     !noShowConfigButNoStripe
 
@@ -1919,6 +1935,45 @@ export default function PublicBookingPage({ params }) {
                     onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                     className="min-h-[44px] bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                   />
+                </div>
+
+                <div className="rounded-lg border border-gray-700 bg-gray-800/40 p-3">
+                  <label htmlFor="sms-consent" className="flex cursor-pointer items-start gap-3">
+                    <input
+                      id="sms-consent"
+                      name="smsConsent"
+                      type="checkbox"
+                      checked={smsConsent}
+                      onChange={(e) => {
+                        setSmsConsent(e.target.checked)
+                        if (e.target.checked && error === t.smsConsentError) setError('')
+                      }}
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-gray-600 bg-gray-900 text-violet-600 focus:ring-violet-500 focus:ring-offset-0"
+                    />
+                    <span className="text-[13px] leading-relaxed text-gray-300" dir="ltr">
+                      By providing my phone number, I agree to receive SMS appointment confirmations and reminders from{' '}
+                      <strong className="text-white">{bookingBusinessDisplayName}</strong>. Msg & data rates may apply.
+                      Message frequency varies based on booking activity. Reply STOP to cancel. Reply HELP for help. View our{' '}
+                      <Link
+                        href="/terms"
+                        className="text-violet-400 underline underline-offset-2 hover:text-violet-300"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Terms
+                      </Link>{' '}
+                      and{' '}
+                      <Link
+                        href="/privacy"
+                        className="text-violet-400 underline underline-offset-2 hover:text-violet-300"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
                 </div>
 
                 {notesExpanded ? (
