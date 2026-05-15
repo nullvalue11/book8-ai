@@ -83,12 +83,20 @@ import { WIZARD_STEP0_STORAGE_KEY } from '@/create/_components/Step0Country'
 import SetupWhatsAppChannelStep from './_components/SetupWhatsAppChannelStep'
 import ExtractionProgress from './_components/ExtractionProgress'
 import ExtractionPrefillDot from './_components/ExtractionPrefillDot'
+import SignInContextCard from './_components/SignInContextCard'
 import {
   classifyExtraction,
   displayDomain,
   mapInferProfileToWizardPatch,
   mapPerplexityExtractionToWizard
 } from '@/lib/wizardUrlExtractionApply'
+import {
+  buildSetupOauthRedirectPath,
+  captureSetupAuthReturnContext,
+  clearSetupAuthReturnContext,
+  consumeSetupAuthReturnContext,
+  returnContextToSearchParams
+} from '@/lib/setupAuthReturnContext'
 
 const SETUP_WIZARD_DRAFT_KEY = 'book8_setup_wizard_draft_v1'
 const SETUP_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
@@ -245,13 +253,22 @@ function isInternationalBusinessPhoneValid(value) {
   return cleaned.startsWith('+') && cleaned.replace(/\D/g, '').length >= 7
 }
 
-function SetupAuthScreen({ onAuthenticated, initialLoginMode = false, oauthRedirectPath = '/setup' }) {
+function SetupAuthScreen({
+  onAuthenticated,
+  initialLoginMode = false,
+  oauthRedirectPath = '/setup',
+  handoffPlaceId = '',
+  handoffSessionToken = '',
+  handoffUrl = ''
+}) {
   const { t, language, setLanguage } = useBookingLanguage()
   const a = t.auth
   const [formData, setFormData] = useState({ email: '', password: '', name: '' })
   const [authMode, setAuthMode] = useState('login')
   const [formError, setFormError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const hasHandoff =
+    Boolean((handoffPlaceId || '').trim()) || Boolean((handoffUrl || '').trim())
 
   async function handleLogin() {
     if (!formData.email || !formData.password) {
@@ -261,6 +278,7 @@ function SetupAuthScreen({ onAuthenticated, initialLoginMode = false, oauthRedir
     try {
       setFormError('')
       setIsLoading(true)
+      captureSetupAuthReturnContext()
       const res = await fetch('/api/credentials/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -290,6 +308,7 @@ function SetupAuthScreen({ onAuthenticated, initialLoginMode = false, oauthRedir
     try {
       setFormError('')
       setIsLoading(true)
+      captureSetupAuthReturnContext()
       const res = await fetch('/api/credentials/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -320,12 +339,22 @@ function SetupAuthScreen({ onAuthenticated, initialLoginMode = false, oauthRedir
         <div className="space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold text-white px-1">
-              {initialLoginMode ? a.signInTitle : a.getStartedTitle}
+              {hasHandoff ? a.almostThereTitle : initialLoginMode ? a.signInTitle : a.getStartedTitle}
             </h1>
             <p className="text-[#94A3B8] text-sm">
-              {initialLoginMode ? a.signInSubtitle : a.getStartedSubtitle}
+              {hasHandoff
+                ? a.almostThereSubtitle
+                : initialLoginMode
+                  ? a.signInSubtitle
+                  : a.getStartedSubtitle}
             </p>
           </div>
+
+          <SignInContextCard
+            placeId={(handoffPlaceId || '').trim() || undefined}
+            sessionToken={(handoffSessionToken || '').trim() || undefined}
+            url={(handoffUrl || '').trim() || undefined}
+          />
 
           <div className="space-y-3">
             <Button
@@ -334,6 +363,7 @@ function SetupAuthScreen({ onAuthenticated, initialLoginMode = false, oauthRedir
               onClick={async () => {
                 setIsLoading(true)
                 try {
+                  captureSetupAuthReturnContext()
                   await signIn('google', {
                     callbackUrl: `/auth/oauth-callback?redirect=${encodeURIComponent(oauthRedirectPath)}`,
                     redirect: true
@@ -359,6 +389,7 @@ function SetupAuthScreen({ onAuthenticated, initialLoginMode = false, oauthRedir
               onClick={async () => {
                 setIsLoading(true)
                 try {
+                  captureSetupAuthReturnContext()
                   await signIn('azure-ad', {
                     callbackUrl: `/auth/oauth-callback?redirect=${encodeURIComponent(oauthRedirectPath)}`,
                     redirect: true
@@ -507,8 +538,11 @@ function WizardContent() {
   const { t } = useBookingLanguage()
   const cf = t.callForwarding
   const isLoginMode = searchParams.get('mode') === 'login'
-  const oauthRedirectPath =
-    searchParams.get('profileSource') === 'wizard' ? '/setup?profileSource=wizard' : '/setup'
+  const searchParamsKey = searchParams.toString()
+  const oauthRedirectPath = useMemo(
+    () => buildSetupOauthRedirectPath(new URLSearchParams(searchParamsKey)),
+    [searchParamsKey]
+  )
   const [token, setToken] = useState(null)
   const [appReady, setAppReady] = useState(false)
 
@@ -920,6 +954,23 @@ function WizardContent() {
   useEffect(() => {
     loadInitialState()
   }, [loadInitialState])
+
+  /** Restore homepage handoff query after auth if OAuth stripped it (BOO-AUTH-CTX-PRESERVATION-1B). */
+  useEffect(() => {
+    if (!token || loading) return
+    const cur = new URLSearchParams(searchParamsKey)
+    const hasPlace = String(cur.get('placeId') || '').trim().length > 0
+    const hasUrl = String(cur.get('url') || '').trim().length > 0
+    if (hasPlace || hasUrl) {
+      clearSetupAuthReturnContext()
+      return
+    }
+    const ctx = consumeSetupAuthReturnContext()
+    if (!ctx) return
+    const newParams = returnContextToSearchParams(ctx)
+    if ([...newParams.keys()].length === 0) return
+    router.replace(`/setup?${newParams.toString()}`)
+  }, [token, loading, router, searchParamsKey, searchParams])
 
   useEffect(() => {
     const pref = readPricingCountryPreference()
@@ -2334,6 +2385,7 @@ function WizardContent() {
       localStorage.removeItem('book8_token')
       localStorage.removeItem('book8_user')
     }
+    clearSetupAuthReturnContext()
     setToken(null)
     void signOut({ callbackUrl: '/' })
   }, [])
@@ -2360,12 +2412,18 @@ function WizardContent() {
       <SetupAuthScreen
         initialLoginMode={isLoginMode}
         oauthRedirectPath={oauthRedirectPath}
+        handoffPlaceId={searchParams.get('placeId') || ''}
+        handoffSessionToken={searchParams.get('sessionToken') || ''}
+        handoffUrl={searchParams.get('url') || ''}
         onAuthenticated={() => {
-          const t = localStorage.getItem('book8_token')
-          setToken(t)
+          const tok = localStorage.getItem('book8_token')
+          setToken(tok)
           try {
             if (typeof window !== 'undefined' && sessionStorage.getItem('book8.wizard.profileFromCreate')) {
-              router.replace('/setup?profileSource=wizard')
+              const cur = new URLSearchParams(window.location.search)
+              cur.set('profileSource', 'wizard')
+              const qs = cur.toString()
+              router.replace(qs ? `/setup?${qs}` : '/setup?profileSource=wizard')
             }
           } catch {
             /* ignore */

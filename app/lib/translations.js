@@ -236,7 +236,9 @@ const translations = {
       errEmailPassword: 'Please enter both email and password',
       errPasswordLength: 'Password must be at least 6 characters',
       errGoogleFailed: 'Failed to initiate Google sign-in.',
-      errMicrosoftFailed: 'Failed to initiate Microsoft sign-in.'
+      errMicrosoftFailed: 'Failed to initiate Microsoft sign-in.',
+      almostThereTitle: 'Almost there — sign in to claim this business',
+      almostThereSubtitle: 'We kept your selection from the homepage. Sign in below to continue setup.'
     },
     setupSteps: ['Business', 'Plan', 'Calendar', 'Hours', 'Services', 'Phone', 'Live!'],
     setupCategories: {
@@ -678,7 +680,10 @@ const translations = {
       errEmailPassword: 'Veuillez saisir le courriel et le mot de passe',
       errPasswordLength: 'Le mot de passe doit contenir au moins 6 caractères',
       errGoogleFailed: 'Impossible de lancer la connexion Google.',
-      errMicrosoftFailed: 'Impossible de lancer la connexion Microsoft.'
+      errMicrosoftFailed: 'Impossible de lancer la connexion Microsoft.',
+      almostThereTitle: 'Presque terminé — connectez-vous pour confirmer cette entreprise',
+      almostThereSubtitle:
+        'Nous avons conservé votre sélection depuis la page d’accueil. Connectez-vous ci-dessous pour poursuivre.'
     },
     setupSteps: ['Entreprise', 'Forfait', 'Calendrier', 'Heures', 'Services', 'Téléphone', 'En ligne !'],
     setupCategories: {
@@ -1122,7 +1127,9 @@ const translations = {
       errEmailPassword: 'Ingrese correo y contraseña',
       errPasswordLength: 'La contraseña debe tener al menos 6 caracteres',
       errGoogleFailed: 'No se pudo iniciar sesión con Google.',
-      errMicrosoftFailed: 'No se pudo iniciar sesión con Microsoft.'
+      errMicrosoftFailed: 'No se pudo iniciar sesión con Microsoft.',
+      almostThereTitle: 'Casi listo — inicia sesión para reclamar este negocio',
+      almostThereSubtitle: 'Guardamos tu selección desde la página de inicio. Inicia sesión abajo para continuar.'
     },
     setupSteps: ['Negocio', 'Plan', 'Calendario', 'Horarios', 'Servicios', 'Teléfono', '¡En vivo!'],
     setupCategories: {
@@ -1563,7 +1570,9 @@ const translations = {
       errEmailPassword: 'أدخل البريد وكلمة المرور',
       errPasswordLength: 'يجب أن تكون كلمة المرور 6 أحرف على الأقل',
       errGoogleFailed: 'تعذر بدء تسجيل الدخول عبر Google.',
-      errMicrosoftFailed: 'تعذر بدء تسجيل الدخول عبر Microsoft.'
+      errMicrosoftFailed: 'تعذر بدء تسجيل الدخول عبر Microsoft.',
+      almostThereTitle: 'أوشكت على الانتهاء — سجّل الدخول لإكمال إعداد هذا النشاط',
+      almostThereSubtitle: 'أبقينا على اختيارك من الصفحة الرئيسية. سجّل الدخول أدناه لمتابعة الإعداد.'
     },
     setupSteps: ['العمل', 'الخطة', 'التقويم', 'الساعات', 'الخدمات', 'الهاتف', 'مباشر!'],
     setupCategories: {
