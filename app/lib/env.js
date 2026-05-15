@@ -235,6 +235,18 @@ function loadConfig() {
     const TAVILY_API_KEY = getEnvVar('TAVILY_API_KEY', false)
     /** Public wizard business-profile inference (Claude Haiku). Optional: endpoint falls back to safe defaults when unset. */
     const ANTHROPIC_API_KEY = getEnvVar('ANTHROPIC_API_KEY', false, '')
+    const PERPLEXITY_API_KEY = getEnvVar('PERPLEXITY_API_KEY', false, '')
+    const PERPLEXITY_MODEL = getEnvVar('PERPLEXITY_MODEL', false, 'sonar-pro')
+    const PERPLEXITY_TIMEOUT_MS_RAW = getEnvVar('PERPLEXITY_TIMEOUT_MS', false, '30000')
+    const PERPLEXITY_TIMEOUT_MS = Math.max(
+      5000,
+      Math.min(120000, parseInt(String(PERPLEXITY_TIMEOUT_MS_RAW), 10) || 30000)
+    )
+    const PERPLEXITY_EXTRACTION_CACHE_HOURS_RAW = getEnvVar('PERPLEXITY_EXTRACTION_CACHE_HOURS', false, '24')
+    const PERPLEXITY_EXTRACTION_CACHE_HOURS = Math.max(
+      1,
+      Math.min(168, parseInt(String(PERPLEXITY_EXTRACTION_CACHE_HOURS_RAW), 10) || 24)
+    )
     const CRON_SECRET = getEnvVar('CRON_SECRET', false)
 
     // n8n provisioning retry (dashboard → webhook, not core-api)
@@ -375,6 +387,10 @@ function loadConfig() {
       // Optional
       TAVILY_API_KEY,
       ANTHROPIC_API_KEY: ANTHROPIC_API_KEY ? String(ANTHROPIC_API_KEY).trim() : null,
+      PERPLEXITY_API_KEY: PERPLEXITY_API_KEY ? String(PERPLEXITY_API_KEY).trim() : null,
+      PERPLEXITY_MODEL: PERPLEXITY_MODEL ? String(PERPLEXITY_MODEL).trim() : 'sonar-pro',
+      PERPLEXITY_TIMEOUT_MS,
+      PERPLEXITY_EXTRACTION_CACHE_HOURS,
       CRON_SECRET,
       
       // Features

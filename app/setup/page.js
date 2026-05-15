@@ -81,6 +81,9 @@ import {
 import { defaultChannelsForCountry } from '@/lib/businessChannels'
 import { WIZARD_STEP0_STORAGE_KEY } from '@/create/_components/Step0Country'
 import SetupWhatsAppChannelStep from './_components/SetupWhatsAppChannelStep'
+import ExtractionProgress from './_components/ExtractionProgress'
+import ExtractionPrefillDot from './_components/ExtractionPrefillDot'
+import { mapPerplexityExtractionToWizard, mapInferProfileToWizardPatch } from '@/lib/wizardUrlExtractionApply'
 
 const SETUP_WIZARD_DRAFT_KEY = 'book8_setup_wizard_draft_v1'
 const SETUP_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
@@ -556,7 +559,10 @@ function WizardContent() {
   const wizardPrefillAppliedRef = useRef(false)
   const wizardPrefillServicesRef = useRef(null)
   const homepagePlacePrefillDoneRef = useRef(false)
-  const homepageUrlPrefillDoneRef = useRef(false)
+  const homepageUrlExtractStartedRef = useRef(false)
+  const [urlExtractionOverlay, setUrlExtractionOverlay] = useState(null)
+  const [urlExtractBanner, setUrlExtractBanner] = useState(null)
+  const [extractionFieldHints, setExtractionFieldHints] = useState(() => ({}))
   const [showWizardPrefillBanner, setShowWizardPrefillBanner] = useState(false)
 
   const [loading, setLoading] = useState(false)
@@ -1415,6 +1421,14 @@ function WizardContent() {
     '!border-[#1e1e2e] !text-[#94A3B8] hover:!text-white hover:!bg-[#1e1e2e] !bg-transparent'
 
   const updateWizard = (updates) => {
+    setExtractionFieldHints((prev) => {
+      if (!prev || Object.keys(prev).length === 0) return prev
+      const next = { ...prev }
+      for (const k of Object.keys(updates)) {
+        if (next[k]) delete next[k]
+      }
+      return next
+    })
     setWizardData((prev) => ({ ...prev, ...updates }))
     setError('')
   }
@@ -1508,12 +1522,12 @@ function WizardContent() {
     applyGooglePlaceDetails
   ])
 
-  /** Homepage hero domain mode → /setup?url=… */
+  /** Homepage hero domain mode → /setup?url=… — Perplexity + vanilla fallback (BOO-PERPLEXITY-DOMAIN-EXTRACT-1B) */
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!token || loading) return
     const rawUrl = (searchParams.get('url') || '').trim()
-    if (!rawUrl || homepageUrlPrefillDoneRef.current) return
+    if (!rawUrl || homepageUrlExtractStartedRef.current) return
 
     const allowPrefill =
       businesses.length === 0 ||
@@ -1527,17 +1541,109 @@ function WizardContent() {
       router.replace(s ? `/setup?${s}` : '/setup')
     }
 
-    homepageUrlPrefillDoneRef.current = true
+    const displayHost = (() => {
+      try {
+        let u = rawUrl
+        if (!/^https?:\/\//i.test(u)) u = `https://${u.replace(/^\/+/, '')}`
+        const h = new URL(u).hostname.toLowerCase()
+        return h.startsWith('www.') ? h.slice(4) : h
+      } catch {
+        return rawUrl
+      }
+    })()
 
     if (!allowPrefill) {
+      homepageUrlExtractStartedRef.current = true
       stripUrlParam()
       return
     }
 
-    let site = rawUrl
-    if (!/^https?:\/\//i.test(site)) site = `https://${site}`
-    setWizardData((prev) => ({ ...prev, profileWebsite: site }))
-    stripUrlParam()
+    homepageUrlExtractStartedRef.current = true
+    let cancelled = false
+    let longTimer
+
+    void (async () => {
+      setUrlExtractBanner(null)
+      setUrlExtractionOverlay({ displayHost, longWait: false, done: false })
+      longTimer = window.setTimeout(() => {
+        if (!cancelled) {
+          setUrlExtractionOverlay((o) => (o && !o.done ? { ...o, longWait: true } : o))
+        }
+      }, 28000)
+
+      let site = rawUrl
+      if (!/^https?:\/\//i.test(site)) site = `https://${site}`
+
+      const applyPatch = (wizardPatch, step5Rows, hints) => {
+        if (cancelled) return
+        setWizardData((prev) => {
+          const next = { ...prev, ...wizardPatch }
+          if (wizardPatch.businessHours) {
+            next.businessHours = { ...prev.businessHours, ...wizardPatch.businessHours }
+          }
+          return next
+        })
+        if (step5Rows && step5Rows.length > 0) {
+          setStep5Rows(step5Rows)
+          setStep5Ready(true)
+        }
+        setExtractionFieldHints(hints || {})
+      }
+
+      let filled = false
+      try {
+        const res = await fetch('/api/wizard/extract-from-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: site }),
+          cache: 'no-store'
+        })
+        const data = await res.json().catch(() => ({}))
+        if (cancelled) return
+
+        if ((data.source === 'cache' || data.source === 'perplexity') && data.data) {
+          const { wizardPatch, step5Rows, hints } = mapPerplexityExtractionToWizard(data.data, rawUrl)
+          applyPatch(wizardPatch, step5Rows, hints)
+          filled = true
+        } else if (data.fallbackToVanilla) {
+          const inf = await fetch('/api/wizard/infer-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: site }),
+            cache: 'no-store'
+          })
+          const infData = await inf.json().catch(() => ({}))
+          if (cancelled) return
+          const profile = infData?.profile && typeof infData.profile === 'object' ? infData.profile : {}
+          const { wizardPatch, step5Rows, hints } = mapInferProfileToWizardPatch(profile, rawUrl)
+          applyPatch(
+            { ...wizardPatch, profileWebsite: wizardPatch.profileWebsite || site },
+            step5Rows,
+            hints
+          )
+          filled = true
+        }
+      } catch (e) {
+        console.warn('[setup] url extraction pipeline failed', e?.message || e)
+      }
+
+      if (!filled && !cancelled) {
+        setUrlExtractBanner('We had trouble reading your site — please enter manually.')
+      }
+
+      window.clearTimeout(longTimer)
+      if (!cancelled) {
+        setUrlExtractionOverlay((o) => (o ? { ...o, done: true } : o))
+        await new Promise((r) => setTimeout(r, 420))
+        setUrlExtractionOverlay(null)
+      }
+      stripUrlParam()
+    })()
+
+    return () => {
+      cancelled = true
+      if (longTimer) window.clearTimeout(longTimer)
+    }
   }, [
     token,
     loading,
@@ -1546,6 +1652,12 @@ function WizardContent() {
     registerNewBusinessForPrefill,
     router
   ])
+
+  useEffect(() => {
+    if (!urlExtractBanner) return
+    const t = window.setTimeout(() => setUrlExtractBanner(null), 14000)
+    return () => window.clearTimeout(t)
+  }, [urlExtractBanner])
 
   function clearGooglePlacesSelection() {
     updateWizard({ googlePlaceId: null, googlePlacesPreview: null })
@@ -1855,11 +1967,23 @@ function WizardContent() {
 
   function updateStep5Row(rowKey, patch) {
     setError('')
+    setExtractionFieldHints((h) => {
+      if (!h.services) return h
+      const n = { ...h }
+      delete n.services
+      return n
+    })
     setStep5Rows((rows) => rows.map((r) => (r.rowKey === rowKey ? { ...r, ...patch } : r)))
   }
 
   function addStep5Row() {
     setError('')
+    setExtractionFieldHints((h) => {
+      if (!h.services) return h
+      const n = { ...h }
+      delete n.services
+      return n
+    })
     const max = getUiPlanLimits(wizardData.subscriptionPlan).maxServices
     if (max !== -1 && step5Rows.length >= max) {
       toast.warning(
@@ -1875,6 +1999,12 @@ function WizardContent() {
 
   function removeStep5Row(rowKey) {
     setError('')
+    setExtractionFieldHints((h) => {
+      if (!h.services) return h
+      const n = { ...h }
+      delete n.services
+      return n
+    })
     setStep5Rows((rows) => {
       if (rows.length <= 1) return rows
       return rows.filter((r) => r.rowKey !== rowKey)
@@ -2244,6 +2374,13 @@ function WizardContent() {
 
   return (
     <main id="main-content" className="min-h-screen bg-[#0A0A0F]">
+      {urlExtractionOverlay ? (
+        <ExtractionProgress
+          displayHost={urlExtractionOverlay.displayHost}
+          done={!!urlExtractionOverlay.done}
+          longWait={!!urlExtractionOverlay.longWait}
+        />
+      ) : null}
       {/* Progress bar */}
       <div className="sticky top-0 z-10 bg-[#0A0A0F]/95 backdrop-blur border-b border-[#1e1e2e]">
         <div className="max-w-2xl mx-auto px-4 pt-3 flex flex-wrap items-center justify-end gap-1 sm:gap-2">
@@ -2374,11 +2511,19 @@ function WizardContent() {
                   ? "Let's set up your AI receptionist in under 5 minutes."
                   : "Let's set up your WhatsApp booking assistant in under 5 minutes."}
               </p>
+              {urlExtractBanner ? (
+                <p className="mt-3 rounded-lg border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  {urlExtractBanner}
+                </p>
+              ) : null}
             </div>
             <Card className={WIZARD_CARD}>
               <CardContent className="pt-6 space-y-4">
                 <div>
-                  <Label className={WIZARD_LABEL}>Business name *</Label>
+                  <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                    Business name *{' '}
+                    <ExtractionPrefillDot show={!!extractionFieldHints.businessName} />
+                  </Label>
                   <Input
                     className={WIZARD_INPUT}
                     placeholder="e.g. Downtown Barber, Bloom Wellness"
@@ -2438,7 +2583,9 @@ function WizardContent() {
                   </div>
                 ) : null}
                 <div>
-                  <Label className={WIZARD_LABEL}>Category *</Label>
+                  <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                    Category * <ExtractionPrefillDot show={!!extractionFieldHints.category} />
+                  </Label>
                   <Select
                     value={wizardData.category}
                     onValueChange={(v) =>
@@ -2462,7 +2609,10 @@ function WizardContent() {
                 </div>
                 {wizardData.category === 'other' && (
                   <div>
-                    <Label className={WIZARD_LABEL}>What type of business do you run? *</Label>
+                    <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                      What type of business do you run? *{' '}
+                      <ExtractionPrefillDot show={!!extractionFieldHints.customCategory} />
+                    </Label>
                     <Input
                       className={WIZARD_INPUT}
                       placeholder="e.g. Tattoo Shop, Dog Grooming, Acupuncture"
@@ -2472,7 +2622,9 @@ function WizardContent() {
                   </div>
                 )}
                 <div>
-                  <Label className={WIZARD_LABEL}>City (optional)</Label>
+                  <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                    City (optional) <ExtractionPrefillDot show={!!extractionFieldHints.city} />
+                  </Label>
                   <Input
                     className={WIZARD_INPUT}
                     placeholder="e.g. London, Tokyo, São Paulo"
@@ -2490,7 +2642,9 @@ function WizardContent() {
                     </p>
                   </div>
                   <div>
-                    <Label className={WIZARD_LABEL}>Street address</Label>
+                    <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                      Street address <ExtractionPrefillDot show={!!extractionFieldHints.profileStreet} />
+                    </Label>
                     <Input
                       className={WIZARD_INPUT}
                       placeholder="123 Main St"
@@ -2499,7 +2653,10 @@ function WizardContent() {
                     />
                   </div>
                   <div>
-                    <Label className={WIZARD_LABEL}>Apt / suite (optional)</Label>
+                    <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                      Apt / suite (optional){' '}
+                      <ExtractionPrefillDot show={!!extractionFieldHints.profileStreet2} />
+                    </Label>
                     <Input
                       className={WIZARD_INPUT}
                       placeholder="Suite 200"
@@ -2509,7 +2666,9 @@ function WizardContent() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <Label className={WIZARD_LABEL}>City</Label>
+                      <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                        City <ExtractionPrefillDot show={!!extractionFieldHints.profileCity} />
+                      </Label>
                       <Input
                         className={WIZARD_INPUT}
                         placeholder="City"
@@ -2518,7 +2677,9 @@ function WizardContent() {
                       />
                     </div>
                     <div>
-                      <Label className={WIZARD_LABEL}>Postal / ZIP code</Label>
+                      <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                        Postal / ZIP code <ExtractionPrefillDot show={!!extractionFieldHints.profilePostalCode} />
+                      </Label>
                       <Input
                         className={WIZARD_INPUT}
                         placeholder="Postal code"
@@ -2529,7 +2690,9 @@ function WizardContent() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <Label className={WIZARD_LABEL}>Country</Label>
+                      <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                        Country <ExtractionPrefillDot show={!!extractionFieldHints.profileCountry} />
+                      </Label>
                       <Select
                         value={wizardData.profileCountry}
                         onValueChange={(v) => updateWizard({ profileCountry: v, profileProvinceState: '' })}
@@ -2548,7 +2711,10 @@ function WizardContent() {
                       <p className="text-xs !text-[#64748B] mt-1">Defaults from your timezone; change if needed.</p>
                     </div>
                     <div>
-                      <Label className={WIZARD_LABEL}>Province / state / region</Label>
+                      <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                        Province / state / region{' '}
+                        <ExtractionPrefillDot show={!!extractionFieldHints.profileProvinceState} />
+                      </Label>
                       {getSubdivisionsForCountry(wizardData.profileCountry).length > 0 ? (
                         <Select
                           value={wizardData.profileProvinceState}
@@ -2576,8 +2742,11 @@ function WizardContent() {
                     </div>
                   </div>
                   <div>
-                    <Label className={WIZARD_LABEL}>
-                      Business phone number (shown on your booking page for clients)
+                    <Label className={cn(WIZARD_LABEL, 'inline-flex items-start gap-1.5')}>
+                      <span>
+                        Business phone number (shown on your booking page for clients)
+                      </span>
+                      <ExtractionPrefillDot show={!!extractionFieldHints.profileBusinessPhone} />
                     </Label>
                     <Input
                       className={WIZARD_INPUT}
@@ -2591,7 +2760,10 @@ function WizardContent() {
                     </p>
                   </div>
                   <div>
-                    <Label className={WIZARD_LABEL}>Business email (public)</Label>
+                    <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                      Business email (public){' '}
+                      <ExtractionPrefillDot show={!!extractionFieldHints.profilePublicEmail} />
+                    </Label>
                     <Input
                       className={WIZARD_INPUT}
                       type="email"
@@ -2601,7 +2773,10 @@ function WizardContent() {
                     />
                   </div>
                   <div>
-                    <Label className={WIZARD_LABEL}>Short description (optional, max 500 characters)</Label>
+                    <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                      Short description (optional, max 500 characters){' '}
+                      <ExtractionPrefillDot show={!!extractionFieldHints.profileDescription} />
+                    </Label>
                     <Textarea
                       className={cn(WIZARD_INPUT, 'min-h-[88px] resize-y')}
                       placeholder="Tell clients what makes your business special…"
@@ -2618,7 +2793,9 @@ function WizardContent() {
                   <p className="text-xs !text-[#94A3B8] font-medium">Social (optional)</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <Label className={WIZARD_LABEL}>Instagram</Label>
+                      <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                        Instagram <ExtractionPrefillDot show={!!extractionFieldHints.profileSocialInstagram} />
+                      </Label>
                       <Input
                         className={WIZARD_INPUT}
                         placeholder="@handle or URL"
@@ -2627,7 +2804,9 @@ function WizardContent() {
                       />
                     </div>
                     <div>
-                      <Label className={WIZARD_LABEL}>Facebook</Label>
+                      <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                        Facebook <ExtractionPrefillDot show={!!extractionFieldHints.profileSocialFacebook} />
+                      </Label>
                       <Input
                         className={WIZARD_INPUT}
                         placeholder="Page name or URL"
@@ -2636,7 +2815,9 @@ function WizardContent() {
                       />
                     </div>
                     <div>
-                      <Label className={WIZARD_LABEL}>TikTok</Label>
+                      <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                        TikTok <ExtractionPrefillDot show={!!extractionFieldHints.profileSocialTiktok} />
+                      </Label>
                       <Input
                         className={WIZARD_INPUT}
                         placeholder="@handle or URL"
@@ -2648,6 +2829,10 @@ function WizardContent() {
                 </div>
 
                 <div>
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span className={WIZARD_LABEL}>Time zone</span>
+                    <ExtractionPrefillDot show={!!extractionFieldHints.timezone} />
+                  </div>
                   <TimeZonePicker
                     value={wizardData.timezone}
                     onChange={(tz) =>
@@ -2664,7 +2849,9 @@ function WizardContent() {
                   />
                 </div>
                 <div>
-                  <Label className={WIZARD_LABEL}>Primary language</Label>
+                  <Label className={cn(WIZARD_LABEL, 'inline-flex items-center gap-1.5')}>
+                    Primary language <ExtractionPrefillDot show={!!extractionFieldHints.primaryLanguage} />
+                  </Label>
                   <Select
                     value={wizardData.primaryLanguage}
                     onValueChange={(v) => updateWizard({ primaryLanguage: v })}
@@ -3026,7 +3213,10 @@ function WizardContent() {
         {currentStep === 4 && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">When is your business open?</h1>
+              <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-white">
+                When is your business open?
+                <ExtractionPrefillDot show={!!extractionFieldHints.businessHours} />
+              </h1>
               <p className="text-[#94A3B8] mt-1">Set your weekly availability. You can change this anytime.</p>
             </div>
             <Card className={WIZARD_CARD}>
@@ -3112,7 +3302,10 @@ function WizardContent() {
         {currentStep === 5 && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">Add your services</h1>
+              <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-white">
+                Add your services
+                <ExtractionPrefillDot show={!!extractionFieldHints.services} />
+              </h1>
               <p className="text-[#94A3B8] mt-1">
                 {
                   `What do your customers book? Add at least one service. Price is optional (${step5ServiceCurrency}) and shows on your public booking page.`
