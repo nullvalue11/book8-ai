@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { normalizeHandoffContextRecord } from '@/lib/setupAuthReturnContext'
 
 /**
  * Lightweight preview when user arrives at /setup sign-in with homepage handoff params.
@@ -12,9 +13,17 @@ export default function SignInContextCard({ placeId, url, sessionToken }) {
 
   useEffect(() => {
     let cancelled = false
-    if (placeId) {
-      const qs = new URLSearchParams({ placeId })
-      if (sessionToken) qs.set('sessionToken', sessionToken)
+    const pidRaw = (placeId || '').trim()
+    const stRaw = (sessionToken || '').trim()
+    const handoff = { placeId: pidRaw, sessionToken: stRaw }
+    normalizeHandoffContextRecord(handoff)
+    const pid = (handoff.placeId || '').trim()
+
+    if (pid) {
+      const qs = new URLSearchParams()
+      qs.set('placeId', pid)
+      const st = (handoff.sessionToken || '').trim()
+      if (st) qs.set('sessionToken', st)
       fetch(`/api/places/details?${qs.toString()}`, { cache: 'no-store' })
         .then((r) => r.json().catch(() => null))
         .then((data) => {
