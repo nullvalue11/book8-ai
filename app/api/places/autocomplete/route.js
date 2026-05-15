@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { geolocation } from '@vercel/functions'
 import { verifyPlacesBearer } from '../_lib/places-auth'
 import { corePlacesBaseUrl, corePlacesConfigured, corePlacesInternalHeaders } from '../_lib/core-places'
+import { env } from '@/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -205,8 +206,8 @@ export async function GET(request) {
     )
   }
 
-  // Public branch: read server key first (API-restricted, no browser referrer). Do not use env.js merge here.
-  const apiKey = String(process.env.GOOGLE_MAPS_SERVER_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim()
+  // Public branch: prefer server key (GOOGLE_MAPS_SERVER_KEY) — same merge as env.GOOGLE_MAPS_API_KEY in app/lib/env.js. process.env is ESLint-forbidden here.
+  const apiKey = env.GOOGLE_MAPS_API_KEY ? String(env.GOOGLE_MAPS_API_KEY).trim() : ''
   if (!apiKey) {
     console.warn('[places/autocomplete] public: GOOGLE_MAPS_SERVER_KEY / GOOGLE_MAPS_API_KEY unset')
     return NextResponse.json(
