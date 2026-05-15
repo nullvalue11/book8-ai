@@ -1168,8 +1168,9 @@ export default function LandingPage() {
         </div>
       </motion.section>
 
-      {/* By industry */}
+      {/* By industry — anchor for /setup CTA (BOO-EXTRACT-NON-SERVICE-UX-1B) */}
       <section
+        id="industries"
         className="py-14 md:py-16 px-4 border-y border-slate-200/90 bg-white/30 dark:border-[rgba(139,92,246,0.08)] dark:bg-[#06060f]/30"
         dir={isRtl ? 'rtl' : 'ltr'}
       >

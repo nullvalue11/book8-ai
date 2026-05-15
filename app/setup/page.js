@@ -83,7 +83,12 @@ import { WIZARD_STEP0_STORAGE_KEY } from '@/create/_components/Step0Country'
 import SetupWhatsAppChannelStep from './_components/SetupWhatsAppChannelStep'
 import ExtractionProgress from './_components/ExtractionProgress'
 import ExtractionPrefillDot from './_components/ExtractionPrefillDot'
-import { mapPerplexityExtractionToWizard, mapInferProfileToWizardPatch } from '@/lib/wizardUrlExtractionApply'
+import {
+  classifyExtraction,
+  displayDomain,
+  mapInferProfileToWizardPatch,
+  mapPerplexityExtractionToWizard
+} from '@/lib/wizardUrlExtractionApply'
 
 const SETUP_WIZARD_DRAFT_KEY = 'book8_setup_wizard_draft_v1'
 const SETUP_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
@@ -1600,6 +1605,8 @@ function WizardContent() {
         }
 
         let filled = false
+        /** @type {unknown | null} */
+        let perplexityExtraction = null
         const res = await fetch('/api/wizard/extract-from-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1610,6 +1617,7 @@ function WizardContent() {
         if (cancelled) return
 
         if ((data.source === 'cache' || data.source === 'perplexity') && data.data) {
+          perplexityExtraction = data.data
           const { wizardPatch, step5Rows, hints } = mapPerplexityExtractionToWizard(data.data, rawUrl)
           applyPatch(wizardPatch, step5Rows, hints)
           filled = true
@@ -1632,8 +1640,20 @@ function WizardContent() {
           filled = true
         }
 
-        if (!filled && !cancelled) {
-          setUrlExtractBanner('We had trouble reading your site — please enter manually.')
+        if (!cancelled) {
+          const troubleMsg =
+            'We had trouble reading your site — please enter your details manually below, or try a different URL.'
+          const classification =
+            perplexityExtraction != null ? classifyExtraction(perplexityExtraction) : null
+          if (classification === 'non_service_business') {
+            const domainLabel = displayDomain(rawUrl)
+            setUrlExtractBanner({
+              type: 'non_service',
+              message: `Looks like ${domainLabel} isn't a service business. Book8 is built for salons, spas, barbershops, car washes, and similar businesses. Try a different URL — or set up manually below.`
+            })
+          } else if (!filled) {
+            setUrlExtractBanner(troubleMsg)
+          }
         }
       } finally {
         window.clearTimeout(longTimer)
@@ -2514,9 +2534,24 @@ function WizardContent() {
                   : "Let's set up your WhatsApp booking assistant in under 5 minutes."}
               </p>
               {urlExtractBanner ? (
-                <p className="mt-3 rounded-lg border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                  {urlExtractBanner}
-                </p>
+                <div className="mt-3 rounded-lg border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  <p>
+                    {typeof urlExtractBanner === 'string'
+                      ? urlExtractBanner
+                      : urlExtractBanner.message}
+                  </p>
+                  {typeof urlExtractBanner === 'object' && urlExtractBanner.type === 'non_service' ? (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => router.push('/#industries')}
+                        className="text-sm text-purple-400 underline hover:text-purple-300"
+                      >
+                        See which industries Book8 supports
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
             <Card className={WIZARD_CARD}>

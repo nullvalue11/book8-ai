@@ -96,6 +96,54 @@ export function normalizeWizardWebsiteUrl(url) {
   return `https://${u.replace(/^\/+/, '')}`
 }
 
+/**
+ * Hostname for UX copy (e.g. `book8.io` from `https://www.book8.io/path`).
+ * @param {unknown} url
+ */
+export function displayDomain(url) {
+  const s = String(url || '').trim()
+  if (!s) return ''
+  try {
+    const href = /^https?:\/\//i.test(s) ? s : `https://${s.replace(/^\/+/, '')}`
+    const u = new URL(href)
+    return u.hostname.replace(/^www\./i, '')
+  } catch {
+    return s
+  }
+}
+
+/**
+ * Returns `'service_business'` if the extraction looks like a service business Book8 can serve,
+ * `'non_service_business'` if the URL is likely SaaS / blog / e-commerce / etc.,
+ * or `null` if extraction failed entirely (caller should show a "couldn't read" message).
+ * @param {unknown} extraction
+ * @returns {'service_business' | 'non_service_business' | null}
+ */
+export function classifyExtraction(extraction) {
+  if (!extraction || typeof extraction !== 'object') return null
+
+  const ex = /** @type {Record<string, unknown>} */ (extraction)
+  const category = ex.category
+  const hasServices = Array.isArray(ex.services) && ex.services.length > 0
+  const hasName = typeof ex.name === 'string' && ex.name.trim().length > 0
+  const hasPhone = typeof ex.phone === 'string' && ex.phone.trim().length > 0
+  const hoursRaw = ex.hours
+  const hoursObj = hoursRaw && typeof hoursRaw === 'object' ? /** @type {Record<string, unknown>} */ (hoursRaw) : null
+  const hasHours =
+    hoursObj &&
+    Object.values(hoursObj).some((v) => {
+      if (v == null) return false
+      const t = String(v).trim().toLowerCase()
+      return t.length > 0 && t !== 'closed'
+    })
+
+  if (category && category !== 'other') return 'service_business'
+  if (hasServices && hasName) return 'service_business'
+  if (hasName && hasPhone && hasHours) return 'service_business'
+  if (hasName || category === 'other') return 'non_service_business'
+  return null
+}
+
 export function makeStep5RowKey() {
   return `sr-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
