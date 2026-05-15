@@ -55,6 +55,7 @@
         "@stripe/stripe-js": "^9.0.1",
         "@tanstack/react-table": "^8.21.3",
         "@tavily/core": "0.5.12",
+        "@vercel/functions": "^3.5.1",
         "axios": "1.15.2",
         "bcryptjs": "^3.0.2",
         "canvas-confetti": "^1.9.4",

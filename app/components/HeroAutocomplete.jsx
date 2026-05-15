@@ -67,6 +67,7 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
   const [highlight, setHighlight] = useState(-1)
   const [loading, setLoading] = useState(false)
   const [predictions, setPredictions] = useState([])
+  const [nearCity, setNearCity] = useState(/** @type {string | null} */ (null))
   const [emptyAfterFetch, setEmptyAfterFetch] = useState(false)
   const [ctaHint, setCtaHint] = useState(false)
 
@@ -111,6 +112,7 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
     if (t.length === 0) {
       resetSessionToken()
       setPicked(null)
+      setNearCity(null)
     }
     const timer = window.setTimeout(() => setDebounced(value), 250)
     return () => window.clearTimeout(timer)
@@ -127,6 +129,7 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
   useEffect(() => {
     if (domainMode) {
       setPredictions([])
+      setNearCity(null)
       setLoading(false)
       setEmptyAfterFetch(false)
       setOpen(false)
@@ -137,6 +140,7 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
     const q = debounced.trim()
     if (q.length < 2) {
       setPredictions([])
+      setNearCity(null)
       setLoading(false)
       setEmptyAfterFetch(false)
       setOpen(false)
@@ -160,6 +164,9 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
         const data = await res.json().catch(() => ({}))
         if (cancelled || rid !== requestIdRef.current) return
         const list = Array.isArray(data.predictions) ? data.predictions : []
+        const nc =
+          typeof data.nearCity === 'string' && data.nearCity.trim() ? data.nearCity.trim() : null
+        setNearCity(nc)
         setPredictions(list.slice(0, 5))
         setEmptyAfterFetch(list.length === 0)
         setOpen(list.length > 0)
@@ -172,6 +179,7 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
       } catch {
         if (cancelled || rid !== requestIdRef.current) return
         setPredictions([])
+        setNearCity(null)
         setEmptyAfterFetch(false)
         setOpen(false)
       } finally {
@@ -195,6 +203,7 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
       setOpen(false)
       setHighlight(-1)
       setPredictions([])
+      setNearCity(null)
       setEmptyAfterFetch(false)
       resetSessionToken()
       if (typeof window !== 'undefined') {
@@ -360,6 +369,11 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
               </li>
             )
           })}
+          {nearCity ? (
+            <li className="pointer-events-none border-t border-purple-500/10 px-3 py-1.5 text-xs text-zinc-500">
+              Showing results near {nearCity}
+            </li>
+          ) : null}
         </ul>
       ) : null}
 

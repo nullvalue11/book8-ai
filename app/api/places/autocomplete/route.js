@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { geolocation } from '@vercel/functions'
 import { verifyPlacesBearer } from '../_lib/places-auth'
 import { corePlacesBaseUrl, corePlacesConfigured, corePlacesInternalHeaders } from '../_lib/core-places'
 import { env } from '@/lib/env'
@@ -7,21 +8,6 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const GOOGLE_AUTOCOMPLETE_URL = 'https://places.googleapis.com/v1/places:autocomplete'
-
-const HOMEPAGE_PRIMARY_TYPES = [
-  'beauty_salon',
-  'hair_care',
-  'barber_shop',
-  'spa',
-  'gym',
-  'car_wash',
-  'car_repair',
-  'dentist',
-  'physiotherapist',
-  'restaurant',
-  'cafe',
-  'establishment'
-]
 
 const FIELD_MASK =
   'suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat,suggestions.placePrediction.types'
@@ -37,17 +23,39 @@ function formattableTextToString(t) {
 }
 
 /**
- * Homepage / public proxy: Google Places Autocomplete (New).
- * @param {{ q: string, sessionToken: string, regionCode: string | null, apiKey: string }} opts
+ * @param {unknown} raw
+ * @returns {string | null}
  */
-async function fetchGoogleAutocompleteNew({ q, sessionToken, regionCode, apiKey }) {
+function decodeGeoCity(raw) {
+  const t = String(raw ?? '').trim()
+  if (!t) return null
+  try {
+    const decoded = decodeURIComponent(t.replace(/\+/g, ' ')).trim()
+    return decoded || null
+  } catch {
+    return t || null
+  }
+}
+
+/**
+ * Homepage / public proxy: Google Places Autocomplete (New).
+ * Soft location bias: circle when IP lat/lon exist, else optional `regionCode` (2-letter).
+ * @param {{ q: string, sessionToken: string, apiKey: string, latitude: number, longitude: number, regionCode: string | null }} opts
+ */
+async function fetchGoogleAutocompleteNew({ q, sessionToken, apiKey, latitude, longitude, regionCode }) {
   /** @type {Record<string, unknown>} */
   const body = {
     input: q,
-    sessionToken,
-    includedPrimaryTypes: HOMEPAGE_PRIMARY_TYPES
+    sessionToken
   }
-  if (regionCode && /^[a-z]{2}$/i.test(regionCode)) {
+  if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    body.locationBias = {
+      circle: {
+        center: { latitude, longitude },
+        radius: 50000.0
+      }
+    }
+  } else if (regionCode && /^[a-z]{2}$/i.test(regionCode)) {
     body.regionCode = regionCode.toLowerCase()
   }
 
@@ -163,27 +171,37 @@ export async function GET(request) {
 
   // --- Public: homepage hero (Google Places API New, server key) ---
   // TODO: rate limit by IP — defer to BOO-AUTOCOMPLETE-RATELIMIT-1A
+  // Note: geolocation() returns empty values in local dev. Deploy to Vercel Preview to test geo-biased results.
+  const geo = geolocation(request)
+  const latitude = parseFloat(String(geo.latitude ?? ''))
+  const longitude = parseFloat(String(geo.longitude ?? ''))
+  const nearCity = decodeGeoCity(geo.city)
+
   const q = (url.searchParams.get('q') || '').trim()
   const sessionToken = (url.searchParams.get('sessionToken') || '').trim()
   const countryParam = (url.searchParams.get('country') || '').trim()
-  const geoCountry = request.headers.get('x-vercel-ip-country')?.trim() || null
-  const regionCode =
-    countryParam && /^[A-Z]{2}$/i.test(countryParam)
-      ? countryParam.toLowerCase()
-      : geoCountry && /^[A-Z]{2}$/i.test(geoCountry)
-        ? geoCountry.toLowerCase()
-        : null
+
+  /** @type {string | null} */
+  let regionCodeForBody = null
+  if (!(Number.isFinite(latitude) && Number.isFinite(longitude))) {
+    if (countryParam && /^[A-Z]{2}$/i.test(countryParam)) {
+      regionCodeForBody = countryParam.toLowerCase()
+    } else {
+      const gc = geo.country && String(geo.country).trim()
+      if (gc && /^[A-Z]{2}$/i.test(gc)) regionCodeForBody = gc.toLowerCase()
+    }
+  }
 
   if (q.length < 2) {
     return NextResponse.json(
-      { predictions: [], sessionToken: sessionToken || null },
+      { predictions: [], sessionToken: sessionToken || null, nearCity },
       { headers: { 'Cache-Control': 'private, max-age=60' } }
     )
   }
 
   if (!sessionToken || sessionToken.length < 8) {
     return NextResponse.json(
-      { predictions: [], sessionToken: sessionToken || null, error: 'autocomplete_failed' },
+      { predictions: [], sessionToken: sessionToken || null, nearCity, error: 'autocomplete_failed' },
       { headers: { 'Cache-Control': 'private, max-age=60' } }
     )
   }
@@ -192,27 +210,34 @@ export async function GET(request) {
   if (!apiKey) {
     console.warn('[places/autocomplete] public: GOOGLE_MAPS_SERVER_KEY / GOOGLE_MAPS_API_KEY unset')
     return NextResponse.json(
-      { predictions: [], sessionToken, error: 'autocomplete_failed' },
+      { predictions: [], sessionToken, nearCity, error: 'autocomplete_failed' },
       { headers: { 'Cache-Control': 'private, max-age=60' } }
     )
   }
 
   try {
-    const predictions = await fetchGoogleAutocompleteNew({ q, sessionToken, regionCode, apiKey })
+    const predictions = await fetchGoogleAutocompleteNew({
+      q,
+      sessionToken,
+      apiKey,
+      latitude,
+      longitude,
+      regionCode: regionCodeForBody
+    })
     if (!predictions) {
       return NextResponse.json(
-        { predictions: [], sessionToken, error: 'autocomplete_failed' },
+        { predictions: [], sessionToken, nearCity, error: 'autocomplete_failed' },
         { headers: { 'Cache-Control': 'private, max-age=60' } }
       )
     }
     return NextResponse.json(
-      { predictions, sessionToken },
+      { predictions, sessionToken, nearCity },
       { headers: { 'Cache-Control': 'private, max-age=60' } }
     )
   } catch (e) {
     console.warn('[places/autocomplete] google new fetch failed', e?.message || e)
     return NextResponse.json(
-      { predictions: [], sessionToken, error: 'autocomplete_failed' },
+      { predictions: [], sessionToken, nearCity, error: 'autocomplete_failed' },
       { headers: { 'Cache-Control': 'private, max-age=60' } }
     )
   }

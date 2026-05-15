@@ -1921,6 +1921,18 @@
   resolved "https://registry.npmjs.org/@unrs/resolver-binding-win32-x64-msvc/-/resolver-binding-win32-x64-msvc-1.11.1.tgz"
   integrity sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g==
 
+"@vercel/functions@^3.5.1":
+  version "3.5.1"
+  resolved "https://registry.npmjs.org/@vercel/functions/-/functions-3.5.1.tgz"
+  integrity sha512-ndh5v+uhWqGA8033oD0i0KHvqUHcLlLCOaLOw5L+xx5zVsWUSQcZPKEYk2nm51aisnKhcnTylxnOmhx+w4UCRA==
+  dependencies:
+    "@vercel/oidc" "3.4.1"
+
+"@vercel/oidc@3.4.1":
+  version "3.4.1"
+  resolved "https://registry.npmjs.org/@vercel/oidc/-/oidc-3.4.1.tgz"
+  integrity sha512-H6B+/ig/GoahccL3WZjiHayHw1H5KhvTJNceqYulwfK9kkz5iul2hTmYzcJ7tTCQzyd0dutuL9xYFZCyLUqsog==
+
 accepts@~1.3.4:
   version "1.3.8"
   resolved "https://registry.npmjs.org/accepts/-/accepts-1.3.8.tgz"
