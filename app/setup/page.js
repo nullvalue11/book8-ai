@@ -1563,35 +1563,43 @@ function WizardContent() {
     let longTimer
 
     void (async () => {
-      setUrlExtractBanner(null)
-      setUrlExtractionOverlay({ displayHost, longWait: false, done: false })
-      longTimer = window.setTimeout(() => {
-        if (!cancelled) {
-          setUrlExtractionOverlay((o) => (o && !o.done ? { ...o, longWait: true } : o))
-        }
-      }, 28000)
-
-      let site = rawUrl
-      if (!/^https?:\/\//i.test(site)) site = `https://${site}`
-
-      const applyPatch = (wizardPatch, step5Rows, hints) => {
+      const dismissOverlay = async () => {
         if (cancelled) return
-        setWizardData((prev) => {
-          const next = { ...prev, ...wizardPatch }
-          if (wizardPatch.businessHours) {
-            next.businessHours = { ...prev.businessHours, ...wizardPatch.businessHours }
-          }
-          return next
-        })
-        if (step5Rows && step5Rows.length > 0) {
-          setStep5Rows(step5Rows)
-          setStep5Ready(true)
-        }
-        setExtractionFieldHints(hints || {})
+        setUrlExtractionOverlay((o) => (o ? { ...o, done: true } : o))
+        await new Promise((r) => setTimeout(r, 420))
+        if (cancelled) return
+        setUrlExtractionOverlay(null)
       }
 
-      let filled = false
       try {
+        setUrlExtractBanner(null)
+        setUrlExtractionOverlay({ displayHost, longWait: false, done: false })
+        longTimer = window.setTimeout(() => {
+          if (!cancelled) {
+            setUrlExtractionOverlay((o) => (o && !o.done ? { ...o, longWait: true } : o))
+          }
+        }, 28000)
+
+        let site = rawUrl
+        if (!/^https?:\/\//i.test(site)) site = `https://${site}`
+
+        const applyPatch = (wizardPatch, step5Rows, hints) => {
+          if (cancelled) return
+          setWizardData((prev) => {
+            const next = { ...prev, ...wizardPatch }
+            if (wizardPatch.businessHours) {
+              next.businessHours = { ...prev.businessHours, ...wizardPatch.businessHours }
+            }
+            return next
+          })
+          if (step5Rows && step5Rows.length > 0) {
+            setStep5Rows(step5Rows)
+            setStep5Ready(true)
+          }
+          setExtractionFieldHints(hints || {})
+        }
+
+        let filled = false
         const res = await fetch('/api/wizard/extract-from-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1623,21 +1631,15 @@ function WizardContent() {
           )
           filled = true
         }
-      } catch (e) {
-        console.warn('[setup] url extraction pipeline failed', e?.message || e)
-      }
 
-      if (!filled && !cancelled) {
-        setUrlExtractBanner('We had trouble reading your site — please enter manually.')
+        if (!filled && !cancelled) {
+          setUrlExtractBanner('We had trouble reading your site — please enter manually.')
+        }
+      } finally {
+        window.clearTimeout(longTimer)
+        await dismissOverlay()
+        stripUrlParam()
       }
-
-      window.clearTimeout(longTimer)
-      if (!cancelled) {
-        setUrlExtractionOverlay((o) => (o ? { ...o, done: true } : o))
-        await new Promise((r) => setTimeout(r, 420))
-        setUrlExtractionOverlay(null)
-      }
-      stripUrlParam()
     })()
 
     return () => {
