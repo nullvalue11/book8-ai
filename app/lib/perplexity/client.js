@@ -82,7 +82,21 @@ export async function extractBusinessFromUrl(url, opts = {}) {
   const timeoutMs = env.PERPLEXITY_TIMEOUT_MS || 30000
   const controller = new AbortController()
   const t = setTimeout(() => controller.abort(), timeoutMs)
-  const signal = opts.signal || controller.signal
+  if (opts.signal) {
+    if (opts.signal.aborted) {
+      clearTimeout(t)
+      controller.abort()
+    } else {
+      opts.signal.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(t)
+          controller.abort()
+        },
+        { once: true }
+      )
+    }
+  }
 
   const body = {
     model: env.PERPLEXITY_MODEL || 'sonar-pro',
@@ -111,7 +125,7 @@ export async function extractBusinessFromUrl(url, opts = {}) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body),
-      signal
+      signal: controller.signal
     })
 
     const rawText = await res.text()

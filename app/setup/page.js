@@ -1658,13 +1658,30 @@ function WizardContent() {
         let filled = false
         /** @type {unknown | null} */
         let perplexityExtraction = null
-        const res = await fetch('/api/wizard/extract-from-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: site }),
-          cache: 'no-store'
-        })
-        const data = await res.json().catch(() => ({}))
+
+        const extractController = new AbortController()
+        const extractTimeoutId = window.setTimeout(() => extractController.abort(), 45_000)
+        /** @type {Record<string, unknown>} */
+        let data = {}
+        try {
+          const res = await fetch('/api/wizard/extract-from-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: site }),
+            cache: 'no-store',
+            signal: extractController.signal
+          })
+          data = (await res.json().catch(() => ({}))) || {}
+        } catch (e) {
+          if (/** @type {{ name?: string }} */ (e)?.name === 'AbortError') {
+            console.warn('[setup] url extraction client timeout after 45s')
+            data = {}
+          } else {
+            throw e
+          }
+        } finally {
+          window.clearTimeout(extractTimeoutId)
+        }
         if (cancelled) return
 
         if ((data.source === 'cache' || data.source === 'perplexity') && data.data) {
