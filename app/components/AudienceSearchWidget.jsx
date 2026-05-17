@@ -1,121 +1,10 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import HeroAutocomplete from "@/components/HeroAutocomplete";
-
-function WaveformBars({ reducedMotion }) {
-  const bars = [0, 1, 2, 3, 4];
-  if (reducedMotion) {
-    return (
-      <span className="flex h-4 items-end gap-0.5 shrink-0" aria-hidden>
-        {bars.map((i) => (
-          <span
-            key={i}
-            className="w-0.5 rounded-full bg-white/85"
-            style={{ height: 6 + (i % 3) * 2 }}
-          />
-        ))}
-      </span>
-    );
-  }
-  return (
-    <span className="flex h-4 items-end gap-0.5 shrink-0" aria-hidden>
-      {bars.map((i) => (
-        <motion.span
-          key={i}
-          className="w-0.5 origin-bottom rounded-full bg-white/90"
-          style={{ height: 14 }}
-          animate={{ scaleY: [0.5, 1, 0.55, 0.9, 0.5] }}
-          transition={{
-            duration: 1.15,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: i * 0.11
-          }}
-        />
-      ))}
-    </span>
-  );
-}
-
-/**
- * @param {{ onSubmit: () => void, className?: string }} props
- */
-function ListenToAiButton({ onSubmit, className }) {
-  const reducedMotion = useReducedMotion();
-  const [ripple, setRipple] = useState(null);
-
-  const handleClick = useCallback(
-    (e) => {
-      if (!reducedMotion && e.currentTarget) {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const id = Date.now();
-        setRipple({
-          id,
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        });
-        window.setTimeout(() => setRipple((r) => (r?.id === id ? null : r)), 550);
-      }
-      onSubmit();
-    },
-    [onSubmit, reducedMotion]
-  );
-
-  return (
-    <motion.button
-      type="button"
-      onClick={handleClick}
-      className={cn(
-        "relative h-11 w-full overflow-hidden rounded-xl border border-violet-400/25 px-5 font-semibold text-white sm:w-auto",
-        "bg-gradient-to-r from-[#7C3AED] to-[#8B5CF6]",
-        "shadow-[0_4px_22px_-6px_rgba(139,92,246,0.55)]",
-        "hover:shadow-[0_6px_28px_-6px_rgba(139,92,246,0.65)]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2",
-        "focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#121228]",
-        className
-      )}
-      whileHover={reducedMotion ? undefined : { scale: 1.02 }}
-      whileTap={reducedMotion ? undefined : { scale: 0.98 }}
-      animate={
-        reducedMotion
-          ? undefined
-          : {
-              boxShadow: [
-                "0 4px 22px -6px rgba(139,92,246,0.55), 0 0 0 0 rgba(167,139,250,0)",
-                "0 4px 26px -6px rgba(139,92,246,0.68), 0 0 0 5px rgba(167,139,250,0.14)",
-                "0 4px 22px -6px rgba(139,92,246,0.55), 0 0 0 0 rgba(167,139,250,0)"
-              ]
-            }
-      }
-      transition={
-        reducedMotion
-          ? undefined
-          : { boxShadow: { duration: 2.5, repeat: Infinity, ease: "easeInOut" } }
-      }
-    >
-      <AnimatePresence>
-        {ripple && !reducedMotion ? (
-          <motion.span
-            key={ripple.id}
-            className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/25"
-            style={{ left: ripple.x, top: ripple.y }}
-            initial={{ width: 0, height: 0, opacity: 0.45 }}
-            animate={{ width: 280, height: 280, opacity: 0 }}
-            transition={{ duration: 0.55, ease: "easeOut" }}
-          />
-        ) : null}
-      </AnimatePresence>
-      <span className="relative z-[1] inline-flex items-center gap-2.5">
-        <WaveformBars reducedMotion={!!reducedMotion} />
-        Listen to your AI
-      </span>
-    </motion.button>
-  );
-}
+import AnimatedAIOrb from "@/components/AnimatedAIOrb";
 
 export default function AudienceSearchWidget({ vertical, className }) {
   const router = useRouter();
@@ -167,14 +56,24 @@ export default function AudienceSearchWidget({ vertical, className }) {
       </div>
 
       <div className="min-w-0 space-y-3">
-        <HeroAutocomplete ref={heroRef} placeholder="yourbusiness.com or business name" />
-
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <ListenToAiButton onSubmit={onSubmit} />
-          <p className="text-xs text-slate-500 sm:min-w-0 sm:flex-1 sm:text-right dark:text-slate-400">
-            in 3 minutes, you&apos;ll be talking to your AI
+        <div className="flex min-w-0 flex-col items-center gap-2 pb-1">
+          <AnimatedAIOrb
+            size="medium"
+            palette="cyan"
+            onClick={onSubmit}
+            ariaLabel="Listen to a demo of the AI assistant"
+            className="max-w-full"
+          />
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+            Tap the orb to hear it speak
           </p>
         </div>
+
+        <HeroAutocomplete ref={heroRef} placeholder="yourbusiness.com or business name" />
+
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400 sm:text-right">
+          in 3 minutes, you&apos;ll be talking to your AI
+        </p>
       </div>
     </div>
   );

@@ -21,6 +21,11 @@ const nextConfig = {
     config.resolve.alias["@/components"] = path.resolve(__dirname, "app/components");
     config.resolve.alias["@/lib"] = path.resolve(__dirname, "app/lib");
 
+    config.module.rules.push({
+      test: /\.glsl$/,
+      type: 'asset/source',
+    });
+
     if (dev) {
       config.watchOptions = { poll: 2000, aggregateTimeout: 300, ignored: ['**/node_modules'] };
     }
