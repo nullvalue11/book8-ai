@@ -3,8 +3,18 @@
 import React, { useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
 import HeroAutocomplete from "@/components/HeroAutocomplete";
-import AnimatedAIOrb from "@/components/AnimatedAIOrb";
+import OrbStaticFallback from "@/components/AnimatedAIOrb/OrbStaticFallback";
+
+const AnimatedAIOrb = dynamic(() => import("@/components/AnimatedAIOrb"), {
+  ssr: false,
+  loading: () => (
+    <div className="relative mx-auto h-[220px] w-[min(100%,300px)] min-h-[220px] sm:h-[300px] sm:w-[300px]">
+      <OrbStaticFallback palette="cyan" />
+    </div>
+  )
+});
 
 export default function AudienceSearchWidget({ vertical, className }) {
   const router = useRouter();

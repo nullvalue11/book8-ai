@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import OrbStaticFallback from './OrbStaticFallback'
+import OrbErrorBoundary from './OrbErrorBoundary'
 
 const OrbCanvas = dynamic(() => import('./OrbCanvas'), {
   ssr: false,
@@ -24,6 +24,18 @@ function canUseWebGL() {
   }
 }
 
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReduced(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+  return reduced
+}
+
 /**
  * @param {{
  *   size?: 'large' | 'medium' | 'small',
@@ -40,7 +52,7 @@ export default function AnimatedAIOrb({
   ariaLabel = 'AI assistant orb',
   className = ''
 }) {
-  const reduceMotion = useReducedMotion()
+  const reduceMotion = usePrefersReducedMotion()
   const [webglOk, setWebglOk] = useState(false)
   const [mounted, setMounted] = useState(false)
 
@@ -76,7 +88,9 @@ export default function AnimatedAIOrb({
       className={cn(
         'relative mx-auto shrink-0',
         sizeMap[size],
-        onClick ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-full' : '',
+        onClick
+          ? 'cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent'
+          : '',
         className
       )}
       onClick={onClick}
@@ -85,13 +99,15 @@ export default function AnimatedAIOrb({
       aria-label={ariaLabel}
       tabIndex={onClick ? 0 : undefined}
     >
-      {showCanvas ? (
-        <div className="absolute inset-0">
-          <OrbCanvas palette={palette} animate={animate} />
-        </div>
-      ) : (
-        <OrbStaticFallback palette={palette} />
-      )}
+      <OrbErrorBoundary palette={palette}>
+        {showCanvas ? (
+          <div className="absolute inset-0">
+            <OrbCanvas palette={palette} animate={animate} />
+          </div>
+        ) : (
+          <OrbStaticFallback palette={palette} />
+        )}
+      </OrbErrorBoundary>
     </div>
   )
 }

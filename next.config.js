@@ -14,6 +14,7 @@ const nextConfig = {
   // output: 'standalone', // Disabled for Vercel - causes routing issues
   images: { unoptimized: true },
   serverExternalPackages: ['mongodb'],
+  transpilePackages: ['three', '@react-three/fiber', '@react-three/drei'],
   webpack(config, { dev }) {
     // Aliases for CI safety
     config.resolve.alias["@"] = path.resolve(__dirname, "app");

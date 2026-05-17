@@ -3,8 +3,7 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Color, Vector3 } from 'three'
-import vertexShader from './shaders/vertex.glsl'
-import fragmentShader from './shaders/fragment.glsl'
+import { vertexShader, fragmentShader } from './shaders/source'
 
 const PALETTES = {
   cyan: {
@@ -67,7 +66,7 @@ export default function OrbMesh({ palette = 'cyan', animate = true }) {
 
   return (
     <mesh ref={meshRef}>
-      <sphereGeometry args={[1, 128, 128]} />
+      <sphereGeometry args={[1, 64, 64]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
