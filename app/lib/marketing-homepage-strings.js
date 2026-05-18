@@ -587,6 +587,7 @@ export const homepageByLocale = {
     statsSpeedValue: '<2s',
     statsSetupLabel: 'Mise en ligne',
     statsSetupValue: '~5 min',
+    customerLogosHeading: 'Utilisé par des entreprises comme :',
     socialProofHeadline: 'Ils nous font confiance',
     featA11yLabel: 'Fonctionnalité',
     feat1Overline: 'Voix & SMS',
