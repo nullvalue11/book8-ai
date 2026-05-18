@@ -228,7 +228,7 @@ export const homepageByLocale = {
     privacyLastUpdated: 'Last Updated: March 17, 2026',
 
     /** Pricing page: price line under Growth tier */
-    moAfterTrial: '/mo after trial',
+    moAfterTrial: '· /month after trial',
     pricingGrowthBlurb: 'For growing teams that need more power and flexibility',
     pricingEnterpriseBlurb:
       'For franchises and multi-location businesses. Each location has its own subscription.',
@@ -542,7 +542,7 @@ export const homepageByLocale = {
     privacyTitle: 'Politique de confidentialité',
     privacyLastUpdated: 'Dernière mise à jour : 17 mars 2026',
 
-    moAfterTrial: "/mois après l'essai",
+    moAfterTrial: "· /mois après l'essai",
     pricingGrowthBlurb: 'Pour les équipes en croissance qui veulent plus de puissance et de flexibilité',
     pricingEnterpriseBlurb:
       'Pour les franchises et entreprises multi-sites. Chaque établissement a son propre abonnement.',
@@ -851,7 +851,7 @@ export const homepageByLocale = {
     privacyTitle: 'Política de privacidad',
     privacyLastUpdated: 'Última actualización: 17 de marzo de 2026',
 
-    moAfterTrial: '/mes después de la prueba',
+    moAfterTrial: '· /mes después de la prueba',
     pricingGrowthBlurb: 'Para equipos en crecimiento que necesitan más potencia y flexibilidad',
     pricingEnterpriseBlurb:
       'Para franquicias y negocios multi-ubicación. Cada sede tiene su propia suscripción.',
@@ -1155,7 +1155,7 @@ export const homepageByLocale = {
     privacyTitle: 'سياسة الخصوصية',
     privacyLastUpdated: 'آخر تحديث: 17 مارس 2026',
 
-    moAfterTrial: '/شهر بعد الفترة التجريبية',
+    moAfterTrial: '· /شهر بعد الفترة التجريبية',
     pricingGrowthBlurb: 'للفرق المتنامية التي تحتاج إلى المزيد من القوة والمرونة',
     pricingEnterpriseBlurb:
       'للعلامات التجارية والأعمال متعددة المواقع. لكل موقع اشتراكه الخاص.',
