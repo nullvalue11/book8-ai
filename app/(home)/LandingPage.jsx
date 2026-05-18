@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   Check,
@@ -275,6 +276,7 @@ function useMonthGrid(year, month) {
 const ORBIT_LANGS = ['English', 'Français', 'Español', 'العربية', '中文', 'Deutsch']
 
 export default function LandingPage() {
+  const pathname = usePathname()
   const { language, setLanguage, t } = useBookingLanguage()
   const { resolvedTheme } = useTheme()
   const [themeReady, setThemeReady] = useState(false)
@@ -287,6 +289,28 @@ export default function LandingPage() {
   useEffect(() => {
     setThemeReady(true)
   }, [])
+
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    if (!mobileOpen) return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setMobileOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [mobileOpen])
+
+  useEffect(() => {
+    if (!mobileOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [mobileOpen])
 
   const calCells = useMonthGrid(2026, 4)
   const calHeaders = [h.calSun, h.calMon, h.calTue, h.calWed, h.calThu, h.calFri, h.calSat]
@@ -433,24 +457,28 @@ export default function LandingPage() {
               {h.pricing}
             </Link>
           </nav>
-          <div className="flex items-center gap-2 md:gap-3">
-            <LanguageSelector value={language} onChange={setLanguage} t={t} variant={isLight ? 'light' : 'dark'} />
-            <ThemeToggle variant={isLight ? 'default' : 'landing'} className="shrink-0" />
-            <Link
-              href="/setup?mode=login"
-              className="hidden sm:inline text-sm text-slate-600 hover:text-slate-900 dark:text-[#9593A8] dark:hover:text-white px-2"
-            >
-              {h.navSignIn}
-            </Link>
-            <Link href={SETUP_NEW_BUSINESS_PATH}>
-              <Button className="rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-[0_0_24px_-4px_rgba(139,92,246,0.7)]">
-                {h.getStarted}
-              </Button>
-            </Link>
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            <div className="hidden md:flex items-center gap-3">
+              <LanguageSelector value={language} onChange={setLanguage} t={t} variant={isLight ? 'light' : 'dark'} />
+              <ThemeToggle variant={isLight ? 'default' : 'landing'} className="shrink-0" />
+              <Link
+                href="/setup?mode=login"
+                className="text-sm text-slate-600 hover:text-slate-900 dark:text-[#9593A8] dark:hover:text-white px-2"
+              >
+                {h.navSignIn}
+              </Link>
+              <Link href={SETUP_NEW_BUSINESS_PATH}>
+                <Button className="rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-[0_0_24px_-4px_rgba(139,92,246,0.7)]">
+                  {h.getStarted}
+                </Button>
+              </Link>
+            </div>
             <button
               type="button"
-              className="md:hidden p-2 rounded-lg text-slate-800 border border-slate-200 dark:text-white dark:border-white/10"
-              aria-label={h.toggleMenu}
+              className="md:hidden p-2 rounded-lg text-slate-800 border border-slate-200 dark:text-white dark:border-white/10 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label={mobileOpen ? h.closeMenu : h.openMenu}
+              aria-expanded={mobileOpen}
+              aria-controls="landing-mobile-nav"
               onClick={() => setMobileOpen((v) => !v)}
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -458,24 +486,52 @@ export default function LandingPage() {
           </div>
         </div>
         {mobileOpen ? (
-          <div className="md:hidden border-t border-slate-200 bg-slate-50 dark:border-[rgba(139,92,246,0.12)] dark:bg-[#0b0b1a] px-4 py-4 flex flex-col gap-3 text-slate-600 dark:text-[#9593A8]">
-            <a href="#features" className="py-2" onClick={() => setMobileOpen(false)}>
-              {h.navFeatures}
-            </a>
-            <a href="#how-it-works" className="py-2" onClick={() => setMobileOpen(false)}>
-              {h.navHowItWorks}
-            </a>
-            <Link href="/pricing" className="py-2" onClick={() => setMobileOpen(false)}>
-              {h.pricing}
-            </Link>
-            <Link
-              href="/setup?mode=login"
-              className="py-2 text-slate-900 dark:text-white"
+          <>
+            <button
+              type="button"
+              className="md:hidden fixed inset-0 top-16 z-40 bg-black/40"
+              aria-label={h.closeMenu}
               onClick={() => setMobileOpen(false)}
+            />
+            <nav
+              id="landing-mobile-nav"
+              className="md:hidden relative z-50 border-t border-slate-200 bg-slate-50 dark:border-[rgba(139,92,246,0.12)] dark:bg-[#0b0b1a] px-4 py-4 flex flex-col gap-3 text-slate-600 dark:text-[#9593A8]"
+              aria-label={h.toggleMenu}
             >
-              {h.navSignIn}
-            </Link>
-          </div>
+              <Link
+                href={SETUP_NEW_BUSINESS_PATH}
+                className="inline-flex w-full justify-center rounded-xl bg-[#8B5CF6] py-3 text-sm font-medium text-white shadow-[0_0_24px_-4px_rgba(139,92,246,0.7)] hover:bg-[#7C3AED]"
+                onClick={() => setMobileOpen(false)}
+              >
+                {h.getStarted}
+              </Link>
+              <Link
+                href="/setup?mode=login"
+                className="py-2 text-center text-slate-900 dark:text-white"
+                onClick={() => setMobileOpen(false)}
+              >
+                {h.navSignIn}
+              </Link>
+              <div className="pb-2">
+                <LanguageSelector
+                  value={language}
+                  onChange={setLanguage}
+                  t={t}
+                  variant={isLight ? 'light' : 'dark'}
+                  className="w-full max-w-none"
+                />
+              </div>
+              <a href="#features" className="py-2" onClick={() => setMobileOpen(false)}>
+                {h.navFeatures}
+              </a>
+              <a href="#how-it-works" className="py-2" onClick={() => setMobileOpen(false)}>
+                {h.navHowItWorks}
+              </a>
+              <Link href="/pricing" className="py-2" onClick={() => setMobileOpen(false)}>
+                {h.pricing}
+              </Link>
+            </nav>
+          </>
         ) : null}
       </header>
 

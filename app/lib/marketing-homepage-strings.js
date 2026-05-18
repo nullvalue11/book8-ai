@@ -14,6 +14,8 @@ export const homepageByLocale = {
     dashboard: 'Dashboard',
     logout: 'Logout',
     toggleMenu: 'Toggle menu',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
 
     heroKicker: 'Your AI receptionist that:',
     heroLine1: 'Answers every call',
@@ -322,6 +324,8 @@ export const homepageByLocale = {
     dashboard: 'Tableau de bord',
     logout: 'Déconnexion',
     toggleMenu: 'Ouvrir le menu',
+    openMenu: 'Ouvrir le menu',
+    closeMenu: 'Fermer le menu',
 
     heroTitle1: 'Votre réceptionniste IA, prend des rendez-vous dans toute langue,',
     heroTitle2: '',
@@ -619,6 +623,8 @@ export const homepageByLocale = {
     dashboard: 'Panel',
     logout: 'Cerrar sesión',
     toggleMenu: 'Abrir menú',
+    openMenu: 'Abrir menú',
+    closeMenu: 'Cerrar menú',
 
     heroTitle1: 'Tu recepcionista con IA, agenda en cualquier idioma,',
     heroTitle2: '',
@@ -915,6 +921,8 @@ export const homepageByLocale = {
     dashboard: 'لوحة التحكم',
     logout: 'تسجيل الخروج',
     toggleMenu: 'قائمة التنقل',
+    openMenu: 'فتح القائمة',
+    closeMenu: 'إغلاق القائمة',
 
     heroTitle1: 'موظف الاستقبال الذكي لديك، يحجز بأي لغة،',
     heroTitle2: '',
