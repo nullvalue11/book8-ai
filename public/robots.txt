@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://book8-ai.vercel.app/sitemap.xml
