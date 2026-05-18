@@ -30,7 +30,7 @@ export const metadata = {
         url: '/brand/book8_og_social.png',
         width: 1200,
         height: 630,
-        alt: 'Book8 — Never miss a call. In any language.',
+        alt: 'Book8 AI — Answers calls in 70+ languages. Books appointments 24/7.',
       },
     ],
     type: 'website',
