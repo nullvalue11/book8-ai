@@ -70,6 +70,7 @@ function wizardFallbackForCountry(country) {
   return { table: WIZARD_FALLBACK_USD_MINOR, currency: 'usd' }
 }
 import LanguageSelector from '@/components/LanguageSelector'
+import HeaderLogo from '@/components/HeaderLogo'
 import { trFormat } from '@/lib/translations'
 import { buildGoogleConnectUrl } from '@/lib/oauth-connect-url'
 import {
@@ -338,6 +339,9 @@ function SetupAuthScreen({
         </div>
         <div className="space-y-6">
           <div className="text-center space-y-2">
+            <div className="flex justify-center pb-1">
+              <HeaderLogo variant="light" className="opacity-90 hover:opacity-100 transition" />
+            </div>
             <h1 className="text-3xl font-bold text-white px-1">
               {hasHandoff ? (
                 a.almostThereTitle
