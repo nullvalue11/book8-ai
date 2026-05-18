@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Header from '@/components/Header'
+import CustomerLogos from '@/components/CustomerLogos'
 import JsonLd from '@/components/JsonLd'
 import { buildBreadcrumbSchema } from '@/lib/schemas'
 import { Button } from '@/components/ui/button'
@@ -41,7 +42,8 @@ function IndustryFooter() {
  *   features: Array<{ title: string, body: string }>,
  *   faq: Array<{ question: string, answer: string }>,
  *   ctaLabel: string,
- *   testimonialMessage: string
+ *   testimonialMessage: string,
+ *   customerLogosHeading?: string
  * }} props
  */
 export default function IndustryPageTemplate({
@@ -52,7 +54,8 @@ export default function IndustryPageTemplate({
   features,
   faq,
   ctaLabel,
-  testimonialMessage
+  testimonialMessage,
+  customerLogosHeading
 }) {
   const breadcrumbLabel =
     (meta?.title && String(meta.title).split('|')[0].trim()) || hero.headline
@@ -101,6 +104,13 @@ export default function IndustryPageTemplate({
             </div>
           </div>
         </section>
+
+        {customerLogosHeading ? (
+          <CustomerLogos
+            heading={customerLogosHeading}
+            className="border-t border-slate-200/80 dark:border-[rgba(139,92,246,0.08)] border-b-0"
+          />
+        ) : null}
 
         {/* Pain points */}
         <section className="py-16 md:py-20 px-4 border-t border-slate-200/80 dark:border-[rgba(139,92,246,0.08)]">

@@ -22,8 +22,6 @@ const GREETINGS = [
 ]
 
 const STATS = [
-  { n: '100%', l: 'Calls answered' },
-  { n: '100%', l: 'Bookings handled' },
   { n: '24/7', l: 'Always on' },
   { n: '70+', l: 'Languages' }
 ]
@@ -229,7 +227,7 @@ export default function GlobalCoverageSection() {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
           {STATS.map((s, i) => (
             <div key={i} className="rounded-lg border border-slate-200 px-4 py-3.5 dark:border-white/10">
               <div className="text-2xl font-medium leading-none text-slate-900 dark:text-white">{s.n}</div>

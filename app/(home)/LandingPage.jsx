@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import PricingPlanFeatureList from '@/components/PricingPlanFeatureList'
 import AudienceSearchWidget from '@/components/AudienceSearchWidget'
 import GlobalCoverageSection from '@/components/GlobalCoverageSection'
+import CustomerLogos from '@/components/CustomerLogos'
 import { cn } from '@/lib/utils'
 import HeaderLogo from '@/components/HeaderLogo'
 import LanguageSelector from '@/components/LanguageSelector'
@@ -900,6 +901,8 @@ export default function LandingPage() {
       </section>
 
       <GlobalCoverageSection />
+
+      <CustomerLogos heading={h.customerLogosHeading} />
 
       {/* Social proof */}
       <motion.section

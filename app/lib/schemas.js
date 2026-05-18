@@ -32,7 +32,14 @@ export const organizationSchema = stripUndefined({
   address: {
     '@type': 'PostalAddress',
     addressCountry: 'CA'
-  }
+  },
+  subjectOf: [
+    {
+      '@type': 'Organization',
+      name: 'Diamond Car Wash',
+      url: `${SITE_URL}/b/diamond-car-wash-rideau`
+    }
+  ]
 })
 
 export const websiteSchema = stripUndefined({

@@ -159,6 +159,7 @@ export const salonsCopy = {
 
 export const carWashCopy = {
   vertical: 'car-wash',
+  customerLogosHeading: 'Used by car washes like:',
   meta: {
     title: 'AI Receptionist for Car Washes | Book8 — Book Every Wash',
     description:
