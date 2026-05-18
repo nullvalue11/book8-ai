@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Header from "@/components/Header";
+import CurrencyToggle from "@/components/CurrencyToggle";
 import PricingPlanFeatureList from "@/components/PricingPlanFeatureList";
-import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from "@/lib/setup-entry";
+import { setupUrlWithNewBusiness } from "@/lib/setup-entry";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Zap,
@@ -24,62 +25,26 @@ import {
 import { toast } from "sonner";
 import { useBookingLanguage } from "@/hooks/useBookingLanguage";
 import { getHomepagePricingDisplay, trFormat } from "@/lib/translations";
-import { formatPrice } from "@/lib/currencyFormat";
-import {
-  countryFromBrowserLocale,
-  normalizePlansPricingPayload
-} from "@/lib/plansPricingPublic";
-import { guessCountryFromTimeZone } from "@/lib/region-data";
+import { normalizePlansPricingPayload } from "@/lib/plansPricingPublic";
 import { defaultChannelsForCountry } from "@/lib/businessChannels";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
+  displayCurrencyToCountry,
+  getDisplayPlanPrice,
+  getUsagePerMinuteRate,
+  normalizeDisplayCurrency
+} from "@/lib/pricing-display-currencies";
 
-const PRICING_COUNTRY_SESSION_KEY = "book8_pricing_country_preference";
-
-/** USD minor units — fallback while pricing loads or if core is unavailable (matches previous marketing copy). */
-const FALLBACK_USD_MINOR = { starter: 2900, growth: 9900, enterprise: 29900 };
-/** CAD minor units — same nominal numbers, displayed with CA$ prefix when no live CAD pricing yet. */
-const FALLBACK_CAD_MINOR = { starter: 2900, growth: 9900, enterprise: 29900 };
-
-/** Map a country code to its default fallback currency (used while live pricing loads). */
-function fallbackCurrencyForCountry(country) {
-  const cc = String(country || "").toUpperCase();
-  if (cc === "CA") return "cad";
-  if (cc === "AE") return "aed";
-  return "usd";
-}
-
-/** Pick the default fallback minor-unit table for a given country. */
-function fallbackMinorTableForCountry(country) {
-  const cc = String(country || "").toUpperCase();
-  if (cc === "CA") return FALLBACK_CAD_MINOR;
-  return FALLBACK_USD_MINOR;
-}
-
-/** Default pricing region: locale first, timezone second, otherwise US. */
-function defaultPricingCountry() {
-  const fromLocale = countryFromBrowserLocale();
-  if (fromLocale && fromLocale !== "US") return fromLocale;
-  if (typeof Intl !== "undefined") {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const fromTz = guessCountryFromTimeZone(tz);
-      if (fromTz) return fromTz;
-    } catch {
-      /* ignore */
-    }
-  }
-  return fromLocale || "US";
+/** Resolve display currency from URL (`?currency=`) with legacy `?country=CA` support. */
+function displayCurrencyFromSearchParams(searchParams) {
+  const cur = searchParams.get("currency");
+  if (cur) return normalizeDisplayCurrency(cur);
+  const country = searchParams.get("country");
+  if (country && String(country).trim().toUpperCase() === "CA") return "CAD";
+  return "USD";
 }
 
 function PricingContent() {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const { language, t } = useBookingLanguage();
@@ -123,9 +88,15 @@ function PricingContent() {
     [h]
   );
 
-  const [pricingCountry, setPricingCountry] = useState("US");
+  const displayCurrency = useMemo(
+    () => displayCurrencyFromSearchParams(searchParams),
+    [searchParams]
+  );
+  const pricingCountry = useMemo(
+    () => displayCurrencyToCountry(displayCurrency),
+    [displayCurrency]
+  );
   const [livePricing, setLivePricing] = useState(null);
-  const [pricingLoading, setPricingLoading] = useState(true);
 
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState({});
@@ -203,27 +174,7 @@ function PricingContent() {
   }, [token]);
 
   useEffect(() => {
-    const qp = searchParams.get("country");
-    if (qp && /^[A-Z]{2}$/i.test(qp.trim())) {
-      const upper = qp.trim().toUpperCase();
-      setPricingCountry(upper);
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem(PRICING_COUNTRY_SESSION_KEY, upper);
-      }
-      return;
-    }
-    if (typeof window === "undefined") return;
-    const stored = sessionStorage.getItem(PRICING_COUNTRY_SESSION_KEY);
-    if (stored && /^[A-Z]{2}$/i.test(stored)) {
-      setPricingCountry(stored.toUpperCase());
-      return;
-    }
-    setPricingCountry(defaultPricingCountry());
-  }, [searchParams]);
-
-  useEffect(() => {
     let cancelled = false;
-    setPricingLoading(true);
     const url = `/api/plans/pricing?country=${encodeURIComponent(pricingCountry)}`;
     fetch(url, { cache: "no-store" })
       .then((r) => r.json().catch(() => null))
@@ -234,9 +185,6 @@ function PricingContent() {
       })
       .catch(() => {
         if (!cancelled) setLivePricing(null);
-      })
-      .finally(() => {
-        if (!cancelled) setPricingLoading(false);
       });
     return () => {
       cancelled = true;
@@ -247,24 +195,6 @@ function PricingContent() {
     const ch = livePricing?.channels || defaultChannelsForCountry(pricingCountry);
     return ch;
   }, [livePricing?.channels, pricingCountry]);
-
-  const setCountryAndPersist = useCallback(
-    (cc) => {
-      const upper = String(cc || "US")
-        .trim()
-        .toUpperCase()
-        .slice(0, 2);
-      if (!/^[A-Z]{2}$/.test(upper)) return;
-      setPricingCountry(upper);
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem(PRICING_COUNTRY_SESSION_KEY, upper);
-      }
-      const p = new URLSearchParams(searchParams.toString());
-      p.set("country", upper);
-      router.replace(`${pathname}?${p.toString()}`, { scroll: false });
-    },
-    [pathname, router, searchParams]
-  );
 
   useEffect(() => {
     if (searchParams.get("paywall") === "1") {
@@ -286,15 +216,21 @@ function PricingContent() {
     if (businessId) params.set("businessId", businessId);
     const feat = searchParams.get("feature");
     if (feat) params.set("feature", feat);
+    params.set("currency", displayCurrency);
     const q = params.toString();
     return `/pricing${q ? `?${q}` : ""}`;
-  }, [searchParams, businessId]);
+  }, [searchParams, businessId, displayCurrency]);
 
   async function handleSelectPlan(planId) {
     const authToken = token || (typeof window !== "undefined" ? localStorage.getItem("book8_token") : null);
     if (!authToken) {
-      const returnUrl = buildReturnUrl();
-      router.push(returnUrl ? `/setup?redirect=${encodeURIComponent(returnUrl)}` : "/setup");
+      router.push(
+        setupUrlWithNewBusiness({
+          plan: planId,
+          currency: displayCurrency,
+          redirect: buildReturnUrl()
+        })
+      );
       return;
     }
 
@@ -361,6 +297,18 @@ function PricingContent() {
 
   const isLoggedIn = !!token || (status === "authenticated" && session?.user);
 
+  const setupHrefForPlan = useCallback(
+    (planId) =>
+      setupUrlWithNewBusiness({
+        plan: planId,
+        currency: displayCurrency,
+        redirect: buildReturnUrl()
+      }),
+    [displayCurrency, buildReturnUrl]
+  );
+
+  const usageRate = getUsagePerMinuteRate(displayCurrency);
+
   return (
     <main id="main-content" className="min-h-screen bg-background text-foreground" dir={isRtl ? "rtl" : "ltr"} lang={language}>
       <Header />
@@ -400,42 +348,18 @@ function PricingContent() {
 
       <section className="pb-24 px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 sm:gap-3 text-sm text-muted-foreground mb-8 px-2 text-center">
-            <span>
-              {pricingLoading
-                ? "Loading prices…"
-                : `Showing prices in ${(
-                    livePricing?.starter ||
-                    livePricing?.growth ||
-                    livePricing?.enterprise
-                  )?.currency?.toUpperCase() || fallbackCurrencyForCountry(pricingCountry).toUpperCase()}`}
-            </span>
-            <Select value={pricingCountry} onValueChange={setCountryAndPersist}>
-              <SelectTrigger
-                className="w-[min(100%,220px)] h-9 border-border bg-card text-foreground"
-                aria-label="Change billing region / currency"
-              >
-                <SelectValue placeholder="Region" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="US">United States (USD)</SelectItem>
-                <SelectItem value="CA">Canada (CAD)</SelectItem>
-                <SelectItem value="AE">United Arab Emirates (AED)</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col items-center justify-center gap-2 mb-10 px-2 text-center">
+            <CurrencyToggle currentCurrency={displayCurrency} />
+            <p className="text-xs text-muted-foreground max-w-md leading-relaxed">
+              {trFormat(h.pricingCurrencyShown, { currency: displayCurrency })}
+              {displayCurrency === "USD" && h.pricingCurrencyCadNote ? ` ${h.pricingCurrencyCadNote}` : ""}
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {plans.map((plan) => {
               const Icon = plan.icon;
               const override = getHomepagePricingDisplay(h, plan.id);
-              const tier = livePricing?.[plan.id];
-              const fallbackCurrency = fallbackCurrencyForCountry(pricingCountry);
-              const fallbackMinor = fallbackMinorTableForCountry(pricingCountry)[plan.id];
-              const priceLabel = tier
-                ? formatPrice(tier.amount, tier.currency)
-                : formatPrice(fallbackMinor, fallbackCurrency);
-              const curUpper = (tier?.currency || fallbackCurrency).toUpperCase();
-              const pricePulse = pricingLoading && !tier;
+              const planPrice = getDisplayPlanPrice(plan.id, displayCurrency);
               return (
                 <Card
                   key={plan.id}
@@ -487,15 +411,13 @@ function PricingContent() {
                   <CardContent className="space-y-6">
                     <div>
                       <div className="flex items-baseline gap-1 flex-wrap">
-                        <span
-                          className={`text-4xl font-bold text-foreground tabular-nums ${pricePulse ? "animate-pulse opacity-80" : ""}`}
-                        >
-                          {priceLabel}
+                        <span className="text-4xl font-bold text-foreground tabular-nums">
+                          {planPrice.symbol}
+                          {planPrice.amount}
                         </span>
                         <span className="text-muted-foreground">
-                          {plan.trial && plan.priceLine
-                            ? plan.priceLine
-                            : `${curUpper} · ${plan.period}`}
+                          {planPrice.code}
+                          {plan.trial && plan.priceLine ? ` ${plan.priceLine}` : ` · ${plan.period}`}
                         </span>
                       </div>
                     </div>
@@ -524,10 +446,7 @@ function PricingContent() {
                         <ArrowRight className="w-4 h-4 inline rtl:rotate-180" />
                       </Button>
                     ) : (
-                      <Link
-                        href={isLoggedIn ? setupUrlWithNewBusiness({ plan: plan.id }) : SETUP_NEW_BUSINESS_PATH}
-                        className="block"
-                      >
+                      <Link href={setupHrefForPlan(plan.id)} className="block">
                         <Button
                           className={`w-full ${
                             plan.popular
@@ -564,7 +483,11 @@ function PricingContent() {
             })}
           </div>
           <p className="mt-10 text-center text-xs text-[#94A3B8] dark:text-muted-foreground max-w-xl mx-auto leading-relaxed px-2">
-            {h.pricingCallFootnote}
+            {trFormat(h.pricingUsageFootnoteTemplate, {
+              symbol: usageRate.symbol,
+              rate: usageRate.perMinute,
+              code: usageRate.code
+            })}
           </p>
         </div>
       </section>

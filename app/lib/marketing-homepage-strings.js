@@ -141,6 +141,10 @@ export const homepageByLocale = {
     landingGetStarted: 'Get started',
     growthTrialHeadline: 'Start your 14-day free trial',
     pricingCallFootnote: 'AI phone agent minutes are metered at $0.10 CAD/min. Usage is tracked automatically.',
+    pricingUsageFootnoteTemplate:
+      'AI phone agent minutes are metered at {symbol}{rate} {code}/min. Usage is tracked automatically.',
+    pricingCurrencyShown: 'Prices shown in {currency}.',
+    pricingCurrencyCadNote: 'Canadian accounts may be billed in CAD.',
     landingStarterPlanNote: 'Billed monthly after signup. No free trial on Starter.',
     landingEnterprisePlanNote: 'Custom billing, contracts, and annual options — contact us for details.',
     footerCopyright: '© {year} Book8. All rights reserved.',
@@ -445,6 +449,10 @@ export const homepageByLocale = {
     growthTrialHeadline: 'Commencez votre essai gratuit de 14 jours',
     pricingCallFootnote:
       'Les minutes d’agent téléphonique IA sont facturées à 0,10 $ CAD/min. La consommation est suivie automatiquement.',
+    pricingUsageFootnoteTemplate:
+      'Les minutes d’agent téléphonique IA sont facturées à {symbol}{rate} {code}/min. La consommation est suivie automatiquement.',
+    pricingCurrencyShown: 'Prix affichés en {currency}.',
+    pricingCurrencyCadNote: 'Les comptes canadiens peuvent être facturés en CAD.',
     landingStarterPlanNote: 'Facturation mensuelle après inscription. Pas d’essai gratuit sur Starter.',
     landingEnterprisePlanNote: 'Facturation personnalisée et options annuelles — contactez-nous.',
     footerCopyright: '© {year} Book8. Tous droits réservés.',
@@ -744,6 +752,10 @@ export const homepageByLocale = {
     growthTrialHeadline: 'Comienza tu prueba gratis de 14 días',
     pricingCallFootnote:
       'Los minutos del agente telefónico IA se facturan a 0,10 CAD/min. El uso se contabiliza automáticamente.',
+    pricingUsageFootnoteTemplate:
+      'Los minutos del agente telefónico IA se facturan a {symbol}{rate} {code}/min. El uso se contabiliza automáticamente.',
+    pricingCurrencyShown: 'Precios mostrados en {currency}.',
+    pricingCurrencyCadNote: 'Las cuentas canadienses pueden facturarse en CAD.',
     landingStarterPlanNote: 'Facturación mensual tras el registro. Sin prueba gratis en Starter.',
     landingEnterprisePlanNote: 'Facturación y contratos a medida — contáctenos.',
     footerCopyright: '© {year} Book8. Todos los derechos reservados.',
@@ -1038,6 +1050,10 @@ export const homepageByLocale = {
     growthTrialHeadline: 'ابدأ تجربتك المجانية لمدة 14 يومًا',
     pricingCallFootnote:
       'دقائق وكيل الهاتف الذكي تُقاس بـ 0.10 دولار كندي/الدقيقة. يتم تتبع الاستخدام تلقائيًا.',
+    pricingUsageFootnoteTemplate:
+      'دقائق وكيل الهاتف الذكي تُقاس بـ {symbol}{rate} {code}/الدقيقة. يتم تتبع الاستخدام تلقائيًا.',
+    pricingCurrencyShown: 'الأسعار معروضة بـ {currency}.',
+    pricingCurrencyCadNote: 'قد تُفوتر الحسابات الكندية بالدولار الكندي.',
     landingStarterPlanNote: 'فوترة شهرية بعد التسجيل. لا تجربة مجانية على Starter.',
     landingEnterprisePlanNote: 'فوترة وعقود مخصصة — تواصل معنا.',
     footerCopyright: '© {year} Book8. جميع الحقوق محفوظة.',
