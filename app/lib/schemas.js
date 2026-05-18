@@ -23,7 +23,11 @@ export const organizationSchema = stripUndefined({
   url: SITE_URL,
   logo: `${SITE_URL}/brand/book8_ai_social_icon.png`,
   description: ORG_DESCRIPTION,
-  sameAs: ['https://www.instagram.com/book8.ai/', 'https://www.tiktok.com/@book8.ai'],
+  sameAs: [
+    'https://www.instagram.com/book8.ai/',
+    'https://www.tiktok.com/@book8.ai',
+    'https://www.linkedin.com/company/book8-ai/'
+  ],
   foundingDate: '2025',
   address: {
     '@type': 'PostalAddress',

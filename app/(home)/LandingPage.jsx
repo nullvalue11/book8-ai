@@ -1342,14 +1342,6 @@ export default function LandingPage() {
                 </a>
               </li>
               <li>
-                <a
-                  href="#pricing"
-                  className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
-                >
-                  {h.navPricing}
-                </a>
-              </li>
-              <li>
                 <Link
                   href="/pricing"
                   className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
