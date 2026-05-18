@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Environment Configuration with Fail-Fast Validation
  * 
  * This module validates all required environment variables at boot time
@@ -172,7 +172,7 @@ function loadConfig() {
     
     // Email Service (Resend) — required at runtime; optional during `next build` (see isNextJsBuildPhase).
     const RESEND_API_KEY = getEnvVar('RESEND_API_KEY', !isNextJsBuildPhase())
-    const EMAIL_FROM = getEnvVar('EMAIL_FROM', false, 'Book8-AI <onboarding@resend.dev>')
+    const EMAIL_FROM = getEnvVar('EMAIL_FROM', false, 'Book8 AI <onboarding@resend.dev>')
     const EMAIL_REPLY_TO = getEnvVar('EMAIL_REPLY_TO', false, 'support@book8.io')
     /** BOO-109A: From address for welcome email. Default uses send.book8.io — that address/domain must be verified in Resend before production sends succeed. */
     const WELCOME_EMAIL_FROM = getEnvVar(

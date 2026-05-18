@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
 import { buildGoogleEventFromBooking } from '@/lib/googleSync'
@@ -278,7 +278,7 @@ async function handleRemindersTask(db, runId, logsEnabled, request) {
             const idempotencyKey = `reminders/${booking.id}/${reminder.id}`
             
             const sendOut = await sendResendEmail(resend, {
-              from: 'Book8-AI <reminders@book8.io>',
+              from: 'Book8 AI <reminders@book8.io>',
               to: recipientEmail,
               subject,
               html: emailHtml,

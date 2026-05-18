@@ -1,4 +1,4 @@
-/** @typedef {typeof translations.en} BookingTranslations */
+﻿/** @typedef {typeof translations.en} BookingTranslations */
 
 import { homepageByLocale } from './marketing-homepage-strings'
 
@@ -216,7 +216,7 @@ const translations = {
     placeholderEmail: 'your@email.com',
     auth: {
       signInTitle: 'Sign in',
-      getStartedTitle: 'Get Started with Book8-AI',
+      getStartedTitle: 'Get Started with Book8 AI',
       signInSubtitle: 'Use your account to continue to your dashboard or setup.',
       getStartedSubtitle: 'Create your AI receptionist in under 5 minutes.',
       continueGoogle: 'Continue with Google',
@@ -660,7 +660,7 @@ const translations = {
     placeholderEmail: 'vous@exemple.com',
     auth: {
       signInTitle: 'Connexion',
-      getStartedTitle: 'Commencer avec Book8-AI',
+      getStartedTitle: 'Commencer avec Book8 AI',
       signInSubtitle: 'Utilisez votre compte pour accéder au tableau de bord ou à la configuration.',
       getStartedSubtitle: 'Créez votre réceptionniste IA en moins de 5 minutes.',
       continueGoogle: 'Continuer avec Google',
@@ -1107,7 +1107,7 @@ const translations = {
     placeholderEmail: 'correo@ejemplo.com',
     auth: {
       signInTitle: 'Iniciar sesión',
-      getStartedTitle: 'Comenzar con Book8-AI',
+      getStartedTitle: 'Comenzar con Book8 AI',
       signInSubtitle: 'Use su cuenta para ir al panel o a la configuración.',
       getStartedSubtitle: 'Cree su recepcionista IA en menos de 5 minutos.',
       continueGoogle: 'Continuar con Google',
@@ -1550,7 +1550,7 @@ const translations = {
     placeholderEmail: 'بريدك@example.com',
     auth: {
       signInTitle: 'تسجيل الدخول',
-      getStartedTitle: 'ابدأ مع Book8-AI',
+      getStartedTitle: 'ابدأ مع Book8 AI',
       signInSubtitle: 'استخدم حسابك للمتابعة إلى لوحة التحكم أو الإعداد.',
       getStartedSubtitle: 'أنشئ موظف الاستقبال الذكي في أقل من 5 دقائق.',
       continueGoogle: 'المتابعة مع Google',

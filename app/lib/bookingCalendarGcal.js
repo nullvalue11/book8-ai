@@ -1,11 +1,11 @@
-/**
- * BOO-113 — Core-api bookings use `calendarEventId`; legacy book8-ai rows may use `googleEventId`.
+﻿/**
+ * BOO-113 — Core-api bookings use `calendarEventId`; legacy Book8 AI rows may use `googleEventId`.
  * Owner OAuth is on `users` linked via `business.ownerUserId`, not `booking.userId`.
  */
 
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from './schemas/business.js'
 
-/** Prefer core-api field; fall back to legacy book8-ai field. */
+/** Prefer core-api field; fall back to legacy Book8 AI field. */
 export function getBookingCalendarEventId(booking) {
   if (!booking || typeof booking !== 'object') return null
   const a = booking.calendarEventId

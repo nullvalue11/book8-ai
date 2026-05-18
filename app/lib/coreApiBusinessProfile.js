@@ -1,4 +1,4 @@
-/**
+﻿/**
  * book8-core-api business profile (owner PATCH + read for dashboard).
  * PATCH /api/businesses/:businessId/profile requires x-book8-user-email.
  */
@@ -35,7 +35,7 @@ export async function getCoreBusinessRecord(businessId) {
 /**
  * @param {string} businessId
  * @param {string} userEmail owner session email → x-book8-user-email
- * @param {Record<string, unknown>} mergedLocalProfile normalized book8-ai businessProfile fields
+ * @param {Record<string, unknown>} mergedLocalProfile normalized Book8 AI businessProfile fields
  */
 export async function patchCoreBusinessProfile(businessId, userEmail, mergedLocalProfile) {
   const baseUrl = getCoreApiBaseUrl()

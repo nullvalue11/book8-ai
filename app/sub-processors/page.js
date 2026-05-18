@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
@@ -49,7 +49,7 @@ const SUB_PROCESSORS = [
   },
   {
     name: "Vercel",
-    purpose: "Application hosting (book8-ai dashboard)",
+    purpose: "Application hosting (Book8 AI dashboard)",
     data: "Application logs, request metadata",
     location: "USA (Edge network global)",
   },

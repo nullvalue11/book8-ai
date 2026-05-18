@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Public booking page profile (stored on business.businessProfile in Mongo).
  */
 
@@ -236,7 +236,7 @@ export function sanitizeBusinessProfileForPublic(profile) {
 }
 
 /**
- * Nested address on book8-core-api `businessProfile` → flat fields used in book8-ai UI.
+ * Nested address on book8-core-api `businessProfile` → flat fields used in Book8 AI UI.
  * @param {Record<string, unknown> | null | undefined} coreBp
  * @returns {Partial<BusinessProfileInput> | null}
  */

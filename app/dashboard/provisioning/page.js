@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
@@ -240,7 +240,7 @@ function ProvisioningContent() {
                 <CardTitle className="text-base text-violet-600 dark:text-violet-400">
                   Your account
                 </CardTitle>
-                <CardDescription>Settings and records stored in Book8-AI</CardDescription>
+                <CardDescription>Settings and records stored in Book8 AI</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {status.dashboardChecks &&

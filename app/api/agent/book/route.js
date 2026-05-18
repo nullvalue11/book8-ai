@@ -1,4 +1,4 @@
-/**
+﻿/**
  * POST /api/agent/book
  * 
  * Purpose:
@@ -358,7 +358,7 @@ export async function POST(request) {
         oauth.setCredentials({ refresh_token: owner.google.refreshToken })
         const calendar = google.calendar({ version: 'v3', auth: oauth })
 
-        const baseUrl = env.BASE_URL || 'https://book8-ai.vercel.app'
+        const baseUrl = env.BASE_URL || 'https://Book8 AI.vercel.app'
         const selectedCalendarIds = settings.selectedCalendarIds || ['primary']
         const targetCalendarId = selectedCalendarIds[0] || 'primary'
 
@@ -417,7 +417,7 @@ export async function POST(request) {
       if (!env.RESEND_API_KEY) {
         console.warn('[agent:book] RESEND_API_KEY not set, skipping confirmation email')
       } else {
-        const baseUrl = env.BASE_URL || 'https://book8-ai.vercel.app'
+        const baseUrl = env.BASE_URL || 'https://Book8 AI.vercel.app'
         const { Resend } = await import('resend')
         const resend = new Resend(env.RESEND_API_KEY)
 
@@ -438,7 +438,7 @@ export async function POST(request) {
           start: startTime.toISOString(),
           end: endTime.toISOString(),
           summary: bookingTitle,
-          description: `${notes || ''}\n\n---\nSource: Book8-AI Phone Agent\nBooking ID: ${bookingId}`,
+          description: `${notes || ''}\n\n---\nSource: Book8 AI Phone Agent\nBooking ID: ${bookingId}`,
           organizer: 'noreply@book8.io',
           attendees: [{ email: guestEmail, name: guestName }],
           method: 'REQUEST'
@@ -452,7 +452,7 @@ export async function POST(request) {
         })
 
         const emailOut = await sendResendEmail(resend, {
-          from: 'Book8-AI <bookings@book8.io>',
+          from: 'Book8 AI <bookings@book8.io>',
           to: guestEmail,
           cc: owner.email,
           subject: emailSubject,

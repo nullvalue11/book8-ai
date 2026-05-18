@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcryptjs'
@@ -75,7 +75,7 @@ export async function POST(req) {
     let eventId = null
     const calendarId = (Array.isArray(calIds) && calIds.length ? calIds[0] : 'primary')
     try {
-      const evt = { summary: `Book8-AI – ${booking.title}`, description: `Guest: ${guest.name || ''} (${guest.email})\nNotes: ${guest.notes || ''}`,
+      const evt = { summary: `Book8 AI – ${booking.title}`, description: `Guest: ${guest.name || ''} (${guest.email})\nNotes: ${guest.notes || ''}`,
         start: { dateTime: booking.startTime, timeZone: booking.timeZone }, end: { dateTime: booking.endTime, timeZone: booking.timeZone }, attendees: [{ email: user.email }, { email: guest.email }] }
       const ins = await cg.cal.events.insert({ calendarId, requestBody: evt })
       eventId = ins?.data?.id || null
@@ -100,7 +100,7 @@ export async function POST(req) {
         to: guest.email,
         cc: user.email,
         reply_to: env.EMAIL_REPLY_TO,
-        subject: 'Your Book8-AI meeting is confirmed',
+        subject: 'Your Book8 AI meeting is confirmed',
         html: `<p>Hi ${guest.name || ''},</p><p>Your meeting is confirmed.</p><p>${new Date(booking.startTime).toLocaleString()} – ${new Date(booking.endTime).toLocaleString()} (${booking.timeZone})</p><p><a href="${cancelLink}">Cancel meeting</a> (reschedule coming soon)</p>`,
         attachments: [{ filename: 'invite.ics', content: Buffer.from(ics).toString('base64') }]
       })

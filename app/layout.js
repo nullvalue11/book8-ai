@@ -1,4 +1,4 @@
-import "./globals.css";
+﻿import "./globals.css";
 import { Providers } from "./components/Providers";
 import CookieConsentBanner from "./components/CookieConsentBanner";
 
@@ -22,7 +22,7 @@ export const metadata = {
     description:
       'AI phone receptionist that answers 24/7, books appointments, and speaks 70+ languages. Stop losing customers to voicemail.',
     url: baseUrl,
-    siteName: 'Book8-AI',
+    siteName: 'Book8 AI',
     images: [
       {
         url: '/brand/book8_ai_social_icon.png',

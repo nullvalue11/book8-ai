@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CANCEL BOOKING ROUTES
  *
  * KNOWN ISSUE (QA-011): Two cancel token systems exist:
@@ -229,7 +229,7 @@ export async function POST(request) {
 
         // Send to guest
         const guestOut = await sendResendEmail(resend, {
-          from: 'Book8-AI <bookings@book8.io>',
+          from: 'Book8 AI <bookings@book8.io>',
           to: booking.guestEmail,
           subject: `Meeting canceled: ${booking.title}`,
           html: `
@@ -265,7 +265,7 @@ export async function POST(request) {
           try {
             const hostEmailHtml = await renderHostCancel(booking, user, booking.guestTimezone)
             const hostOut = await sendResendEmail(resend, {
-              from: 'Book8-AI <notifications@book8.io>',
+              from: 'Book8 AI <notifications@book8.io>',
               to: user.email,
               subject: `Booking canceled: ${booking.customerName || 'Guest'} – ${booking.title}`,
               html: hostEmailHtml
@@ -322,7 +322,7 @@ export async function GET(request) {
     if (!booking) return new Response('<p>Booking not found</p>', { status: 404, headers: { 'Content-Type': 'text/html' } })
 
     // Delete Google Calendar event: prefer core-api fields + business owner OAuth (BOO-113).
-    // Legacy: google_events map (book8-ai-only bookings with user-scoped map rows).
+    // Legacy: google_events map (Book8 AI-only bookings with user-scoped map rows).
     try {
       const eventIdCore = getBookingCalendarEventId(booking)
       if (eventIdCore && booking.businessId) {
@@ -397,7 +397,7 @@ export async function GET(request) {
         try {
           const hostEmailHtml = await renderHostCancel(booking, user, booking.guestTimezone)
           const hostOut = await sendResendEmail(resend, {
-            from: 'Book8-AI <notifications@book8.io>',
+            from: 'Book8 AI <notifications@book8.io>',
             to: user.email,
             subject: `Booking canceled: ${booking.customerName || 'Guest'} – ${booking.title}`,
             html: hostEmailHtml

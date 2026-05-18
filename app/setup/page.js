@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react'
 import Link from 'next/link'
@@ -339,7 +339,16 @@ function SetupAuthScreen({
         <div className="space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold text-white px-1">
-              {hasHandoff ? a.almostThereTitle : initialLoginMode ? a.signInTitle : a.getStartedTitle}
+              {hasHandoff ? (
+                a.almostThereTitle
+              ) : initialLoginMode ? (
+                a.signInTitle
+              ) : (
+                <>
+                  {a.getStartedTitle.replace(/\s*Book8 AI\s*$/, '').trimEnd()}{' '}
+                  <span className="whitespace-nowrap">Book8 AI</span>
+                </>
+              )}
             </h1>
             <p className="text-[#94A3B8] text-sm">
               {hasHandoff
@@ -2602,7 +2611,7 @@ function WizardContent() {
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">Welcome to Book8-AI!</h1>
+              <h1 className="text-2xl font-bold text-white">Welcome to Book8 AI!</h1>
               <p className="text-[#94A3B8] mt-1">
                 {setupVoicePrimary
                   ? "Let's set up your AI receptionist in under 5 minutes."
@@ -2749,7 +2758,7 @@ function WizardContent() {
                   <div>
                     <p className={cn(WIZARD_LABEL, '!text-white font-semibold')}>Your public booking page</p>
                     <p className="text-xs !text-[#94A3B8] mt-1">
-                      Optional but recommended — clients see this on your Book8 booking link. This is not your Book8-AI
+                      Optional but recommended — clients see this on your Book8 booking link. This is not your Book8 AI
                       phone number (you&apos;ll set that later).
                     </p>
                   </div>
@@ -2868,7 +2877,7 @@ function WizardContent() {
                       onChange={(e) => updateWizard({ profileBusinessPhone: e.target.value })}
                     />
                     <p className="text-xs !text-[#64748B] mt-1">
-                      Your existing business line — not the Book8-AI number from phone setup.
+                      Your existing business line — not the Book8 AI number from phone setup.
                     </p>
                   </div>
                   <div>
@@ -3578,7 +3587,7 @@ function WizardContent() {
                           📱
                         </span>
                         <div className="space-y-1 min-w-0">
-                          <p className="font-semibold !text-white">Get a new Book8-AI number</p>
+                          <p className="font-semibold !text-white">Get a new Book8 AI number</p>
                           <p className="text-sm !text-[#94A3B8]">
                             We&apos;ll assign a dedicated phone number just for your business.
                           </p>
@@ -3639,7 +3648,7 @@ function WizardContent() {
                   <div className="rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-4 py-4 flex items-start gap-3">
                     <Loader2 className="w-5 h-5 text-[#8B5CF6] shrink-0 animate-spin mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium !text-white">Getting your Book8-AI number…</p>
+                      <p className="text-sm font-medium !text-white">Getting your Book8 AI number…</p>
                       <p className="text-xs !text-[#94A3B8] mt-1">
                         This usually takes a short time. We check every 15 seconds until your line is ready.
                       </p>
@@ -3669,7 +3678,7 @@ function WizardContent() {
 
                 {phoneStepPhase === 'new-ready' && wizardData.phoneNumber && (
                   <div className="rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/60 p-4 space-y-2">
-                    <p className="text-sm font-medium !text-white">Your Book8-AI number</p>
+                    <p className="text-sm font-medium !text-white">Your Book8 AI number</p>
                     <p className="text-xl font-mono !text-[#8B5CF6]">
                       {formatPhone(wizardData.phoneNumber) || wizardData.phoneNumber}
                     </p>
@@ -3682,7 +3691,7 @@ function WizardContent() {
                 {phoneStepPhase === 'forward-ready' && wizardData.phoneNumber && (
                   <div className="space-y-4 rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/60 p-4">
                     <div>
-                      <p className="text-lg font-semibold !text-white">Forward your calls to Book8-AI</p>
+                      <p className="text-lg font-semibold !text-white">Forward your calls to Book8 AI</p>
                       <p className="text-sm !text-[#94A3B8] mt-2">
                         When customers call your current number, calls can ring through to your AI receptionist once
                         forwarding is set up.
@@ -3853,7 +3862,7 @@ function WizardContent() {
                       </div>
                       <div className="rounded-lg border border-[#1e1e2e] bg-[#0A0A0F]/50 px-3 py-3">
                         <p className="text-xs font-medium uppercase tracking-wide !text-[#64748B]">
-                          Book8-AI number
+                          Book8 AI number
                         </p>
                         <p className="text-lg font-mono !text-[#8B5CF6] mt-1">
                           {wizardData.phoneNumber
@@ -3942,7 +3951,7 @@ function WizardContent() {
                       <>
                         <li>→ Call your existing business number and confirm the AI answers (forwarding must be on)</li>
                         <li>
-                          → Text your Book8-AI number: &quot;Book a cleaning tomorrow at 2pm&quot; — SMS uses your AI line
+                          → Text your Book8 AI number: &quot;Book a cleaning tomorrow at 2pm&quot; — SMS uses your AI line
                         </li>
                         <li>→ Visit your booking page</li>
                       </>

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { buildICS } from '@/lib/ics'
 import { env } from '@/lib/env'
@@ -48,7 +48,7 @@ export async function GET(request) {
 
     const { user: owner } = await resolveHostUserForBooking(database, booking)
     const organizerEmail = owner?.email || 'noreply@book8.io'
-    const organizerName = owner?.scheduling?.handle || 'Book8-AI'
+    const organizerName = owner?.scheduling?.handle || 'Book8 AI'
 
     // Generate ICS file
     const icsContent = buildICS({
@@ -56,7 +56,7 @@ export async function GET(request) {
       start: booking.startTime,
       end: booking.endTime,
       summary: booking.title,
-      description: `${booking.notes || ''}\n\n---\nSource: Book8-AI\nBooking ID: ${bookingId}`,
+      description: `${booking.notes || ''}\n\n---\nSource: Book8 AI\nBooking ID: ${bookingId}`,
       organizer: organizerEmail,
       organizerName: organizerName,
       attendees: [

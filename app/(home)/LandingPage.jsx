@@ -629,6 +629,46 @@ export default function LandingPage() {
                 </>
               )}
             </motion.h1>
+            {h.heroMultilingualSubtitle?.trim() ? (
+              <motion.p
+                variants={reveal}
+                className="mt-4 text-base md:text-lg text-slate-600 dark:text-[#9593A8] max-w-2xl mx-auto leading-relaxed"
+              >
+                {h.heroMultilingualSubtitle}
+              </motion.p>
+            ) : null}
+            {h.heroLangPillMore ? (
+              <motion.div
+                variants={reveal}
+                className="mt-4 mb-2 flex flex-wrap items-center justify-center gap-2 max-w-2xl mx-auto"
+                role="list"
+                aria-label={h.heroLangPillsAria}
+              >
+                {['English', 'العربية', 'Français', 'Español', '中文'].map((label) => (
+                  <span
+                    key={label}
+                    role="listitem"
+                    className={cn(
+                      'text-xs rounded-full border px-3 py-1.5 font-medium',
+                      'border-[rgba(139,92,246,0.22)] bg-[rgba(139,92,246,0.08)] text-[#6D28D9]',
+                      'dark:border-[rgba(167,139,250,0.25)] dark:bg-[rgba(139,92,246,0.12)] dark:text-[#A78BFA]'
+                    )}
+                  >
+                    {label}
+                  </span>
+                ))}
+                <span
+                  role="listitem"
+                  className={cn(
+                    'text-xs rounded-full border px-3 py-1.5 font-medium',
+                    'border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.15)] text-[#6D28D9]',
+                    'dark:border-[rgba(167,139,250,0.35)] dark:bg-[rgba(139,92,246,0.2)] dark:text-[#D4C4FC]'
+                  )}
+                >
+                  {h.heroLangPillMore}
+                </span>
+              </motion.div>
+            ) : null}
             {h.heroSubtitle?.trim() ? (
               <motion.p
                 variants={reveal}
@@ -645,9 +685,6 @@ export default function LandingPage() {
                 {h.heroTrustedCities}
               </motion.p>
             ) : null}
-            <motion.div variants={reveal}>
-              <HeroChannelCallout h={h} />
-            </motion.div>
             <motion.div variants={reveal} className="mt-2 w-full max-w-2xl mx-auto text-left">
               <AudienceSearchWidget className="mt-0 shadow-md" />
             </motion.div>

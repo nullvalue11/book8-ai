@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { COLLECTION_NAME as BUSINESS_COLLECTION } from '@/lib/schemas/business'
 import { findBusinessByPublicHandle } from '@/lib/public-business-lookup'
@@ -530,7 +530,7 @@ export async function POST(request) {
         const baseUrl = env.BASE_URL || 'http://localhost:3000'
         const event = {
           summary: booking.title,
-          description: `${notes || ''}\n\n---\nSource: Book8-AI Public Booking\nGuest: ${email}\nBooking ID: ${bookingId}\n\nManage:\nReschedule: ${baseUrl}/b/${handle}/reschedule?token=${rescheduleToken}\nCancel: ${baseUrl}/api/public/bookings/cancel?token=${cancelToken}`,
+          description: `${notes || ''}\n\n---\nSource: Book8 AI Public Booking\nGuest: ${email}\nBooking ID: ${bookingId}\n\nManage:\nReschedule: ${baseUrl}/b/${handle}/reschedule?token=${rescheduleToken}\nCancel: ${baseUrl}/api/public/bookings/cancel?token=${cancelToken}`,
           start: {
             dateTime: startTime.toISOString(),
             timeZone: owner.scheduling.timeZone || 'UTC'
@@ -590,7 +590,7 @@ export async function POST(request) {
           toHost: owner.email,
           bookingId,
           hasApiKey: !!env.RESEND_API_KEY,
-          from: 'Book8-AI <bookings@book8.io>'
+          from: 'Book8 AI <bookings@book8.io>'
         })
 
         const bookingLinePhone = business
@@ -615,7 +615,7 @@ export async function POST(request) {
           start: startTime.toISOString(),
           end: endTime.toISOString(),
           summary: booking.title,
-          description: `${notes || ''}\n\n---\nSource: Book8-AI Public Booking\nBooking ID: ${bookingId}`,
+          description: `${notes || ''}\n\n---\nSource: Book8 AI Public Booking\nBooking ID: ${bookingId}`,
           organizer: 'noreply@book8.io',
           attendees: [{ email, name }],
           method: 'REQUEST'
@@ -631,7 +631,7 @@ export async function POST(request) {
 
         try {
           const emailResult = await sendResendEmail(resend, {
-            from: 'Book8-AI <bookings@book8.io>',
+            from: 'Book8 AI <bookings@book8.io>',
             to: email,
             cc: owner.email,
             subject: emailSubject,

@@ -1,7 +1,7 @@
-/**
+﻿/**
  * POST /api/internal/gcal-delete-event
  *
- * Internal endpoint for core-api (or book8-ai) to remove a Google Calendar event.
+ * Internal endpoint for core-api (or Book8 AI) to remove a Google Calendar event.
  *
  * Auth: x-book8-internal-secret must match env.CORE_API_INTERNAL_SECRET
  * Body: { businessId, eventId }

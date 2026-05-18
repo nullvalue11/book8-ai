@@ -1,4 +1,4 @@
-export function buildICS({ uid, start, end, summary, description = '', organizer, attendees = [], method = 'REQUEST' }) {
+﻿export function buildICS({ uid, start, end, summary, description = '', organizer, attendees = [], method = 'REQUEST' }) {
   const dtStamp = toICSTimestamp(new Date())
   const dtStart = toICSTimestamp(new Date(start))
   const dtEnd = toICSTimestamp(new Date(end))
@@ -6,7 +6,7 @@ export function buildICS({ uid, start, end, summary, description = '', organizer
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Book8-AI//EN',
+    'PRODID:-//Book8 AI//EN',
     `METHOD:${method}`,
     'BEGIN:VEVENT',
     `UID:${uid}`,

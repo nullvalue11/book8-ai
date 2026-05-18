@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { env, isFeatureEnabled } from '@/lib/env'
 import { sendResendEmail } from '@/lib/resendSend'
 
@@ -40,20 +40,20 @@ export async function GET(request) {
 
     console.log('[debug/test-email] Sending test email', {
       to,
-      from: 'Book8-AI <bookings@book8.io>'
+      from: 'Book8 AI <bookings@book8.io>'
     })
 
     try {
       const result = await sendResendEmail(resend, {
-        from: 'Book8-AI <bookings@book8.io>',
+        from: 'Book8 AI <bookings@book8.io>',
         to,
-        subject: 'Book8-AI Test Email - Production',
+        subject: 'Book8 AI Test Email - Production',
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>✅ Test Email from Book8-AI</h2>
-            <p>This is a production test email from Book8-AI.</p>
+            <h2>✅ Test Email from Book8 AI</h2>
+            <p>This is a production test email from Book8 AI.</p>
             <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
-            <p><strong>From:</strong> Book8-AI &lt;bookings@book8.io&gt;</p>
+            <p><strong>From:</strong> Book8 AI &lt;bookings@book8.io&gt;</p>
             <p><strong>To:</strong> ${to}</p>
             <hr>
             <p style="color: #666; font-size: 12px;">
@@ -90,7 +90,7 @@ export async function GET(request) {
         result: {
           id: result.id,
           to,
-          from: 'Book8-AI <bookings@book8.io>',
+          from: 'Book8 AI <bookings@book8.io>',
           timestamp: new Date().toISOString()
         },
         env: envCheck

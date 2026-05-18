@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
@@ -679,7 +679,7 @@ export default function PublicProfileSettingsPage() {
                       onChange={(e) => patchForm({ phone: e.target.value })}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Your real business line — not your Book8-AI phone number.
+                      Your real business line — not your Book8 AI phone number.
                     </p>
                   </div>
                   <div>

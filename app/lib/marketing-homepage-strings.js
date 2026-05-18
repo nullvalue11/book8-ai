@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Marketing site copy (homepage, nav, pricing chrome) — merged into translations per locale.
  * @typedef {typeof homepageByLocale.en} HomepageStrings
  */
@@ -27,6 +27,9 @@ export const homepageByLocale = {
     heroTitle3: '',
     heroTitle4: '',
     heroSubtitle: '',
+    heroMultilingualSubtitle: 'Answers calls in 70+ languages. No setup.',
+    heroLangPillsAria: 'Languages spoken by Book8 AI',
+    heroLangPillMore: '+ 65 more',
     getStartedFree: 'Start 14-day free trial',
     seeHowItWorks: 'See How It Works',
     seeLiveDemo: 'See a live demo →',
@@ -85,7 +88,7 @@ export const homepageByLocale = {
     featDashDesc: 'See all bookings, calls, and customer data in one place.',
     worldwideLead: 'Available worldwide.',
     worldwideRest:
-      'From barber shops to dental clinics, fitness studios to spas — Book8-AI runs wherever your business is.',
+      'From barber shops to dental clinics, fitness studios to spas — Book8 AI runs wherever your business is.',
 
     yourBookingPage: 'Your Booking Page, Ready to Share',
     everyBusinessGets:
@@ -159,7 +162,7 @@ export const homepageByLocale = {
     faq: [
       {
         q: 'How does the AI voice agent work?',
-        a: 'When a customer calls your Book8-AI number, our AI answers using natural speech. It knows your services, hours, and availability. It has a natural conversation, finds a time that works, and books the appointment.'
+        a: 'When a customer calls your Book8 AI number, our AI answers using natural speech. It knows your services, hours, and availability. It has a natural conversation, finds a time that works, and books the appointment.'
       },
       {
         q: 'Do I need any special equipment?',
@@ -179,7 +182,7 @@ export const homepageByLocale = {
       },
       {
         q: 'What languages does the AI support?',
-        a: "Book8-AI automatically detects your customer's language and responds in that language. We currently support 70+ languages including English, French, Spanish, Arabic, Mandarin, Hindi, Portuguese, German, Japanese, Korean, and many more. No configuration needed — it just works."
+        a: "Book8 AI automatically detects your customer's language and responds in that language. We currently support 70+ languages including English, French, Spanish, Arabic, Mandarin, Hindi, Portuguese, German, Japanese, Korean, and many more. No configuration needed — it just works."
       }
     ],
 
@@ -189,7 +192,7 @@ export const homepageByLocale = {
     pricingSubDefault:
       "Choose the plan that's right for you. All plans include our core scheduling features with metered billing for AI call minutes.",
     subscriptionRequired: 'Subscription Required',
-    choosePlanBelow: 'Choose a plan below to unlock all features and start using Book8-AI.',
+    choosePlanBelow: 'Choose a plan below to unlock all features and start using Book8 AI.',
     needSubCalendar: 'You need a subscription to connect Google Calendar.',
     needSubPhone: 'You need a subscription to use AI phone agent features.',
     needSubServices: 'You need a subscription to add or manage services beyond your plan.',
@@ -282,7 +285,7 @@ export const homepageByLocale = {
       'Every business gets a branded booking experience with services, team members, portfolio photos, and instant confirmations your clients will trust.',
     howItWorksLead:
       'Set up your AI receptionist, get your number, and start booking.',
-    multilingTitle: 'Built for a worldwide waitlist',
+    multilingTitle: 'Your customers speak 70 languages. So does your AI.',
     multilingSubtitle:
       'Language bubbles orbit your brand while guests pick their preferred tongue — no spreadsheets, no manual routing.',
     multilingMore: '+60 more',
@@ -336,6 +339,9 @@ export const homepageByLocale = {
     heroTitle3: '24h/24',
     heroTitle4: '',
     heroSubtitle: '',
+    heroMultilingualSubtitle: 'Répond aux appels en plus de 70 langues. Sans configuration.',
+    heroLangPillsAria: 'Langues parlées par Book8 AI',
+    heroLangPillMore: '+ 65 autres',
     getStartedFree: "Commencer l'essai gratuit 14 jours",
     seeHowItWorks: 'Voir comment ça marche',
     seeLiveDemo: 'Voir une démo en direct →',
@@ -393,7 +399,7 @@ export const homepageByLocale = {
     featDashDesc: 'Toutes les réservations, appels et données clients au même endroit.',
     worldwideLead: 'Disponible dans le monde entier.',
     worldwideRest:
-      "Des barber shops aux cliniques dentaires, des studios de fitness aux spas — Book8-AI vous accompagne partout.",
+      "Des barber shops aux cliniques dentaires, des studios de fitness aux spas — Book8 AI vous accompagne partout.",
 
     yourBookingPage: 'Votre page de réservation, prête à partager',
     everyBusinessGets:
@@ -467,7 +473,7 @@ export const homepageByLocale = {
     faq: [
       {
         q: "Comment fonctionne l'agent vocal IA ?",
-        a: "Quand un client appelle votre numéro Book8-AI, notre IA répond avec une voix naturelle. Elle connaît vos services, horaires et disponibilité. Elle mène la conversation, trouve un créneau et réserve le rendez-vous."
+        a: "Quand un client appelle votre numéro Book8 AI, notre IA répond avec une voix naturelle. Elle connaît vos services, horaires et disponibilité. Elle mène la conversation, trouve un créneau et réserve le rendez-vous."
       },
       {
         q: 'Ai-je besoin de matériel spécial ?',
@@ -487,7 +493,7 @@ export const homepageByLocale = {
       },
       {
         q: 'Quelles langues l’IA prend-elle en charge ?',
-        a: "Book8-AI détecte automatiquement la langue du client et y répond. Nous prenons en charge plus de 70 langues dont l’anglais, le français, l’espagnol, l’arabe, le mandarin, l’hindi, le portugais, l’allemand, le japonais, le coréen et bien d’autres. Aucune configuration — ça fonctionne tout seul."
+        a: "Book8 AI détecte automatiquement la langue du client et y répond. Nous prenons en charge plus de 70 langues dont l’anglais, le français, l’espagnol, l’arabe, le mandarin, l’hindi, le portugais, l’allemand, le japonais, le coréen et bien d’autres. Aucune configuration — ça fonctionne tout seul."
       }
     ],
 
@@ -498,7 +504,7 @@ export const homepageByLocale = {
     pricingSubDefault:
       "Choisissez le forfait adapté à vous. Tous les forfaits incluent la planification de base avec facturation à l’usage pour les minutes d’appel IA.",
     subscriptionRequired: 'Abonnement requis',
-    choosePlanBelow: 'Choisissez un forfait ci-dessous pour tout débloquer et utiliser Book8-AI.',
+    choosePlanBelow: 'Choisissez un forfait ci-dessous pour tout débloquer et utiliser Book8 AI.',
     needSubCalendar: 'Un abonnement est requis pour connecter Google Agenda.',
     needSubPhone: 'Un abonnement est requis pour les fonctionnalités d’agent téléphonique IA.',
     needSubServices:
@@ -585,7 +591,7 @@ export const homepageByLocale = {
     feat3Desc:
       'Services, équipe, portfolio et confirmations soignées — tout ce qu’il faut pour rassurer vos patients ou clients.',
     howItWorksLead: 'Configurez votre réceptionniste IA, obtenez votre numéro et commencez à réserver.',
-    multilingTitle: 'Pensé pour le monde entier',
+    multilingTitle: 'Vos clients parlent 70 langues. Votre IA aussi.',
     multilingSubtitle:
       'Des bulles de langue orbitent autour de votre marque pendant que chaque invité choisit son idiome.',
     multilingMore: '+60 autres',
@@ -639,6 +645,9 @@ export const homepageByLocale = {
     heroTitle3: '24/7',
     heroTitle4: '',
     heroSubtitle: '',
+    heroMultilingualSubtitle: 'Responde llamadas en más de 70 idiomas. Sin configuración.',
+    heroLangPillsAria: 'Idiomas que habla Book8 AI',
+    heroLangPillMore: '+ 65 más',
     getStartedFree: 'Comenzar prueba de 14 días gratis',
     seeHowItWorks: 'Ver cómo funciona',
     seeLiveDemo: 'Ver una demo en vivo →',
@@ -670,7 +679,7 @@ export const homepageByLocale = {
     howItWorks: 'Cómo funciona',
     step1Title: 'Conecta tu calendario',
     step1Desc:
-      'Vincula Google Calendar u Outlook. Book8-AI lee tu disponibilidad en tiempo real.',
+      'Vincula Google Calendar u Outlook. Book8 AI lee tu disponibilidad en tiempo real.',
     step2Title: 'Obtén tu número con IA',
     step2Desc:
       'Te asignamos un número dedicado con un agente IA entrenado en tus servicios, horarios y reglas de reserva.',
@@ -696,7 +705,7 @@ export const homepageByLocale = {
     featDashDesc: 'Reservas, llamadas y datos de clientes en un solo lugar.',
     worldwideLead: 'Disponible en todo el mundo.',
     worldwideRest:
-      'De barberías a clínicas dentales, de gimnasios a spas — Book8-AI donde esté tu negocio.',
+      'De barberías a clínicas dentales, de gimnasios a spas — Book8 AI donde esté tu negocio.',
 
     yourBookingPage: 'Tu página de reservas, lista para compartir',
     everyBusinessGets:
@@ -770,7 +779,7 @@ export const homepageByLocale = {
     faq: [
       {
         q: '¿Cómo funciona el agente de voz IA?',
-        a: 'Cuando un cliente llama a tu número Book8-AI, nuestra IA responde con voz natural. Conoce tus servicios, horarios y disponibilidad. Conversa, encuentra un horario y reserva la cita.'
+        a: 'Cuando un cliente llama a tu número Book8 AI, nuestra IA responde con voz natural. Conoce tus servicios, horarios y disponibilidad. Conversa, encuentra un horario y reserva la cita.'
       },
       {
         q: '¿Necesito equipamiento especial?',
@@ -790,7 +799,7 @@ export const homepageByLocale = {
       },
       {
         q: '¿Qué idiomas admite la IA?',
-        a: 'Book8-AI detecta automáticamente el idioma del cliente y responde en ese idioma. Admitimos más de 70 idiomas, entre ellos inglés, francés, español, árabe, mandarín, hindi, portugués, alemán, japonés, coreano y muchos más. Sin configuración: simplemente funciona.'
+        a: 'Book8 AI detecta automáticamente el idioma del cliente y responde en ese idioma. Admitimos más de 70 idiomas, entre ellos inglés, francés, español, árabe, mandarín, hindi, portugués, alemán, japonés, coreano y muchos más. Sin configuración: simplemente funciona.'
       }
     ],
 
@@ -801,7 +810,7 @@ export const homepageByLocale = {
     pricingSubDefault:
       'Elige el plan adecuado. Todos incluyen programación básica con facturación por minutos de llamada IA.',
     subscriptionRequired: 'Suscripción requerida',
-    choosePlanBelow: 'Elige un plan abajo para desbloquear todo y empezar con Book8-AI.',
+    choosePlanBelow: 'Elige un plan abajo para desbloquear todo y empezar con Book8 AI.',
     needSubCalendar: 'Necesitas suscripción para conectar Google Calendar.',
     needSubPhone: 'Necesitas suscripción para usar el agente telefónico IA.',
     needSubServices: 'Necesitas suscripción para añadir o gestionar servicios según tu plan.',
@@ -887,7 +896,7 @@ export const homepageByLocale = {
     feat3Desc:
       'Servicios, equipo, portafolio y confirmaciones impecables para generar confianza al instante.',
     howItWorksLead: 'Configura tu recepcionista IA, obtén tu número y empieza a reservar.',
-    multilingTitle: 'Diseñado para audiencias globales',
+    multilingTitle: 'Tus clientes hablan 70 idiomas. Tu IA también.',
     multilingSubtitle:
       'Burbujas de idioma orbitan tu marca mientras cada visitante elige cómo hablar contigo.',
     multilingMore: '+60 más',
@@ -941,6 +950,9 @@ export const homepageByLocale = {
     heroTitle3: 'على مدار الساعة',
     heroTitle4: '',
     heroSubtitle: '',
+    heroMultilingualSubtitle: 'يرد على المكالمات بأكثر من 70 لغة. بدون إعداد.',
+    heroLangPillsAria: 'اللغات التي يتحدثها Book8 AI',
+    heroLangPillMore: '+ 65 أخرى',
     getStartedFree: 'ابدأ تجربة 14 يومًا مجانًا',
     seeHowItWorks: 'شاهد كيف يعمل',
     seeLiveDemo: 'شاهد عرضًا مباشرًا ←',
@@ -970,7 +982,7 @@ export const homepageByLocale = {
 
     howItWorks: 'كيف يعمل',
     step1Title: 'اربط تقويمك',
-    step1Desc: 'اربط Google أو Outlook. يقرأ Book8-AI توفرك في الوقت الفعلي.',
+    step1Desc: 'اربط Google أو Outlook. يقرأ Book8 AI توفرك في الوقت الفعلي.',
     step2Title: 'احصل على رقم هاتفك الذكي',
     step2Desc: 'نوفر رقمًا مخصصًا ووكيل ذكاء اصطناعي مدربًا على خدماتك وساعاتك وقواعد الحجز.',
     step3Title: 'يتصل العملاء ويحجزون',
@@ -994,7 +1006,7 @@ export const homepageByLocale = {
     featDashTitle: 'لوحة تحكم وتحليلات',
     featDashDesc: 'كل الحجوزات والمكالمات وبيانات العملاء في مكان واحد.',
     worldwideLead: 'متاح عالميًا.',
-    worldwideRest: 'من صالونات الحلاقة إلى العيادات، من الصالات إلى المنتجعات — Book8-AI حيثما كان عملك.',
+    worldwideRest: 'من صالونات الحلاقة إلى العيادات، من الصالات إلى المنتجعات — Book8 AI حيثما كان عملك.',
 
     yourBookingPage: 'صفحة الحجز الخاصة بك، جاهزة للمشاركة',
     everyBusinessGets:
@@ -1068,7 +1080,7 @@ export const homepageByLocale = {
     faq: [
       {
         q: 'كيف يعمل وكيل الصوت بالذكاء الاصطناعي؟',
-        a: 'عندما يتصل عميل برقم Book8-AI، يجيب الذكاء الاصطناعي بكلام طبيعي. يعرف خدماتك وساعاتك وتوفرك. يجرى محادثة طبيعية، يجد وقتًا مناسبًا ويحجز الموعد.'
+        a: 'عندما يتصل عميل برقم Book8 AI، يجيب الذكاء الاصطناعي بكلام طبيعي. يعرف خدماتك وساعاتك وتوفرك. يجرى محادثة طبيعية، يجد وقتًا مناسبًا ويحجز الموعد.'
       },
       {
         q: 'هل أحتاج معدات خاصة؟',
@@ -1088,7 +1100,7 @@ export const homepageByLocale = {
       },
       {
         q: 'ما اللغات التي يدعمها الذكاء الاصطناعي؟',
-        a: 'يكتشف Book8-AI لغة العميل تلقائيًا ويرد بها. ندعم أكثر من 70 لغة بما في ذلك الإنجليزية والفرنسية والإسبانية والعربية والماندرين والهندية والبرتغالية والألمانية واليابانية والكورية والمزيد — دون إعداد.'
+        a: 'يكتشف Book8 AI لغة العميل تلقائيًا ويرد بها. ندعم أكثر من 70 لغة بما في ذلك الإنجليزية والفرنسية والإسبانية والعربية والماندرين والهندية والبرتغالية والألمانية واليابانية والكورية والمزيد — دون إعداد.'
       }
     ],
 
@@ -1098,7 +1110,7 @@ export const homepageByLocale = {
     pricingSubDefault:
       'اختر الخطة المناسبة. تشمل جميع الخطط الجدولة الأساسية مع فوترة باستهلاك دقائق مكالمات الذكاء الاصطناعي.',
     subscriptionRequired: 'يتطلب اشتراكًا',
-    choosePlanBelow: 'اختر خطة أدناه لفتح كل الميزات والبدء مع Book8-AI.',
+    choosePlanBelow: 'اختر خطة أدناه لفتح كل الميزات والبدء مع Book8 AI.',
     needSubCalendar: 'تحتاج اشتراكًا لربط تقويم Google.',
     needSubPhone: 'تحتاج اشتراكًا لميزات وكيل الهاتف الذكي.',
     needSubServices: 'تحتاج اشتراكًا لإضافة الخدمات أو إدارتها وفق خطتك.',
@@ -1184,7 +1196,7 @@ export const homepageByLocale = {
     feat3Desc:
       'خدمات، فريق، معرض صور، وتأكيدات احترافية يثق بها عملاؤك.',
     howItWorksLead: 'جهّز موظف الاستقبال، احصل على رقمك، وابدأ الحجز.',
-    multilingTitle: 'مصمم لجمهور عالمي',
+    multilingTitle: 'عملاؤك يتحدثون 70 لغة. وكذلك الذكاء الاصطناعي الخاص بك.',
     multilingSubtitle:
       'فقاعات لغات تدور حول علامتك بينما يختار كل ضيف لغته.',
     multilingMore: '+60 أخرى',

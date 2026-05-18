@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -175,7 +175,7 @@ export default function EventTypesPage() {
   function copyLink(eventType) {
     const baseUrl = typeof window !== 'undefined' 
       ? window.location.origin 
-      : 'https://book8-ai.vercel.app'
+      : 'https://Book8 AI.vercel.app'
     const link = `${baseUrl}/b/${userHandle}/${eventType.slug}`
     navigator.clipboard.writeText(link)
     setCopiedId(eventType.id)
@@ -185,7 +185,7 @@ export default function EventTypesPage() {
   function getPublicLink(eventType) {
     const baseUrl = typeof window !== 'undefined' 
       ? window.location.origin 
-      : 'https://book8-ai.vercel.app'
+      : 'https://Book8 AI.vercel.app'
     return `${baseUrl}/b/${userHandle}/${eventType.slug}`
   }
 

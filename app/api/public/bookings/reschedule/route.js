@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { verifyRescheduleToken, generateRescheduleToken } from '@/lib/security/rescheduleToken'
 import { buildICS } from '@/lib/ics'
@@ -212,7 +212,7 @@ export async function POST(request) {
 
         const event = {
           summary: booking.title,
-          description: `${booking.notes || ''}\n\n---\nSource: Book8-AI\nBooking ID: ${booking.id}\nRescheduled ${booking.rescheduleCount || 0} time(s)`,
+          description: `${booking.notes || ''}\n\n---\nSource: Book8 AI\nBooking ID: ${booking.id}\nRescheduled ${booking.rescheduleCount || 0} time(s)`,
           start: {
             dateTime: newStartTime.toISOString(),
             timeZone: owner.scheduling?.timeZone || 'UTC'
@@ -261,7 +261,7 @@ export async function POST(request) {
 
         // Send to guest
         const guestOut = await sendResendEmail(resend, {
-          from: 'Book8-AI <bookings@book8.io>',
+          from: 'Book8 AI <bookings@book8.io>',
           to: booking.guestEmail,
           cc: owner.email,
           subject: `Meeting rescheduled: ${booking.title}`,

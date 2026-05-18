@@ -1,4 +1,4 @@
-/**
+﻿/**
  * POST /api/internal/outlook-update-event
  *
  * Internal endpoint for core-api to UPDATE a Microsoft Outlook event (e.g. mark as CANCELLED).
@@ -143,7 +143,7 @@ export async function POST(request) {
       showAs: showAs || 'free',
       body: {
         contentType: 'HTML',
-        content: `<p><strong style="color: red;">⛔ CANCELLED</strong></p><p>${originalTitle}</p><p>Cancelled via Book8-AI</p>`
+        content: `<p><strong style="color: red;">⛔ CANCELLED</strong></p><p>${originalTitle}</p><p>Cancelled via Book8 AI</p>`
       }
     }
 
