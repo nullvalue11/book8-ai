@@ -1,6 +1,8 @@
 ﻿import "./globals.css";
 import { Providers } from "./components/Providers";
 import CookieConsentBanner from "./components/CookieConsentBanner";
+import JsonLd from "./components/JsonLd";
+import { organizationSchema, websiteSchema } from "./lib/schemas";
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.book8.io";
 
@@ -49,6 +51,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-dvh min-h-screen text-foreground antialiased">
+        <JsonLd data={organizationSchema} />
+        <JsonLd data={websiteSchema} />
         <Providers>
           {children}
           <CookieConsentBanner />

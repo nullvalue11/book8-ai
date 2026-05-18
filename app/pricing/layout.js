@@ -1,3 +1,6 @@
+import JsonLd from '@/components/JsonLd'
+import { pricingFaqSchema } from '@/lib/schemas'
+
 export const metadata = {
   title: 'Pricing — Book8 | AI Receptionist Plans Starting at $19/mo',
   description:
@@ -13,5 +16,10 @@ export const metadata = {
 }
 
 export default function PricingLayout({ children }) {
-  return children
+  return (
+    <>
+      <JsonLd data={pricingFaqSchema} />
+      {children}
+    </>
+  )
 }

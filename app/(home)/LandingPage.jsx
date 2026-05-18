@@ -41,6 +41,8 @@ import SocialMediaLinks from '@/components/SocialMediaLinks'
 import { SETUP_NEW_BUSINESS_PATH, setupUrlWithNewBusiness } from '@/lib/setup-entry'
 import { useTheme } from 'next-themes'
 import { useBookingLanguage } from '@/hooks/useBookingLanguage'
+import JsonLd from '@/components/JsonLd'
+import { serviceSchema, softwareApplicationSchema } from '@/lib/schemas'
 import { getHomepagePricingDisplay, trFormat, bookingLocaleBcp47 } from '@/lib/translations'
 
 const fontDisplay = Bricolage_Grotesque({
@@ -447,6 +449,8 @@ export default function LandingPage() {
       className={`relative isolate min-h-dvh min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 dark:from-[#06060f] dark:via-[#0b0b1a] dark:to-[#06060f] ${rootCls}`}
       lang={language}
     >
+      <JsonLd data={softwareApplicationSchema} />
+      <JsonLd data={serviceSchema} />
       <Aurora />
       <Particles />
 

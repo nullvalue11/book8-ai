@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import Header from '@/components/Header'
+import JsonLd from '@/components/JsonLd'
+import { buildBreadcrumbSchema } from '@/lib/schemas'
 import { Button } from '@/components/ui/button'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { SETUP_NEW_BUSINESS_QUERY } from '@/lib/setup-entry'
@@ -33,6 +35,7 @@ function IndustryFooter() {
 /**
  * @param {{
  *   vertical: string,
+ *   meta?: { title?: string },
  *   hero: { headline: string, subheadline: string, primaryCtaLabel: string },
  *   painPoints: Array<{ title: string, body: string }>,
  *   features: Array<{ title: string, body: string }>,
@@ -43,6 +46,7 @@ function IndustryFooter() {
  */
 export default function IndustryPageTemplate({
   vertical,
+  meta,
   hero,
   painPoints,
   features,
@@ -50,8 +54,16 @@ export default function IndustryPageTemplate({
   ctaLabel,
   testimonialMessage
 }) {
+  const breadcrumbLabel =
+    (meta?.title && String(meta.title).split('|')[0].trim()) || hero.headline
+  const breadcrumbSchema = buildBreadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: breadcrumbLabel, url: `/${vertical}` }
+  ])
+
   return (
     <>
+      <JsonLd data={breadcrumbSchema} />
       <Header variant="landing" />
       <main id="main-content" className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 dark:from-[#06060f] dark:via-[#0b0b1a] dark:to-[#06060f] text-slate-900 dark:text-[#EEEDF5]">
         {/* Hero */}
