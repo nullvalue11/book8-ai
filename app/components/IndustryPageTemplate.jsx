@@ -139,7 +139,7 @@ export default function IndustryPageTemplate({
               </p>
               <p className="text-slate-700 dark:text-[#C4B5FD] italic">{testimonialMessage}</p>
             </div>
-          </motion.div>
+          </div>
         </section>
 
         {/* FAQ */}

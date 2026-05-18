@@ -1,6 +1,8 @@
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.book8.io'
+const BASE_URL = 'https://www.book8.io'
 
-const INDUSTRY_PAGES = ['/barbershops', '/salons', '/car-wash', '/fitness', '/spas']
+import { INDUSTRY_PATHS } from '@/copy/industries'
+
+const INDUSTRY_PAGES = INDUSTRY_PATHS
 
 /** @returns {import('next').MetadataRoute.Sitemap} */
 export default function sitemap() {

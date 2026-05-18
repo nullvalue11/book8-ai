@@ -23,7 +23,9 @@ import {
   Rocket,
   Building2,
   CheckCircle2,
-  Car
+  Car,
+  Wrench,
+  SprayCan
 } from 'lucide-react'
 import { Bricolage_Grotesque, Plus_Jakarta_Sans } from 'next/font/google'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -278,9 +280,14 @@ const ORBIT_LANGS = ['English', 'Français', 'Español', 'العربية', '中�
 const HOME_INDUSTRY_LINKS = [
   { href: '/barbershops', label: 'Barbershops', icon: Scissors },
   { href: '/salons', label: 'Salons', icon: Sparkles },
+  { href: '/nail-salons', label: 'Nail salons', icon: Sparkles },
   { href: '/car-wash', label: 'Car wash', icon: Car },
+  { href: '/auto-repair', label: 'Auto repair', icon: Wrench },
   { href: '/fitness', label: 'Fitness', icon: Dumbbell },
-  { href: '/spas', label: 'Spas', icon: Sparkles }
+  { href: '/spas', label: 'Spas', icon: Sparkles },
+  { href: '/pet-grooming', label: 'Pet grooming', icon: PawPrint },
+  { href: '/cleaning-services', label: 'Cleaning', icon: SprayCan },
+  { href: '/tattoo-studios', label: 'Tattoo studios', icon: PenTool }
 ]
 
 
@@ -1243,7 +1250,7 @@ export default function LandingPage() {
           <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white text-center font-[family-name:var(--font-brico)]">
             By industry
           </h2>
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {HOME_INDUSTRY_LINKS.map(({ href, icon: Icon, label: name }) => (
               <Link
                 key={href}

@@ -392,10 +392,404 @@ export const spasCopy = {
   testimonialMessage: 'Real customer testimonials coming soon. First spa businesses are testing Book8 now.'
 }
 
+export const nailSalonsCopy = {
+  vertical: 'nail-salons',
+  meta: {
+    title: 'AI Receptionist for Nail Salons | Book8 — Multilingual Nail Booking',
+    description:
+      'Your techs can\'t answer the phone mid-gel cure. Book8 books every manicure, pedicure, and full set 24/7 in 70+ languages. $19/month. Free 14-day trial.'
+  },
+  hero: {
+    headline: 'Your AI receptionist for nail salons — books every manicure, pedicure, and full set.',
+    subheadline:
+      "Your techs can't answer the phone with their hands in a gel cure lamp. Book8 does. Multilingual, 24/7.",
+    primaryCtaLabel: 'Start free trial'
+  },
+  painPoints: [
+    {
+      title: 'Phones ring during pedicures.',
+      body: 'Your tech is working on a foot soak when the phone rings. Setting tools down to answer disrupts the client. Most calls become voicemails.'
+    },
+    {
+      title: 'Service menus are dense.',
+      body: 'Basic manicure, gel, dip, acrylic full set, fill, removal, pedicure, gel pedicure, art — every customer needs walking through the menu. Book8 explains them all in 70+ languages.'
+    },
+    {
+      title: 'Walk-ins clog the chairs.',
+      body: "Without a reliable booking line, customers walk in. Without an open seat, they walk back out — and don't come back."
+    },
+    {
+      title: "Vietnamese, Korean, Spanish, English — your callers don't all speak the same language.",
+      body: 'Nail salons often serve immigrant communities. English-only voicemail loses entire customer bases.'
+    }
+  ],
+  features: [
+    {
+      title: 'Book by service AND tech',
+      body: 'customers can ask "is Linda available Saturday?" and Book8 only offers Linda\'s open slots.'
+    },
+    {
+      title: 'Handles complex service combos',
+      body: 'gel manicure + pedicure as one appointment, with the right total time.'
+    },
+    {
+      title: 'SMS reminders cut no-shows',
+      body: 'every booking gets a confirmation; reminders go out 24 hours and 1 hour before.'
+    },
+    {
+      title: 'Multilingual by default',
+      body: 'Vietnamese, Korean, Spanish, French, Arabic, English, Mandarin and 70+ more languages.'
+    },
+    {
+      title: 'Walk-in friendly',
+      body: 'customers can call from the parking lot and book the next open slot in 30 seconds.'
+    }
+  ],
+  faq: [
+    {
+      question: 'Can Book8 handle nail art bookings (which take longer)?',
+      answer: 'Yes — set custom durations per service. Book8 finds slots that match.'
+    },
+    {
+      question: "What if a customer asks for a service we don't offer (like eyelash extensions)?",
+      answer:
+        "Book8 only offers what you've configured. If asked about something else, it politely says it's not offered."
+    },
+    {
+      question: 'Can clients speak Vietnamese or Korean?',
+      answer: 'Yes. Book8 auto-detects 70+ languages and books in whatever the caller uses.'
+    },
+    {
+      question: 'How fast is setup?',
+      answer: '3 minutes. Add services, hours, techs — point your number to Book8. Done.'
+    }
+  ],
+  ctaLabel: 'Stop missing manis. Start your free trial.',
+  testimonialMessage: 'Real customer testimonials coming soon. First nail salon businesses are testing Book8 now.'
+}
+
+export const autoRepairCopy = {
+  vertical: 'auto-repair',
+  meta: {
+    title: 'AI Receptionist for Auto Repair Shops | Book8 — Book Every Service',
+    description:
+      'Your mechanics can\'t answer the phone mid-repair. Book8 books oil changes, brake jobs, and diagnostics 24/7 in 70+ languages. $19/month. Free 14-day trial.'
+  },
+  hero: {
+    headline: 'Your AI receptionist for auto repair shops — books every service, answers every call.',
+    subheadline:
+      'Your mechanics are under hoods, not at phones. Book8 handles the calls — diagnostics, oil changes, brake jobs, transmission work — 24/7 in any language.',
+    primaryCtaLabel: 'Start free trial'
+  },
+  painPoints: [
+    {
+      title: "Mechanics can't take calls with their hands in an engine.",
+      body: "Your guys are working. The phone rings. Service writer can't keep up. Calls go to voicemail. Customers call the next shop on Google."
+    },
+    {
+      title: 'Customers want estimates, but you need to see the car.',
+      body: 'Most callers want a price before booking. Book8 asks the right diagnostic questions and books a real estimate appointment instead of guessing on the phone.'
+    },
+    {
+      title: 'After-hours emergencies = lost business.',
+      body: 'Battery dead at 8pm? Customer calls 3 shops, books with whoever answers. Book8 answers — and books them in for first thing tomorrow.'
+    },
+    {
+      title: 'Spanish, Arabic, Portuguese, Vietnamese customers get hung up on.',
+      body: 'Auto repair customers are diverse. English-only voicemail loses entire neighborhoods.'
+    }
+  ],
+  features: [
+    {
+      title: 'Book by service type',
+      body: 'oil change, brake service, diagnostic, alignment, tire rotation, transmission, AC service. Configure your service menu; Book8 handles intake.'
+    },
+    {
+      title: 'Multi-bay scheduling',
+      body: 'if you have specific equipment per bay (lift, alignment rack, AC machine), Book8 books the right one.'
+    },
+    {
+      title: 'Estimate-before-work flow',
+      body: 'Book8 books diagnostic appointments separately from repair work, so customers understand the two-step process.'
+    },
+    {
+      title: 'SMS quote follow-up',
+      body: 'after the diagnostic appointment, the shop can send the customer an SMS-based estimate via Book8.'
+    },
+    {
+      title: '24/7 emergency intake',
+      body: 'after-hours calls get a "we open at 8 — let me get you the first slot."'
+    }
+  ],
+  faq: [
+    {
+      question: 'Can Book8 give customers price quotes on the phone?',
+      answer:
+        "Book8 doesn't quote prices — auto repair quotes need to see the car. Book8 books a diagnostic appointment instead, which is the right answer."
+    },
+    {
+      question: "What if it's a tow-in emergency?",
+      answer:
+        'Book8 takes the call, captures the customer\'s info and vehicle details, and books them in for first available. After-hours emergencies become first-thing-morning appointments.'
+    },
+    {
+      question: 'Can it handle commercial fleet customers?',
+      answer:
+        'Yes. Configure commercial accounts in your dashboard; Book8 recognizes returning fleet customers by phone number.'
+    },
+    {
+      question: 'Pricing?',
+      answer: '$19/month for Starter (one-shop), $69 for Growth (multi-shop). Free 14-day trial.'
+    }
+  ],
+  ctaLabel: 'Keep wrenches turning. Start your free trial.',
+  testimonialMessage: 'Real customer testimonials coming soon. First auto repair shops are testing Book8 now.'
+}
+
+export const petGroomingCopy = {
+  vertical: 'pet-grooming',
+  meta: {
+    title: 'AI Receptionist for Pet Grooming | Book8 — Book Every Cut',
+    description:
+      'Your groomers can\'t put down the shears mid-cut. Book8 books every grooming appointment 24/7 in 70+ languages. $19/month. Free 14-day trial.'
+  },
+  hero: {
+    headline: 'Your AI receptionist for pet grooming — books every cut, bath, and breed-specific groom.',
+    subheadline:
+      "Your groomers can't put down the shears to answer the phone. Book8 takes every call, books every appointment, in 70+ languages.",
+    primaryCtaLabel: 'Start free trial'
+  },
+  painPoints: [
+    {
+      title: "Groomers can't pause a Goldendoodle to take a call.",
+      body: 'Mid-groom, the phone rings. Stopping disrupts the dog and the schedule. Most calls go to voicemail. Most voicemails become bookings elsewhere.'
+    },
+    {
+      title: 'Breed-specific grooming has nuance.',
+      body: 'Goldendoodles, Poodles, Bichons, Schnauzers — each breed needs specific cuts and time. Book8 captures the breed and books the right service duration.'
+    },
+    {
+      title: 'Anxious dogs need predictable schedules.',
+      body: 'Cancellations and double-bookings stress out anxious pets. Reliable booking means a calm shop.'
+    },
+    {
+      title: 'Owners want to book a wash and a nail trim, but each shop calls them different things.',
+      body: 'Service menus vary by shop. Book8 uses exactly the names you use, so customers and the AI speak the same language.'
+    }
+  ],
+  features: [
+    {
+      title: 'Book by service AND groomer',
+      body: 'customers can ask for their preferred groomer; Book8 only offers that groomer\'s open slots.'
+    },
+    {
+      title: 'Breed-aware durations',
+      body: 'short-haired Chihuahua = 45 minutes. Standard Poodle full groom = 3 hours. Book8 books the right amount of time.'
+    },
+    {
+      title: 'Pre-appointment SMS',
+      body: 'for new pets, send an intake form (vaccination records, special needs) via SMS link after booking.'
+    },
+    {
+      title: 'Recurring appointments',
+      body: 'customers can ask "book me the same Saturday slot every 6 weeks" and Book8 handles it.'
+    },
+    {
+      title: 'Multilingual',
+      body: 'pet owners speak every language. Book8 books in any of 70+.'
+    }
+  ],
+  faq: [
+    {
+      question: 'Can Book8 handle pickup/dropoff bookings (mobile grooming)?',
+      answer:
+        'Yes. Configure pickup/dropoff as a service add-on, and Book8 collects the address during booking.'
+    },
+    {
+      question: 'What about cat grooming?',
+      answer: 'Yes. Add cat services to your menu; Book8 books them like any other service.'
+    },
+    {
+      question: 'Can owners specify "with Sarah" or "any groomer"?',
+      answer: 'Yes. Book8 handles both — preferred groomer or "first available."'
+    },
+    {
+      question: 'How much?',
+      answer: '$19/month for single-location shops, $69 for multi-location. Free 14 days.'
+    }
+  ],
+  ctaLabel: 'Stop missing fluffy customers. Start your free trial.',
+  testimonialMessage: 'Real customer testimonials coming soon. First pet grooming businesses are testing Book8 now.'
+}
+
+export const cleaningServicesCopy = {
+  vertical: 'cleaning-services',
+  meta: {
+    title: 'AI Receptionist for Cleaning Services | Book8 — Book Recurring + One-Time',
+    description:
+      'You\'re cleaning houses, not answering phones. Book8 books every cleaning appointment 24/7 in 70+ languages — recurring, one-time, deep cleans. $19/month. Free trial.'
+  },
+  hero: {
+    headline: 'Your AI receptionist for cleaning services — books recurring, one-time, and deep cleans.',
+    subheadline:
+      "You're cleaning houses, not answering phones. Book8 handles every booking — residential, commercial, recurring, one-time — in any language.",
+    primaryCtaLabel: 'Start free trial'
+  },
+  painPoints: [
+    {
+      title: "You're on a ladder when the phone rings.",
+      body: "Cleaning the bathroom mirror, vacuuming under the couch, mopping floors — you literally cannot answer the phone. Customers don't wait."
+    },
+    {
+      title: 'Pricing is complicated.',
+      body: 'Square footage, bedrooms, bathrooms, frequency, add-ons (oven, fridge, windows) — most callers need a quote. Book8 captures the details and routes the quote follow-up.'
+    },
+    {
+      title: 'Recurring bookings are your bread and butter.',
+      body: 'Weekly, bi-weekly, monthly — recurring customers fund the business. Book8 books them as recurring appointments and reminds them automatically.'
+    },
+    {
+      title: 'Spanish-speaking households are huge in cleaning.',
+      body: 'If you serve immigrant suburbs, English-only voicemail loses entire customer bases. Book8 books in Spanish, Portuguese, Mandarin, Arabic, and 70+ more.'
+    }
+  ],
+  features: [
+    {
+      title: 'Service-aware booking',
+      body: 'standard clean, deep clean, move-out, post-construction. Configure durations and rates per service.'
+    },
+    {
+      title: 'Recurring schedules',
+      body: 'customers can ask for weekly, bi-weekly, or monthly. Book8 books the series.'
+    },
+    {
+      title: 'Quote intake',
+      body: 'for non-standard cleans, Book8 collects the home\'s size and special requests, then routes a quote follow-up SMS from your team.'
+    },
+    {
+      title: 'Per-cleaner availability',
+      body: 'if customers prefer a specific cleaner, Book8 books that cleaner\'s open slots.'
+    },
+    {
+      title: 'Multilingual confirmations',
+      body: 'Spanish, Portuguese, Mandarin, Arabic, French, English — every customer gets confirmations in their language.'
+    }
+  ],
+  faq: [
+    {
+      question: 'Can Book8 quote prices for cleaning?',
+      answer:
+        'For standard services configured in your dashboard, yes. For complex jobs (deep clean, move-out, construction cleanup), Book8 collects details and sends a quote SMS from your team.'
+    },
+    {
+      question: 'Does it handle commercial cleaning too?',
+      answer:
+        'Yes. Configure commercial cleaning as a separate service; Book8 captures the building details during booking.'
+    },
+    {
+      question: 'How does it handle reschedules and cancellations?',
+      answer:
+        'Customers can text the booking number to reschedule or cancel. Book8 updates your calendar automatically.'
+    },
+    {
+      question: 'Pricing?',
+      answer: '$19/month for single-territory businesses, $69 for multi-territory. Free 14 days.'
+    }
+  ],
+  ctaLabel: 'Stop losing recurring bookings. Start your free trial.',
+  testimonialMessage: 'Real customer testimonials coming soon. First cleaning businesses are testing Book8 now.'
+}
+
+export const tattooStudiosCopy = {
+  vertical: 'tattoo-studios',
+  meta: {
+    title: 'AI Receptionist for Tattoo Studios | Book8 — Book Consults & Sessions',
+    description:
+      'Your artists are mid-session — they can\'t take calls. Book8 books consults and tattoo appointments 24/7 in 70+ languages. $19/month. Free 14-day trial.'
+  },
+  hero: {
+    headline: 'Your AI receptionist for tattoo studios — books consults, sessions, and per-artist appointments.',
+    subheadline:
+      'Your artists are working on skin, not answering phones. Book8 handles consultations, deposit calls, and session bookings — in 70+ languages.',
+    primaryCtaLabel: 'Start free trial'
+  },
+  painPoints: [
+    {
+      title: "Artists are mid-session — they can't take calls.",
+      body: 'A tattoo session is 2-6 hours of focus. Phone calls go to voicemail. Consultation inquiries vanish.'
+    },
+    {
+      title: 'Consults are the bottleneck.',
+      body: 'Every new piece needs a consult before the session. Book8 books consults separately from sessions and explains the two-step flow.'
+    },
+    {
+      title: 'Per-artist booking is non-negotiable.',
+      body: 'Customers choose artists by style. Book8 only books with the artist they ask for — Marco for traditional, Sasha for fine line.'
+    },
+    {
+      title: 'Deposits and rescheduling are messy.',
+      body: 'Book8 books the appointment and captures deposit policies in the confirmation SMS, so expectations are set upfront.'
+    }
+  ],
+  features: [
+    {
+      title: 'Book by artist',
+      body: 'customers can ask for "an appointment with Marco" and Book8 only offers Marco\'s open slots.'
+    },
+    {
+      title: 'Two-stage flow',
+      body: 'consultations are booked separately from sessions, with the right duration for each.'
+    },
+    {
+      title: 'Deposit-aware confirmations',
+      body: 'SMS confirmations explain your deposit policy (e.g. "$50 deposit due before your session — we\'ll send a payment link").'
+    },
+    {
+      title: 'Session-length flexibility',
+      body: 'book 2-hour or 6-hour sessions; Book8 matches duration to the artist\'s schedule.'
+    },
+    {
+      title: 'Multilingual',
+      body: 'tattoo culture is global. Book8 books in any language the caller uses.'
+    }
+  ],
+  faq: [
+    {
+      question: 'Can Book8 handle walk-ins?',
+      answer:
+        'For walk-in friendly shops, Book8 can offer "next available" slots and book them. Otherwise it directs callers to schedule a consult first.'
+    },
+    {
+      question: 'What about deposit collection?',
+      answer:
+        "Book8 doesn't collect payment directly — it includes your deposit instructions in the confirmation SMS so customers know exactly how to send it."
+    },
+    {
+      question: 'Can clients send reference photos before the consult?',
+      answer:
+        'Yes — Book8 sends an SMS with a link to upload reference images after booking the consult.'
+    },
+    {
+      question: 'Pricing?',
+      answer: '$19/month. Free 14-day trial.'
+    }
+  ],
+  ctaLabel: 'Stop missing consults. Start your free trial.',
+  testimonialMessage: 'Real customer testimonials coming soon. First tattoo studios are testing Book8 now.'
+}
+
 export const industryPagesList = [
   { key: 'barbershops', copy: barbershopsCopy, label: 'Barbershops', href: '/barbershops' },
   { key: 'salons', copy: salonsCopy, label: 'Salons', href: '/salons' },
   { key: 'car-wash', copy: carWashCopy, label: 'Car wash', href: '/car-wash' },
   { key: 'fitness', copy: fitnessCopy, label: 'Fitness', href: '/fitness' },
-  { key: 'spas', copy: spasCopy, label: 'Spas', href: '/spas' }
+  { key: 'spas', copy: spasCopy, label: 'Spas', href: '/spas' },
+  { key: 'nail-salons', copy: nailSalonsCopy, label: 'Nail salons', href: '/nail-salons' },
+  { key: 'auto-repair', copy: autoRepairCopy, label: 'Auto repair', href: '/auto-repair' },
+  { key: 'pet-grooming', copy: petGroomingCopy, label: 'Pet grooming', href: '/pet-grooming' },
+  { key: 'cleaning-services', copy: cleaningServicesCopy, label: 'Cleaning', href: '/cleaning-services' },
+  { key: 'tattoo-studios', copy: tattooStudiosCopy, label: 'Tattoo studios', href: '/tattoo-studios' }
 ]
+
+/** All industry paths for sitemap and SEO */
+export const INDUSTRY_PATHS = industryPagesList.map((p) => p.href)
