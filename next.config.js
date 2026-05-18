@@ -37,7 +37,8 @@ const nextConfig = {
     return [
       { source: '/for/barbershops', destination: '/barbershops', permanent: true },
       { source: '/for/fitness-studios', destination: '/fitness', permanent: true },
-      { source: '/for/spas-and-beauty', destination: '/spas', permanent: true }
+      { source: '/for/spas-and-beauty', destination: '/spas', permanent: true },
+      { source: '/vs/newo', destination: '/newo-alternative', permanent: true }
     ];
   },
   async rewrites() {

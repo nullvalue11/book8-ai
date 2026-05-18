@@ -159,6 +159,43 @@ export const pricingFaqSchema = buildFAQSchema(pricingFaqsEn)
 /**
  * @param {{ name: string, url?: string }[]} items
  */
+/**
+ * @param {{
+ *   headline: string,
+ *   description: string,
+ *   path: string,
+ *   datePublished: string,
+ *   dateModified: string
+ * }} params
+ */
+export function buildArticleSchema({ headline, description, path, datePublished, dateModified }) {
+  return stripUndefined({
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline,
+    description,
+    author: {
+      '@type': 'Organization',
+      name: 'Book8',
+      url: SITE_URL
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Book8',
+      logo: {
+        '@type': 'ImageObject',
+        url: `${SITE_URL}/brand/book8_ai_social_icon.png`
+      }
+    },
+    datePublished,
+    dateModified,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${SITE_URL}${path}`
+    }
+  })
+}
+
 export function buildBreadcrumbSchema(items) {
   return stripUndefined({
     '@context': 'https://schema.org',

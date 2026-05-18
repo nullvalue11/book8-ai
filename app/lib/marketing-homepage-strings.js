@@ -315,6 +315,8 @@ export const homepageByLocale = {
     finalCtaRings: 'Pulsing availability rings',
     footerTagline: 'Modern AI booking for serious operators.',
     footerProduct: 'Product',
+    footerCompare: 'Compare',
+    footerNewoAlternative: 'Book8 vs Newo',
     footerCompany: 'Company',
     footerLegal: 'Legal',
     footerConnect: 'Connect',

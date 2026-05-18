@@ -1358,6 +1358,19 @@ export default function LandingPage() {
                 </Link>
               </li>
             </ul>
+            <p className="mb-3 mt-6 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#68668A]">
+              {h.footerCompare || 'Compare'}
+            </p>
+            <ul className="space-y-2 text-sm text-slate-800 dark:text-[#9593A8]">
+              <li>
+                <Link
+                  href="/newo-alternative"
+                  className="text-slate-800 underline-offset-2 transition-colors hover:text-slate-950 hover:underline dark:text-[#9593A8] dark:hover:text-white"
+                >
+                  {h.footerNewoAlternative || 'Book8 vs Newo'}
+                </Link>
+              </li>
+            </ul>
           </div>
           <div>
             <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#68668A]">

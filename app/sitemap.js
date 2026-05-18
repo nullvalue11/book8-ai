@@ -10,6 +10,7 @@ export default function sitemap() {
   const staticPages = [
     { url: BASE_URL, priority: 1, changeFrequency: 'weekly' },
     { url: `${BASE_URL}/pricing`, priority: 0.9, changeFrequency: 'weekly' },
+    { url: `${BASE_URL}/newo-alternative`, priority: 0.7, changeFrequency: 'monthly' },
     { url: `${BASE_URL}/privacy`, priority: 0.3, changeFrequency: 'monthly' },
     { url: `${BASE_URL}/terms`, priority: 0.3, changeFrequency: 'monthly' }
   ]
