@@ -1,45 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://book8-ai.vercel.app/</loc>
-    <lastmod>2024-11-11</lastmod>
+    <loc>https://www.book8.io/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://book8-ai.vercel.app/dashboard</loc>
-    <lastmod>2024-11-11</lastmod>
+    <loc>https://www.book8.io/pricing</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.book8.io/barbershops</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://book8-ai.vercel.app/for/barbershops</loc>
-    <lastmod>2026-05-05</lastmod>
+    <loc>https://www.book8.io/salons</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://book8-ai.vercel.app/for/dental</loc>
-    <lastmod>2026-05-05</lastmod>
+    <loc>https://www.book8.io/car-wash</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://book8-ai.vercel.app/for/spas-and-beauty</loc>
-    <lastmod>2026-05-05</lastmod>
+    <loc>https://www.book8.io/fitness</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://book8-ai.vercel.app/for/fitness-studios</loc>
-    <lastmod>2026-05-05</lastmod>
+    <loc>https://www.book8.io/spas</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://book8-ai.vercel.app/for/physio-clinics</loc>
-    <lastmod>2026-05-05</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
 </urlset>

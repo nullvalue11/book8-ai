@@ -33,6 +33,13 @@ const nextConfig = {
     return config;
   },
   onDemandEntries: { maxInactiveAge: 10000, pagesBufferLength: 2 },
+  async redirects() {
+    return [
+      { source: '/for/barbershops', destination: '/barbershops', permanent: true },
+      { source: '/for/fitness-studios', destination: '/fitness', permanent: true },
+      { source: '/for/spas-and-beauty', destination: '/spas', permanent: true }
+    ];
+  },
   async rewrites() {
     return [
       // Ensure NextAuth catch-all routes are properly handled

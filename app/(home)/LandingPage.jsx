@@ -22,7 +22,8 @@ import {
   Zap,
   Rocket,
   Building2,
-  CheckCircle2
+  CheckCircle2,
+  Car
 } from 'lucide-react'
 import { Bricolage_Grotesque, Plus_Jakarta_Sans } from 'next/font/google'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -30,7 +31,6 @@ import { Button } from '@/components/ui/button'
 import PricingPlanFeatureList from '@/components/PricingPlanFeatureList'
 import AudienceSearchWidget from '@/components/AudienceSearchWidget'
 import GlobalCoverageSection from '@/components/GlobalCoverageSection'
-import { verticals } from '@/for/_data/verticals'
 import { cn } from '@/lib/utils'
 import HeaderLogo from '@/components/HeaderLogo'
 import LanguageSelector from '@/components/LanguageSelector'
@@ -274,6 +274,15 @@ function useMonthGrid(year, month) {
 }
 
 const ORBIT_LANGS = ['English', 'Français', 'Español', 'العربية', '中文', 'Deutsch']
+
+const HOME_INDUSTRY_LINKS = [
+  { href: '/barbershops', label: 'Barbershops', icon: Scissors },
+  { href: '/salons', label: 'Salons', icon: Sparkles },
+  { href: '/car-wash', label: 'Car wash', icon: Car },
+  { href: '/fitness', label: 'Fitness', icon: Dumbbell },
+  { href: '/spas', label: 'Spas', icon: Sparkles }
+]
+
 
 export default function LandingPage() {
   const pathname = usePathname()
@@ -640,17 +649,17 @@ export default function LandingPage() {
                 {h.heroBrowseIndustries}:
               </p>
               <div className="flex flex-wrap gap-2">
-                {Object.values(verticals).map((v) => (
+                {HOME_INDUSTRY_LINKS.map((item) => (
                   <Link
-                    key={v.slug}
-                    href={`/for/${v.slug}`}
+                    key={item.href}
+                    href={item.href}
                     className={cn(
                       'text-xs rounded-full border px-3 py-1.5 font-medium transition-opacity hover:opacity-90',
                       'border-[rgba(139,92,246,0.22)] bg-[rgba(139,92,246,0.08)] text-[#6D28D9]',
                       'dark:border-[rgba(167,139,250,0.25)] dark:bg-[rgba(139,92,246,0.12)] dark:text-[#A78BFA]'
                     )}
                   >
-                    {v.label}
+                    {item.label}
                   </Link>
                 ))}
               </div>
@@ -1235,13 +1244,7 @@ export default function LandingPage() {
             By industry
           </h2>
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {[
-              { href: "/for/barbershops", icon: Scissors, name: "Barbershops" },
-              { href: "/for/dental", icon: Stethoscope, name: "Dental clinics" },
-              { href: "/for/spas-and-beauty", icon: Sparkles, name: "Spas & beauty" },
-              { href: "/for/fitness-studios", icon: Dumbbell, name: "Fitness studios" },
-              { href: "/for/physio-clinics", icon: Stethoscope, name: "Physio clinics" }
-            ].map(({ href, icon: Icon, name }) => (
+            {HOME_INDUSTRY_LINKS.map(({ href, icon: Icon, label: name }) => (
               <Link
                 key={href}
                 href={href}
