@@ -21,9 +21,6 @@ const nextConfig = {
     config.resolve.alias["@app"] = path.resolve(__dirname, "app"); // legacy compat
     config.resolve.alias["@/components"] = path.resolve(__dirname, "app/components");
     config.resolve.alias["@/lib"] = path.resolve(__dirname, "app/lib");
-    // Single React instance for R3F (avoids ReactCurrentBatchConfig crash from duplicate React)
-    config.resolve.alias.react = path.resolve(__dirname, "node_modules/react");
-    config.resolve.alias["react-dom"] = path.resolve(__dirname, "node_modules/react-dom");
 
     config.module.rules.push({
       test: /\.glsl$/,
