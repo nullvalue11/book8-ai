@@ -27,7 +27,7 @@ export const metadata = {
     siteName: 'Book8 AI',
     images: [
       {
-        url: '/brand/book8_ai_social_icon.png',
+        url: '/brand/book8_og_social.png',
         width: 1200,
         height: 630,
         alt: 'Book8 — Never miss a call. In any language.',
@@ -40,7 +40,7 @@ export const metadata = {
     title: 'Book8 — Never miss a call. In any language.',
     description:
       'AI phone receptionist that answers 24/7, books appointments, and speaks 70+ languages. Stop losing customers to voicemail.',
-    images: ['/brand/book8_ai_social_icon.png'],
+    images: ['/brand/book8_og_social.png'],
   },
   verification: {
     google: 'VTEmVdfwkSzOOMWaOgd_pIHmGDXS2NetiXdXynmfMos',
