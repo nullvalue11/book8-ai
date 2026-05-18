@@ -217,20 +217,20 @@ function SvgPhoneWave() {
     <svg viewBox="0 0 120 120" className="w-full max-w-[140px] mx-auto text-[#A78BFA]" aria-hidden>
       <rect x="38" y="22" width="44" height="78" rx="12" fill="none" stroke="currentColor" strokeWidth="2" />
       <motion.path
-        d="M24 70 Q32 50 40 70 T56 70"
         fill="none"
         stroke="#34D399"
         strokeWidth="2.5"
         strokeLinecap="round"
+        initial={{ d: 'M24 70 Q32 50 40 70 T56 70' }}
         animate={{ d: ['M24 70 Q32 50 40 70 T56 70', 'M24 70 Q32 90 40 70 T56 70', 'M24 70 Q32 50 40 70 T56 70'] }}
         transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.path
-        d="M62 70 Q70 42 78 70 T94 70"
         fill="none"
         stroke="#34D399"
         strokeWidth="2.5"
         strokeLinecap="round"
+        initial={{ d: 'M62 70 Q70 42 78 70 T94 70' }}
         animate={{ d: ['M62 70 Q70 42 78 70 T94 70', 'M62 70 Q70 98 78 70 T94 70', 'M62 70 Q70 42 78 70 T94 70'] }}
         transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.12 }}
       />
