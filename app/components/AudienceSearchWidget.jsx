@@ -79,7 +79,11 @@ export default function AudienceSearchWidget({ vertical, className }) {
           </p>
         </div>
 
-        <HeroAutocomplete ref={heroRef} placeholder="yourbusiness.com or business name" />
+        <HeroAutocomplete
+          ref={heroRef}
+          placeholder="yourbusiness.com or business name"
+          onSubmit={onSubmit}
+        />
 
         <p className="text-center text-xs text-slate-500 dark:text-slate-400 sm:text-right">
           in 3 minutes, you&apos;ll be talking to your AI

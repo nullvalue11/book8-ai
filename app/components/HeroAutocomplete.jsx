@@ -9,8 +9,10 @@ import React, {
   useRef,
   useState
 } from 'react'
-import { Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useBookingLanguage } from '@/hooks/useBookingLanguage'
+import { useDropdownPlacement } from '@/hooks/useDropdownPlacement'
 
 const KNOWN_TLDS = new Set([
   'com',
@@ -31,6 +33,8 @@ const KNOWN_TLDS = new Set([
   'fr'
 ])
 
+const DROPDOWN_HEIGHT_PX = 280
+
 /**
  * @param {string} raw
  */
@@ -38,6 +42,7 @@ function looksLikeDomainInput(raw) {
   const t = String(raw || '').trim()
   if (!t || /\s/.test(t)) return false
   if (/\.(com|io|net|org|co|ai|app|me|biz|info)$/i.test(t)) return true
+  if (t.includes('.') && /[a-z0-9-]+\.[a-z]{2,}/i.test(t)) return true
   const parts = t.split('.')
   if (parts.length < 2) return false
   const last = parts[parts.length - 1].split('/')[0].toLowerCase()
@@ -54,13 +59,17 @@ function looksLikeDomainInput(raw) {
  *   placeholder?: string,
  *   className?: string,
  *   inputClassName?: string,
- *   onSelect?: (selection: PlaceSelection | DomainSelection) => void
+ *   onSelect?: (selection: PlaceSelection | DomainSelection) => void,
+ *   onSubmit?: () => void
  * }} props
  */
 const HeroAutocomplete = forwardRef(function HeroAutocomplete(
-  { placeholder = 'yourbusiness.com or business name', className = '', inputClassName = '', onSelect },
+  { placeholder = 'yourbusiness.com or business name', className = '', inputClassName = '', onSelect, onSubmit },
   ref
 ) {
+  const { t } = useBookingLanguage()
+  const h = t.homepage || {}
+
   const [value, setValue] = useState('')
   const [debounced, setDebounced] = useState('')
   const [open, setOpen] = useState(false)
@@ -73,6 +82,7 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
 
   const sessionTokenRef = useRef(null)
   const wrapRef = useRef(null)
+  const inputContainerRef = useRef(null)
   const listRef = useRef(null)
   const openedAnalyticsRef = useRef(false)
   const requestIdRef = useRef(0)
@@ -84,6 +94,9 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
   )
 
   const domainMode = useMemo(() => looksLikeDomainInput(value), [value])
+  const dropdownOpen = open && !domainMode && predictions.length > 0
+  const placement = useDropdownPlacement(inputContainerRef, DROPDOWN_HEIGHT_PX, dropdownOpen)
+  const canSubmit = value.trim().length > 0
 
   useEffect(() => {
     valueRef.current = value
@@ -171,11 +184,6 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
         setEmptyAfterFetch(list.length === 0)
         setOpen(list.length > 0)
         setHighlight(-1)
-        if (list.length > 0 && listRef.current && typeof window !== 'undefined' && window.matchMedia('(max-width:639px)').matches) {
-          window.requestAnimationFrame(() => {
-            listRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-          })
-        }
       } catch {
         if (cancelled || rid !== requestIdRef.current) return
         setPredictions([])
@@ -264,38 +272,52 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
     }
   }
 
-  const onInputFocus = () => {
+  const onInputFocus = (e) => {
     ensureSessionToken()
     if (!domainMode && predictions.length > 0) setOpen(true)
+    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
   const onKeyDown = (e) => {
-    if (domainMode || !open || predictions.length === 0) {
-      if (e.key === 'Escape') setOpen(false)
+    if (e.key === 'Enter') {
+      if (!domainMode && open && predictions.length > 0 && highlight >= 0) {
+        e.preventDefault()
+        selectPrediction(predictions[highlight])
+        return
+      }
+      if (value.trim()) {
+        e.preventDefault()
+        onSubmit?.()
+      }
       return
     }
+
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setOpen(false)
+      setHighlight(-1)
+      return
+    }
+
+    if (domainMode || !open || predictions.length === 0) return
+
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setHighlight((h) => (h + 1) % predictions.length)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setHighlight((h) => (h <= 0 ? predictions.length - 1 : h - 1))
-    } else if (e.key === 'Enter') {
-      if (highlight >= 0 && highlight < predictions.length) {
-        e.preventDefault()
-        selectPrediction(predictions[highlight])
-      }
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      setOpen(false)
-      setHighlight(-1)
     }
   }
 
+  const dropdownBelow = placement === 'bottom'
+
   const inputShellClass = cn(
     'relative flex min-h-[44px] items-center border border-slate-200 bg-white transition-colors dark:border-slate-600/70 dark:bg-slate-900/55',
-    open && !domainMode && predictions.length > 0
-      ? 'rounded-t-xl border-b-0'
+    dropdownOpen
+      ? dropdownBelow
+        ? 'rounded-t-xl border-b-0'
+        : 'rounded-b-xl border-t-0'
       : 'rounded-xl',
     'focus-within:border-slate-300 dark:focus-within:border-[rgba(139,92,246,0.35)]',
     'focus-within:ring-2 focus-within:ring-violet-500/40 dark:focus-within:ring-[#A78BFA]/40'
@@ -303,88 +325,117 @@ const HeroAutocomplete = forwardRef(function HeroAutocomplete(
 
   const inputClass = cn(
     'h-11 w-full min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500',
-    loading ? 'pr-10' : '',
+    loading ? 'pe-10' : domainMode ? 'pe-[7.5rem] sm:pe-36' : '',
     inputClassName
   )
 
+  const continueLabel = h.heroContinue || 'Continue →'
+  const websiteDetectedLabel = h.heroWebsiteDetected || 'Website detected'
+  const pickHintLabel = h.heroPickBusinessHint || 'Pick a business from the list to continue.'
+  const noBusinessLabel =
+    h.heroNoBusinessFound || 'No businesses found — try a different name or paste your website'
+
   return (
     <div ref={wrapRef} className={cn('relative', className)}>
-      <div className={inputShellClass}>
-        <input
-          type="text"
-          autoComplete="off"
-          role="combobox"
-          aria-expanded={open && predictions.length > 0}
-          aria-autocomplete="list"
-          aria-controls="hero-autocomplete-listbox"
-          placeholder={placeholder}
-          value={value}
-          onChange={onInputChange}
-          onFocus={onInputFocus}
-          onKeyDown={onKeyDown}
-          className={inputClass}
-        />
-        {loading ? (
-          <div className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+        <div ref={inputContainerRef} className="relative min-w-0 flex-1">
+          <div className={inputShellClass}>
+            <input
+              type="text"
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={dropdownOpen}
+              aria-autocomplete="list"
+              aria-controls="hero-autocomplete-listbox"
+              placeholder={placeholder}
+              value={value}
+              onChange={onInputChange}
+              onFocus={onInputFocus}
+              onKeyDown={onKeyDown}
+              className={inputClass}
+            />
+            {loading ? (
+              <div className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              </div>
+            ) : null}
+            {domainMode && !loading ? (
+              <span
+                className="pointer-events-none absolute end-2 top-1/2 flex max-w-[46%] -translate-y-1/2 items-center gap-1 truncate text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:max-w-none sm:text-sm"
+                aria-live="polite"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                <span className="truncate">{websiteDetectedLabel}</span>
+              </span>
+            ) : null}
           </div>
-        ) : null}
+
+          {dropdownOpen ? (
+            <ul
+              ref={listRef}
+              id="hero-autocomplete-listbox"
+              role="listbox"
+              className={cn(
+                'absolute left-0 right-0 z-[70] max-h-[min(50vh,320px)] overflow-auto',
+                'border border-purple-500/20 bg-zinc-900/95 backdrop-blur-md shadow-lg dark:border-[rgba(139,92,246,0.22)]',
+                dropdownBelow
+                  ? 'top-full rounded-b-xl border-t-0'
+                  : 'bottom-full mb-1 rounded-t-xl border-b-0'
+              )}
+            >
+              {predictions.map((p, i) => {
+                const name = p.name || p.mainText || 'Result'
+                const addr = p.address || p.secondaryText || ''
+                const selected = i === highlight
+                return (
+                  <li key={p.placeId || i} role="option" aria-selected={selected}>
+                    <button
+                      type="button"
+                      className={cn(
+                        'flex min-h-[44px] w-full flex-col items-start gap-0.5 px-3 py-2.5 text-left transition-colors sm:min-h-[48px]',
+                        selected ? 'bg-purple-500/20' : 'hover:bg-purple-500/10'
+                      )}
+                      onMouseEnter={() => setHighlight(i)}
+                      onClick={() => selectPrediction(p)}
+                    >
+                      <span className="font-medium text-white">{name}</span>
+                      {addr ? <span className="text-sm text-zinc-400">{addr}</span> : null}
+                    </button>
+                  </li>
+                )
+              })}
+              {nearCity ? (
+                <li className="pointer-events-none border-t border-purple-500/10 px-3 py-1.5 text-xs text-zinc-500">
+                  Showing results near {nearCity}
+                </li>
+              ) : null}
+            </ul>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onSubmit?.()}
+          disabled={!canSubmit}
+          className={cn(
+            'inline-flex h-11 shrink-0 items-center justify-center rounded-xl px-6 text-sm font-semibold transition-colors',
+            'bg-[#8B5CF6] text-white hover:bg-[#7C3AED]',
+            'disabled:cursor-not-allowed disabled:opacity-40',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121228]',
+            'w-full sm:w-auto sm:min-w-[8.5rem]'
+          )}
+          aria-label={continueLabel.replace(/\s*→\s*$/, '').trim() || 'Continue'}
+        >
+          {continueLabel}
+        </button>
       </div>
 
-      {domainMode ? (
-        <p className="mt-2 inline-flex max-w-full items-center rounded-full border border-purple-500/25 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-[#6D28D9] dark:border-[rgba(167,139,250,0.35)] dark:bg-[rgba(139,92,246,0.12)] dark:text-[#D4C4FC]">
-          Detected website — we&apos;ll extract everything when you continue
-        </p>
-      ) : null}
-
-      {open && !domainMode && predictions.length > 0 ? (
-        <ul
-          ref={listRef}
-          id="hero-autocomplete-listbox"
-          role="listbox"
-          className={cn(
-            'absolute left-0 right-0 top-full z-[60] max-h-[min(50vh,320px)] overflow-auto',
-            'rounded-b-xl border border-t-0 border-purple-500/20 bg-zinc-900/95 backdrop-blur-md',
-            'shadow-lg dark:border-[rgba(139,92,246,0.22)]'
-          )}
-        >
-          {predictions.map((p, i) => {
-            const name = p.name || p.mainText || 'Result'
-            const addr = p.address || p.secondaryText || ''
-            const selected = i === highlight
-            return (
-              <li key={p.placeId || i} role="option" aria-selected={selected}>
-                <button
-                  type="button"
-                  className={cn(
-                    'flex min-h-[44px] w-full flex-col items-start gap-0.5 px-3 py-2.5 text-left transition-colors sm:min-h-[48px]',
-                    selected ? 'bg-purple-500/20' : 'hover:bg-purple-500/10'
-                  )}
-                  onMouseEnter={() => setHighlight(i)}
-                  onClick={() => selectPrediction(p)}
-                >
-                  <span className="font-medium text-white">{name}</span>
-                  {addr ? <span className="text-sm text-zinc-400">{addr}</span> : null}
-                </button>
-              </li>
-            )
-          })}
-          {nearCity ? (
-            <li className="pointer-events-none border-t border-purple-500/10 px-3 py-1.5 text-xs text-zinc-500">
-              Showing results near {nearCity}
-            </li>
-          ) : null}
-        </ul>
-      ) : null}
-
       {!domainMode && emptyAfterFetch && debounced.trim().length >= 2 && !loading ? (
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          No businesses found — try a different name or paste your website
-        </p>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{noBusinessLabel}</p>
       ) : null}
 
       {ctaHint ? (
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">Pick a business from the list to continue.</p>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-500">{pickHintLabel}</p>
       ) : null}
     </div>
   )
