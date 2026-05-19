@@ -204,7 +204,13 @@ export const newoAlternativeSchema = {
       foundingDate: '2025',
       founder: { '@type': 'Person', name: 'Wais Mohamed' },
       areaServed: ['CA', 'US', 'AE', 'SA', 'EG', 'IN', 'BR', 'MX'],
-      sameAs: ['https://www.linkedin.com/company/book8-ai']
+      sameAs: ['https://www.linkedin.com/company/book8-ai'],
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: 'wais@book8.io',
+        availableLanguage: ['English', 'French', 'Arabic']
+      }
     },
     {
       '@type': 'Product',

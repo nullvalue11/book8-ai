@@ -33,6 +33,12 @@ export const organizationSchema = stripUndefined({
     '@type': 'PostalAddress',
     addressCountry: 'CA'
   },
+  contactPoint: {
+    '@type': 'ContactPoint',
+    contactType: 'customer support',
+    email: 'wais@book8.io',
+    availableLanguage: ['English', 'French', 'Arabic']
+  },
   subjectOf: [
     {
       '@type': 'Organization',
